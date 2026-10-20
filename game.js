@@ -2864,6 +2864,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       if(brawlerId==='minigunnin'||brawlerId==='steamer'||brawlerId==='beam')return 100;
       if(brawlerId==='bowlin_rida'||brawlerId==='boom_arang'||brawlerId==='jetpack'||brawlerId==='the_deleter')return 1;
       if(brawlerId==='demon'||brawlerId==='fastpass')return 2;
+      if(brawlerId==='trampaheal')return 2;
       if(brawlerId==='rocketeer')return 4;
       return 3;
   }
@@ -8215,11 +8216,11 @@ const bolznstienPendingStrikes = [];
           attackDesc: 'Fires a high-voltage lightning bolt. On impact, an electric bolt smashes down from the sky in a circle 0.8s later with spectacular lightning visuals.',
           super: 'Electric Eyes',
           superDesc: 'Channels electric energy for 4s, projecting 6 reaching electric hand chains (+40% range and hands) in a wide cone. Shocked foes arc lightning in any direction to enemies within 330 range for 40% less damage, and every chained enemy can relay the chain again.',
-          hyper: 'Franken-Overload: Main attack is 30% larger, and the secondary strike triggers 4 times (center + 3 in a wide spaced-out triangle) with 30% bigger blasts. Super lasts 6s, gains massive range, and weakens enemies so they deal 40% less damage for 4s.',
+          hyper: 'Franken-Overload: Main attack is 30% larger, and the secondary strike triggers 4 times (center + 3 in a tighter triangle) with 30% bigger blasts. Super lasts 6s, gains massive range, and weakens enemies so they deal 40% less damage for 4s.',
           g1: 'Instant Discharge (Instantly detonates all pending 0.8s electric strikes with +30% damage and releases a defensive electric pulse)',
           g2: 'Conductive Surge (Overcharges neck bolts for 4s, granting +30% movement speed and electrifying the ground beneath his feet)',
           sp1: 'High Voltage (Secondary delayed electric strikes deal +25% bonus damage and slow enemies hit by 35% for 1.5s)',
-          sp2: 'Thunder Tempo (Consecutive lightning called onto the same target arrives 20% faster each time, up to 4 stacks)'
+          sp2: 'Thunder Tempo (Consecutive lightning called onto the same target arrives up to 80% faster at 5 stacks)'
       },
 
       'sir_cheeseburger': {
@@ -8497,7 +8498,7 @@ const bolznstienPendingStrikes = [];
                 hyper: 'Trampawind: Super trampoline gains 7280 HP and emits a 2-tile swirling purple gale that smoothly knocks back enemies every 1.0s.',
                 g1: 'High Spring (Trampaheal’s next jump gains +50% range and floats higher in the air)',
                 g2: 'Pocket Springboard (Drops an instant 1200 HP heal spring that launches allies forward)',
-                sp1: 'Soft Landing (Landing from any jump or trampoline bounce grants a 25% speed boost and 500 HP shield)',
+                sp1: 'Soft Landing (Landing from any jump or trampoline bounce grants a 25% speed boost and a 400 HP shield every 2 jumps)',
                 sp2: 'Soothing Springs (The healing aura left on jump landing lasts 2.0s and heals for +50% more HP per pulse)'
             },
             'axeywaxy': {
@@ -10229,7 +10230,7 @@ function isPowerPlayModifierActive(entity = player) {
         let tempoStacks = 0;
         if (owner && sp2 && targetId != null) {
             tempoStacks = owner.bolznstienTempoTargetId === targetId
-                ? Math.min(4, (owner.bolznstienTempoStacks || 1) + 1)
+                ? Math.min(5, (owner.bolznstienTempoStacks || 1) + 1)
                 : 1;
             owner.bolznstienTempoTargetId = targetId;
             owner.bolznstienTempoStacks = tempoStacks;
@@ -10239,7 +10240,7 @@ function isPowerPlayModifierActive(entity = player) {
             owner.bolznstienTempoStacks = 0;
         }
         const strikeDelay = sp2 && tempoStacks > 1
-            ? Math.max(320, Math.round(800 * Math.pow(0.8, tempoStacks - 1)))
+            ? Math.max(160, 800 - 160 * (tempoStacks - 1))
             : 800;
         const triggerAt = now + strikeDelay;
         const finalDmg = Math.round(strikeDmg * (sp1 ? 1.25 : 1.0));
@@ -10251,13 +10252,13 @@ function isPowerPlayModifierActive(entity = player) {
             bolznstienPendingStrikes.push({
                 ownerId, x, y, triggerAt, damage: finalDmg, radius: strikeRadius, isHyper: true, sp1, skinId: ownerSkinId
             });
-            // 3 strikes in a triangle around it (radius ~62px offset)
+            // 3 strikes in a tighter triangle around the center strike.
             for (let k = 0; k < 3; k++) {
                 const strikeAngle = (k * 2 * Math.PI / 3) - Math.PI / 2;
                 bolznstienPendingStrikes.push({
                     ownerId,
-                    x: x + Math.cos(strikeAngle) * 145,
-                    y: y + Math.sin(strikeAngle) * 145,
+                    x: x + Math.cos(strikeAngle) * 100,
+                    y: y + Math.sin(strikeAngle) * 100,
                     triggerAt,
                     damage: finalDmg,
                     radius: strikeRadius,
@@ -30960,10 +30961,19 @@ let heistFeverActive = false;
         if (typeof entity.trampahealJumpStartY !== 'number') entity.trampahealJumpStartY = entity.y;
         if (typeof entity.trampahealJumpTargetX !== 'number') entity.trampahealJumpTargetX = entity.x;
         if (typeof entity.trampahealJumpTargetY !== 'number') entity.trampahealJumpTargetY = entity.y;
+        if (typeof entity.trampahealJumpShieldCount !== 'number') entity.trampahealJumpShieldCount = 0;
         if (typeof entity.trampaAirSteerUntil !== 'number') entity.trampaAirSteerUntil = 0;
         if (typeof entity.trampaAirSteerStartAt !== 'number') entity.trampaAirSteerStartAt = 0;
         if (typeof entity.trampahealG1Armed !== 'boolean') entity.trampahealG1Armed = false;
         if (typeof entity.trampahealG2Armed !== 'boolean') entity.trampahealG2Armed = false;
+    }
+
+    function applyTrampahealSoftLandingShield(entity, hasSp1) {
+        if (!hasSp1) return false;
+        entity.trampahealJumpShieldCount++;
+        if (entity.trampahealJumpShieldCount % 2 !== 0) return false;
+        entity.shield = Math.min(6000, (entity.shield || 0) + 400);
+        return true;
     }
 
             function castTrampahealSuper(owner, hyper, targetX, targetY) {
@@ -31002,6 +31012,9 @@ let heistFeverActive = false;
             lastWindBlastAt: 0
         };
 
+        for (let i = trampolines.length - 1; i >= 0; i--) {
+            if (trampolines[i]?.ownerId === owner.id) trampolines.splice(i, 1);
+        }
         trampolines.push(newTrampoline);
 
         explosions.push({
@@ -31083,11 +31096,11 @@ let heistFeverActive = false;
                         }
                     }
 
-                    // SP1: Soft Landing (25% speed boost for 2s + 500 shield)
+                    // SP1 shield triggers every second jump; its speed boost stays per landing.
+                    const grantedSoftLandingShield = applyTrampahealSoftLandingShield(e, e.trampahealHasSp1);
                     if (e.trampahealHasSp1) {
-                        e.shield = Math.min(6000, (e.shield || 0) + 500);
                         e.speedUntil = Math.max(e.speedUntil || 0, now + 2000);
-                        spawnFloatingText(e.x, e.y - 38, '🛡️ SOFT LANDING (+500 SHIELD)', '#00f5d4');
+                        spawnFloatingText(e.x, e.y - 38, grantedSoftLandingShield ? '🛡️ SOFT LANDING (+400 SHIELD)' : 'SOFT LANDING', '#00f5d4');
                     }
 
                     // Lingering Healing Aura (1.0s base / 2.0s SP2)
@@ -31170,9 +31183,9 @@ let heistFeverActive = false;
                         e.speedUntil = Math.max(e.speedUntil || 0, now + 3500);
 
                         const hasSp1 = e.id === player.id ? (selectedStar === 'slow' || selectedStar === 'fast' || selectedStar === 'sp1') : (e.selectedStar === 'slow' || e.selectedStar === 'fast' || e.selectedStar === 'sp1');
+                        const grantedSoftLandingShield = applyTrampahealSoftLandingShield(e, hasSp1);
                         if (hasSp1) {
-                            e.shield = Math.min(6000, (e.shield || 0) + 500);
-                            spawnFloatingText(e.x, e.y - 45, '🛡️ SOFT LANDING (+500)', '#00f5d4');
+                            if (grantedSoftLandingShield) spawnFloatingText(e.x, e.y - 45, '🛡️ SOFT LANDING (+400)', '#00f5d4');
                         }
 
                         explosions.push({
@@ -49697,25 +49710,6 @@ function checkHit(target, b, i){
           }
       }
 
-      // ── Cinderion aimed sky-burst: impact, then scatter symmetrically in 360° ──
-      if (b.isCinderionScatterCore && b.life >= b.maxLife && !b.cinderionBurstDetonated) {
-          b.cinderionBurstDetonated=true;
-          const burstX=b.targetX,burstY=b.targetY; b.x=burstX;b.y=burstY;
-          explosions.push({x:burstX,y:burstY,radius:50,life:0,maxLife:.22,color:b.hyperVisual?'rgba(199,69,255,.82)':'rgba(255,112,24,.78)',fxKind:'cinderionScatter'});
-          const count=b.cinderionFlameCount||8,speed=b.cinderionFlameSpeed||520,range=b.cinderionFlameRange||464;
-          for(let flameIndex=0;flameIndex<count;flameIndex++){
-              const flameAng=(b.scatterRotation||0)+flameIndex*Math.PI*2/count;
-              bullets.push({
-                  ownerBrawler:'cinderion',ownerId:b.ownerId,team:b.team,
-                  isCinderionScatterFlame:true,cinderionDoubleKindling:!!b.cinderionDoubleKindling,
-                  x:burstX+Math.cos(flameAng)*8,y:burstY+Math.sin(flameAng)*8,
-                  vx:Math.cos(flameAng)*speed,vy:Math.sin(flameAng)*speed,
-                  life:0,maxLife:range/speed,damage:b.cinderionFlameDamage||430,pierce:true,
-                  hitIds:{},hitboxMod:1.25,hyperVisual:!!b.hyperVisual
-              });
-          }
-      }
-
       // ── Draflygon aerial drop: impacts and triggers 8 outward cone flames (NO fire zone) ──
       if (b.isDraflygonAerialDrop && b.life >= b.maxLife && !b.aerialDropDetonated) {
           b.aerialDropDetonated = true;
@@ -49810,6 +49804,24 @@ function checkHit(target, b, i){
           }
       }
       b.life += dt;
+      // Resolve this aimed core after its lifetime advances but before generic expiry cleanup.
+      if (b.isCinderionScatterCore && b.life >= b.maxLife && !b.cinderionBurstDetonated) {
+          b.cinderionBurstDetonated=true;
+          const burstX=b.targetX,burstY=b.targetY; b.x=burstX;b.y=burstY;
+          explosions.push({x:burstX,y:burstY,radius:50,life:0,maxLife:.22,color:b.hyperVisual?'rgba(199,69,255,.82)':'rgba(255,112,24,.78)',fxKind:'cinderionScatter'});
+          const count=b.cinderionFlameCount||8,speed=b.cinderionFlameSpeed||520,range=b.cinderionFlameRange||464;
+          for(let flameIndex=0;flameIndex<count;flameIndex++){
+              const flameAng=(b.scatterRotation||0)+flameIndex*Math.PI*2/count;
+              bullets.push({
+                  ownerBrawler:'cinderion',ownerId:b.ownerId,team:b.team,
+                  isCinderionScatterFlame:true,cinderionDoubleKindling:!!b.cinderionDoubleKindling,
+                  x:burstX+Math.cos(flameAng)*8,y:burstY+Math.sin(flameAng)*8,
+                  vx:Math.cos(flameAng)*speed,vy:Math.sin(flameAng)*speed,
+                  life:0,maxLife:range/speed,damage:b.cinderionFlameDamage||430,pierce:true,
+                  hitIds:{},hitboxMod:1.25,hyperVisual:!!b.hyperVisual
+              });
+          }
+      }
       if (b.isOilMakerCrude) {
           // Crude bullet does not drop mid-flight trails anymore: forms one puddle at the end
       }
@@ -50469,6 +50481,38 @@ function checkHit(target, b, i){
       if (b.isCinderionScatterCore) {
           if (b.cinderionBurstDetonated) bullets.splice(i, 1);
           continue;
+      }
+
+      // Trampaheal's Super is a real damageable deployable.
+      if ((b.damage || 0) > 0 && b.ownerId !== undefined && Array.isArray(trampolines)) {
+          let consumedByTrampoline = false;
+          for (let tIdx = trampolines.length - 1; tIdx >= 0; tIdx--) {
+              const trampoline = trampolines[tIdx];
+              if (!trampoline || trampoline.hp <= 0 || trampoline.ownerId === b.ownerId) continue;
+              if (b.hitIds && b.hitIds[trampoline.id]) continue;
+              const trampolineOwner = getEntityById(trampoline.ownerId);
+              if (trampolineOwner && areAlliedEntities(owner, trampolineOwner)) continue;
+              if (!trampolineOwner && owner.team && trampoline.team === owner.team) continue;
+              const hitRadius = trampoline.radius + 6 * (b.hitboxMod || 1);
+              if (Math.hypot(b.x - trampoline.x, b.y - trampoline.y) > hitRadius) continue;
+
+              const dealt = Math.min(trampoline.hp, Math.max(0, b.damage || 0));
+              if (dealt <= 0) continue;
+              trampoline.hp -= dealt;
+              b.hitIds = b.hitIds || {};
+              b.hitIds[trampoline.id] = true;
+              if (trampoline.hp <= 0) {
+                  trampolines.splice(tIdx, 1);
+                  spawnFloatingText(trampoline.x, trampoline.y - 30, 'TRAMPOLINE BROKEN!', '#ff6b6b');
+              }
+              if (!b.pierce) {
+                  bullets.splice(i, 1);
+                  i--;
+                  consumedByTrampoline = true;
+                  break;
+              }
+          }
+          if (consumedByTrampoline) continue;
       }
 
       // bullets hit cubes

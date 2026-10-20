@@ -13,6 +13,7 @@ assert.match(source, /const flameCount = 8/, 'Solar Scatter must use the eight-w
 assert.match(source, /isCinderionScatterCore:true[\s\S]*?targetX:impactX,targetY:impactY/, 'Solar Scatter must aim an aerial-style burst core');
 assert.match(source, /flameAng=\(b\.scatterRotation\|\|0\)\+flameIndex\*Math\.PI\*2\/count/, 'impact flames must scatter symmetrically in 360 degrees');
 assert.match(source, /b\.isCinderionScatterCore && b\.life >= b\.maxLife[\s\S]*?b\.x=burstX;b\.y=burstY/, 'Solar Scatter must resolve at its exact aimed destination on the arrival frame');
+assert.match(source, /b\.life \+= dt;[\s\S]*?if \(b\.isCinderionScatterCore && b\.life >= b\.maxLife[\s\S]*?b\.cinderionBurstDetonated=true/, 'Solar Scatter must burst after lifetime advances and before generic expiry cleanup');
 assert.match(source, /cinderionSweptPlayerHit[\s\S]*?distToSegment/, 'fast scatter flames need swept player collision');
 assert.match(source, /cinderionSweptTargetHit[\s\S]*?distToSegment/, 'fast scatter flames need swept bot collision');
 assert.match(source, /cinderionSweptRectHit/, 'fast scatter flames need swept box and wall collision');

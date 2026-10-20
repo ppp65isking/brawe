@@ -31,7 +31,7 @@ const checks = [
   ['bolznstienPendingStrikes and bolznstienShockTrails declared', /const bolznstienPendingStrikes = \[\];\s*const bolznstienShockTrails = \[\];/.test(game)],
   ['scheduleBolznstienStrikes helper accepts a struck target', /function scheduleBolznstienStrikes\(ownerId, x, y, strikeDmg, isHyper, targetId = null\)/.test(game)],
   ['scheduleBolznstienStrikes keeps an 0.8s base delay', /:\s*800;\s*const triggerAt = now \+ strikeDelay;/.test(game)],
-  ['scheduleBolznstienStrikes schedules 4 strikes in triangle during HC', /isHyper[\s\S]*?const strikeAngle = \(k \* 2 \* Math\.PI \/ 3\) - Math\.PI \/ 2;/.test(game)],
+  ['scheduleBolznstienStrikes schedules 4 strikes in a tighter triangle during HC', /const strikeAngle = \(k \* 2 \* Math\.PI \/ 3\) - Math\.PI \/ 2;[\s\S]*?Math\.cos\(strikeAngle\) \* 100[\s\S]*?Math\.sin\(strikeAngle\) \* 100/.test(game)],
   ['scheduleBolznstienStrikes scales strike radius 30% larger in HC', /const strikeRadius = \(isHyper \? 85 : 65\) \* \(isHyper \? 1\.3 : 1\.0\);/.test(game)],
   ['castBolznstienSuper implemented with 4s normal and 6s HC duration', /const duration = isHyper \? 6000 : 4000;\s*entity\.bolznstienSuperUntil = now \+ duration;/.test(game)],
   ['executeBolznstienG1 detonates pending strikes with +30% damage', /s\.damage = Math\.round\(s\.damage \* 1\.30\);/.test(game)],
@@ -51,7 +51,7 @@ const checks = [
   ['Update loop channels Super electric hand chains in cone with +40% range and -30% dmg', /ent\.bolznstienSuperUntil[\s\S]*?const range = Math\.round\(baseRange \* 1\.40\);[\s\S]*?tickDmg = Math\.round\(\(\(ent\.level \|\| 11\) \* 24 \+ 190\) \* 0\.70\);/.test(game)],
   ['Electric Eyes cone damages boxes and vault entities', /Electric Eyes is a continuous lightning attack[\s\S]*?isHeaterLockableBox\(wall\)[\s\S]*?applyHeaterBoxDamage\(ent, wall, tickDmg\)/.test(game)],
   ['Hypercharge Super applies 40% damage debuff on enemies for 4s', /t\.bolznstienDmgDebuffUntil = now \+ 4000;/.test(game)],
-  ['SP2 ramps same-target lightning arrival 20% faster up to four stacks', /bolznstienTempoTargetId === targetId[\s\S]*?Math\.min\(4,[\s\S]*?Math\.pow\(0\.8, tempoStacks - 1\)/.test(game)],
+  ['SP2 ramps same-target lightning arrival up to 80% faster across five stacks', /bolznstienTempoTargetId === targetId[\s\S]*?Math\.min\(5,[\s\S]*?Math\.max\(160, 800 - 160 \* \(tempoStacks - 1\)\)/.test(game)],
   ['Sky lightning damages power boxes and enemy vaults in its strike circle', /rectCircleCollides\(wall\.x, wall\.y, wall\.w, wall\.h, s\.x, s\.y, s\.radius\)[\s\S]*?applyHeaterBoxDamage\(sOwner, wall, s\.damage\)/.test(game)],
   ['Debuffed enemies deal 40% less bullet damage', /owner\.bolznstienDmgDebuffUntil && performance\.now\(\) < owner\.bolznstienDmgDebuffUntil[\s\S]*?dealtDamage \*= 0\.60;/.test(game)],
   ['Debuffed enemies deal 40% less AoE damage', /owner\.bolznstienDmgDebuffUntil && performance\.now\(\) < owner\.bolznstienDmgDebuffUntil[\s\S]*?incomingAoeDamage \*= 0\.60;/.test(game)],
@@ -85,7 +85,7 @@ const checks = [
   ['Primary Super victims remain eligible to receive a chain from another victim', /const visitedChained = new Set\(\[ent\.id\]\);/.test(game) && !/for \(const pt of primaryHitTargets\) visitedChained\.add\(pt\.id\)/.test(game)],
   ['Chain propagation skips its current source and marks each recipient once', /candidate\.id === sourceNode\.id[\s\S]{0,180}visitedChained\.has\(candidate\.id\)[\s\S]{0,260}visitedChained\.add\(candidate\.id\)/.test(game)],
   ['Chained Super damage is explicitly tagged and can relay into another hop', /isBolznstienChain: true/.test(game) && /nextChainHop\.push\(candidate\);[\s\S]{0,220}currentChainHop = nextChainHop;/.test(game)],
-  ['HC triangle strikes spaced out to 145px', /Math\.cos\(strikeAngle\) \* 145/.test(game)],
+  ['HC triangle strikes use the tighter 100px spacing', /Math\.cos\(strikeAngle\) \* 100/.test(game)],
   ['bolznstienChainArcs exported on window.__pureHTMLGame', /get bolznstienChainArcs\(\)\s*\{\s*return bolznstienChainArcs;\s*\}/.test(game)],
 
   // 8. Gadget & Star Power Fixes

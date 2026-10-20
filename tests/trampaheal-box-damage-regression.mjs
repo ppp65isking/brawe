@@ -4,6 +4,10 @@ import fs from 'node:fs';
 const game = fs.readFileSync(new URL('../game.js', import.meta.url), 'utf8');
 
 assert.match(game, /trampaheal:6/, 'Trampaheal has an explicit Super-charge step count');
+assert.match(game, /if\(brawlerId==='trampaheal'\)return 2/, 'Trampaheal has two ammo');
+assert.match(game, /function applyTrampahealSoftLandingShield[\s\S]*entity\.trampahealJumpShieldCount % 2 !== 0[\s\S]*\+ 400/, 'Soft Landing grants a 400 HP shield every second jump');
+assert.match(game, /trampolines\[i\]\?\.ownerId === owner\.id\) trampolines\.splice\(i, 1\)[\s\S]*trampolines\.push\(newTrampoline\)/, 'Trampaheal can have only one active Super trampoline');
+assert.match(game, /Trampaheal's Super is a real damageable deployable[\s\S]*trampoline\.hp -= dealt[\s\S]*TRAMPOLINE BROKEN!/, 'enemy projectiles can damage and destroy the Super trampoline');
 assert.match(game, /function grantTrampahealTeamHealCharge[\s\S]*owner\.id === target\.id[\s\S]*restored <= 0[\s\S]*restored \/ TRAMPAHEAL_HEAL_CHARGE_BENCHMARK/, 'team-heal charge requires real teammate HP restoration and scales partial heals');
 assert.match(game, /applyTrampahealTeamHeal\(fromEntity, ally, 1200\)/, 'Pocket Springboard healing charges Trampaheal Super');
 assert.match(game, /applyTrampahealTeamHeal\(e, ally, 1500\)/, 'Bouncy Leap ally healing charges Trampaheal Super');
