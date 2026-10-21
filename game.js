@@ -1152,6 +1152,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         brick_architect:{name:'Architect Workshop',requirement:'25,000 lifetime Bricks'},
         core_scanline:{name:'Core Scanline',requirement:'Season 3 premium track'},
         core_breaker_aura:{name:'Core Breaker Aura',requirement:'Complete the Season 3 premium track'},
+        arenaween_night:{name:'Arenaween Night',requirement:'Season 4 premium track'},
     };
     const BRICK_CHALLENGES = [
         ['depth_5_250','ROSTER DEPTH I','5 brawlers at 250+ Bricks','depth',250,5,[['coins',250]]],
@@ -5930,6 +5931,42 @@ const bolznstienPendingStrikes = [];
             takedownEffect: { type: 'pumpkinExplosion', color: '#ff7700', glow: true },
             deathEffect: { type: 'headlessCollapse', color: '#2ecc71', glow: false }
         },
+        'pumpkin-king': {
+            id: 'pumpkin-king', name: 'Pumpkin King', brawler: 'king',
+            rarity: 'mythic', set: 'Arenaaween', price: 0, currency: 'gems',
+            description: 'The King trades his crown for a carved pumpkin throne-topper, trailing ember-orange sparks. Visual only. Exclusive to Spooky Boxes and the Arenaaween Pass.',
+            _displayColor: '#ff8c1a', icon: '🎃', visualOnly: true, isSpookyBoxReward: true
+        },
+        'count-cursed': {
+            id: 'count-cursed', name: 'Count Curseula', brawler: 'cursed',
+            rarity: 'mythic', set: 'Arenaaween', price: 0, currency: 'gems',
+            description: 'A velvet-caped vampire count whose hexes drip crimson moonlight. Visual only. Exclusive to Spooky Boxes.',
+            _displayColor: '#b3001b', icon: '🧛', visualOnly: true, isSpookyBoxReward: true
+        },
+        'phantom-copyphase': {
+            id: 'phantom-copyphase', name: 'Phantom Phase', brawler: 'copyphase',
+            rarity: 'epic', set: 'Arenaaween', price: 0, currency: 'gems',
+            description: 'Copyphase slips between worlds as a giggling sheet-ghost, clones and all. Visual only. Exclusive to Spooky Boxes.',
+            _displayColor: '#cfe8ff', icon: '👻', visualOnly: true, isSpookyBoxReward: true
+        },
+        'reaper-darkener': {
+            id: 'reaper-darkener', name: 'Midnight Reaper Darkener', brawler: 'darkener',
+            rarity: 'legendary', set: 'Arenaaween', price: 0, currency: 'gems',
+            description: 'The Darkener dons the reaper hood, weaving violet darkness between headstones. Visual only. Exclusive to Spooky Boxes.',
+            _displayColor: '#8e44ad', icon: '💀', visualOnly: true, isSpookyBoxReward: true
+        },
+        'nightmare-awakenator': {
+            id: 'nightmare-awakenator', name: 'Nightmare Awakenator', brawler: 'awakenator',
+            rarity: 'epic', set: 'Arenaaween', price: 0, currency: 'gems',
+            description: 'Awakenator weaponizes sleep paralysis — a crescent-moon demon of bad dreams. Visual only. Exclusive to Spooky Boxes.',
+            _displayColor: '#5d6dff', icon: '🌙', visualOnly: true, isSpookyBoxReward: true
+        },
+        'jack-o-demon': {
+            id: 'jack-o-demon', name: 'Jack-o-Demon', brawler: 'demon',
+            rarity: 'epic', set: 'Arenaaween', price: 0, currency: 'gems',
+            description: 'A grinning jack-o-lantern imp wreathed in candle-fire. Visual only. Exclusive to Spooky Boxes.',
+            _displayColor: '#ff5722', icon: '🎃', visualOnly: true, isSpookyBoxReward: true
+        },
         'boneless-boomarang': {
             id: 'boneless-boomarang',
             name: 'Boneless Boomarang',
@@ -6324,8 +6361,8 @@ const bolznstienPendingStrikes = [];
       }
       const EVENT_QUEST_TOTAL = buildEventQuests().length;
 
-      const SEASON_PASS_SCHEMA_VERSION = 5;
-      const SEASON_PASS_ID = 'core-breaker-arena-forge-2026-s3';
+      const SEASON_PASS_SCHEMA_VERSION = 6;
+      const SEASON_PASS_ID = 'arenaween-arena-forge-2026-s4';
       const SEASON_PASS_MAX_LEVEL = 25;
       const SEASON_PASS_XP_PER_LEVEL = 100;
       const SEASON_2_ARCHIVE_TIERS = [
@@ -6356,36 +6393,36 @@ const bolznstienPendingStrikes = [];
           { tier: 25, title: 'Tower Conqueror', free: { type: 'coins', amount: 2000 }, premium: { type: 'towerDrop', amount: 5 } }
       ];
       const SEASON_PASS_TIERS = [
-          {tier:1,title:'Breach Signal',free:{type:'coins',amount:250},premium:{type:'profileCosmetic',id:'core_scanline'}},
-          {tier:2,title:'Bird Sighting',free:{type:'packetSignal',packet:'bird',amount:35},premium:{type:'gems',amount:4}},
-          {tier:3,title:'Wild Frequency',free:{type:'souls',amount:25},premium:{type:'coins',amount:450}},
-          {tier:4,title:'Packet Cache',free:{type:'packetSignal',group:'out_in_the_wild',amount:20},premium:{type:'superTapper',amount:1}},
-          {tier:5,title:'Cracked Core',free:{type:'gems',amount:3},premium:{type:'profileCosmetic',id:'cracked_core_frame'}},
-          {tier:6,title:'Forge Credits',free:{type:'coins',amount:400},premium:{type:'souls',amount:45}},
-          {tier:7,title:'Encrypted Wings',free:{type:'packetSignal',packet:'eagle',amount:30},premium:{type:'coins',amount:600}},
-          {tier:8,title:'Signal Booster',free:{type:'tapper',amount:1},premium:{type:'packetSignal',group:'mythic_core',amount:25}},
-          {tier:9,title:'Lava Warning',free:{type:'souls',amount:45},premium:{type:'gems',amount:7}},
-          {tier:10,title:'Biome Key I',free:{type:'packetSignal',group:'out_in_the_wild',amount:30},premium:{type:'profileCosmetic',id:'packet_scout_badge'}},
-          {tier:11,title:'Core Credits',free:{type:'coins',amount:550},premium:{type:'superTapper',amount:1}},
-          {tier:12,title:'Metal Frequency',free:{type:'packetSignal',packet:'heavy_metal',amount:50},premium:{type:'souls',amount:65}},
-          {tier:13,title:'Corruption Sample',free:{type:'gems',amount:5},premium:{type:'coins',amount:850}},
-          {tier:14,title:'Signal Storm',free:{type:'packetSignal',group:'core_forge',amount:30},premium:{type:'hyperTapper',amount:1}},
-          {tier:15,title:'Biome Key II',free:{type:'coins',amount:700},premium:{type:'profileCosmetic',id:'biome_walker_frame'}},
-          {tier:16,title:'Dual Frequency',free:{type:'packetSignal',packet:'dual_element',amount:60},premium:{type:'gems',amount:9}},
-          {tier:17,title:'Forge Reserve',free:{type:'souls',amount:70},premium:{type:'coins',amount:1000}},
-          {tier:18,title:'Core Breaker Cache',free:{type:'superTapper',amount:1},premium:{type:'packetSignal',group:'shadow_signal',amount:35}},
-          {tier:19,title:'Dark Signal',free:{type:'packetSignal',packet:'demon',amount:50},premium:{type:'souls',amount:100}},
-          {tier:20,title:'Corrupted Crest',free:{type:'gems',amount:7},premium:{type:'profileCosmetic',id:'corrupted_crest'}},
-          {tier:21,title:'Packet Arsenal',free:{type:'coins',amount:900},premium:{type:'hyperTapper',amount:1}},
-          {tier:22,title:'Time Fracture',free:{type:'packetSignal',packet:'time',amount:60},premium:{type:'gems',amount:12}},
-          {tier:23,title:'Biome Convergence',free:{type:'souls',amount:100},premium:{type:'coins',amount:1400}},
-          {tier:24,title:'Final Signal',free:{type:'packetSignal',group:'all',amount:20},premium:{type:'hyperTapper',amount:1}},
-          {tier:25,title:'HEADLESS BOLZNSTIEN',free:{type:'coins',amount:1600},premium:{type:'skin',id:'headless-bolznstien',name:'Headless Bolznstien'}}
+          {tier:1,title:'First Fright',free:{type:'coins',amount:250},premium:{type:'souls',amount:30}},
+          {tier:2,title:'Candy Stash',free:{type:'souls',amount:25},premium:{type:'gems',amount:4}},
+          {tier:3,title:'Spooky Box I',free:{type:'spookyBox',amount:1},premium:{type:'coins',amount:450}},
+          {tier:4,title:'Graveyard Shift',free:{type:'coins',amount:400},premium:{type:'superTapper',amount:1}},
+          {tier:5,title:'Soul Harvest',free:{type:'gems',amount:3},premium:{type:'profileCosmetic',id:'arenaween_night'}},
+          {tier:6,title:'Trick or Treat',free:{type:'coins',amount:450},premium:{type:'spookyBox',amount:1}},
+          {tier:7,title:'Witching Hour',free:{type:'souls',amount:50},premium:{type:'coins',amount:600}},
+          {tier:8,title:'Tapper Treats',free:{type:'tapper',amount:1},premium:{type:'souls',amount:60}},
+          {tier:9,title:'Spooky Box II',free:{type:'spookyBox',amount:1},premium:{type:'gems',amount:7}},
+          {tier:10,title:'Haunted Hoard',free:{type:'coins',amount:600},premium:{type:'superTapper',amount:1}},
+          {tier:11,title:'Creepy Credits',free:{type:'coins',amount:550},premium:{type:'spookyBox',amount:1}},
+          {tier:12,title:'Monster Mash',free:{type:'souls',amount:70},premium:{type:'coins',amount:850}},
+          {tier:13,title:'Fearsome Fortune',free:{type:'gems',amount:5},premium:{type:'spookyBox',amount:1}},
+          {tier:14,title:'Hyper Haunt',free:{type:'coins',amount:750},premium:{type:'hyperTapper',amount:1}},
+          {tier:15,title:'Spooky Box III',free:{type:'spookyBox',amount:1},premium:{type:'coins',amount:1100}},
+          {tier:16,title:'Full Moon Funds',free:{type:'souls',amount:85},premium:{type:'gems',amount:9}},
+          {tier:17,title:'Soul Feast',free:{type:'coins',amount:900},premium:{type:'spookyBox',amount:1}},
+          {tier:18,title:'Double Spooky',free:{type:'superTapper',amount:1},premium:{type:'spookyBox',amount:2}},
+          {tier:19,title:'Terror Treasury',free:{type:'souls',amount:110},premium:{type:'coins',amount:1300}},
+          {tier:20,title:'Arenaween Night',free:{type:'gems',amount:7},premium:{type:'spookyBox',amount:2}},
+          {tier:21,title:'Spooky Box IV',free:{type:'spookyBox',amount:1},premium:{type:'hyperTapper',amount:1}},
+          {tier:22,title:'Nightmare Riches',free:{type:'coins',amount:1100},premium:{type:'gems',amount:12}},
+          {tier:23,title:'Final Fright Funds',free:{type:'souls',amount:130},premium:{type:'coins',amount:1500}},
+          {tier:24,title:'Double Trouble Boxes',free:{type:'spookyBox',amount:2},premium:{type:'spookyBox',amount:2}},
+          {tier:25,title:'PUMPKIN KING',free:{type:'spookyBox',amount:2},premium:{type:'skin',id:'pumpkin-king',name:'Pumpkin King'}}
       ];
-      const SEASON_4_PASS_ID = 'midnight-swarm-2026-s4';
-      const SEASON_4_NAME = 'Midnight Swarm';
-      const SEASON_4_FEATURED_BRAWLER = 'badbat';
-      const SEASON_4_PASS_TIERS = [
+      const FUTURE_SEASON_PASS_ID = 'midnight-swarm-future'; // planned future season, not Season 4
+      const FUTURE_SEASON_NAME = 'Midnight Swarm';
+      const FUTURE_SEASON_FEATURED_BRAWLER = 'badbat';
+      const FUTURE_SEASON_PASS_TIERS = [
           {tier:1,title:'Nocturnal Awakening',free:{type:'coins',amount:300},premium:{type:'profileCosmetic',id:'midnight_wings_frame'}},
           {tier:2,title:'Bat Echoes',free:{type:'souls',amount:30},premium:{type:'gems',amount:5}},
           {tier:3,title:'Sonic Resonator',free:{type:'coins',amount:400},premium:{type:'tapper',amount:1}},
@@ -6426,26 +6463,26 @@ const bolznstienPendingStrikes = [];
           { id: 'season_25', stage: 25, kind: 'deal_damage', title: 'Godlike Force', desc: 'Deal 8,000,000 damage.', target: 8000000, rewards: { coins: 3000, souls: 300, hyperTappers: 2 }, xpReward: 100 }
       ];
       const SEASON_QUEST_DEFS = [
-          {id:'season3_01',stage:1,kind:'packet_damage',title:'Packet Online',desc:'Deal 20,000 damage while a Packet is equipped.',target:20000,rewards:{coins:250,packetSignals:[{group:'mythic_core',amount:30}]},xpReward:100},
-          {id:'season3_02',stage:2,kind:'packet_wins',title:'Signal Victory',desc:'Win 3 battles with a Packet equipped.',target:3,rewards:{souls:25,packetSignals:[{group:'mythic_core',amount:30}]},xpReward:100},
-          {id:'season3_03',stage:3,kind:'packet_triggers',title:'Passive Pressure',desc:'Trigger Packet effects 25 times.',target:25,rewards:{coins:350,packetSignals:[{group:'mythic_core',amount:20}]},xpReward:100},
-          {id:'season3_04',stage:4,kind:'packet_variety',title:'Frequency Hopper',desc:'Use 5 different Packets.',target:5,rewards:{gems:4},xpReward:100},
-          {id:'season3_05',stage:5,kind:'packet_discoveries',title:'Signal Hunter',desc:'Discover 3 Packets.',target:3,rewards:{coins:450},xpReward:100},
-          {id:'season3_06',stage:6,kind:'packet_wild_group',title:'Out In the Wild',desc:'Discover all 5 Out In the Wild Packets.',target:1,rewards:{superTappers:1},xpReward:100},
-          {id:'season3_07',stage:7,kind:'core_ball',title:'Break the Core',desc:'Defeat the Core Ball in the opening breach.',target:1,rewards:{souls:50,packetSignals:[{group:'frost_signal',amount:40}]},xpReward:100},
-          {id:'season3_08',stage:8,kind:'boss_hard',title:'Heat Check',desc:'Clear Hard in Lava Villain Boss Fight.',target:1,rewards:{coins:650,packetSignals:[{group:'frost_signal',amount:40}]},xpReward:100},
-          {id:'season3_09',stage:9,kind:'corrupted_matches',title:'Enter Corruption',desc:'Play Corrupted Showdown 5 times.',target:5,rewards:{gems:6,packetSignals:[{group:'shadow_signal',amount:45}]},xpReward:100},
-          {id:'season3_10',stage:10,kind:'win_match',title:'Forge Momentum',desc:'Win 8 battles.',target:8,rewards:{coins:700},xpReward:100},
-          {id:'season3_11',stage:11,kind:'different_fighters',title:'Roster Routing',desc:'Finish battles with 8 different Fighters.',target:8,rewards:{souls:65},xpReward:100},
-          {id:'season3_12',stage:12,kind:'perform_supers',title:'Power Surge',desc:'Activate 30 Power Moves.',target:30,rewards:{superTappers:1},xpReward:100},
-          {id:'season3_13',stage:13,kind:'deal_damage',title:'Core Pressure',desc:'Deal 500,000 damage.',target:500000,rewards:{coins:800},xpReward:100},
-          {id:'season3_14',stage:14,kind:'packet_triggers',title:'Packet Cascade',desc:'Trigger Packet effects 100 times.',target:100,rewards:{souls:80},xpReward:100},
-          {id:'season3_15',stage:15,kind:'boss_impossible_2',title:'Core Corruptor',desc:'Clear Impossible II in the Lava Boss Fight.',target:1,rewards:{gems:10},xpReward:100},
-          {id:'season3_16',stage:16,kind:'packet_discoveries',title:'Packet Archive',desc:'Discover 10 Packets.',target:10,rewards:{hyperTappers:1},xpReward:100},
-          {id:'season3_17',stage:17,kind:'corrupted_wins',title:'Corruption Survivor',desc:'Win 3 Corrupted Showdown matches.',target:3,rewards:{coins:1000,packetSignals:[{group:'shadow_signal',amount:35}]},xpReward:100},
-          {id:'season3_18',stage:18,kind:'packet_damage',title:'Universal Link',desc:'Deal 1,000,000 damage while a Packet is equipped.',target:1000000,rewards:{souls:120},xpReward:100},
-          {id:'season3_19',stage:19,kind:'packet_variety',title:'Master Router',desc:'Use 12 different Packets.',target:12,rewards:{gems:12},xpReward:100},
-          {id:'season3_20',stage:20,kind:'win_match',title:'Arena Breaker',desc:'Win 20 battles this season.',target:20,rewards:{coins:1500,hyperTappers:1},xpReward:100}
+          {id:'arenaween_01',stage:1,kind:'play_match',title:'Trick or Treat',desc:'Play 3 matches.',target:3,rewards:{coins:250,souls:15},xpReward:100},
+          {id:'arenaween_02',stage:2,kind:'defeat_enemies',title:'Monster Mash',desc:'Defeat 25 enemies.',target:25,rewards:{souls:30},xpReward:100},
+          {id:'arenaween_03',stage:3,kind:'win_match',title:'Soul Starter',desc:'Win 2 battles.',target:2,rewards:{coins:350},xpReward:100},
+          {id:'arenaween_04',stage:4,kind:'deal_damage',title:'Damage Fright',desc:'Deal 50,000 damage.',target:50000,rewards:{coins:400,souls:35},xpReward:100},
+          {id:'arenaween_05',stage:5,kind:'collect_cubes',title:'Cube Cauldron',desc:'Collect 25 power cubes.',target:25,rewards:{gems:4},xpReward:100},
+          {id:'arenaween_06',stage:6,kind:'win_match',title:'Spooky Box Break',desc:'Win 4 battles.',target:4,rewards:{spookyBoxes:1},xpReward:100},
+          {id:'arenaween_07',stage:7,kind:'perform_supers',title:'Power Potion',desc:'Activate 15 Power Moves.',target:15,rewards:{souls:50,superTappers:1},xpReward:100},
+          {id:'arenaween_08',stage:8,kind:'deal_damage',title:'Graveyard Grind',desc:'Deal 150,000 damage.',target:150000,rewards:{coins:650},xpReward:100},
+          {id:'arenaween_09',stage:9,kind:'different_fighters',title:'Haunt Squad',desc:'Finish battles with 6 different Fighters.',target:6,rewards:{souls:65},xpReward:100},
+          {id:'arenaween_10',stage:10,kind:'win_match',title:'Halfway Haunt',desc:'Win 8 battles.',target:8,rewards:{spookyBoxes:1,coins:500},xpReward:100},
+          {id:'arenaween_11',stage:11,kind:'corrupted_matches',title:'Corrupted Carnival',desc:'Play Corrupted Showdown 3 times.',target:3,rewards:{gems:6},xpReward:100},
+          {id:'arenaween_12',stage:12,kind:'defeat_enemies',title:'Soul Reaper',desc:'Defeat 75 enemies.',target:75,rewards:{superTappers:1,souls:80},xpReward:100},
+          {id:'arenaween_13',stage:13,kind:'boss_hard',title:'Lava Legends',desc:'Clear Hard in Lava Villain Boss Fight.',target:1,rewards:{coins:800},xpReward:100},
+          {id:'arenaween_14',stage:14,kind:'win_match',title:'Fright Night',desc:'Win 12 battles.',target:12,rewards:{spookyBoxes:1},xpReward:100},
+          {id:'arenaween_15',stage:15,kind:'deal_damage',title:'Box Bonanza',desc:'Deal 500,000 damage.',target:500000,rewards:{spookyBoxes:2},xpReward:100},
+          {id:'arenaween_16',stage:16,kind:'perform_supers',title:'Super Scare',desc:'Activate 40 Power Moves.',target:40,rewards:{hyperTappers:1,souls:90},xpReward:100},
+          {id:'arenaween_17',stage:17,kind:'corrupted_wins',title:'Corruption Survivor',desc:'Win 2 Corrupted Showdown matches.',target:2,rewards:{coins:1000},xpReward:100},
+          {id:'arenaween_18',stage:18,kind:'deal_damage',title:'Damage Demon',desc:'Deal 1,000,000 damage.',target:1000000,rewards:{souls:120,gems:10},xpReward:100},
+          {id:'arenaween_19',stage:19,kind:'boss_impossible_2',title:'Impossible Pumpkin',desc:'Clear Impossible II in the Lava Boss Fight.',target:1,rewards:{spookyBoxes:2},xpReward:100},
+          {id:'arenaween_20',stage:20,kind:'win_match',title:'ARENAAWEEN MASTER',desc:'Win 20 battles this season.',target:20,rewards:{coins:1500,spookyBoxes:2,hyperTappers:1},xpReward:100}
       ];
       const SEASON_QUEST_STAGE_COUNT = SEASON_QUEST_DEFS.length;
 
@@ -6539,7 +6576,7 @@ const bolznstienPendingStrikes = [];
           }
       }
 
-      function isSeason3PassActive(now=Date.now()){return now<SEASON_3_END_UTC;}
+      function isSeason3PassActive(now=Date.now()){return now<SEASON_4_END_UTC;} // Season 4 Arenaaween is the live season
 
       function resetSeasonPass() {
           resetSeasonPassForAll();
@@ -6613,6 +6650,7 @@ const bolznstienPendingStrikes = [];
               const {season}=ensureSeason3State(),bon=ensureProfileProgressionState().bon;if(!Array.isArray(season.cosmetics))season.cosmetics=[];if(!season.cosmetics.includes(reward.id))season.cosmetics.push(reward.id);
               const badgeIds=new Set(['packet_scout_badge','corrupted_crest']),frameIds=new Set(['cracked_core_frame','biome_walker_frame']),field=badgeIds.has(reward.id)?'unlockedBadges':frameIds.has(reward.id)?'unlockedFrames':'unlockedBackgrounds';if(!bon[field].includes(reward.id))bon[field].push(reward.id);
           } else if (reward.type === 'superTapper') playerData.superTapperCount = (playerData.superTapperCount || 0) + (reward.amount || 0);
+          else if (reward.type === 'spookyBox') playerData.spookyBoxCount = (playerData.spookyBoxCount || 0) + (reward.amount || 0);
           else if (reward.type === 'hyperTapper') playerData.hyperTapperCount = (playerData.hyperTapperCount || 0) + (reward.amount || 0);
           else if (reward.type === 'skin') {
               const skin = skinsDatabase[reward.id];
@@ -6658,6 +6696,7 @@ const bolznstienPendingStrikes = [];
           if (rewards.tappers) playerData.starrDrops = (playerData.starrDrops || 0) + rewards.tappers;
           if (rewards.superTappers) playerData.superTapperCount = (playerData.superTapperCount || 0) + rewards.superTappers;
           if (rewards.hyperTappers) playerData.hyperTapperCount = (playerData.hyperTapperCount || 0) + rewards.hyperTappers;
+          if (rewards.spookyBoxes) playerData.spookyBoxCount = (playerData.spookyBoxCount || 0) + rewards.spookyBoxes;
           if (rewards.towerDrops) {
               ensureSlopSushiState();
               playerData.slopSushi.tappers = (playerData.slopSushi.tappers || 0) + rewards.towerDrops;
@@ -7388,6 +7427,7 @@ const bolznstienPendingStrikes = [];
           if (rewards.tappers) playerData.starrDrops = (playerData.starrDrops || 0) + rewards.tappers;
           if (rewards.superTappers) playerData.superTapperCount = (playerData.superTapperCount || 0) + rewards.superTappers;
           if (rewards.hyperTappers) playerData.hyperTapperCount = (playerData.hyperTapperCount || 0) + rewards.hyperTappers;
+          if (rewards.spookyBoxes) playerData.spookyBoxCount = (playerData.spookyBoxCount || 0) + rewards.spookyBoxes;
           if (rewards.questXP) grantContractXP(rewards.questXP);
           if (rewards.brawlerUnlock && !playerData.unlockedBrawlers[rewards.brawlerUnlock]) {
               playerData.unlockedBrawlers[rewards.brawlerUnlock] = true;
@@ -7410,7 +7450,7 @@ const bolznstienPendingStrikes = [];
       }
 
       function questRewardText(rewards = {}) {
-          const labels = {coins:['Coin','Coins'],gems:['Gem','Gems'],souls:['Soul','Souls'],tappers:['Tapper','Tappers'],superTappers:['Super Tapper','Super Tappers'],hyperTappers:['Hyper Tapper','Hyper Tappers'],questXP:['Contract XP','Contract XP']};
+          const labels = {coins:['Coin','Coins'],gems:['Gem','Gems'],souls:['Soul','Souls'],tappers:['Tapper','Tappers'],superTappers:['Super Tapper','Super Tappers'],hyperTappers:['Hyper Tapper','Hyper Tappers'],spookyBoxes:['Spooky Box','Spooky Boxes'],questXP:['Contract XP','Contract XP']};
           const parts = [];
           for (const [key, names] of Object.entries(labels)) {
               const amount = Number(rewards?.[key]);
@@ -7521,6 +7561,7 @@ const bolznstienPendingStrikes = [];
                   if (quest.rewards?.tappers) rewardParts.push(`${quest.rewards.tappers} Tapper Upper`);
                   if (quest.rewards?.superTappers) rewardParts.push(`${quest.rewards.superTappers} Super Tapper`);
                   if (quest.rewards?.hyperTappers) rewardParts.push(`${quest.rewards.hyperTappers} Hyper Tapper`);
+                  if (quest.rewards?.spookyBoxes) rewardParts.push(`${quest.rewards.spookyBoxes} Spooky Box`);
                   if (quest.rewards?.questXP) rewardParts.push(`${quest.rewards.questXP} Quest XP`);
                   if (quest.rewards?.brawlerUnlock) rewardParts.push(`Unlock ${brawlerData[quest.rewards.brawlerUnlock]?.name || quest.rewards.brawlerUnlock}`);
                   if (quest.rewards?.skin) rewardParts.push(`Unlock ${skinsDatabase[quest.rewards.skin]?.name || 'Exclusive Skin'}`);
@@ -7576,12 +7617,12 @@ const bolznstienPendingStrikes = [];
               questBox.style.overflowY = 'auto';
 
               const questTitle = document.createElement('div');
-              questTitle.textContent = `CORE BREAKER × ARENA FORGE • Stage ${getActiveSeasonQuestStage()}/${SEASON_QUEST_STAGE_COUNT}`;
+              questTitle.textContent = `ARENAAWEEN × ARENA FORGE • Stage ${getActiveSeasonQuestStage()}/${SEASON_QUEST_STAGE_COUNT}`;
               questTitle.style.fontWeight = '900';
               questTitle.style.color = '#8fd8ff';
               questTitle.style.marginBottom = '6px';
               const questHint = document.createElement('div');
-              questHint.textContent = `${isSeason3PassActive() ? 'Season ends September 20, 2026.' : 'Season ended — progression and claims are closed.'} Complete and claim quests to push the ladder.`;
+              questHint.textContent = `${isSeason3PassActive() ? 'Season ends October 31, 2026.' : 'Season ended — progression and claims are closed.'} Complete and claim quests to push the ladder.`;
               questHint.style.fontSize = '11px';
               questHint.style.color = '#aac7e5';
               questHint.style.marginBottom = '10px';
@@ -12368,10 +12409,14 @@ let heistFeverActive = false;
   const SEASON_3_SCHEMA_VERSION = 1;
   const SEASON_3_ID = 'core-breaker-arena-forge-2026-s3';
   const SEASON_3_END_UTC = Date.UTC(2026, 8, 21, 0, 0, 0);
+  const SEASON_4_END_UTC = Date.UTC(2026, 10, 1, 0, 0, 0); // Season 4 Arenaaween runs through Halloween, ends Nov 1 UTC
   // Tower content is vaulted, never deleted. These flags only control public
   // matchmaking and runtime effects; old definitions and save data stay intact.
   const TOWER_EVENT_MODES_ENABLED = false;
   const TOWER_POWER_SYSTEM_ENABLED = false;
+  // Packets are vaulted in Season 4: definitions and save data stay intact,
+  // but no Packet can be equipped, discovered, or take effect.
+  const PACKETS_ENABLED = false;
   const RETIRED_TOWER_MODE_IDS = new Set(['slop_sushi','slop_sushi_gauntlet','slop_sushi_plus','tower_duels_weekend','power_gods','solo_td']);
   const PACKET_DEFS = Object.freeze({
       bird:{id:'bird',name:'Bird Packet',icon:'BIRD',group:'out_in_the_wild',biome:'Skywild',description:'Every 4th main attack adds two 35% damage side shots.',attackCycle:4,sideDamage:0.35},
@@ -12410,6 +12455,7 @@ let heistFeverActive = false;
       lastDropDate: '',
       superTapperCount: 0,
       hyperTapperCount: 0,
+      spookyBoxCount: 0,
     beastBossTokens: 0,
             beastBossDifficulty: 0,
       firstWinSuperAwarded: false,
@@ -12623,6 +12669,7 @@ let heistFeverActive = false;
   function getEquippedPacketDef(entity=player){
       if(entity!==player)return null;
       const {packets}=ensureSeason3State();
+      if(!PACKETS_ENABLED)return null;
       return packets.equipped?PACKET_DEFS[packets.equipped]||null:null;
   }
   function resetPacketRuntime(entity=player){
@@ -12677,6 +12724,7 @@ let heistFeverActive = false;
       if(persist)saveProgress();return true;
   }
   function openPacketCollection(){
+      if(!PACKETS_ENABLED){alert('Packets were retired in Season 4: Arenaaween. Your collection is preserved and may return in a future rework.');return;}
       const {packets}=ensureSeason3State(),overlay=document.createElement('div');overlay.className='season3-overlay';
       const panel=document.createElement('section');panel.className='season3-panel packet-collection';panel.innerHTML=`<header><div><small>CORE BREAKER × ARENA FORGE</small><h1>PACKET COLLECTION</h1><p>${Object.keys(packets.unlocked).filter(id=>packets.unlocked[id]).length}/${Object.keys(PACKET_DEFS).length} discovered • one universal passive equipped</p></div><button aria-label="Close">X</button></header>`;
       const grid=document.createElement('div');grid.className='packet-catalog';
@@ -12684,6 +12732,7 @@ let heistFeverActive = false;
       for(const packet of Object.values(PACKET_DEFS)){const unlocked=!!packets.unlocked[packet.id],equipped=packets.equipped===packet.id,card=document.createElement('button');card.className=`packet-card${equipped?' is-equipped':unlocked?' is-unlocked':' is-locked'}`;card.disabled=!unlocked;card.innerHTML=`<i>${packet.icon}</i><strong>${packet.name}</strong><small>${packet.biome}</small><span>${packet.description}</span><em>${equipped?'EQUIPPED':unlocked?'EQUIP':`${Math.floor(Number(packets.progress[packet.id])||0)}% SIGNAL`}</em>`;card.onclick=()=>{packets.equipped=packet.id;saveProgress();overlay.remove();openPacketCollection();};grid.appendChild(card);}panel.appendChild(grid);panel.querySelector('header button').onclick=()=>overlay.remove();overlay.onclick=e=>{if(e.target===overlay)overlay.remove();};overlay.appendChild(panel);document.body.appendChild(overlay);
   }
   function openPacketDiscovery(){
+      if(!PACKETS_ENABLED){alert('Packets were retired in Season 4: Arenaaween. Your collection is preserved and may return in a future rework.');return;}
       const {packets}=ensureSeason3State(),overlay=document.createElement('div');overlay.className='season3-overlay';
       const panel=document.createElement('section');panel.className='season3-panel packet-collection';
       panel.innerHTML='<header><div><small>SEASON 3 SIGNAL MAP</small><h1>PACKET DISCOVERY</h1><p>Complete signals to reveal every passive in all six Packet biomes.</p></div><button aria-label="Close">X</button></header>';
@@ -12700,8 +12749,8 @@ let heistFeverActive = false;
   function openSeason3Hub(){
       const {packets,season}=ensureSeason3State(),overlay=document.createElement('div');overlay.className='season3-overlay',panel=document.createElement('section');panel.className='season3-panel';
       const unlocked=Object.keys(packets.unlocked).filter(id=>packets.unlocked[id]).length;
-      panel.innerHTML=`<header><div><small>SEASON 3</small><h1>CORE BREAKER × ARENA FORGE</h1><p>Ends September 20, 2026</p></div><button aria-label="Close">X</button></header><div class="season3-breach ${season.coreBreachCompleted?'is-complete':''}"><small>${season.coreBreachCompleted?'BREACH STABILIZED':'CORE BREACH INCOMING'}</small><b>${season.coreBreachCompleted?'6 PACKET BIOMES DETECTED':'YOUR FIRST ELIGIBLE SHOWDOWN WILL CHANGE THE ARENA'}</b></div><div class="season3-hub-grid"><button data-action="pass"><i>S3</i><b>Season Pass</b><span>Signal rewards • ends Sep 20</span></button><button data-action="packets"><i>PKT</i><b>Packet Collection</b><span>${unlocked}/20 discovered • ${packets.equipped?PACKET_DEFS[packets.equipped]?.name:'No Packet equipped'}</span></button><button data-action="discovery"><i>MAP</i><b>Packet Discovery</b><span>Track all six biomes and signal progress</span></button><button data-action="corrupted"><i>CS</i><b>Corrupted Showdown</b><span>Season 3 chaos with corrupted signals</span></button><button data-action="boss"><i>LAVA</i><b>Lava Villain Boss Fight</b><span>Hard through Impossible XV</span></button><button data-action="quests"><i>Q</i><b>Season Quests</b><span>Discover and trigger Packets</span></button></div><div class="tower-retired-note"><b>TOWER POWERS — TEMPORARILY RETIRED</b><span>Your collection is preserved and will return in a future rework.</span></div>`;
-      panel.querySelector('header button').onclick=()=>overlay.remove();panel.querySelector('[data-action="pass"]').onclick=()=>{overlay.remove();openSeasonPass();};panel.querySelector('[data-action="packets"]').onclick=()=>{overlay.remove();openPacketCollection();};panel.querySelector('[data-action="discovery"]').onclick=()=>{overlay.remove();openPacketDiscovery();};panel.querySelector('[data-action="quests"]').onclick=()=>{overlay.remove();openQuestBoard('season');};panel.querySelector('[data-action="corrupted"]').onclick=()=>{overlay.remove();showdownMode='corrupted_showdown';updateShowdownModeUI();setHomeTab('events');};panel.querySelector('[data-action="boss"]').onclick=()=>{overlay.remove();openLavaBossEvent();};overlay.onclick=e=>{if(e.target===overlay)overlay.remove();};overlay.appendChild(panel);document.body.appendChild(overlay);
+      panel.innerHTML=`<header><div><small>SEASON 4</small><h1>ARENAAWEEN × ARENA FORGE</h1><p>Ends October 31, 2026</p></div><button aria-label="Close">X</button></header><div class="season3-breach"><small>THE HAUNTING IS LIVE</small><b>SPOOKY BOXES HAVE INFESTED THE ARENA</b></div><div class="season3-hub-grid"><button data-action="pass"><i>S4</i><b>Season Pass</b><span>Spooky rewards • ends Oct 31</span></button><button data-action="spooky"><i>🎃</i><b>Spooky Boxes</b><span>${playerData.spookyBoxCount||0} unopened • 6 skins, coins, or souls</span></button><button data-action="quests"><i>Q</i><b>Season Quests</b><span>Haunt the ladder for Spooky Boxes</span></button><button data-action="corrupted"><i>CS</i><b>Corrupted Showdown</b><span>Season 4 chaos in the haunted arena</span></button><button data-action="boss"><i>LAVA</i><b>Lava Villain Boss Fight</b><span>Hard through Impossible XV</span></button><button data-action="skins"><i>👻</i><b>Arenaaween Skins</b><span>${unownedArenaweenSkins().length===0?'Full collection!':unownedArenaweenSkins().length+' of 6 still hiding in Spooky Boxes'}</span></button></div><div class="tower-retired-note"><b>PACKETS — RETIRED</b><span>Packets are gone in Season 4. Your collection (${unlocked}/20 discovered) is preserved and will return in a future rework.</span></div><div class="tower-retired-note"><b>TOWER POWERS — TEMPORARILY RETIRED</b><span>Your collection is preserved and will return in a future rework.</span></div>`;
+      panel.querySelector('header button').onclick=()=>overlay.remove();panel.querySelector('[data-action="pass"]').onclick=()=>{overlay.remove();openSeasonPass();};panel.querySelector('[data-action="spooky"]').onclick=()=>{overlay.remove();if((playerData.spookyBoxCount||0)>0)openSpookyBox();else alert('No Spooky Boxes yet — earn them from the Arenaaween Pass and Season Quests!');};panel.querySelector('[data-action="skins"]').onclick=()=>{overlay.remove();alert('Arenaaween skins hide inside Spooky Boxes: Pumpkin King, Count Curseula, Phantom Phase, Midnight Reaper Darkener, Nightmare Awakenator, and Jack-o-Demon. Pumpkin King is also the Tier 25 Premium reward.');};panel.querySelector('[data-action="quests"]').onclick=()=>{overlay.remove();openQuestBoard('season');};panel.querySelector('[data-action="corrupted"]').onclick=()=>{overlay.remove();showdownMode='corrupted_showdown';updateShowdownModeUI();setHomeTab('events');};panel.querySelector('[data-action="boss"]').onclick=()=>{overlay.remove();openLavaBossEvent();};overlay.onclick=e=>{if(e.target===overlay)overlay.remove();};overlay.appendChild(panel);document.body.appendChild(overlay);
   }
 
   function openLavaBossEvent(){
@@ -13652,6 +13701,7 @@ let heistFeverActive = false;
                   playerData.starrDropsToday = data.persistent.starrDropsToday ?? playerData.starrDropsToday;
                   playerData.lastDropDate = data.persistent.lastDate;
                   playerData.superTapperCount = data.persistent.superTapperCount ?? playerData.superTapperCount;
+                  playerData.spookyBoxCount = data.persistent.spookyBoxCount ?? playerData.spookyBoxCount;
                   playerData.hyperTapperCount = data.persistent.hyperTapperCount ?? playerData.hyperTapperCount;
                   playerData.beastBossTokens = data.persistent.beastBossTokens ?? playerData.beastBossTokens;
                   playerData.beastBossDifficulty = data.persistent.beastBossDifficulty ?? playerData.beastBossDifficulty;
@@ -13817,6 +13867,7 @@ let heistFeverActive = false;
                   starrDropsToday: playerData.starrDropsToday,
                   lastDate: playerData.lastDropDate,
                   superTapperCount: playerData.superTapperCount,
+                  spookyBoxCount: playerData.spookyBoxCount || 0,
                   hyperTapperCount: playerData.hyperTapperCount,
                   beastBossTokens: playerData.beastBossTokens,
                   beastBossDifficulty: playerData.beastBossDifficulty,
@@ -13984,7 +14035,7 @@ let heistFeverActive = false;
                 const quickActions = document.getElementById('homeQuickActions') || document.getElementById('homeHeader') || homeScreen.firstElementChild;
                 const evBtn = document.createElement('button');
                 evBtn.id = 'eventHubBtn';
-                evBtn.textContent = 'CORE BREAKER • SEASON 3';
+                evBtn.textContent = 'ARENAAWEEN • SEASON 4';
                 evBtn.style.position = 'relative';
                 evBtn.style.padding = '8px 12px';
                 evBtn.style.borderRadius = '10px';
@@ -13998,8 +14049,8 @@ let heistFeverActive = false;
 
                 const evCount = document.createElement('div');
                 evCount.id = 'eventQuestCount';
-                evCount.textContent = `${Object.keys(ensureSeason3State().packets.unlocked).filter(id=>playerData.packets.unlocked[id]).length}`;
-                evCount.title = 'Packets discovered';
+                evCount.textContent = `${playerData.spookyBoxCount||0}`;
+                evCount.title = 'Spooky Boxes';
                 evCount.style.position = 'absolute';
                 evCount.style.right = '-8px';
                 evCount.style.top = '-8px';
@@ -14362,20 +14413,7 @@ let heistFeverActive = false;
       if (playerData.starrDrops <= 0) return;
       playerData.starrDrops--;
       saveProgress();
-      
-      const overlay = document.createElement('div');
-      overlay.style.position = 'fixed'; overlay.style.inset = '0';
-      overlay.style.background = 'rgba(0, 0, 0, 0.95)'; overlay.style.zIndex = '1000';
-      overlay.style.display = 'flex'; overlay.style.flexDirection = 'column';
-      overlay.style.alignItems = 'center'; overlay.style.justifyContent = 'center';
-    overlay.style.color = '#fff'; overlay.style.fontFamily = 'sans-serif';
-    overlay.style.userSelect = 'none';
-    overlay.style.touchAction = 'manipulation';
 
-    let taps = 0;
-      const maxTaps = 4;
-      let rarityScore = 0; 
-    let rewardRevealed = false;
       const rarities = [
           { name: 'Rare', color: '#5df2c2', coinMin: 15, coinMax: 30 },
           { name: 'Super Rare', color: '#00aaff', coinMin: 40, coinMax: 80 },
@@ -14384,37 +14422,68 @@ let heistFeverActive = false;
           { name: 'Legendary', color: '#ffd700', coinMin: 500, coinMax: 1000 },
           { name: 'Ultra', color: '#ff00ff', coinMin: 1500, coinMax: 2500 }
       ];
+      let taps = 0;
+      const maxTaps = 4;
+      let rarityScore = 0;
+      let rewardRevealed = false;
 
-      const title = document.createElement('h1');
-    title.textContent = 'TAPPER UPPER';
-      title.style.fontSize = '48px';
-      title.style.color = rarities[0].color;
-      title.style.textShadow = '0 0 20px ' + rarities[0].color;
-      title.style.transition = 'all 0.3s';
-      
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;background:radial-gradient(circle at 50% 32%,rgba(46,26,92,0.94),rgba(2,4,16,0.98));z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-family:sans-serif;user-select:none;touch-action:manipulation;';
+
+      const header = document.createElement('div');
+      header.textContent = 'TAPPER UPPER';
+      header.style.cssText = 'font-size:15px;font-weight:900;letter-spacing:0.35em;color:#9fd8ff;opacity:0.9;';
+      overlay.appendChild(header);
+
+      const banner = document.createElement('div');
+      banner.textContent = rarities[0].name.toUpperCase();
+      banner.style.cssText = 'margin-top:14px;padding:8px 26px;border-radius:999px;font-size:30px;font-weight:900;color:#04121a;background:' + rarities[0].color + ';box-shadow:0 0 34px ' + rarities[0].color + ';transition:all 0.25s;';
+      overlay.appendChild(banner);
+
+      const orb = document.createElement('div');
+      orb.textContent = '\u2B50';
+      orb.style.cssText = 'margin-top:30px;width:168px;height:168px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:76px;background:radial-gradient(circle at 35% 30%,#ffffff88,' + rarities[0].color + ' 55%,#00000055);box-shadow:0 0 60px ' + rarities[0].color + ',inset 0 -18px 34px rgba(0,0,0,0.35);transition:all 0.18s;';
+      overlay.appendChild(orb);
+
+      const pips = document.createElement('div');
+      pips.style.cssText = 'display:flex;gap:10px;margin-top:28px;';
+      const pipEls = [];
+      for (let p = 0; p < maxTaps; p++) {
+          const pip = document.createElement('div');
+          pip.style.cssText = 'width:16px;height:16px;border-radius:50%;background:#2c3e55;border:2px solid #5d7ea6;transition:all 0.2s;';
+          pips.appendChild(pip); pipEls.push(pip);
+      }
+      overlay.appendChild(pips);
+
       const instruction = document.createElement('p');
-    instruction.textContent = 'TAP TO REVEAL!';
-      instruction.style.fontSize = '24px';
-      instruction.style.marginTop = '20px';
-      instruction.style.animation = 'pulse 1s infinite alternate';
-      
+      instruction.textContent = 'TAP THE ORB!';
+      instruction.style.cssText = 'font-size:22px;font-weight:800;margin-top:18px;animation:pulse 1s infinite alternate;';
+      overlay.appendChild(instruction);
+
       if (!document.getElementById('pulse-style')) {
         const style = document.createElement('style');
         style.id = 'pulse-style';
         style.innerHTML = `@keyframes pulse { from { opacity: 0.5; transform: scale(0.95); } to { opacity: 1; transform: scale(1.05); } }`;
         document.head.appendChild(style);
       }
-
-      overlay.appendChild(title);
-      overlay.appendChild(instruction);
       document.body.appendChild(overlay);
 
-      const handleTap = () => {
-          if (rewardRevealed) {
-              document.body.removeChild(overlay);
-              return;
-          }
+      const paintOrb = () => {
+          const c = rarities[rarityScore].color;
+          banner.textContent = rarities[rarityScore].name.toUpperCase();
+          banner.style.background = c; banner.style.boxShadow = '0 0 34px ' + c;
+          orb.style.background = 'radial-gradient(circle at 35% 30%,#ffffff88,' + c + ' 55%,#00000055)';
+          orb.style.boxShadow = '0 0 60px ' + c + ',inset 0 -18px 34px rgba(0,0,0,0.35)';
+          orb.style.transform = 'scale(1.15)';
+          setTimeout(() => orb.style.transform = 'scale(1)', 110);
+          pipEls.forEach((pip, idx) => {
+              pip.style.background = idx < taps ? c : '#2c3e55';
+              pip.style.boxShadow = idx < taps ? '0 0 12px ' + c : 'none';
+          });
+      };
 
+      const handleTap = () => {
+          if (rewardRevealed) { overlay.remove(); return; }
           if (taps >= maxTaps) {
               const rInfo = rarities[rarityScore];
               const rewardCoins = Math.floor(Math.random() * (rInfo.coinMax - rInfo.coinMin + 1)) + rInfo.coinMin;
@@ -14427,8 +14496,7 @@ let heistFeverActive = false;
               saveProgress();
               if (typeof refreshBrawlerList === 'function') refreshBrawlerList();
               rewardRevealed = true;
-
-              // Create coin splash visual
+              orb.textContent = '\uD83C\uDF81';
               const splash = document.createElement('div'); splash.style.display='flex'; splash.style.flexDirection='column'; splash.style.alignItems='center';
               const coinsGroup = document.createElement('div'); coinsGroup.style.position='relative'; coinsGroup.style.width='280px'; coinsGroup.style.height='120px';
               splash.appendChild(coinsGroup);
@@ -14437,15 +14505,15 @@ let heistFeverActive = false;
                   const el = document.createElement('div'); el.style.position='absolute'; el.style.width='28px'; el.style.height='28px'; el.style.borderRadius='50%';
                   el.style.background='linear-gradient(180deg,#ffd766,#ffb300)'; el.style.left='50%'; el.style.top='50%'; el.style.transform='translate(-50%,-50%) scale(0.6)'; el.style.opacity='0'; el.style.boxShadow='0 6px 12px rgba(0,0,0,0.25)';
                   coinsGroup.appendChild(el);
-                  (function(e,idx){ setTimeout(()=>{ e.style.transition='all 550ms cubic-bezier(.2,.9,.3,1)'; const ang=(Math.PI*2)*(idx/coinsN)+(Math.random()-0.5); const dist=60+Math.random()*80; e.style.transform=`translate(${Math.cos(ang)*dist}px, ${Math.sin(ang)*dist}px) scale(1)`; e.style.opacity='1'; }, idx*50); })(el,j);
+                  (function(e2,idx){ setTimeout(()=>{ e2.style.transition='all 550ms cubic-bezier(.2,.9,.3,1)'; const ang=(Math.PI*2)*(idx/coinsN)+(Math.random()-0.5); const dist=60+Math.random()*80; e2.style.transform=`translate(${Math.cos(ang)*dist}px, ${Math.sin(ang)*dist}px) scale(1)`; e2.style.opacity='1'; }, idx*50); })(el,j);
               }
-              const tot = document.createElement('div'); tot.textContent = `+${rewardCoins} COINS! +${gemReward} GEMS! +${soulReward} SOULS!`; tot.style.color='#ffd700'; tot.style.fontSize='42px'; tot.style.marginTop='10px'; tot.style.textShadow='0 0 20px #ffd700';
+              const tot = document.createElement('div'); tot.textContent = `+${rewardCoins} COINS! +${gemReward} GEMS! +${soulReward} SOULS!`; tot.style.color='#ffd700'; tot.style.fontSize='34px'; tot.style.fontWeight='900'; tot.style.marginTop='10px'; tot.style.textShadow='0 0 20px #ffd700';
               splash.appendChild(tot);
               if (pityBonus) {
                   const bonus = document.createElement('div');
                   bonus.textContent = pityBonus.text;
                   bonus.style.color = pityBonus.color;
-                  bonus.style.fontSize = '24px';
+                  bonus.style.fontSize = '22px';
                   bonus.style.fontWeight = '900';
                   bonus.style.marginTop = '8px';
                   splash.appendChild(bonus);
@@ -14454,55 +14522,21 @@ let heistFeverActive = false;
               instruction.textContent = 'TAP ANYWHERE TO CLOSE'; instruction.style.animation='none';
               return;
           }
-          
           taps++;
           if (Math.random() < 0.48) {
               rarityScore = Math.min(rarityScore + 1, rarities.length - 1);
           }
-          
-          const rInfo = rarities[rarityScore];
-          title.textContent = rInfo.name.toUpperCase();
-          title.style.color = rInfo.color;
-          title.style.textShadow = '0 0 30px ' + rInfo.color;
-          title.style.transform = 'scale(1.2)';
-          setTimeout(() => title.style.transform = 'scale(1)', 100);
-
-          if (taps >= maxTaps) {
-              instruction.textContent = 'TAP TO REVEAL REWARD!';
-          }
+          paintOrb();
+          if (taps >= maxTaps) instruction.textContent = 'TAP TO REVEAL REWARD!';
       };
-      overlay.onpointerdown = (event) => {
-          event.preventDefault();
-          handleTap();
-      };
-      overlay.onclick = () => {
-          handleTap();
-      };
+      overlay.onpointerdown = (event) => { event.preventDefault(); handleTap(); };
   }
 
   function openSuperStarrDrop() {
       if (!playerData.superTapperCount || playerData.superTapperCount <= 0) return;
       playerData.superTapperCount = Math.max(0, playerData.superTapperCount - 1);
       saveProgress();
-    if (typeof refreshBrawlerList === 'function') refreshBrawlerList();
-
-      const overlay = document.createElement('div');
-      overlay.style.position = 'fixed'; overlay.style.inset = '0';
-      overlay.style.background = 'rgba(0,0,0,0.98)'; overlay.style.zIndex = '1000';
-      overlay.style.display = 'flex'; overlay.style.flexDirection = 'column';
-      overlay.style.alignItems = 'center'; overlay.style.justifyContent = 'center';
-      overlay.style.color = '#fff'; overlay.style.fontFamily = 'sans-serif'; overlay.style.userSelect = 'none';
-
-      const title = document.createElement('h1');
-      title.textContent = 'SUPER TAPPER UPPER';
-      title.style.fontSize = '48px'; title.style.color = '#ff00ff'; title.style.textShadow = '0 0 30px #ff00ff';
-      overlay.appendChild(title);
-
-      const info = document.createElement('p');
-    info.textContent = 'Opening split rewards... Odds: Rare 20% / Super Rare 25% / Epic 25% / Mythic 18% / Legendary 9% / Ultra 3%'; info.style.marginTop = '12px'; info.style.fontSize = '20px';
-      overlay.appendChild(info);
-
-      document.body.appendChild(overlay);
+      if (typeof refreshBrawlerList === 'function') refreshBrawlerList();
 
       const rarities = [
           { name: 'Rare', color: '#5df2c2', coinMin: 50, coinMax: 80 },
@@ -14512,7 +14546,6 @@ let heistFeverActive = false;
           { name: 'Legendary', color: '#ffd700', coinMin: 800, coinMax: 1500 },
           { name: 'Ultra', color: '#ff00ff', coinMin: 2000, coinMax: 3500 }
       ];
-
       function pickWeighted() {
           const r = Math.random() * 100;
           if (r < 3) return rarities[5];
@@ -14522,71 +14555,100 @@ let heistFeverActive = false;
           if (r < 80) return rarities[1];
           return rarities[0];
       }
+      // Chaos is decided up front, revealed by tapping: the drop splits
+      // into 2..8 mini-drops, each holding one weighted reward roll.
+      const splits = Math.floor(Math.random() * 7) + 2;
+      const rolls = [];
+      for (let k = 0; k < splits; k++) {
+          const choice = pickWeighted();
+          rolls.push({ rarity: choice, coin: Math.floor(Math.random() * (choice.coinMax - choice.coinMin + 1)) + choice.coinMin });
+      }
+      let orbCount = 1;
+      let revealed = false;
 
-      const splits = Math.floor(Math.random() * 7) + 2; // 2..8
-      let total = 0;
-      let i = 0;
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;background:radial-gradient(circle at 50% 30%,rgba(120,8,140,0.95),rgba(8,0,18,0.99));z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-family:sans-serif;user-select:none;touch-action:manipulation;';
+      const title = document.createElement('h1');
+      title.textContent = '\u2726 SUPER TAPPER: CHAOS \u2726';
+      title.style.cssText = 'font-size:40px;color:#ff00ff;text-shadow:0 0 34px #ff00ff;margin:0;text-align:center;';
+      overlay.appendChild(title);
+      const info = document.createElement('p');
+      info.textContent = 'Odds per split: Rare 20% / Super Rare 25% / Epic 25% / Mythic 18% / Legendary 9% / Ultra 3%';
+      info.style.cssText = 'margin-top:10px;font-size:15px;color:#f3c6ff;opacity:0.9;text-align:center;padding:0 16px;';
+      overlay.appendChild(info);
+      const stage = document.createElement('div');
+      stage.style.cssText = 'display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:center;max-width:560px;min-height:190px;margin-top:16px;padding:0 12px;';
+      overlay.appendChild(stage);
+      const feed = document.createElement('div');
+      feed.style.cssText = 'display:flex;flex-direction:column;align-items:center;min-height:30px;';
+      overlay.appendChild(feed);
+      const instruction = document.createElement('p');
+      instruction.textContent = 'TAP TO SPLIT THE CHAOS!';
+      instruction.style.cssText = 'font-size:22px;font-weight:800;margin-top:14px;animation:pulse 1s infinite alternate;';
+      overlay.appendChild(instruction);
+      document.body.appendChild(overlay);
 
-      function revealNext() {
-          if (i >= splits) {
+      const paintOrbs = (popLast) => {
+          stage.innerHTML = '';
+          const size = orbCount <= 1 ? 168 : orbCount <= 3 ? 118 : orbCount <= 5 ? 92 : 74;
+          for (let k = 0; k < orbCount; k++) {
+              const held = rolls[Math.min(k, rolls.length - 1)];
+              const orb = document.createElement('div');
+              orb.textContent = '\u2726';
+              orb.style.cssText = `width:${size}px;height:${size}px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:${Math.round(size * 0.42)}px;color:#fff;background:radial-gradient(circle at 35% 30%,#ffffff77,${held.rarity.color} 58%,#00000066);box-shadow:0 0 ${Math.round(size * 0.36)}px ${held.rarity.color},inset 0 -14px 26px rgba(0,0,0,0.4);transition:all 0.18s;`;
+              if (popLast && k === orbCount - 1) { orb.style.transform = 'scale(1.3)'; setTimeout(() => orb.style.transform = 'scale(1)', 130); }
+              stage.appendChild(orb);
+          }
+      };
+      paintOrbs(false);
+
+      const revealAll = () => {
+          revealed = true;
+          stage.innerHTML = '';
+          let total = 0;
+          rolls.forEach((roll, idx) => {
+              total += roll.coin;
+              const chip = document.createElement('div');
+              chip.textContent = `${roll.rarity.name}: +${roll.coin}`;
+              chip.style.cssText = `margin-top:6px;padding:5px 16px;border-radius:999px;font-weight:900;font-size:17px;color:#0b0614;background:${roll.rarity.color};box-shadow:0 0 16px ${roll.rarity.color};opacity:0;transform:scale(0.7);transition:all 0.25s;`;
+              feed.appendChild(chip);
+              setTimeout(() => { chip.style.opacity = '1'; chip.style.transform = 'scale(1)'; }, 110 * idx);
+          });
+          const gemReward = Math.max(2, Math.floor(total / 250));
+          const soulReward = rollSoulReward(20, 40);
+          const pityBonus = grantTapperBonusWithPity('super');
+          setTimeout(() => {
               const totalTxt = document.createElement('h2');
-              const gemReward = Math.max(2, Math.floor(total / 250));
-              const soulReward = rollSoulReward(20, 40);
-              const pityBonus = grantTapperBonusWithPity('super');
               totalTxt.textContent = `+${total} COINS! +${gemReward} GEMS! +${soulReward} SOULS!`;
-              totalTxt.style.color = '#ffd700'; totalTxt.style.textShadow = '0 0 20px #ffd700';
-              overlay.appendChild(totalTxt);
+              totalTxt.style.cssText = 'color:#ffd700;text-shadow:0 0 20px #ffd700;margin:12px 0 0;';
+              feed.appendChild(totalTxt);
               if (pityBonus) {
                   const bonusTxt = document.createElement('div');
                   bonusTxt.textContent = pityBonus.text;
-                  bonusTxt.style.color = pityBonus.color;
-                  bonusTxt.style.fontSize = '24px';
-                  bonusTxt.style.fontWeight = '900';
-                  bonusTxt.style.marginTop = '8px';
-                  overlay.appendChild(bonusTxt);
+                  bonusTxt.style.cssText = `color:${pityBonus.color};font-size:22px;font-weight:900;margin-top:6px;`;
+                  feed.appendChild(bonusTxt);
               }
-              setTimeout(() => { document.body.removeChild(overlay); }, 1400);
-              playerData.gems += gemReward;
-              addSouls(soulReward);
-              playerData.coins += total; saveProgress();
-              if (typeof refreshBrawlerList === 'function') refreshBrawlerList();
+              instruction.textContent = 'TAP ANYWHERE TO CLOSE';
+              instruction.style.animation = 'none';
+          }, 110 * rolls.length + 60);
+          playerData.gems += gemReward;
+          addSouls(soulReward);
+          playerData.coins += total;
+          saveProgress();
+          if (typeof refreshBrawlerList === 'function') refreshBrawlerList();
+      };
+
+      const handleTap = () => {
+          if (revealed) { overlay.remove(); return; }
+          if (orbCount < splits) {
+              orbCount++;
+              paintOrbs(true);
+              instruction.textContent = orbCount >= splits ? 'CHAOS COMPLETE \u2014 TAP TO CRACK THEM ALL OPEN!' : `IT SPLIT! \u00d7${orbCount} \u2014 TAP TO SPLIT AGAIN!`;
               return;
           }
-          const choice = pickWeighted();
-          const coin = Math.floor(Math.random() * (choice.coinMax - choice.coinMin + 1)) + choice.coinMin;
-          total += coin;
-
-          // Visual coin splash for this split
-          const group = document.createElement('div');
-          group.style.position = 'relative'; group.style.width = '320px'; group.style.height = '120px'; group.style.marginTop = '12px';
-          overlay.appendChild(group);
-          const coins = Math.min(12, Math.max(4, Math.floor(coin / 100)));
-          for (let k=0;k<coins;k++){
-              const c = document.createElement('div');
-              c.style.position='absolute'; c.style.width='32px'; c.style.height='32px'; c.style.borderRadius='50%';
-              c.style.background = 'linear-gradient(180deg,#ffd766,#ffb300)'; c.style.boxShadow='0 6px 18px rgba(0,0,0,0.3)';
-              c.style.left = '50%'; c.style.top = '50%'; c.style.transform = 'translate(-50%,-50%) scale(0.6)'; c.style.opacity='0';
-              group.appendChild(c);
-              (function(el,idx){
-                  setTimeout(()=>{
-                      el.style.transition = 'all 600ms cubic-bezier(.2,.9,.3,1)';
-                      const ang = (Math.PI*2) * (idx/coins) + (Math.random()-0.5);
-                      const dist = 60 + Math.random()*100;
-                      el.style.transform = `translate(${Math.cos(ang)*dist}px, ${Math.sin(ang)*dist}px) scale(1)`;
-                      el.style.opacity = '1';
-                  }, 60*idx);
-              })(c,k);
-          }
-
-          const label = document.createElement('div');
-          label.textContent = `${choice.name}: +${coin}`;
-          label.style.color = choice.color; label.style.fontSize='18px'; label.style.marginTop='6px'; overlay.appendChild(label);
-
-          i++;
-          setTimeout(revealNext, 450);
-      }
-
-      revealNext();
+          revealAll();
+      };
+      overlay.onpointerdown = (event) => { event.preventDefault(); handleTap(); };
   }
 
   function openHyperStarrDrop() {
@@ -14690,6 +14752,72 @@ let heistFeverActive = false;
   function openStarrDropUI(isSuper) {
       if (isSuper) return openSuperStarrDrop();
       return openStarrDrop();
+  }
+
+  // ===== Season 4 Arenaaween: Spooky Boxes =====
+  const ARENAAWEEN_SKIN_IDS = ['pumpkin-king', 'count-cursed', 'phantom-copyphase', 'reaper-darkener', 'nightmare-awakenator', 'jack-o-demon'];
+  function unownedArenaweenSkins() {
+      if (!playerData.ownedSkins) playerData.ownedSkins = {};
+      return ARENAAWEEN_SKIN_IDS.filter(id => {
+          const skin = skinsDatabase[id];
+          return skin && !(playerData.ownedSkins[skin.brawler] || []).includes(id);
+      });
+  }
+  function openSpookyBox() {
+      if (!playerData.spookyBoxCount || playerData.spookyBoxCount <= 0) return;
+      playerData.spookyBoxCount--;
+      saveProgress();
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;background:radial-gradient(circle at 50% 35%,rgba(94,24,140,0.92),rgba(5,2,12,0.98));z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-family:sans-serif;user-select:none;touch-action:manipulation;';
+      const title = document.createElement('h1');
+      title.textContent = '🎃 SPOOKY BOX 🎃';
+      title.style.cssText = 'font-size:44px;color:#ff8c1a;text-shadow:0 0 30px #ff8c1a;margin:0;';
+      overlay.appendChild(title);
+      const box = document.createElement('div');
+      box.textContent = '🎁';
+      box.style.cssText = 'font-size:120px;margin:26px 0;filter:drop-shadow(0 0 34px rgba(255,140,26,0.8));animation:pulse 1s infinite alternate;';
+      overlay.appendChild(box);
+      const instruction = document.createElement('p');
+      instruction.textContent = 'TAP THE BOX... IF YOU DARE';
+      instruction.style.cssText = 'font-size:22px;color:#e6ccff;';
+      overlay.appendChild(instruction);
+      const odds = document.createElement('p');
+      odds.textContent = 'Inside: a chance at 6 Arenaaween skins, Coins, or Souls';
+      odds.style.cssText = 'font-size:15px;color:#bfa3e0;opacity:0.85;';
+      overlay.appendChild(odds);
+      document.body.appendChild(overlay);
+      let revealed = false;
+      const reveal = () => {
+          if (revealed) { overlay.remove(); if (typeof refreshBrawlerList === 'function') refreshBrawlerList(); return; }
+          revealed = true;
+          box.style.animation = 'none'; box.style.transform = 'scale(1.25) rotate(-6deg)';
+          const result = document.createElement('div');
+          result.style.cssText = 'text-align:center;margin-top:10px;max-width:520px;padding:0 18px;';
+          const unowned = unownedArenaweenSkins();
+          const roll = Math.random();
+          if (unowned.length > 0 && roll < 0.30) {
+              const skinId = unowned[Math.floor(Math.random() * unowned.length)];
+              const skin = skinsDatabase[skinId];
+              if (!playerData.ownedSkins[skin.brawler]) playerData.ownedSkins[skin.brawler] = [];
+              playerData.ownedSkins[skin.brawler].push(skin.id);
+              if (!playerData.selectedSkins) playerData.selectedSkins = {};
+              playerData.selectedSkins[skin.brawler] = skin.id;
+              result.innerHTML = `<div style="font-size:84px">${skin.icon || '🎃'}</div><div style="font-size:34px;font-weight:900;color:${skin._displayColor || '#ff8c1a'};text-shadow:0 0 22px ${skin._displayColor || '#ff8c1a'}">${skin.name}</div><div style="font-size:18px;color:#e6ccff;margin-top:6px">NEW SKIN for ${(brawlerData[skin.brawler] && brawlerData[skin.brawler].name) || skin.brawler} — auto-equipped!</div>`;
+          } else if (roll < 0.75) {
+              const coins = 300 + Math.floor(Math.random() * 601);
+              playerData.coins = (playerData.coins || 0) + coins + (unowned.length === 0 && roll < 0.30 ? 1200 : 0);
+              const jackpot = unowned.length === 0 && roll < 0.30;
+              result.innerHTML = `<div style="font-size:84px">💰</div><div style="font-size:34px;font-weight:900;color:#ffd700;text-shadow:0 0 22px #ffd700">+${(coins + (jackpot ? 1200 : 0)).toLocaleString()} COINS!</div>${jackpot ? '<div style="font-size:16px;color:#e6ccff;margin-top:6px">Full Arenaaween collection jackpot!</div>' : ''}`;
+          } else {
+              const souls = 40 + Math.floor(Math.random() * 81);
+              if (typeof addSouls === 'function') addSouls(souls); else playerData.souls = (playerData.souls || 0) + souls;
+              result.innerHTML = `<div style="font-size:84px">👻</div><div style="font-size:34px;font-weight:900;color:#c792ff;text-shadow:0 0 22px #8e44ad">+${souls} SOULS!</div>`;
+          }
+          overlay.appendChild(result);
+          instruction.textContent = playerData.spookyBoxCount > 0 ? `TAP TO CLOSE • ${playerData.spookyBoxCount} Spooky Box${playerData.spookyBoxCount === 1 ? '' : 'es'} left` : 'TAP ANYWHERE TO CLOSE';
+          saveProgress();
+      };
+      overlay.onpointerdown = (event) => { event.preventDefault(); reveal(); };
   }
 
   function sanitizeSummonerPlanEntry(plan) {
@@ -22048,7 +22176,7 @@ let heistFeverActive = false;
       document.querySelectorAll('#homeCurrencyBar .home-currency-pill').forEach((el,i)=>el.dataset.homeCurrency=['coins','gems','souls'][i]);
       const snapshot=document.getElementById('homeCareerSnapshot'),progress=playerData?.brawlers?.[selectedBrawler]||{};
       if(snapshot)snapshot.innerHTML=[['FIGHTERS',getUnlockedBrawlerPool().length],['WIN STREAK',playerData.winStreak||0],['SELECTED BRICKS',getLifetimeBricks(progress)],['POWER',progress.level||1]].map(([label,value])=>`<div class="home-career-stat"><small>${label}</small><b>${value}</b></div>`).join('');
-      const pulse=document.getElementById('homeSeasonPulse');if(pulse)pulse.textContent='Season 3 · Core Breaker';
+      const pulse=document.getElementById('homeSeasonPulse');if(pulse)pulse.textContent='Season 4 · Arenaaween';
   }
   function ensureBoomArangInstinctState(entity, now = performance.now()) {
       if (!isSpecialAbilityAvailableForEntity(entity, 'boom_arang')) return null;
@@ -37551,7 +37679,7 @@ let heistFeverActive = false;
           <div class="home-career-stat"><small>WIN STREAK</small><b>${Math.max(0, playerData?.winStreak || 0)}</b></div>
           <div class="home-career-stat"><small>SELECTED BRICKS</small><b>${lifetime.toLocaleString()}</b></div>
           <div class="home-career-stat"><small>POWER</small><b>${Math.max(1, Math.min(11, progress.level || 1))}</b></div>`;
-      if (season) season.innerHTML = `<b>SEASON 3 · CORE BREAKER × ARENA FORGE</b><br>${ensureSeason3State().season.coreBreachCompleted?'Packet signals are active across six biomes.':'Core Breach incoming in your first eligible Showdown.'}`;
+      if (season) season.innerHTML = `<b>SEASON 4 · ARENAAWEEN × ARENA FORGE</b><br>Spooky Boxes are dropping across the arena — crack them for skins, coins, or souls. Packets have been retired.`;
   }
 
   function setHomeTab(tab = 'home') {
@@ -42144,6 +42272,15 @@ isBrawlerLabMode = false;
                 hyperBtn.onclick = () => openHyperStarrDrop();
                 statsDiv.appendChild(hyperBtn);
             }
+            if (playerData.spookyBoxCount && playerData.spookyBoxCount > 0) {
+                const spookyBtn = document.createElement('button');
+                spookyBtn.textContent = `🎃 Open SPOOKY BOX (${playerData.spookyBoxCount})`;
+                spookyBtn.style.background = 'linear-gradient(135deg,#5e188c,#ff8c1a)'; spookyBtn.style.color = '#fff';
+                spookyBtn.style.border = 'none'; spookyBtn.style.padding = '10px 16px';
+                spookyBtn.style.borderRadius = '8px'; spookyBtn.style.cursor = 'pointer'; spookyBtn.style.fontWeight = 'bold';
+                spookyBtn.onclick = () => openSpookyBox();
+                statsDiv.appendChild(spookyBtn);
+            }
             const totalTapperCount = (playerData.starrDrops || 0) + (playerData.superTapperCount || 0) + (playerData.hyperTapperCount || 0);
             if (totalTapperCount > 1) {
                 const openAllBtn = document.createElement('button');
@@ -43422,7 +43559,7 @@ isBrawlerLabMode = false;
             const {packets}=ensureSeason3State();
             const packetPanel=document.createElement('section');
             packetPanel.className='packet-loadout';
-            packetPanel.innerHTML=`<div class="packet-loadout__head"><div><small>SEASON 3 • CORE BREAKER</small><h2>PACKET</h2><p>One passive Packet works with every Fighter. Switching Fighters keeps this choice.</p></div><b>${packets.equipped?(PACKET_DEFS[packets.equipped]?.name||'PACKET'):'NO PACKET'}</b></div>`;
+            packetPanel.innerHTML=`<div class="packet-loadout__head"><div><small>SEASON 4 • ARENAAWEEN</small><h2>PACKET — RETIRED</h2><p>Packets are gone in Season 4. Your collection is preserved and will return in a future rework.</p></div><b>${packets.equipped?(PACKET_DEFS[packets.equipped]?.name||'PACKET'):'NO PACKET'}</b></div>`;
             const packetGrid=document.createElement('div');packetGrid.className='packet-catalog';
             const noneCard=document.createElement('button');noneCard.className=`packet-card${packets.equipped?'':' is-equipped'}`;noneCard.innerHTML='<i>NONE</i><strong>No Packet</strong><span>Fight with the normal kit.</span>';
             noneCard.onclick=()=>{packets.equipped=null;saveProgress();showDetails(id);};packetGrid.appendChild(noneCard);
@@ -71642,7 +71779,7 @@ function checkHit(target, b, i){
 
   function describeCircuitReward(reward) {
       if (!reward) return 'Reward';
-      const names = {coins:'Coins',gems:'Gems',souls:'Souls',tapper:'Tapper',superTapper:'Super Tapper',hyperTapper:'Hyper Tapper',towerDrop:'Tower Drop'};
+      const names = {coins:'Coins',gems:'Gems',souls:'Souls',tapper:'Tapper',superTapper:'Super Tapper',hyperTapper:'Hyper Tapper',towerDrop:'Tower Drop',spookyBox:'Spooky Box'};
       if (names[reward.type]) return `${(reward.amount || 1).toLocaleString()} ${names[reward.type]}${reward.amount > 1 && !['coins','gems','souls'].includes(reward.type) ? 's' : ''}`;
       if (reward.type === 'skin') return skinsDatabase[reward.id]?.name || 'Exclusive Skin';
       const pretty = String(reward.id || reward.group || '').replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());
@@ -71660,7 +71797,7 @@ function checkHit(target, b, i){
       overlay.className = 'circuit-overlay';
       overlay.setAttribute('role','dialog');
       overlay.setAttribute('aria-modal','true');
-      overlay.setAttribute('aria-label','Core Circuit Pass');
+      overlay.setAttribute('aria-label','Arenaaween Pass');
       const close = () => { overlay.remove(); document.removeEventListener('keydown',keyboard); previousFocus?.focus?.(); refreshHomeUI(); };
       const keyboard = event => {
           if(event.key === 'Escape') { event.stopPropagation(); close(); }
@@ -71678,7 +71815,7 @@ function checkHit(target, b, i){
           const pass=playerData.seasonPass, active=isSeason3PassActive();
           const progress=Math.min(100,pass.xp % 100), next=Math.max(0,100-progress);
           overlay.innerHTML = `<section class="circuit-panel">
-              <header class="circuit-header"><div><small>SEASON 03 / CORE BREAKER</small><h1>CORE CIRCUIT <span>PASS</span></h1></div><button data-action="close" aria-label="Close pass">✕</button></header>
+              <header class="circuit-header"><div><small>SEASON 04 / ARENAAWEEN</small><h1>ARENAAWEEN <span>PASS</span></h1></div><button data-action="close" aria-label="Close pass">✕</button></header>
               <div class="circuit-summary"><div class="circuit-level"><b>${pass.level}</b><span>LEVEL / 25</span></div><div class="circuit-progress"><strong>${pass.level >= 25 ? 'REWARD ROAD COMPLETE' : next+' TOKENS TO NEXT LEVEL'}</strong><progress max="100" value="${pass.level>=25?100:progress}"></progress><small>${active?'15 tokens per completed match · 25 on a win · missions earn more':'Season ended'} · spending never removes progress</small></div><div class="circuit-wallet"><small>PASS TOKENS</small><b>◈ ${pass.tokenWallet.toLocaleString()}</b><span>${pass.tokensEarned.toLocaleString()} earned this season</span></div></div>
               <nav class="circuit-tabs"><button data-tab="road" aria-pressed="${tab==='road'}">REWARD ROAD</button><button data-tab="shop" aria-pressed="${tab==='shop'}">TOKEN EXCHANGE</button><button data-action="quests">MISSIONS ↗</button></nav>
               <main class="circuit-content"></main>
