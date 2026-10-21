@@ -28,7 +28,7 @@ assert.match(game, /profile\.favorites=.*slice\(0,3\)/, 'Profile favorites are c
 assert.match(game, /showcaseBadges=.*slice\(0,3\)/, 'showcase badges are capped at three');
 assert.match(game, /endCareer\.matchesPlayed \+= 1/, 'new matches update Career stats');
 assert.match(game, /careerStats\.eliminations \+= 1/, 'credited player eliminations update Career stats');
-assert.match(game, /const costs = \[0, 50, 100, 175, 300, 500, 750, 1050, 1400, 2000, 3000\]/, 'Power 1 through 11 upgrade costs match the 9,325 coin curve');
+assert.match(game, /const costs = \[0, 50, 100, 175, 300, 500, 750, 1050, 1400, 2000, 3000, 4200\]/, 'Power 1 through 12 upgrade costs match the 13,525 coin curve');
 for (const id of ['depth_25_250','depth_15_500','depth_10_750','depth_5_1000','prestige_25_roster','prestige_2_five','prestige_3_three']) assert.match(game,new RegExp(id));
 for (const badge of ['roster_quarter','roster_deep_15','roster_elite_10','brick_masters','prestige_legion','double_stack','triple_threat']) assert.match(game,new RegExp(`${badge}:\\{name:`));
 assert.match(game, /function formatProfileReward/);

@@ -238,7 +238,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         document.head.appendChild(styleSheet);
 
     function getScaledStats(brawlerId, levelOverride) {
-        const level = Math.max(1, Math.min(11, levelOverride ?? getSelectedBrawlerLevel()));
+        const level = Math.max(1, Math.min(MAX_POWER_LEVEL, levelOverride ?? getSelectedBrawlerLevel()));
         if (brawlerId === 'the_deleter') {
             const scale = 0.55 + (level - 1) * 0.045;
             return { hp: Math.round(6600 * scale), dmg: Math.round(1750 * scale), speed: 260 };
@@ -614,9 +614,9 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         } else notice.style.display = 'none';
     }
 
-    const GADGET_COST = 650;
-    const STAR_POWER_COST = 900;
-    const HYPERCHARGE_BASE_COST = 1500;
+    const GADGET_COST = 800; // Power 12 ladder (2026-10-21): was 650.
+    const STAR_POWER_COST = 950; // Power 12 ladder: was 900.
+    const HYPERCHARGE_BASE_COST = 1200; // Power 12 ladder: was 1500.
     const TRINKET_COST = 350;
     const HYPERCHARGE_DISCOUNT_STEPS = Object.freeze([5, 10, 15, 20]);
     function normalizeHyperchargeDiscountPct(value) {
@@ -5245,7 +5245,7 @@ const bolznstienPendingStrikes = [];
                 if (!playerData.brawlers.magnatar.selectedStar || playerData.brawlers.magnatar.selectedStar === 'none') playerData.brawlers.magnatar.selectedStar = 'slow';
             }
             if (!playerData.brawlers.badbat) {
-                playerData.brawlers.badbat = { level: 11, bricks: 0, prestige: 0, gadgetUnlocked: true, starPowerUnlocked: true, hyperchargeUnlocked: true, selectedStar: 'sp1', selectedGadget: 'g1', ownedTrinkets: [], equippedTrinkets: [] };
+                playerData.brawlers.badbat = { level: 11, bricks: 0, prestige: 0, gadgetUnlocked: true, starPowerUnlocked: true, hyperchargeUnlocked: true, selectedStar: 'sp1', selectedGadget: 'g1', ownedTrinkets: [], equippedTrinkets: [], corePerkUnlocked: false, corePerk: null };
             } else {
                 playerData.brawlers.badbat.level = Math.max(playerData.brawlers.badbat.level || 1, 11);
                 playerData.brawlers.badbat.gadgetUnlocked = true;
@@ -6949,7 +6949,6 @@ const bolznstienPendingStrikes = [];
 
       function normalizeQuestKey(questKey) {
           const questAliases = {
-              collect_coins_event: 'collect_cubes',
               use_tapper: 'perform_supers',
               get_kills: 'defeat_enemies',
               heal_allies: 'use_gadget',
@@ -7059,28 +7058,7 @@ const bolznstienPendingStrikes = [];
           { id: 'boneless_03', stage: 3, kind: 'win_match', title: 'Crypt Conquest', desc: 'Win 4 matches.', target: 4, rewards: { souls: 50, superTappers: 1 } },
           { id: 'boneless_04', stage: 4, kind: 'defeat_enemies', title: 'Soul Harvest', desc: 'Defeat 18 enemies to claim the Epic Boneless Boomarang skin!', target: 18, rewards: { coins: 1000, gems: 10, skin: 'boneless-boomarang' } }
       ];
-      const COIN_ASCENT_QUESTS = [
-          {id:'coin_ascent_01',stage:1,kind:'play_match',title:'Coin Ascent 1',desc:'Play 2 matches.',target:2,rewards:{coins:500}},
-          {id:'coin_ascent_02',stage:2,kind:'deal_damage',title:'Coin Ascent 2',desc:'Deal 20,000 damage.',target:20000,rewards:{coins:500}},
-          {id:'coin_ascent_03',stage:3,kind:'defeat_enemies',title:'Coin Ascent 3',desc:'Defeat 8 enemies.',target:8,rewards:{coins:500}},
-          {id:'coin_ascent_04',stage:4,kind:'perform_supers',title:'Coin Ascent 4',desc:'Use 8 Power Moves.',target:8,rewards:{coins:500}},
-          {id:'coin_ascent_05',stage:5,kind:'win_match',title:'Coin Ascent 5',desc:'Win 2 matches.',target:2,rewards:{coins:500}},
-          {id:'coin_ascent_06',stage:6,kind:'use_gadget',title:'Coin Ascent 6',desc:'Use 8 Tools.',target:8,rewards:{coins:500}},
-          {id:'coin_ascent_07',stage:7,kind:'collect_cubes',title:'Coin Ascent 7',desc:'Collect 20 Power Cubes.',target:20,rewards:{coins:500}},
-          {id:'coin_ascent_08',stage:8,kind:'play_match',title:'Coin Ascent 8',desc:'Play 8 matches.',target:8,rewards:{coins:500}},
-          {id:'coin_ascent_09',stage:9,kind:'deal_damage',title:'Coin Ascent 9',desc:'Deal 100,000 damage.',target:100000,rewards:{coins:500}},
-          {id:'coin_ascent_10',stage:10,kind:'defeat_enemies',title:'Coin Ascent 10',desc:'Defeat 30 enemies.',target:30,rewards:{coins:500}},
-          {id:'coin_ascent_11',stage:11,kind:'perform_supers',title:'Coin Ascent 11',desc:'Use 25 Power Moves.',target:25,rewards:{coins:500}},
-          {id:'coin_ascent_12',stage:12,kind:'win_match',title:'Coin Ascent 12',desc:'Win 6 matches.',target:6,rewards:{coins:500}},
-          {id:'coin_ascent_13',stage:13,kind:'use_gadget',title:'Coin Ascent 13',desc:'Use 25 Tools.',target:25,rewards:{coins:500}},
-          {id:'coin_ascent_14',stage:14,kind:'collect_cubes',title:'Coin Ascent 14',desc:'Collect 60 Power Cubes.',target:60,rewards:{coins:500}},
-          {id:'coin_ascent_15',stage:15,kind:'play_match',title:'Coin Ascent 15',desc:'Play 18 matches.',target:18,rewards:{coins:500}},
-          {id:'coin_ascent_16',stage:16,kind:'deal_damage',title:'Coin Ascent 16',desc:'Deal 350,000 damage.',target:350000,rewards:{coins:500}},
-          {id:'coin_ascent_17',stage:17,kind:'defeat_enemies',title:'Coin Ascent 17',desc:'Defeat 75 enemies.',target:75,rewards:{coins:500}},
-          {id:'coin_ascent_18',stage:18,kind:'perform_supers',title:'Coin Ascent 18',desc:'Use 60 Power Moves.',target:60,rewards:{coins:500}},
-          {id:'coin_ascent_19',stage:19,kind:'win_match',title:'Coin Ascent 19',desc:'Win 15 matches.',target:15,rewards:{coins:500}},
-          {id:'coin_ascent_20',stage:20,kind:'deal_damage',title:'Coin Ascent Finale',desc:'Deal 1,000,000 damage.',target:1000000,rewards:{coins:500}}
-      ];
+      const COIN_ASCENT_QUESTS = []; // RETIRED 2026-10-21 per Bob — coin quest chain removed; save data preserved, bucket no longer rotates/progresses/appears.
       const FULL_ON_DAMAGE_EVENT_ID='full-on-damage-2026-08';
       const FULL_ON_DAMAGE_ENABLED=false; // RETIRED 2026-10-21 (Season 6 Core update) — state preserved.
       const FULL_ON_DAMAGE_DURATION_MS=7*24*60*60*1000;
@@ -12147,6 +12125,9 @@ function isPowerPlayModifierActive(entity = player) {
         entity.vx = 0;
         entity.vy = 0;
         entity.isDead = false;
+        if (playerControlled && entity === player && getCorePerk(selectedBrawler) === 'guardian') {
+            grantShield(entity, Math.round((Number(entity.maxHp) || 0) * 0.30));
+        }
         entity.isJumping = false;
         entity.isDashing = false;
         entity.isFlying = false;
@@ -13048,7 +13029,7 @@ let heistFeverActive = false;
           panel.innerHTML=`<header><div><small>SEASON 6</small><h1>XPLODEMIS × ARENA FORGE</h1><p>Ends December 31, 2026</p></div><button aria-label="Close">X</button></header><div class="season3-breach"><small>CHRISTMAS WITH EXPLOSIONS</small><b>PRESENTS, CHRISTMAS SHOWDOWN AND CORE PIECES ARE LIVE</b></div><div class="season3-hub-grid"><button data-action="pass"><i>S6</i><b>Season Pass</b><span>Festive rewards • ends Dec 31 • lives in the Quests tab now</span></button><button data-action="showdown"><i>🎄</i><b>Christmas Showdown</b><span>Solo Showdown • grab DMG, Speed and Double HP buffs</span></button><button data-action="quests"><i>Q</i><b>Season Quests</b><span>Climb the ladder • claim a free Present every day</span></button><button data-action="present"><i>🎁</i><b>Presents</b><span>${playerData.presentCount||0} unopened • 1-4 rewards inside • Xplodemis skins hide within</span></button><button data-action="boss"><i>🎃</i><b>Headless Bolznstien Boss Fight</b><span>Still haunting • up to 3 Spooky Boxes • his skin FREE on full clear</span></button><button data-action="corrupted"><i>CS</i><b>Corrupted Showdown</b><span>Season 6 chaos in the winter arena</span></button></div><div class="tower-retired-note"><b>SEASON 5 — ARCHIVED</b><span>Turkey Trouble is over. Capture the Turkey returns next November; your collections are preserved.</span></div><div class="tower-retired-note"><b>💠 CORE PIECES</b><span>The new currency is LIVE: earn it from Tappers, this Pass and Presents — spend it on Mutation, Signature and Instinct unlocks in the Quests tab.</span></div>`;
           panel.querySelector('header button').onclick=()=>overlay.remove();
           panel.querySelector('[data-action="pass"]').onclick=()=>{overlay.remove();openSeasonPass();};
-          panel.querySelector('[data-action="showdown"]').onclick=()=>{overlay.remove();selectedMode='showdown';showdownMode='christmas_showdown';updateShowdownModeUI();setHomeTab('events');};
+          panel.querySelector('[data-action="showdown"]').onclick=()=>{overlay.remove();showdownMode='christmas_showdown';updateShowdownModeUI();setHomeTab('events');};
           panel.querySelector('[data-action="quests"]').onclick=()=>{overlay.remove();openQuestBoard('season');};
           panel.querySelector('[data-action="present"]').onclick=()=>{overlay.remove();if((playerData.presentCount||0)>0)openPresent();else alert('No Presents yet — earn them from the Xplodemis Pass, Season Quests and the daily Present quest!');};
           panel.querySelector('[data-action="boss"]').onclick=()=>{overlay.remove();openHeadlessBossEvent();};
@@ -14216,7 +14197,7 @@ let heistFeverActive = false;
                       const progress = data.persistent.brawlerProgress?.[bid];
                       if (progress) {
                           playerData.brawlers[bid] = {
-                              level: Math.max(1, Math.min(11, Math.floor(progress.level || 1))),
+                              level: Math.max(1, Math.min(MAX_POWER_LEVEL, Math.floor(progress.level || 1))),
                               bricks: Math.max(0, Math.floor(progress.bricks || 0)),
                               prestige: Math.max(0, Math.floor(progress.prestige || 0)),
                               gadgetUnlocked: !!progress.gadgetUnlocked,
@@ -14249,7 +14230,7 @@ let heistFeverActive = false;
               const existing = playerData.brawlers[bid] || {};
               playerData.brawlers[bid] = {
                   ...existing,
-                  level: Math.max(1, Math.min(11, Math.floor(existing.level || 1))),
+                  level: Math.max(1, Math.min(MAX_POWER_LEVEL, Math.floor(existing.level || 1))),
                   bricks: Math.max(0, Math.floor(existing.bricks || 0)),
                   prestige: Math.max(0, Math.floor(existing.prestige || 0)),
                   gadgetUnlocked: (bid === 'bolznstien' || bid === 'magnatar' || bid === 'carmela_fudge' || bid === 'badbat') ? true : !!existing.gadgetUnlocked,
@@ -14639,73 +14620,7 @@ let heistFeverActive = false;
       }
   }
 
-  function grantTapperBonusWithPity(sourceTier = 'regular') {
-      playerData.tapperPity = playerData.tapperPity || { noPremium: 0, noHyper: 0 };
-      const pity = playerData.tapperPity;
-      let bonusText = '';
-      let bonusColor = '#8a2be2';
 
-      const forceHyper = pity.noHyper >= 19;
-      const forcePremium = pity.noPremium >= 7;
-      if (forceHyper) {
-          playerData.hyperTapperCount = (playerData.hyperTapperCount || 0) + 1;
-          pity.noHyper = 0;
-          pity.noPremium = 0;
-          return { text: 'PITY BONUS: +1 Surge Tapper!', color: '#59f2d6' };
-      }
-      if (forcePremium) {
-          playerData.superTapperCount = (playerData.superTapperCount || 0) + 1;
-          pity.noPremium = 0;
-          pity.noHyper += 1;
-          return { text: 'PITY BONUS: +1 Super Tapper!', color: '#ff66ff' };
-      }
-
-      const r = Math.random();
-      const table = sourceTier === 'super'
-          ? [
-              { cap: 0.12, kind: 'hyper' },
-              { cap: 0.42, kind: 'super' },
-              { cap: 0.72, kind: 'tapper' }
-            ]
-          : [
-              { cap: 0.04, kind: 'hyper' },
-              { cap: 0.18, kind: 'super' },
-              { cap: 0.32, kind: 'tapper' }
-            ];
-      let kind = 'none';
-      for (const row of table) {
-          if (r < row.cap) {
-              kind = row.kind;
-              break;
-          }
-      }
-
-      if (kind === 'hyper') {
-          playerData.hyperTapperCount = (playerData.hyperTapperCount || 0) + 1;
-          pity.noHyper = 0;
-          pity.noPremium = 0;
-          bonusText = '+1 Surge Tapper';
-          bonusColor = '#e000ff';
-      } else if (kind === 'super') {
-          playerData.superTapperCount = (playerData.superTapperCount || 0) + 1;
-          pity.noPremium = 0;
-          pity.noHyper += 1;
-          bonusText = '+1 Super Tapper';
-          bonusColor = '#ff66ff';
-      } else if (kind === 'tapper') {
-          playerData.starrDrops = (playerData.starrDrops || 0) + 1;
-          pity.noPremium += 1;
-          pity.noHyper += 1;
-          bonusText = '+1 Tapper Upper';
-          bonusColor = '#9f7aff';
-      } else {
-          pity.noPremium += 1;
-          pity.noHyper += 1;
-      }
-      return bonusText ? { text: bonusText, color: bonusColor } : null;
-  }
-
-  
   function openAllTappers() {
       const regCount = playerData.starrDrops || 0;
       const superCount = playerData.superTapperCount || 0;
@@ -14719,7 +14634,6 @@ let heistFeverActive = false;
       let totalCorePieces = 0;
       const unlockedSkins = [];
       const unlockedHypers = [];
-      const pityBonusTexts = [];
 
       const regRarities = [
           { name: 'Rare', coinMin: 15, coinMax: 30 },
@@ -14780,8 +14694,6 @@ let heistFeverActive = false;
           const bulkSkin2 = rollTapperSkinDrop(0.04);
           if (bulkSkin2 && !bulkSkin2.fallback) unlockedSkins.push(bulkSkin2.name);
 
-          const pity = grantTapperBonusWithPity('super');
-          if (pity) pityBonusTexts.push(pity.text);
       }
 
       for (let i = 0; i < hyperCount; i++) {
@@ -14857,11 +14769,6 @@ let heistFeverActive = false;
           hypersText = `<div style="color: #d282ff; font-weight: bold; margin-top: 10px;">⚡ HYPERCHARGES UNLOCKED:<br>${unlockedHypers.join(', ')}</div>`;
       }
 
-      let pityText = '';
-      if (pityBonusTexts.length > 0) {
-          pityText = `<div style="color: #ffd166; font-size: 14px; margin-top: 10px;">🎁 PITY REWARDS:<br>${[...new Set(pityBonusTexts)].join(', ')}</div>`;
-      }
-
       results.innerHTML = `
           <div style="font-size: 24px; font-weight: bold; color: #5df2c2; margin-bottom: 8px;">TOTAL REWARDS</div>
           <div style="color: #ffd166; font-weight: 800;">🪙 +${totalCoins.toLocaleString()} COINS</div>
@@ -14870,7 +14777,6 @@ let heistFeverActive = false;
           ${totalCorePieces ? `<div style="color: #59f2d6; font-weight: 800;">💠 +${totalCorePieces.toLocaleString()} CORE PIECES</div>` : ''}
           ${unlockedSkins.length ? `<div style="color: #ff9ff3; font-weight: 800;">🎁 SKIN DROPS: ${unlockedSkins.join(', ')}</div>` : ''}
           ${hypersText}
-          ${pityText}
       `;
       overlay.appendChild(results);
 
@@ -14970,7 +14876,6 @@ let heistFeverActive = false;
               const rewardCoins = Math.floor(Math.random() * (rInfo.coinMax - rInfo.coinMin + 1)) + rInfo.coinMin;
               const gemReward = Math.max(1, Math.floor(rewardCoins / 400));
               const soulReward = rollSoulReward(8, 18);
-              const pityBonus = grantTapperBonusWithPity('regular');
               const tapperCorePieces = Math.random() < 0.15 ? (2 + Math.floor(Math.random() * 9)) : 0;
               if (tapperCorePieces) addCorePieces(tapperCorePieces);
               const tapperSkinDrop = rollTapperSkinDrop(0.02);
@@ -14993,15 +14898,6 @@ let heistFeverActive = false;
               }
               const tot = document.createElement('div'); tot.textContent = `+${rewardCoins} COINS! +${gemReward} GEMS! +${soulReward} SOULS!`; tot.style.color='#ffd700'; tot.style.fontSize='34px'; tot.style.fontWeight='900'; tot.style.marginTop='10px'; tot.style.textShadow='0 0 20px #ffd700';
               splash.appendChild(tot);
-              if (pityBonus) {
-                  const bonus = document.createElement('div');
-                  bonus.textContent = pityBonus.text;
-                  bonus.style.color = pityBonus.color;
-                  bonus.style.fontSize = '22px';
-                  bonus.style.fontWeight = '900';
-                  bonus.style.marginTop = '8px';
-                  splash.appendChild(bonus);
-              }
               if (tapperCorePieces) {
                   const cpLine = document.createElement('div');
                   cpLine.textContent = `+${tapperCorePieces} CORE PIECES!`;
@@ -15115,18 +15011,11 @@ let heistFeverActive = false;
           const soulReward = rollSoulReward(20, 40);
           const coreTotal = rolls.reduce((sum, roll) => sum + (roll.core || 0), 0);
           if (coreTotal) addCorePieces(coreTotal);
-          const pityBonus = grantTapperBonusWithPity('super');
           setTimeout(() => {
               const totalTxt = document.createElement('h2');
               totalTxt.textContent = `+${total} COINS! +${gemReward} GEMS! +${soulReward} SOULS!` + (coreTotal ? ` +${coreTotal} CORE PIECES!` : '');
               totalTxt.style.cssText = 'color:#ffd700;text-shadow:0 0 20px #ffd700;margin:12px 0 0;';
               feed.appendChild(totalTxt);
-              if (pityBonus) {
-                  const bonusTxt = document.createElement('div');
-                  bonusTxt.textContent = pityBonus.text;
-                  bonusTxt.style.cssText = `color:${pityBonus.color};font-size:22px;font-weight:900;margin-top:6px;`;
-                  feed.appendChild(bonusTxt);
-              }
               if (superSkinDrop) {
                   const skinTxt = document.createElement('div');
                   skinTxt.textContent = superSkinDrop.fallback ? superSkinDrop.name : `🎁 SKIN DROP: ${superSkinDrop.name} (${superSkinDrop.brawlerName})!`;
@@ -16152,9 +16041,47 @@ let heistFeverActive = false;
       render();
   }
 
+  const MAX_POWER_LEVEL = 12; // Power 12 update (2026-10-21): cap raised from 11.
   function getUpgradeCost(level) {
-      const costs = [0, 50, 100, 175, 300, 500, 750, 1050, 1400, 2000, 3000];
+      const costs = [0, 50, 100, 175, 300, 500, 750, 1050, 1400, 2000, 3000, 4200];
       return costs[Math.max(0, Math.floor(level || 0))] || 99999;
+  }
+  // Levels 9+ also cost Core Pieces (keyed by CURRENT level; 11->12 is 1.7x the 10->11 cost).
+  const CORE_PIECE_UPGRADE_COSTS = { 8: 20, 9: 35, 10: 50, 11: 85 };
+  function getCorePieceUpgradeCost(level) {
+      return CORE_PIECE_UPGRADE_COSTS[Math.floor(level || 0)] || 0;
+  }
+  // Power 12 Core Perk slot: one universal perk per brawler, bought at Power 12
+  // for a flat 1,500 coins; the choice can be changed freely afterwards.
+  const CORE_PERK_COST = 1500;
+  const CORE_PERK_DEFS = [
+      { id: 'surge', name: 'Surge Endurance', icon: '⚡', desc: 'Core Surge lasts 40% longer.' },
+      { id: 'guardian', name: 'Guardian Revival', icon: '🛡️', desc: 'Respawn with a shield worth 30% of max HP.' },
+      { id: 'kinetic', name: 'Kinetic Regen', icon: '💚', desc: 'Heal 50 HP/s while moving and not taking damage.' }
+  ];
+  function getCorePerk(fighterId) {
+      const prog = playerData.brawlers && playerData.brawlers[fighterId];
+      if (!prog || !prog.corePerkUnlocked) return null;
+      return CORE_PERK_DEFS.some(def => def.id === prog.corePerk) ? prog.corePerk : null;
+  }
+  function buyCorePerkSlot(fighterId) {
+      const prog = getOrCreateProgress(fighterId);
+      if (prog.corePerkUnlocked) return true;
+      if ((prog.level || 1) < MAX_POWER_LEVEL) return false;
+      if ((playerData.coins || 0) < CORE_PERK_COST) return false;
+      playerData.coins -= CORE_PERK_COST;
+      prog.corePerkUnlocked = true;
+      if (!prog.corePerk) prog.corePerk = 'surge';
+      saveProgress();
+      return true;
+  }
+  function setCorePerk(fighterId, perkId) {
+      const prog = getOrCreateProgress(fighterId);
+      if (!prog.corePerkUnlocked) return false;
+      if (!CORE_PERK_DEFS.some(def => def.id === perkId)) return false;
+      prog.corePerk = perkId;
+      saveProgress();
+      return true;
   }
 
   function getShopTodayKey() {
@@ -16559,7 +16486,7 @@ let heistFeverActive = false;
           if (brawlerId === 'bolznstien' || brawlerId === 'magnatar' || brawlerId === 'rager' || brawlerId === 'carmela_fudge' || brawlerId === 'badbat') {
               playerData.brawlers[brawlerId] = { level: 11, bricks: 0, prestige: 0, gadgetUnlocked: true, starPowerUnlocked: true, hyperchargeUnlocked: true, selectedStar: 'sp1', selectedGadget: 'g1', ownedTrinkets: [], equippedTrinkets: [] };
           } else {
-              playerData.brawlers[brawlerId] = { level: 1, bricks: 0, prestige: 0, gadgetUnlocked: false, starPowerUnlocked: false, hyperchargeUnlocked: false, selectedStar: 'slow', selectedGadget: 'g1', ownedTrinkets: [], equippedTrinkets: [] };
+              playerData.brawlers[brawlerId] = { level: 1, bricks: 0, prestige: 0, gadgetUnlocked: false, starPowerUnlocked: false, hyperchargeUnlocked: false, selectedStar: 'slow', selectedGadget: 'g1', ownedTrinkets: [], equippedTrinkets: [], corePerkUnlocked: false, corePerk: null };
           }
       }
       return ensureProgressTrinkets(playerData.brawlers[brawlerId]);
@@ -16571,7 +16498,7 @@ let heistFeverActive = false;
   }
   function isPermanentlyMaxedBrawler(brawlerId) {
       const progress=getOrCreateProgress(brawlerId);
-      return progress.level >= 11 && progress.gadgetUnlocked && progress.starPowerUnlocked && progress.hyperchargeUnlocked;
+      return progress.level >= 11 && progress.gadgetUnlocked && progress.starPowerUnlocked && progress.hyperchargeUnlocked; // Weekly-trial exclusion stays on the classic cap: trials grant temporary Power 11.
   }
   function pickWeeklyTrialFighters(pool,count,seed) {
       const picks=[...pool];
@@ -16616,7 +16543,7 @@ let heistFeverActive = false;
       return true;
   }
   function applyLevelUnlocks(progress, targetLevel) {
-      progress.level = Math.min(11, Math.max(progress.level || 1, targetLevel));
+      progress.level = Math.min(MAX_POWER_LEVEL, Math.max(progress.level || 1, targetLevel));
       if (progress.level >= 11) ensureHyperchargeDiscount(progress);
       const unlocks = getUnlocksForLevel(progress.level);
       if (unlocks.gadgetUnlocked) progress.gadgetUnlocked = true;
@@ -17559,17 +17486,18 @@ let heistFeverActive = false;
           const grid = cardGrid();
           const data=brawlerData[selectedBrawler]||{};
           const progress=getOrCreateProgress(selectedBrawler);
-          const level=Math.max(1,Math.min(11,progress.level||1));
-          const normalCost=level<11?getUpgradeCost(level):0;
+          const level=Math.max(1,Math.min(MAX_POWER_LEVEL,progress.level||1));
+          const normalCost=level<MAX_POWER_LEVEL?getUpgradeCost(level):0;
           const dealCost=Math.max(1,Math.floor(normalCost*.8));
+          const dealCpCost=getCorePieceUpgradeCost(level);
           const upgradeKey=getShopClaimKey(`fighter-upgrade-${selectedBrawler}`,dailyCycle.cycleKey);
           addSection(grid, `${data.name||selectedBrawler}'s workshop`);
           grid.appendChild(makeShopCard({
-              titleText: `⚙ Power ${level} → ${Math.min(11,level+1)}`, accent:data.color||'#67e8ff',
-              descText: level>=11 ? `${data.name||selectedBrawler} is already fully powered.` : `Today only: upgrade your selected fighter for 20% fewer Coins.`,
-              priceText: level>=11?'MAX POWER':`${dealCost.toLocaleString()} COINS`, buttonText:'UPGRADE NOW', buttonColor:data.color||'#67e8ff',
-              isOwned:level>=11||!!playerData.shopClaims[upgradeKey], isLocked:level<11&&(playerData.coins||0)<dealCost, lockedText:`${dealCost.toLocaleString()} COINS REQUIRED`, footerText:'The offer follows the fighter selected when the market opens.',
-              onBuy:()=>{if(level>=11||playerData.shopClaims[upgradeKey]||(playerData.coins||0)<dealCost)return;playerData.coins-=dealCost;applyLevelUnlocks(progress,level+1);playerData.shopClaims[upgradeKey]=true;ensureShopButtonRefresh();renderTabContent();}
+              titleText: `⚙ Power ${level} → ${Math.min(MAX_POWER_LEVEL,level+1)}`, accent:data.color||'#67e8ff',
+              descText: level>=MAX_POWER_LEVEL ? `${data.name||selectedBrawler} is already fully powered.` : `Today only: upgrade your selected fighter for 20% fewer Coins.${dealCpCost>0?` Core Pieces still apply (${dealCpCost}).`:''}`,
+              priceText: level>=MAX_POWER_LEVEL?'MAX POWER':`${dealCost.toLocaleString()} COINS${dealCpCost>0?` + ${dealCpCost} CORE PIECES`:''}`, buttonText:'UPGRADE NOW', buttonColor:data.color||'#67e8ff',
+              isOwned:level>=MAX_POWER_LEVEL||!!playerData.shopClaims[upgradeKey], isLocked:level<MAX_POWER_LEVEL&&((playerData.coins||0)<dealCost||getCorePieces()<dealCpCost), lockedText:`${dealCost.toLocaleString()} COINS${dealCpCost>0?` + ${dealCpCost} CORE PIECES`:''} REQUIRED`, footerText:'The offer follows the fighter selected when the market opens.',
+              onBuy:()=>{if(level>=MAX_POWER_LEVEL||playerData.shopClaims[upgradeKey]||(playerData.coins||0)<dealCost||getCorePieces()<dealCpCost)return;playerData.coins-=dealCost;if(dealCpCost>0)spendCorePieces(dealCpCost);applyLevelUnlocks(progress,level+1);playerData.shopClaims[upgradeKey]=true;ensureShopButtonRefresh();renderTabContent();}
           }));
           const loadoutKey=getShopClaimKey(`fighter-loadout-${selectedBrawler}`,dailyCycle.cycleKey);
           grid.appendChild(makeShopCard({
@@ -18189,7 +18117,26 @@ let heistFeverActive = false;
     }
     // ===== Christmas Showdown buffs (Season 6: Xplodemis) =====
     let christmasBuffTimer = 0;
-    function isChristmasShowdownMatch() { return selectedMode === 'showdown' && showdownMode === 'christmas_showdown' && !isTraining; }
+    function isChristmasShowdownMatch() { return showdownMode === 'christmas_showdown' && !isTraining; }
+    let kineticLastHp = -1;
+    let kineticLastHurtAt = 0;
+    let kineticPrevX = 0;
+    let kineticPrevY = 0;
+    function updateCorePerkKinetic(dt) {
+        if (!player || player.isDead) { kineticLastHp = -1; return; }
+        if (kineticLastHp >= 0 && player.hp < kineticLastHp) kineticLastHurtAt = performance.now();
+        kineticLastHp = player.hp;
+        const moved = Math.abs(player.x - kineticPrevX) > 0.5 || Math.abs(player.y - kineticPrevY) > 0.5;
+        kineticPrevX = player.x;
+        kineticPrevY = player.y;
+        if (getCorePerk(selectedBrawler) !== 'kinetic') return;
+        if (!moved) return;
+        if (performance.now() - kineticLastHurtAt < 1500) return;
+        if (player.hp > 0 && player.hp < player.maxHp) {
+            player.hp = Math.min(player.maxHp, player.hp + 50 * dt);
+            kineticLastHp = player.hp;
+        }
+    }
     function updateChristmasShowdown(dt) {
         if (!isChristmasShowdownMatch()) { christmasBuffTimer = 0; return; }
         christmasBuffTimer += dt;
@@ -26579,7 +26526,7 @@ let heistFeverActive = false;
     isHypercharged = true;
     addEventQuestProgress('activate_hypers');
     const extraHyperMs = (isSplitterPoweredMode && selectedBrawler === 'splitter') ? 2000 : 0;
-    hyperchargeUntil = performance.now() + 5000 + extraHyperMs;
+    hyperchargeUntil = performance.now() + Math.round((5000 + extraHyperMs) * (getCorePerk(selectedBrawler) === 'surge' ? 1.4 : 1));
     if (selectedBrawler === 'oil_maker' || (player && player.brawler === 'oil_maker')) {
         player.oilMakerSuperCharges = 5;
         superCharge = 100;
@@ -44246,16 +44193,19 @@ isBrawlerLabMode = false;
             
             const upgBtn = document.createElement('button');
             const cost = getUpgradeCost(pData.level);
-            if (pData.level < 11) {
-                upgBtn.textContent = `Upgrade (🪙 ${cost})`;
+            const cpCost = getCorePieceUpgradeCost(pData.level);
+            const canAffordUpgrade = playerData.coins >= cost && getCorePieces() >= cpCost;
+            if (pData.level < MAX_POWER_LEVEL) {
+                upgBtn.textContent = cpCost > 0 ? `Upgrade (🪙 ${cost} + 💠 ${cpCost})` : `Upgrade (🪙 ${cost})`;
                 upgBtn.style.padding = '12px 24px';
-                upgBtn.style.background = playerData.coins >= cost ? '#5df2c2' : '#555';
+                upgBtn.style.background = canAffordUpgrade ? '#5df2c2' : '#555';
                 upgBtn.style.color = '#000'; upgBtn.style.fontWeight = 'bold';
                 upgBtn.style.border = 'none'; upgBtn.style.borderRadius = '8px';
-                upgBtn.style.cursor = playerData.coins >= cost ? 'pointer' : 'not-allowed';
+                upgBtn.style.cursor = canAffordUpgrade ? 'pointer' : 'not-allowed';
                 upgBtn.onclick = () => {
-                    if (playerData.coins >= cost && pData.level < 11) {
+                    if (canAffordUpgrade && pData.level < MAX_POWER_LEVEL) {
                         playerData.coins -= cost;
+                        if (cpCost > 0) spendCorePieces(cpCost);
                         pData.level++;
                         if (pData.level >= 11) ensureHyperchargeDiscount(pData);
                         saveProgress();
@@ -44273,9 +44223,9 @@ isBrawlerLabMode = false;
             charBox.appendChild(charIcon);
             const upgradeSummary = document.createElement('div');
             upgradeSummary.className = 'brawler-upgrade-summary';
-            upgradeSummary.innerHTML = pData.level < 11
-                ? `<small>CURRENT POWER</small><b>${pData.level} <span>to</span> ${pData.level + 1}</b><p>${cost.toLocaleString()} coins required<br>${Math.max(0, playerData.coins || 0).toLocaleString()} coins available</p>`
-                : '<small>POWER PROGRESSION</small><b>POWER 11</b><p>Maximum Power reached</p>';
+            upgradeSummary.innerHTML = pData.level < MAX_POWER_LEVEL
+                ? `<small>CURRENT POWER</small><b>${pData.level} <span>to</span> ${pData.level + 1}</b><p>${cost.toLocaleString()} coins required${cpCost > 0 ? `<br>${cpCost} Core Pieces required (${getCorePieces()} available)` : ''}<br>${Math.max(0, playerData.coins || 0).toLocaleString()} coins available</p>`
+                : '<small>POWER PROGRESSION</small><b>POWER 12</b><p>Maximum Power reached — the Core Perk slot is open below</p>';
             charBox.appendChild(upgradeSummary);
             charBox.appendChild(upgBtn);
 
@@ -44376,7 +44326,7 @@ isBrawlerLabMode = false;
             
             // Calculate stats
             const curStats = getScaledStats(id, pData.level);
-            const nextStats = pData.level < 11 ? getScaledStats(id, pData.level + 1) : curStats;
+            const nextStats = pData.level < MAX_POWER_LEVEL ? getScaledStats(id, pData.level + 1) : curStats;
             const hpGain = nextStats.hp - curStats.hp;
             const dmgGain = nextStats.dmg - curStats.dmg;
             
@@ -44399,8 +44349,8 @@ isBrawlerLabMode = false;
                     ${getBrawlerTraits(id).map((trait) => `<div style="padding:6px 10px;border-radius:999px;background:#0f203e;border:1px solid #35598b;color:#c7ddff;font-size:12px;font-weight:800">${trait}</div>`).join('')}
                 </div>
                 <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px">
-                    <div style="flex:1;min-width:150px;background:#0a1327;border:1px solid #304876;border-radius:12px;padding:10px 12px"><div style="font-size:12px;color:#8fb3dc">HP</div><div style="font-size:20px;font-weight:900;color:#ffd700">${curStats.hp}${pData.level < 11 ? `<span style='font-size:13px;color:#5df2c2'>  +${hpGain}</span>` : ''}</div></div>
-                    <div style="flex:1;min-width:150px;background:#0a1327;border:1px solid #304876;border-radius:12px;padding:10px 12px"><div style="font-size:12px;color:#8fb3dc">DAMAGE</div><div style="font-size:20px;font-weight:900;color:#ffd700">${curStats.dmg}${pData.level < 11 ? `<span style='font-size:13px;color:#5df2c2'>  +${dmgGain}</span>` : ''}</div></div>
+                    <div style="flex:1;min-width:150px;background:#0a1327;border:1px solid #304876;border-radius:12px;padding:10px 12px"><div style="font-size:12px;color:#8fb3dc">HP</div><div style="font-size:20px;font-weight:900;color:#ffd700">${curStats.hp}${pData.level < MAX_POWER_LEVEL ? `<span style='font-size:13px;color:#5df2c2'>  +${hpGain}</span>` : ''}</div></div>
+                    <div style="flex:1;min-width:150px;background:#0a1327;border:1px solid #304876;border-radius:12px;padding:10px 12px"><div style="font-size:12px;color:#8fb3dc">DAMAGE</div><div style="font-size:20px;font-weight:900;color:#ffd700">${curStats.dmg}${pData.level < MAX_POWER_LEVEL ? `<span style='font-size:13px;color:#5df2c2'>  +${dmgGain}</span>` : ''}</div></div>
                 </div>
                 <div style="background:#0a1327;border:1px solid #304876;border-radius:12px;padding:10px 12px;margin-bottom:10px">
                     <div style="font-size:12px;color:#8fb3dc;font-weight:800">ATTACK</div>
@@ -44593,6 +44543,50 @@ isBrawlerLabMode = false;
                 hyperPanel.appendChild(hcInfo);
             }
             controlRow.appendChild(hyperPanel);
+
+            // CORE PERK panel (Power 12 slot)
+            const perkPanel = document.createElement('div');
+            perkPanel.style.cssText = 'flex:1;min-width:220px;background:#081426;border:1px solid #2b5ea7;border-radius:12px;padding:12px;';
+            const perkHead = document.createElement('div');
+            const perkOwned = !!pData.corePerkUnlocked;
+            perkHead.textContent = perkOwned ? 'CORE PERK (UNLOCKED)' : (pData.level >= MAX_POWER_LEVEL ? `CORE PERK (🪙 ${CORE_PERK_COST} COINS)` : 'CORE PERK (POWER 12)');
+            perkHead.style.cssText = 'color:#7fd4ff;font-weight:900;letter-spacing:.06em;margin-bottom:8px;';
+            perkPanel.appendChild(perkHead);
+            if (pData.level < MAX_POWER_LEVEL) {
+                const lockInfo = document.createElement('div');
+                lockInfo.textContent = 'Reach Power 12 to open this slot, then pick one universal perk: +40% Core Surge duration, a 30% max-HP respawn shield, or move-to-heal regen.';
+                lockInfo.style.cssText = 'color:#95a6c8;font-size:13px;';
+                perkPanel.appendChild(lockInfo);
+            } else if (!perkOwned) {
+                const buyPerk = document.createElement('button');
+                buyPerk.textContent = `Buy Core Perk Slot (🪙 ${CORE_PERK_COST})`;
+                buyPerk.style.cssText = `border:none;padding:10px 12px;border-radius:10px;font-weight:800;background:${playerData.coins >= CORE_PERK_COST ? '#59f2d6' : '#444'};color:#04141a;cursor:pointer;`;
+                buyPerk.onclick = () => { if (buyCorePerkSlot(id)) showDetails(id); };
+                perkPanel.appendChild(buyPerk);
+                const perkInfo = document.createElement('div');
+                perkInfo.textContent = 'One flat price for every brawler. Pick 1 of 3 universal perks — change your pick any time for free.';
+                perkInfo.style.cssText = 'color:#95a6c8;font-size:13px;margin-top:10px;';
+                perkPanel.appendChild(perkInfo);
+            } else {
+                const perkRow = document.createElement('div');
+                perkRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;';
+                for (const def of CORE_PERK_DEFS) {
+                    const btn = document.createElement('button');
+                    const active = pData.corePerk === def.id;
+                    btn.textContent = `${def.icon} ${def.name}`;
+                    btn.title = def.desc;
+                    btn.style.cssText = `border:2px solid ${active ? '#59f2d6' : '#33507c'};padding:9px 10px;border-radius:10px;font-weight:800;background:${active ? '#0f3f36' : '#12233f'};color:${active ? '#a7ffe9' : '#c7d7ef'};cursor:pointer;`;
+                    btn.onclick = () => { if (setCorePerk(id, def.id)) showDetails(id); };
+                    perkRow.appendChild(btn);
+                }
+                perkPanel.appendChild(perkRow);
+                const activeDef = CORE_PERK_DEFS.find(def => def.id === pData.corePerk) || CORE_PERK_DEFS[0];
+                const perkInfo = document.createElement('div');
+                perkInfo.textContent = `${activeDef.icon} ${activeDef.name}: ${activeDef.desc} Tap another perk to switch — free, any time.`;
+                perkInfo.style.cssText = 'color:#a7ffe9;font-size:13px;margin-top:10px;';
+                perkPanel.appendChild(perkInfo);
+            }
+            controlRow.appendChild(perkPanel);
 
             // Tapper Upper quick-open visuals (manual open)
             const tapperRow = document.createElement('div'); tapperRow.style.display='flex'; tapperRow.style.gap='12px'; tapperRow.style.alignItems='center'; tapperRow.style.marginTop='6px';
@@ -47838,6 +47832,7 @@ function checkHit(target, b, i){
 
     if (playing && !gameOver) updateFeathersSystems(dt);
     if (playing && !gameOver) updateChristmasShowdown(dt);
+    if (playing && !gameOver) updateCorePerkKinetic(dt);
     if (isTurkeyCaptureMode && !isBossFight && !isSoloTrial && !isDuels && !gameOver) {
         updateTurkeyCapture(dt);
     }
@@ -72282,15 +72277,13 @@ function checkHit(target, b, i){
             addEventQuestProgress('play_match');
             progressSeasonPassQuest('play_match');
             markXplodemisDailyPlayed();
-            if (selectedMode === 'showdown' && showdownMode === 'christmas_showdown') {
+            if (showdownMode === 'christmas_showdown') {
                 progressSeasonPassQuest('christmas_showdown_matches');
                 if (won) progressSeasonPassQuest('christmas_showdown_wins');
             }
             if (UNLEASH_POTENTIAL_FIGHTERS.includes(completedMatchFighter)) {
                 addSpecialQuestProgress(completedMatchFighter, 'play_match', 1);
             }
-            addEventQuestProgress('collect_coins_event', rewardCoins);
-            progressSeasonPassQuest('collect_coins_event', 1);
             // Progress event quests on wins
             if (won) {
                 addEventQuestProgress('win_match');

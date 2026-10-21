@@ -7,9 +7,9 @@ assert.match(game,/DAILY_WEEKLY_QUEST_SCHEMA_VERSION = 4/,'Quest Board schema ad
 assert.match(game,/const MEGA_QUESTS = \[\]/,'Mega Quests are retired without deleting the save bucket');
 assert.doesNotMatch(game,/makeTab\('mega'/,'The retired Mega tab is no longer shown');
 assert.match(game,/const AWAKENATOR_JOURNEY_QUESTS = \[[\s\S]*?brawlerUnlock:'awakenator'/,'Awake Awakenator ends with the free fighter unlock');
-assert.match(game,/const COIN_ASCENT_QUESTS = \[/,'The 20-stage Coin Ascent exists');
-assert.equal((game.match(/id:'coin_ascent_\d\d'/g)||[]).length,20,'Coin Ascent contains exactly 20 stages');
-assert.equal((game.match(/id:'coin_ascent_\d\d'[\s\S]{0,180}?rewards:\{coins:500\}/g)||[]).length,20,'Every Coin Ascent stage awards 500 Coins for 10,000 total');
+assert.match(game,/const COIN_ASCENT_QUESTS = \[\]; \/\/ RETIRED/,'Coin Ascent is retired (Bob, 2026-10-21)');
+assert.equal((game.match(/id:'coin_ascent_\d\d'/g)||[]).length,0,'Coin Ascent stages are gone');
+assert.ok(!game.includes("addEventQuestProgress('collect_coins_event'"),'Match-end coins no longer progress quests');
 assert.match(game,/mergeQuestBucket\(playerData\.questBoard\.awakenatorJourney, AWAKENATOR_JOURNEY_QUESTS\)/,'Awakenator quest state migrates without resetting saves');
 assert.match(game,/mergeQuestBucket\(playerData\.questBoard\.coinAscent, COIN_ASCENT_QUESTS\)/,'Coin Ascent state migrates without resetting saves');
 assert.match(game,/for \(const bucketName of \['awakenatorJourney','coinAscent'\]\)/,'The two active permanent journeys receive central quest progress');
