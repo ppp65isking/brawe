@@ -16,22 +16,22 @@ assert.match(game, /playerData\.unlockedBrawlers\s*=\s*\{\s*outlit:\s*true,\s*fu
 assert.match(game, /playerData\.unlockedBrawlers\.outlit\s*=\s*true;[\s\S]*?playerData\.unlockedBrawlers\.fuser\s*=\s*true;[\s\S]*?playerData\.unlockedBrawlers\.rocketeer\s*=\s*true;/, 'Default brawlers explicitly set to true');
 
 // 4. Check representative brawlers for each tier
-// Rare (8)
-for (const b of ['echo', 'cheseypuff', 'unopcoloco', 'minigunnin', 'bowlin_rida', 'chaird', 'forest', 'goonbob']) {
+// Rare (19)
+for (const b of ['echo', 'cheseypuff', 'unopcoloco', 'minigunnin', 'bowlin_rida', 'chaird', 'forest', 'goonbob', 'bolznstien', 'rager', 'oil_maker', 'drainbow', 'weefee', 'trampaheal', 'upgradart', 'fuel', 'axeywaxy', 'sir_cheeseburger', 'dr0ne']) {
     assert.match(game, new RegExp(`${b}:\\s*'Rare'`), `${b} is Rare`);
 }
 
-// Epic (17)
-for (const b of ['trapper', 'heater_miser', 'money_and_tax', 'hunter', 'bouncin_balls', 'fightnfire', 'splitter', 'scuba_diver', 'hoop', 'beam', 'teether', 'fuel', 'warrior', 'peter_pickle', 'axeywaxy', 'ramage', 'sir_cheeseburger']) {
+// Epic (31)
+for (const b of ['trapper', 'heater_miser', 'money_and_tax', 'hunter', 'bouncin_balls', 'fightnfire', 'splitter', 'scuba_diver', 'hoop', 'beam', 'teether', 'warrior', 'peter_pickle', 'ramage', 'blinkeye', 'badbat', 'looma', 'magnatar', 'fastpass', 'homer', 'ice_cream', 'swimmer', 'boomer', 'blade_vane', 'daggershard', 'cluster', 'witch', 'predator', 'draflygon', 'duck', 'unhitabble']) {
     assert.match(game, new RegExp(`${b}:\\s*'Epic'`), `${b} is Epic`);
 }
 
-// Mythic (26)
-for (const b of ['dashaholic', 'classy', 'steamer', 'tempo_maker', 'amplifier', 'skeleflying', 'evil_doctor', 'boom_arang', 'upiedown', 'chickpig', 'jetpack', 'fastpass', 'freestyle', 'drainbow', 'draflygon', 'homer', 'predator', 'ice_cream', 'swimmer', 'boomer', 'blade_vane', 'daggershard', 'cluster', 'witch', 'trampaheal', 'upgradart']) {
+// Mythic (12)
+for (const b of ['dashaholic', 'classy', 'steamer', 'tempo_maker', 'amplifier', 'skeleflying', 'evil_doctor', 'boom_arang', 'upiedown', 'chickpig', 'jetpack', 'freestyle']) {
     assert.match(game, new RegExp(`${b}:\\s*'Mythic'`), `${b} is Mythic`);
 }
 
-// Exotic (9)
+// Exotic (10)
 for (const b of ['copyphase', 'snapper', 'portalo', 'ghoul', 'jacktrade', 'mageny', 'cinderion', 'cursed', 'anti_royal']) {
     assert.match(game, new RegExp(`${b}:\\s*'Exotic'`), `${b} is Exotic`);
 }
@@ -41,8 +41,8 @@ for (const b of ['decayer', 'hyperorigin', 'overlord', 'beast', 'hope', 'screene
     assert.match(game, new RegExp(`${b}:\\s*'Unique'`), `${b} is Unique`);
 }
 
-// Anomaly (3)
-for (const b of ['crystila', 'darkener', 'awakenator']) {
+// Anomaly (4)
+for (const b of ['crystila', 'darkener', 'awakenator', 'carmela_fudge']) {
     assert.match(game, new RegExp(`${b}:\\s*'Anomaly'`), `${b} is Anomaly`);
 }
 

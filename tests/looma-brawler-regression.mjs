@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 const source=fs.readFileSync('game.js','utf8');
 for(const token of [
-  "'looma': {", "'badbat', 'looma'", "looma: 'Mythic'", "looma:'Controller'",
+  "'looma': {", "'badbat', 'looma'", "looma: 'Epic'", "looma:'Controller'",
   'function fireLoomaNeedle', 'function placeLoomaAnchor', 'function castLoomaSuper',
   'function executeLoomaG1', 'function updateLoomaEffects', 'function renderLoomaEffects',
   "combatBrawler === 'looma'", "botCombatBrawler === 'looma'", "curBrawler === 'looma'",

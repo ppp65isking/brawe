@@ -7,7 +7,7 @@ const mythicRoster = fs.readFileSync(new URL('../modules/brawlers/mythic/roster.
 // 1. Roster and Module Registration
 assert.ok(mythicRoster.includes("'weefee'"), 'Wee-Fee is registered in modules/brawlers/mythic/roster.js');
 assert.ok(game.includes("'weefee'"), 'Wee-Fee is registered in allBrawlers in game.js');
-assert.match(game, /weefee:\s*'Mythic'/, 'Wee-Fee is assigned Mythic rarity');
+assert.match(game, /weefee:\s*'Rare'/, 'Wee-Fee is assigned Rare rarity');
 assert.match(game, /weefee:\s*'Controller'/, 'Wee-Fee is categorized as Controller');
 
 // 2. Base Stats and Scaling
