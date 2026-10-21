@@ -18016,6 +18016,56 @@ let heistFeverActive = false;
         }
     }
 
+    function renderFeathersFogAndTelegraph() {
+        const now = performance.now();
+        for (const s of feathersStorms) {
+            ctx.save();
+            ctx.translate(s.x, s.y);
+            const grad = ctx.createRadialGradient(0, 0, s.radius * 0.1, 0, 0, s.radius);
+            grad.addColorStop(0, 'rgba(198,216,230,0.55)');
+            grad.addColorStop(0.7, 'rgba(178,198,214,0.48)');
+            grad.addColorStop(1, 'rgba(178,198,214,0.02)');
+            ctx.fillStyle = grad;
+            ctx.beginPath(); ctx.arc(0, 0, s.radius, 0, Math.PI * 2); ctx.fill();
+            ctx.globalAlpha = 0.35;
+            ctx.strokeStyle = s.hyper ? '#d78bff' : '#eef8ff';
+            ctx.lineWidth = 5;
+            for (let i = 0; i < 3; i++) {
+                ctx.beginPath();
+                ctx.arc(0, 0, s.radius * (0.35 + i * 0.2), -now / 500 + i * 2.2 + s.seed, -now / 500 + i * 2.2 + s.seed + 2.4);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+        if (selectedBrawler === 'feathers' && player && player.hp > 0 && playing && !gameOver) {
+            const wm = getMouseWorld();
+            const angle = Math.atan2(wm.y - player.y, wm.x - player.x);
+            const distance = clamp(Math.hypot(wm.x - player.x, wm.y - player.y), 40, 560);
+            const tx = player.x + Math.cos(angle) * distance;
+            const ty = player.y + Math.sin(angle) * distance;
+            ctx.save();
+            ctx.setLineDash([10, 7]);
+            ctx.lineDashOffset = -now / 35;
+            ctx.strokeStyle = aimingSuper ? (isHypercharged ? '#d78bff' : '#7fe7ff') : 'rgba(127,231,255,.45)';
+            ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.moveTo(player.x, player.y); ctx.lineTo(tx, ty); ctx.stroke();
+            ctx.setLineDash([]);
+            if (aimingSuper) {
+                ctx.fillStyle = isHypercharged ? 'rgba(190,90,255,.14)' : 'rgba(127,231,255,.13)';
+                ctx.strokeStyle = isHypercharged ? '#d78bff' : '#7fe7ff';
+                ctx.lineWidth = 3;
+                ctx.beginPath(); ctx.arc(tx, ty, FEATHERS_STORM_RADIUS, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                ctx.font = '900 12px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#fff';
+                ctx.fillText(isHypercharged ? '🌩️ WINDSTORM + LIGHTNING' : '🌫️ WINDSTORM', tx, ty - FEATHERS_STORM_RADIUS - 10);
+            } else {
+                ctx.fillStyle = '#bfefff';
+                ctx.beginPath(); ctx.arc(tx, ty, 9, 0, Math.PI * 2); ctx.fill();
+            }
+            ctx.restore();
+        }
+        ctx.globalAlpha = 1;
+    }
+
     function renderTurkeyCaptureEvent() {
         if (!isTurkeyCaptureMode || !playing || !turkeyCaptureState) return;
         const state = turkeyCaptureState;
@@ -23028,7 +23078,7 @@ let heistFeverActive = false;
   function startDuelsRound() {
     outlitWallChains.length = 0;
     bullets.length = 0; ragerWarTotems.length = 0;
-    bolznstienPendingStrikes.length = 0; bolznstienShockTrails.length = 0; bolznstienChainArcs.length = 0; chocolatePuddles.length = 0; magnatarVortices.length = 0; oilMakerPuddles.length = 0; oilMakerBarrels.length = 0; oilMakerPendingPuddles.length = 0; steamerPoles.length = 0; weefeePoles.length = 0; chickpigEggZones.length = 0; rings.length = 0; cheeseFields.length = 0; healingPods.length = 0; explosions.length = 0; pendingClones.length = 0; destructibleWalls.length = 0; floatingTexts.length = 0; stickyNotes.length = 0; amplifierToolboxes.length = 0; amplifierScrewZones.length = 0; skeleParachutes.length = 0; skelePortals.length = 0; malakorHellZones.length = 0; malakorHands.length = 0; relativityZones.length = 0; packetTimeFields.length = 0; packetTelegraphs.length = 0; fastpassCheckpoints.length = 0; freestyleMicrophones.length = 0; portaloPortalPairs.length = 0; portaloPrisons.length = 0; portaloShockTimers.length = 0; ghoulHaunts.length = 0; darkenerClouds.length = 0; darkagons.length = 0; cursedStorms.length = 0; cursedHyperClouds.length = 0; antiRoyalMortarShells.length = 0; antiRoyalMortarZones.length = 0; jackTradeVolleys.length = 0; jackTradeThrownEffects.length = 0; jackTradeZones.length = 0; jackTradeEndpointShots.length = 0; badbatSwarm.length = 0; badbatShieldOrbs.length = 0; loomaThreads.length = 0; loomaWeaves.length = 0;
+    bolznstienPendingStrikes.length = 0; bolznstienShockTrails.length = 0; bolznstienChainArcs.length = 0; chocolatePuddles.length = 0; magnatarVortices.length = 0; oilMakerPuddles.length = 0; oilMakerBarrels.length = 0; oilMakerPendingPuddles.length = 0; steamerPoles.length = 0; weefeePoles.length = 0; chickpigEggZones.length = 0; rings.length = 0; cheeseFields.length = 0; healingPods.length = 0; explosions.length = 0; pendingClones.length = 0; destructibleWalls.length = 0; floatingTexts.length = 0; stickyNotes.length = 0; amplifierToolboxes.length = 0; amplifierScrewZones.length = 0; skeleParachutes.length = 0; skelePortals.length = 0; malakorHellZones.length = 0; malakorHands.length = 0; relativityZones.length = 0; packetTimeFields.length = 0; packetTelegraphs.length = 0; fastpassCheckpoints.length = 0; freestyleMicrophones.length = 0; portaloPortalPairs.length = 0; portaloPrisons.length = 0; portaloShockTimers.length = 0; ghoulHaunts.length = 0; darkenerClouds.length = 0; darkagons.length = 0; cursedStorms.length = 0; cursedHyperClouds.length = 0; antiRoyalMortarShells.length = 0; antiRoyalMortarZones.length = 0; jackTradeVolleys.length = 0; jackTradeThrownEffects.length = 0; jackTradeZones.length = 0; jackTradeEndpointShots.length = 0; badbatSwarm.length = 0; badbatShieldOrbs.length = 0; loomaThreads.length = 0; loomaWeaves.length = 0; feathersWindZones.length = 0; feathersStorms.length = 0;
     snapperWaves.length = 0;
     rocketeerFireZones.length = 0;
     minigunninMutationFireZones.length = 0;
@@ -36667,11 +36717,12 @@ let heistFeverActive = false;
   function getHomePermanentModeIds(now = Date.now()) {
       return [...new Set([...HOME_PERMANENT_MODE_IDS, ...(isTurkeyTroubleSeasonActive(now) ? ['capture_turkey'] : []), ...(TOWER_EVENT_MODES_ENABLED&&isTowerDuelsWeekendActive(now) ? ['tower_duels_weekend'] : []), ...(isWeeklyTowerFeatureActive(now) ? WEEKLY_FEATURED_MODE_IDS : []), ...(TOWER_POWER_SYSTEM_ENABLED&&isTowerPowerVaultWeekendActive(now) ? ['brick_vault'] : [])])].filter(id=>!isRetiredTowerMode(id));
   }
+  const EVENT_CYCLE_BOSS_MODES = ['blink_eye_dodge', 'headless_boss_s4', 'orbo_boss', 'ramage_boss', 'weefee_boss', 'demon_villains_boss'];
   function getHomeEventCyclePool(now = Date.now()) {
       const ids = [...HOME_PERMANENT_MODE_IDS, ...HOME_ROTATING_MODE_IDS, 'slop_sushi_plus',
           ...(isTurkeyTroubleSeasonActive(now) ? ['capture_turkey'] : []),
           ...(TOWER_EVENT_MODES_ENABLED && isTowerDuelsWeekendActive(now) ? ['tower_duels_weekend'] : [])];
-      return [...new Set(ids)].filter((id) => HOME_MODE_DATA[id] && !isRetiredTowerMode(id) && (id !== 'slop_sushi_plus' || isSlopSushiLive()));
+      return [...new Set(ids)].filter((id) => HOME_MODE_DATA[id] && !isRetiredTowerMode(id) && !EVENT_CYCLE_BOSS_MODES.includes(id) && (id !== 'slop_sushi_plus' || isSlopSushiLive()));
   }
   function getHomeRotatingModeIds(now = Date.now()) {
       return HOME_ROTATING_MODE_IDS.filter(id => !isRetiredTowerMode(id) && (!isWeeklyTowerFeatureActive(now) || !WEEKLY_FEATURED_MODE_IDS.includes(id)));
@@ -39733,7 +39784,12 @@ let heistFeverActive = false;
             { id: 'solo', name: '⚔️ Solo Showdown' },
             { id: 'marked_mayhem', name: '🎯 Target Rush' },
             { id: 'damage_filler', name: '💥 Damage Filler' },
-            { id: 'mirror', name: '🪞 Mirror 5v5' }
+            { id: 'mirror', name: '🪞 Mirror 5v5' },
+            { id: 'orbo_boss', name: '🪐 Boss Battle: Orbo' },
+            { id: 'ramage_boss', name: '🥊 Boss Battle: Ramage' },
+            { id: 'weefee_boss', name: '📶 Boss Battle: Mega WeeFee' },
+            { id: 'blink_eye_dodge', name: '👁️ Boss Battle: BlinkEye' },
+            { id: 'demon_villains_boss', name: '😈 Boss Battle: Possessed Villains' }
         ];
 
         let selectedMode = 'brawe_ball';
@@ -47344,9 +47400,9 @@ function checkHit(target, b, i){
     const aliveBotsInUpdate = bots.filter(t => t.hp > 0);
     const aliveBots = aliveBotsInUpdate;
 
+    if (playing && !gameOver) updateFeathersSystems(dt);
     if (isTurkeyCaptureMode && !isBossFight && !isSoloTrial && !isDuels && !gameOver) {
         updateTurkeyCapture(dt);
-        updateFeathersSystems(dt);
     }
     if (isObjectiveMode && !isTurkeyCaptureMode && !isBossFight && !isSoloTrial && !isDuels && !gameOver) {
         objectiveTimer += dt;
@@ -56753,6 +56809,35 @@ function checkHit(target, b, i){
                     const grad=ctx.createLinearGradient(0,y+size*.75,0,y+size+flame);grad.addColorStop(0,'#fff7a3');grad.addColorStop(.35,'#ff9c38');grad.addColorStop(1,entity.jetpackFlight?.hyper?'rgba(205,70,255,0)':'rgba(51,202,255,0)');
                     ctx.fillStyle=grad;
                     for(const fx of [x-2,x+size+2]){ctx.beginPath();ctx.moveTo(fx-4,y+size*.68);ctx.quadraticCurveTo(fx-7,y+size+flame*.45,fx,y+size+flame);ctx.quadraticCurveTo(fx+7,y+size+flame*.45,fx+4,y+size*.68);ctx.fill();}
+                }
+                ctx.restore();
+            }
+            if (brawlerId === 'feathers') {
+                const t = performance.now();
+                const hyperE = !!entity.isHypercharged || (isPlayer && !!isHypercharged);
+                ctx.save();
+                ctx.shadowColor = hyperE ? '#d78bff' : '#7fe7ff';
+                ctx.shadowBlur = 10;
+                // Feather crest: three plumes fanning above the portrait
+                ctx.fillStyle = hyperE ? '#e9b8ff' : '#d8f7ff';
+                for (let i = -1; i <= 1; i++) {
+                    ctx.save();
+                    ctx.translate(entity.x + i * size * 0.2, drawY - size * 0.52);
+                    ctx.rotate(i * 0.5 + Math.sin(t / 300 + i) * 0.06);
+                    ctx.beginPath();
+                    ctx.moveTo(0, 4);
+                    ctx.quadraticCurveTo(-size * 0.11, -size * 0.16, 0, -size * 0.34);
+                    ctx.quadraticCurveTo(size * 0.11, -size * 0.16, 0, 4);
+                    ctx.fill();
+                    ctx.restore();
+                }
+                // Wing swooshes at the sides
+                ctx.strokeStyle = hyperE ? '#d78bff' : '#7fe7ff';
+                ctx.lineWidth = 2.5;
+                for (const side of [-1, 1]) {
+                    ctx.beginPath();
+                    ctx.arc(entity.x + side * size * 0.52, drawY + Math.sin(t / 260) * 2, size * 0.2, side < 0 ? Math.PI * 0.7 : Math.PI * 1.55, side < 0 ? Math.PI * 1.45 : Math.PI * 0.3, side > 0);
+                    ctx.stroke();
                 }
                 ctx.restore();
             }
@@ -67320,6 +67405,31 @@ function checkHit(target, b, i){
           ctx.restore();
           continue;
       }
+      else if (b.ownerBrawler === 'feathers' && b.isFeatherShot) {
+          ctx.save();
+          ctx.translate(b.x, b.y);
+          const fang = Math.atan2(b.vy, b.vx);
+          ctx.rotate(fang + Math.sin(b.life * 22) * 0.35);
+          ctx.shadowColor = b.hyperVisual ? '#d78bff' : '#7fe7ff';
+          ctx.shadowBlur = b.hyperVisual ? 16 : 10;
+          // Feather blade: two curved vanes around a shaft
+          ctx.fillStyle = b.hyperVisual ? '#e9b8ff' : '#eafcff';
+          ctx.beginPath();
+          ctx.moveTo(-13, 0);
+          ctx.quadraticCurveTo(-2, -8.5, 14, -1.5);
+          ctx.quadraticCurveTo(2, 2.5, -13, 0);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.moveTo(-13, 0);
+          ctx.quadraticCurveTo(-2, 8.5, 14, 1.5);
+          ctx.quadraticCurveTo(2, -2.5, -13, 0);
+          ctx.fill();
+          ctx.strokeStyle = b.hyperVisual ? '#b45cff' : '#39c2e8';
+          ctx.lineWidth = 1.8;
+          ctx.beginPath(); ctx.moveTo(-14, 0); ctx.lineTo(15, 0); ctx.stroke();
+          ctx.restore();
+          continue;
+      }
       else if (b.ownerBrawler === 'ramage' && b.isRamageFist) {
           ctx.save();
           ctx.translate(b.x, b.y);
@@ -68284,6 +68394,7 @@ function checkHit(target, b, i){
 
     renderBadBatSwarm(ctx);
     renderLoomaEffects(ctx);
+    renderFeathersFogAndTelegraph();
 
     // Modern structural walls. These replace the old flat OG rectangles visually.
     for(const c of cubes){
