@@ -3,9 +3,9 @@ import fs from 'node:fs';
 
 const game = fs.readFileSync(new URL('../game.js', import.meta.url), 'utf8');
 
-assert.match(game, /const GADGET_COST = 650;/, 'Tools cost 650 coins');
-assert.match(game, /const STAR_POWER_COST = 900;/, 'Talents cost 900 coins');
-assert.match(game, /const HYPERCHARGE_BASE_COST = 1500;/, 'Core Surge base price is 1500 coins');
+assert.match(game, /const GADGET_COST = 800;/, 'Tools cost 800 coins (Power 12 ladder)');
+assert.match(game, /const STAR_POWER_COST = 950;/, 'Talents cost 950 coins (Power 12 ladder)');
+assert.match(game, /const HYPERCHARGE_BASE_COST = 1200;/, 'Core Surge base price is 1200 coins (Power 12 ladder)');
 assert.match(game, /const TRINKET_COST = 350;/, 'Trinkets cost 350 coins');
 
 assert.match(game, /HYPERCHARGE_DISCOUNT_STEPS = Object\.freeze\(\[5, 10, 15, 20\]\)/, 'Permanent Core Surge discounts are limited to 5-20%');
