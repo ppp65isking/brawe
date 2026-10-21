@@ -29712,7 +29712,7 @@ let heistFeverActive = false;
               });
           } else {
               // REWORK: Triple Whack - every ammo unloads 3 rapid whacks (Edgar-style).
-              const whackDmg = isBot ? 580 : 1050;
+              const whackDmg = isBot ? 330 : 600;
               const spawnWhack = () => {
                   if (!fromEntity || fromEntity.hp <= 0) return;
                   bullets.push({
