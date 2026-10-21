@@ -3,7 +3,7 @@ import fs from 'node:fs';
 
 const game = fs.readFileSync(new URL('../game.js', import.meta.url), 'utf8');
 
-assert.match(game, /function activateRamageAdrenaline[\s\S]{0,500}ramageMultiplier = Math\.round\(\(\(entity\.ramageMultiplier \|\| 1\) \+ 3\) \* 10\) \/ 10[\s\S]{0,250}doHeal\(entity, 1500\)/, 'Gadget 1 adds three multiplier stages without multiplier cap and heals');
+assert.match(game, /function activateRamageAdrenaline[\s\S]{0,500}ramageMultiplier = Math\.min\(RAMAGE_MAX_MULTIPLIER, Math\.round\(\(\(entity\.ramageMultiplier \|\| 1\) \+ 3\) \* 10\) \/ 10\)[\s\S]{0,250}doHeal\(entity, 1500\)/, 'Gadget 1 adds three multiplier stages up to the 12x cap and heals');
 assert.match(game, /curBrawler === 'ramage' && curGadget === 'g1'[\s\S]{0,400}gadgetCooldownUntil/, 'player Gadget 1 is routed through the gadget button and cooldown');
 assert.match(game, /curBrawler === 'ramage' && curGadget === 'g2'[\s\S]{0,220}ramageG2Armed = true/, 'player Gadget 2 arms the next Super');
 assert.match(game, /const hasG2 = !!owner\.ramageG2Armed[\s\S]{0,120}owner\.ramageG2Armed = false/, 'Super consumes the armed Rebound Magnet exactly once');

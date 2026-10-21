@@ -8383,7 +8383,7 @@ const bolznstienPendingStrikes = [];
       'outlit': { name: 'Outlit', role: 'Close-range', desc: 'Shotgun blast with strong point-blank damage.', color: '#ff9b42', attack: 'Scatter Pump', attackDesc: 'A compact shotgun blast with a tight spread and strong point-blank damage.', super: 'Boom Break', superDesc: 'Fires 3 oversized shock pellets that smoothly knock enemies back. Hitting metal arcs through up to 5 walls for 90%, 80%, 70%, 60%, then 50% damage.', hyper: 'Boom Break pierces enemies; Scatter Pump becomes tighter and faster.', g1: 'Next Shot Pierce', g2: 'Healing Pod', sp1: 'Shell Chill (Slows)', sp2: 'Long Boom (+35% Super Range)' },
       'echo': { name: 'Echo', role: 'Controller', desc: 'Fires expanding sound rings that control the battlefield.', color: '#ccaaff', attack: 'Sound Wave', attackDesc: 'Shoots a ring that grows in size as it travels.', super: 'Resonance', superDesc: 'Unleashes massive sound waves that pierce through enemies.', hyper: 'Super sound rings expand twice for double hits.', g1: 'Amplify (Bigger ring, less dmg)', g2: 'Shielding (Take reduced damage)', sp1: 'Reverb Heal (Heal 334 HP on hit)', sp2: 'Double Wave (Super shoots backwards too)' },
       'cheseypuff': { name: 'Cheseypuff', role: 'Marksman', desc: 'Long-range sniper that evolves projectiles.', color: '#ffdc78', attack: 'Cheese Ball', attackDesc: 'Fires a multi-stage projectile with 35% more range and 30% larger stages.', super: 'Cheese Aura', superDesc: 'Gains 30% damage reduction and damages nearby enemies over time.', hyper: 'Extra Aged: Cheese Ball no longer shrinks and its final stage bursts for 650 damage. Super lasts longer with 50% damage reduction and a trailing aura.', g1: 'Big Puff (Empowered shot)', g2: 'Cheese Trap (Slow field)', sp1: 'Sticky Cheese (Super drops fields)', sp2: 'Aged Cheese (Third attack stage)' },
-      'decayer': { name: 'Decayer', role: 'Controller', desc: 'Build…2803 tokens truncated…esperation Bounce (Extra shiny ball when low HP)', sp2: 'Momentum (Bullets 10% faster after bounce)' },
+      'decayer': { name: 'Decayer', role: 'Controller', desc: 'Builds a personal shield with every Decay Shot hit, then surrounds himself with a Dark Orbit of shield shots.', color: '#9dff57', attack: 'Decay Shot', attackDesc: 'Fires a piercing shot that builds Decayer a shield on hit.', super: 'Dark Orbit', superDesc: 'For a short duration, Decayer also fires a ring of orbiting shield shots around his aim direction.', hyper: 'Main attack homes in on enemies. Super orbit shots home in too.', g1: 'Homing Shot (Next Decay Shot homes in and slows)', g2: 'Sacrifice (Trade shield for an 80% damage reduction shield until hit)', sp1: 'Shield Max (Decayer shield max increases by 2500)', sp2: 'Decay Stacks (Decay Shot stacks 5% damage reduction per hit, up to 25%, for 7 seconds)' },
       'goonbob': { name: 'Blobert', role: 'Controller', desc: 'A messy brawler who coats the battlefield in gooey liquid, then scoops it up into a pressurized jar blast.', color: '#adff2f', attack: 'Gooey Splatter', attackDesc: 'Shoots a blob of goo. On enemy or wall hit, it creates a lingering puddle. Walk over your puddles to store liquid for Super.', super: 'Blobert in a Jar!', superDesc: 'Fires a liquid jar powered by your stored puddles. More stored liquid means a stronger, larger jar shot that slows and burns on hit.', hyper: 'Main attack fires twice as many splatters. Super blast gets larger and stronger.', g1: 'Sticky Feet: Next splatter roots enemies for 1s.', g2: 'Overflow: Instantly creates 3 puddles around Blobert.', sp1: 'Industrial Grade: Puddles last 2 seconds longer.', sp2: 'Recycling: Casting Super heals Blobert based on stored liquid.' },
     'tempo_maker': { name: 'Tempo Maker', role: 'Assassin', desc: 'Two-note duelist that detonates at range, then boomerangs back to punish anyone in the return lane.', color: '#ff5f7a', attack: 'Twin Cadence', attackDesc: 'Shoots 2 notes that explode at the end of their path. Enemies caught near the center take extra damage. After exploding, the notes return to you and stun anything they pass through on the way back.', super: 'Drop the Beat', superDesc: 'Jump to a targeted spot and land with a 3-layer blast. The closer enemies are to the center, the more damage they take. Hypercharge adds a pull-in and stun on landing.', hyper: 'Endless Encore: Returning notes pass through Tempo Maker and continue behind for 45% damage while retaining their stun. Super pulls and stuns on landing.', g1: 'Snap Back (Instantly return notes early)', g2: 'Bass Drop (Super leaves a slowing zone)', sp1: 'Middle Ring (Inner blast ring deals more damage)', sp2: 'Return Pulse (Return stun lasts longer)' },
         // Overlord metadata and runtime tuning values
@@ -28364,7 +28364,7 @@ let heistFeverActive = false;
 
         // Main Attack: Heavy Battering Fist (1 giant heavy fist projectile matching full attack range)
         // In Hypercharge: 2.5x range and a 5.0x minimum ramp.
-        const effectiveMultiplier = hyper ? Math.max(RAMAGE_HYPER_BASE_MULTIPLIER, fromEntity.ramageMultiplier || 1.0) : (fromEntity.ramageMultiplier || 1.0);
+        const effectiveMultiplier = Math.min(RAMAGE_MAX_MULTIPLIER, hyper ? Math.max(RAMAGE_HYPER_BASE_MULTIPLIER, fromEntity.ramageMultiplier || 1.0) : (fromEntity.ramageMultiplier || 1.0));
         let fistRange = hyper ? 325 : 130;
         if (isPowerPlayModifierActive(fromEntity) && (fromEntity.brawler === 'ramage' || fromEntity.id === player.id)) {
             const multSteps = Math.max(0, ((fromEntity.ramageMultiplier || 1.0) - 1.0) / 0.5);
@@ -28768,8 +28768,8 @@ let heistFeverActive = false;
             shieldGain: baseShieldGain,
             shieldCap: decayerShieldCap,
             hitboxMod: decayerHitbox,
-            homing: homingArmed,
-            homingRadius: homingArmed ? 300 : 0,
+            homing: homingArmed || decayerHyper,
+            homingRadius: homingArmed ? 300 : (decayerHyper ? 300 : 0),
             decayerAttachSlow: homingArmed && hasEntityAttachie(fromEntity, 'gadget', 'g1'),
             decayerReductionStack: starLong && hasEntityAttachie(fromEntity, 'star', 'long')
         });
@@ -28806,6 +28806,7 @@ let heistFeverActive = false;
                     pierce: false,
                     hyperVisual: true,
                     ownerId: fromEntity.id,
+                    homing: true,
                     homingRadius: 220
                 });
             }
@@ -29370,8 +29371,8 @@ let heistFeverActive = false;
             const volleyId = registerScubaDiverSubVolley(fromEntity.id, 4);
             const bubbleCount = 4;
             const coneHalfAngle = 0.2;
-            const volleyDelayMs = 18;
-            const subBubbleSpeed = 880 * 0.6 * 0.7; // -30% projectile speed
+            const volleyDelayMs = 22.5; // +25% delay between volley bubbles
+            const subBubbleSpeed = 880 * 0.6 * 0.875; // +25% projectile speed vs the old 0.7 factor
             const subBubbleHitbox = 1.2 * 1.2; // +20% bubble size
             const closeDamage = isBot ? 310 : 520;
             const farDamage = isBot ? 190 : 320;
@@ -31267,7 +31268,7 @@ let heistFeverActive = false;
 
     const RAMAGE_BASE_DAMAGE = 320;
     const RAMAGE_RAMP_PER_HIT = 0.5;
-    const RAMAGE_MAX_MULTIPLIER = Infinity;
+    const RAMAGE_MAX_MULTIPLIER = 12;
     const RAMAGE_HYPER_BASE_MULTIPLIER = 5;
     const RAMAGE_RETURN_INTERVAL_MS = 120;
     const RAMAGE_RETURN_DAMAGE = 240;
@@ -31275,11 +31276,11 @@ let heistFeverActive = false;
     const RAMAGE_LIFESTEAL_PER_HIT = 300;
     const RAMAGE_LIFESTEAL_CAP = 2400;
     function getRamagePunchDamage(multiplier=1, levelScale=1, hyper=false) {
-        const ramp = Math.max(hyper ? RAMAGE_HYPER_BASE_MULTIPLIER : 1, Number(multiplier) || 1);
+        const ramp = Math.min(RAMAGE_MAX_MULTIPLIER, Math.max(hyper ? RAMAGE_HYPER_BASE_MULTIPLIER : 1, Number(multiplier) || 1));
         return Math.round(RAMAGE_BASE_DAMAGE * ramp * Math.max(0, Number(levelScale) || 0));
     }
     function getNextRamageMultiplier(multiplier=1) {
-        return Math.round(((Number(multiplier) || 1) + RAMAGE_RAMP_PER_HIT) * 10) / 10;
+        return Math.min(RAMAGE_MAX_MULTIPLIER, Math.round(((Number(multiplier) || 1) + RAMAGE_RAMP_PER_HIT) * 10) / 10);
     }
     function getRamageLifestealAmount(entity) {
         const healed = Math.max(0, Number(entity?.ramageLifestealHealed) || 0);
@@ -31312,7 +31313,7 @@ let heistFeverActive = false;
     function activateRamageAdrenaline(entity) {
         if (!entity || entity.hp <= 0) return false;
         ensureRamageState(entity);
-        entity.ramageMultiplier = Math.round(((entity.ramageMultiplier || 1) + 3) * 10) / 10;
+        entity.ramageMultiplier = Math.min(RAMAGE_MAX_MULTIPLIER, Math.round(((entity.ramageMultiplier || 1) + 3) * 10) / 10);
         doHeal(entity, 1500);
         spawnFloatingText(entity.x, entity.y - 36, `ADRENALINE x${entity.ramageMultiplier.toFixed(1)}  +1500 HP`, '#f39c12');
         explosions.push({ x:entity.x, y:entity.y, radius:75, life:0, maxLife:.28, color:'rgba(243,156,18,.85)' });
@@ -39867,7 +39868,7 @@ let heistFeverActive = false;
                   orbo: '+10 WIDE ORBS • BOUNCING SUPER • AUTO CHARGE',
                   decayer: '4x MOVE SHIELD (+200 HP) • +150% SHIELD CAP • 3x ATTACK SIZE',
                   money_and_tax: '+4 TILES RANGE • DUAL COMBO SUPER (+8 PROJ) • +4 SIDE COINS',
-                  ramage: '+10% RANGE/RAMP (UNCAPPED) • 90% DASH DR • +100% SUPER SHOTS'
+                  ramage: '+10% RANGE/RAMP (MAX 12X) • 90% DASH DR • +100% SUPER SHOTS'
               };
               if (powerNames[selectedBrawler]) {
                   setTimeout(() => spawnFloatingText(player.x, player.y - 45, powerNames[selectedBrawler], '#38e8ff'), 350);
@@ -75967,7 +75968,7 @@ function updateRamageBoss(dt) {
                 if (selectedBrawler === 'ramage' || b.isRamageFist || b.ownerBrawler === 'ramage') {
                     if (typeof ensureRamageState === 'function') ensureRamageState(player);
                     const oldMult = player.ramageMultiplier || 1.0;
-                    const nextMult = Math.min(10.0, Math.round((oldMult + 0.5) * 10) / 10);
+                    const nextMult = Math.min(RAMAGE_MAX_MULTIPLIER, Math.round((oldMult + 0.5) * 10) / 10);
                     player.ramageMultiplier = nextMult;
                     s.floatingTexts.push({
                         x: player.x,
@@ -76039,7 +76040,7 @@ function updateRamageBoss(dt) {
                 s.totalDamageDealt += dmg;
 
                 // RAMP PLAYER MULTIPLIER ON DASH HIT
-                player.ramageMultiplier = Math.min(10.0, Math.round(((player.ramageMultiplier || 1.0) + 0.5) * 10) / 10);
+                player.ramageMultiplier = Math.min(RAMAGE_MAX_MULTIPLIER, Math.round(((player.ramageMultiplier || 1.0) + 0.5) * 10) / 10);
                 s.floatingTexts.push({
                     x: player.x,
                     y: player.y - 45,
