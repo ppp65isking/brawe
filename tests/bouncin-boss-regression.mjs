@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 const game=fs.readFileSync(new URL('../game.js',import.meta.url),'utf8');
 const must=(pattern,label)=>assert.match(game,pattern,label);
 
-must(/\['bouncin_boss_s3', 'BO', "Bouncin' Balls Boss"/, 'permanent event card exists');
+must(/\['headless_boss_s4', '🎃', 'Headless Bolznstien Boss'/, 'permanent event card exists (Season 4: Headless Bolznstien replaced the Bouncin boss event)');
 must(/function openBouncinBossEvent\(\)/, 'difficulty ladder exists');
 must(/function initBouncinBossMatch\(\)/, '3v1 match initializer exists');
 must(/for\(let i=0;i<2;i\+\+\)bots\.push\(createBouncinBossAlly\(i\)\)/, 'two allied bots are spawned');
