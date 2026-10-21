@@ -6186,6 +6186,9 @@ const bolznstienPendingStrikes = [];
 
     function getActiveSkinForBrawler(brawlerId) {
         if (!brawlerId) return null;
+        if (typeof isTraining !== 'undefined' && isTraining && typeof activeSkinTrial !== 'undefined' && activeSkinTrial && activeSkinTrial.brawler === brawlerId && typeof skinsDatabase !== 'undefined' && skinsDatabase[activeSkinTrial.skinId]) {
+            return skinsDatabase[activeSkinTrial.skinId];
+        }
         if (typeof playerData === 'undefined' || !playerData) return null;
         const skinId = (playerData.selectedSkins && playerData.selectedSkins[brawlerId]) ||
                        (playerData.activeSkins && playerData.activeSkins[brawlerId]) ||
@@ -6363,6 +6366,10 @@ const bolznstienPendingStrikes = [];
 
       const SEASON_PASS_SCHEMA_VERSION = 6;
       const SEASON_PASS_ID = 'arenaween-arena-forge-2026-s4';
+      const ARENAWEEN_SEASON_END_UTC = Date.UTC(2026, 10, 1, 0, 0, 0); // Arenaaween runs through Oct 31, 2026
+      const TURKEY_TROUBLE_SEASON_ID = 'turkey-trouble-arena-forge-2026-s5';
+      const TURKEY_TROUBLE_START_UTC = Date.UTC(2026, 10, 1, 0, 0, 0); // Season 5 starts Nov 1, 2026
+      const TURKEY_TROUBLE_END_UTC = Date.UTC(2026, 11, 1, 0, 0, 0); // Season 5 runs through Nov 30, 2026
       const SEASON_PASS_MAX_LEVEL = 25;
       const SEASON_PASS_XP_PER_LEVEL = 100;
       const SEASON_2_ARCHIVE_TIERS = [
@@ -6392,7 +6399,7 @@ const bolznstienPendingStrikes = [];
           { tier: 24, title: 'Tower Drop Storm', free: { type: 'towerDrop', amount: 3 }, premium: { type: 'gems', amount: 15 } },
           { tier: 25, title: 'Tower Conqueror', free: { type: 'coins', amount: 2000 }, premium: { type: 'towerDrop', amount: 5 } }
       ];
-      const SEASON_PASS_TIERS = [
+      const ARENAWEEN_PASS_TIERS = [
           {tier:1,title:'First Fright',free:{type:'coins',amount:250},premium:{type:'souls',amount:30}},
           {tier:2,title:'Candy Stash',free:{type:'souls',amount:25},premium:{type:'gems',amount:4}},
           {tier:3,title:'Spooky Box I',free:{type:'spookyBox',amount:1},premium:{type:'coins',amount:450}},
@@ -6462,7 +6469,7 @@ const bolznstienPendingStrikes = [];
           { id: 'season_24', stage: 24, kind: 'perform_supers', title: 'Power Hurricane', desc: 'Use 60 Power Moves.', target: 60, rewards: { gems: 15 }, xpReward: 100 },
           { id: 'season_25', stage: 25, kind: 'deal_damage', title: 'Godlike Force', desc: 'Deal 8,000,000 damage.', target: 8000000, rewards: { coins: 3000, souls: 300, hyperTappers: 2 }, xpReward: 100 }
       ];
-      const SEASON_QUEST_DEFS = [
+      const ARENAWEEN_QUEST_DEFS = [
           {id:'arenaween_01',stage:1,kind:'play_match',title:'Trick or Treat',desc:'Play 3 matches.',target:3,rewards:{coins:250,souls:15},xpReward:100},
           {id:'arenaween_02',stage:2,kind:'defeat_enemies',title:'Monster Mash',desc:'Defeat 25 enemies.',target:25,rewards:{souls:30},xpReward:100},
           {id:'arenaween_03',stage:3,kind:'win_match',title:'Soul Starter',desc:'Win 2 battles.',target:2,rewards:{coins:350},xpReward:100},
@@ -6484,10 +6491,69 @@ const bolznstienPendingStrikes = [];
           {id:'arenaween_19',stage:19,kind:'boss_impossible_2',title:'Impossible Pumpkin',desc:'Clear Impossible II in the Headless Bolznstien Boss Fight.',target:1,rewards:{spookyBoxes:2},xpReward:100},
           {id:'arenaween_20',stage:20,kind:'win_match',title:'ARENAAWEEN MASTER',desc:'Win 20 battles this season.',target:20,rewards:{coins:1500,spookyBoxes:2,hyperTappers:1},xpReward:100}
       ];
-      const SEASON_QUEST_STAGE_COUNT = SEASON_QUEST_DEFS.length;
+      const TURKEY_TROUBLE_PASS_TIERS = [
+          {tier:1,title:'First Helping',free:{type:'coins',amount:250},premium:{type:'souls',amount:30}},
+          {tier:2,title:'Gravy Train',free:{type:'souls',amount:25},premium:{type:'gems',amount:4}},
+          {tier:3,title:'Harvest Stash',free:{type:'tapper',amount:1},premium:{type:'coins',amount:450}},
+          {tier:4,title:'Turkey Trot',free:{type:'coins',amount:400},premium:{type:'superTapper',amount:1}},
+          {tier:5,title:'Cranberry Cache',free:{type:'gems',amount:3},premium:{type:'souls',amount:60}},
+          {tier:6,title:'Second Helping',free:{type:'coins',amount:450},premium:{type:'tapper',amount:1}},
+          {tier:7,title:'Stuffing Surge',free:{type:'souls',amount:50},premium:{type:'coins',amount:600}},
+          {tier:8,title:'Pumpkin Pie',free:{type:'tapper',amount:1},premium:{type:'souls',amount:60}},
+          {tier:9,title:'Cornucopia',free:{type:'superTapper',amount:1},premium:{type:'gems',amount:7}},
+          {tier:10,title:'Family Feast',free:{type:'coins',amount:600},premium:{type:'superTapper',amount:1}},
+          {tier:11,title:'Harvest Credits',free:{type:'coins',amount:550},premium:{type:'tapper',amount:1}},
+          {tier:12,title:'Turkey Mash',free:{type:'souls',amount:70},premium:{type:'coins',amount:850}},
+          {tier:13,title:'Feast Fortune',free:{type:'gems',amount:5},premium:{type:'tapper',amount:1}},
+          {tier:14,title:'Hyper Harvest',free:{type:'coins',amount:750},premium:{type:'hyperTapper',amount:1}},
+          {tier:15,title:'Turkey Box III',free:{type:'tapper',amount:1},premium:{type:'coins',amount:1100}},
+          {tier:16,title:'Full Table Funds',free:{type:'souls',amount:85},premium:{type:'gems',amount:9}},
+          {tier:17,title:'Soul Feast',free:{type:'coins',amount:900},premium:{type:'tapper',amount:1}},
+          {tier:18,title:'Double Helping',free:{type:'superTapper',amount:1},premium:{type:'tapper',amount:2}},
+          {tier:19,title:'Feast Treasury',free:{type:'souls',amount:110},premium:{type:'coins',amount:1300}},
+          {tier:20,title:'Turkey Trouble Night',free:{type:'gems',amount:7},premium:{type:'tapper',amount:2}},
+          {tier:21,title:'Turkey Box IV',free:{type:'tapper',amount:1},premium:{type:'hyperTapper',amount:1}},
+          {tier:22,title:'Harvest Riches',free:{type:'coins',amount:1100},premium:{type:'gems',amount:12}},
+          {tier:23,title:'Final Feast Funds',free:{type:'souls',amount:130},premium:{type:'coins',amount:1500}},
+          {tier:24,title:'Double Trouble Tappers',free:{type:'tapper',amount:2},premium:{type:'tapper',amount:2}},
+          {tier:25,title:'GRAND FEAST',free:{type:'coins',amount:2000},premium:{type:'gems',amount:15}}
+      ];
+      const TURKEY_TROUBLE_QUEST_DEFS = [
+          {id:'turkey_01',stage:1,kind:'play_match',title:'Trick or Feast',desc:'Play 3 matches.',target:3,rewards:{coins:250,souls:15},xpReward:100},
+          {id:'turkey_02',stage:2,kind:'defeat_enemies',title:'Turkey Mash',desc:'Defeat 25 enemies.',target:25,rewards:{souls:30},xpReward:100},
+          {id:'turkey_03',stage:3,kind:'win_match',title:'Feast Starter',desc:'Win 2 battles.',target:2,rewards:{coins:350},xpReward:100},
+          {id:'turkey_04',stage:4,kind:'deal_damage',title:'Damage Dinner',desc:'Deal 50,000 damage.',target:50000,rewards:{coins:400,souls:35},xpReward:100},
+          {id:'turkey_05',stage:5,kind:'collect_cubes',title:'Cube Cornucopia',desc:'Collect 25 power cubes.',target:25,rewards:{gems:4},xpReward:100},
+          {id:'turkey_06',stage:6,kind:'capture_turkey_matches',title:'First Turkey Run',desc:'Play Capture the Turkey.',target:1,rewards:{coins:400},xpReward:100},
+          {id:'turkey_07',stage:7,kind:'perform_supers',title:'Power Gravy',desc:'Activate 15 Power Moves.',target:15,rewards:{souls:50,superTappers:1},xpReward:100},
+          {id:'turkey_08',stage:8,kind:'deal_damage',title:'Harvest Grind',desc:'Deal 150,000 damage.',target:150000,rewards:{coins:650},xpReward:100},
+          {id:'turkey_09',stage:9,kind:'different_fighters',title:'Feast Squad',desc:'Finish battles with 6 different Fighters.',target:6,rewards:{souls:65},xpReward:100},
+          {id:'turkey_10',stage:10,kind:'capture_turkey_captures',title:'Bring Home the Bird',desc:'Capture the turkey once in Capture the Turkey.',target:1,rewards:{coins:600},xpReward:100},
+          {id:'turkey_11',stage:11,kind:'win_match',title:'Halfway Feast',desc:'Win 8 battles.',target:8,rewards:{coins:500,tappers:1},xpReward:100},
+          {id:'turkey_12',stage:12,kind:'defeat_enemies',title:'Turkey Reaper',desc:'Defeat 75 enemies.',target:75,rewards:{superTappers:1,souls:80},xpReward:100},
+          {id:'turkey_13',stage:13,kind:'boss_hard',title:'Still Headless',desc:'Clear Hard in the Headless Bolznstien Boss Fight.',target:1,rewards:{coins:800},xpReward:100},
+          {id:'turkey_14',stage:14,kind:'capture_turkey_wins',title:'Turkey Champion',desc:'Win a Capture the Turkey match.',target:1,rewards:{souls:90},xpReward:100},
+          {id:'turkey_15',stage:15,kind:'deal_damage',title:'Feast Bonanza',desc:'Deal 500,000 damage.',target:500000,rewards:{coins:900},xpReward:100},
+          {id:'turkey_16',stage:16,kind:'perform_supers',title:'Super Stuffing',desc:'Activate 40 Power Moves.',target:40,rewards:{hyperTappers:1,souls:90},xpReward:100},
+          {id:'turkey_17',stage:17,kind:'capture_turkey_captures',title:'Turkey Hunter',desc:'Capture the turkey 3 times in Capture the Turkey.',target:3,rewards:{coins:1000},xpReward:100},
+          {id:'turkey_18',stage:18,kind:'deal_damage',title:'Damage Gourmand',desc:'Deal 1,000,000 damage.',target:1000000,rewards:{souls:120,gems:10},xpReward:100},
+          {id:'turkey_19',stage:19,kind:'boss_impossible_2',title:'Impossible Leftovers',desc:'Clear Impossible II in the Headless Bolznstien Boss Fight.',target:1,rewards:{coins:1200},xpReward:100},
+          {id:'turkey_20',stage:20,kind:'win_match',title:'TURKEY TROUBLE MASTER',desc:'Win 20 battles this season.',target:20,rewards:{coins:1500,hyperTappers:1},xpReward:100}
+      ];
+      function getActiveSeasonProfile(now = Date.now()) {
+          if (now >= TURKEY_TROUBLE_START_UTC) {
+              return { key:'turkey', seasonNumber:5, id:TURKEY_TROUBLE_SEASON_ID, name:'Turkey Trouble', upperName:'TURKEY TROUBLE', tiers:TURKEY_TROUBLE_PASS_TIERS, quests:TURKEY_TROUBLE_QUEST_DEFS, startUtc:TURKEY_TROUBLE_START_UTC, endUtc:TURKEY_TROUBLE_END_UTC, endLabel:'November 30, 2026' };
+          }
+          return { key:'arenaween', seasonNumber:4, id:SEASON_PASS_ID, name:'Arenaaween', upperName:'ARENAAWEEN', tiers:ARENAWEEN_PASS_TIERS, quests:ARENAWEEN_QUEST_DEFS, startUtc:0, endUtc:ARENAWEEN_SEASON_END_UTC, endLabel:'October 31, 2026' };
+      }
+      function getActiveSeasonPassId() { return getActiveSeasonProfile().id; }
+      function getActiveSeasonPassTiers() { return getActiveSeasonProfile().tiers; }
+      function getActiveSeasonQuestDefs() { return getActiveSeasonProfile().quests; }
+      function isTurkeyTroubleSeasonActive(now = Date.now()) { return now >= TURKEY_TROUBLE_START_UTC && now < TURKEY_TROUBLE_END_UTC; }
+      const SEASON_QUEST_STAGE_COUNT = getActiveSeasonQuestDefs().length;
 
       function buildSeasonPassQuests() {
-          return SEASON_QUEST_DEFS.map(def => ({
+          return getActiveSeasonQuestDefs().map(def => ({
               id: def.id,
               kind: def.kind,
               stage: def.stage,
@@ -6504,7 +6570,7 @@ const bolznstienPendingStrikes = [];
 
       function resetSeasonPassForAll() {
           playerData.seasonPass = {
-              seasonId: SEASON_PASS_ID,
+              seasonId: getActiveSeasonPassId(),
               xp: 0,
               level: 1,
               premiumUnlocked: false,
@@ -6533,7 +6599,7 @@ const bolznstienPendingStrikes = [];
 
       function ensureSeasonPassState() {
           if (!ENABLE_SEASON_QUESTS) return;
-          if (!playerData.seasonPass || playerData.seasonPass.seasonId !== SEASON_PASS_ID) {
+          if (!playerData.seasonPass || playerData.seasonPass.seasonId !== getActiveSeasonPassId()) {
               if(playerData.seasonPass?.seasonId){
                   if(!playerData.seasonPassHistory||typeof playerData.seasonPassHistory!=='object')playerData.seasonPassHistory={};
                   playerData.seasonPassHistory[playerData.seasonPass.seasonId]=JSON.parse(JSON.stringify(playerData.seasonPass));
@@ -6576,7 +6642,7 @@ const bolznstienPendingStrikes = [];
           }
       }
 
-      function isSeason3PassActive(now=Date.now()){return now<SEASON_4_END_UTC;} // Season 4 Arenaaween is the live season
+      function isSeason3PassActive(now=Date.now()){return now<TURKEY_TROUBLE_END_UTC;} // Seasons 4-5 run back to back through Nov 30, 2026
 
       function resetSeasonPass() {
           resetSeasonPassForAll();
@@ -6625,7 +6691,7 @@ const bolznstienPendingStrikes = [];
       function claimSeasonPassReward(tier) {
           if (!ENABLE_SEASON_QUESTS) return false;
           ensureSeasonPassState();
-          const reward = SEASON_PASS_TIERS.find(entry => entry.tier === tier);
+          const reward = getActiveSeasonPassTiers().find(entry => entry.tier === tier);
           if (!reward) return false;
           return claimSeasonPassTrackReward(tier, 'free');
       }
@@ -6667,7 +6733,7 @@ const bolznstienPendingStrikes = [];
           if (!isSeason3PassActive()) return false;
           ensureSeasonPassState();
           const pass = playerData.seasonPass;
-          const rewardRow = SEASON_PASS_TIERS.find(entry => entry.tier === tier);
+          const rewardRow = getActiveSeasonPassTiers().find(entry => entry.tier === tier);
           if (!rewardRow) return false;
           if ((pass.level || 1) < tier) return false;
           const claimField = track === 'premium' ? 'claimedPremiumRewards' : 'claimedFreeRewards';
@@ -7273,8 +7339,8 @@ const bolznstienPendingStrikes = [];
           const freeClaimed = new Set(pass.claimedFreeRewards || []);
           const premiumClaimed = new Set(pass.claimedPremiumRewards || []);
           const level = pass.level || 1;
-          const freeReady = SEASON_PASS_TIERS.filter(t => t.tier <= level && !freeClaimed.has(t.tier)).length;
-          const premiumReady = pass.premiumUnlocked ? SEASON_PASS_TIERS.filter(t => t.tier <= level && !premiumClaimed.has(t.tier)).length : 0;
+          const freeReady = getActiveSeasonPassTiers().filter(t => t.tier <= level && !freeClaimed.has(t.tier)).length;
+          const premiumReady = pass.premiumUnlocked ? getActiveSeasonPassTiers().filter(t => t.tier <= level && !premiumClaimed.has(t.tier)).length : 0;
           const questReady = Object.values(pass.quests || {}).filter(q => q.completed && !q.rewardClaimed).length;
           return freeReady + premiumReady + questReady;
       }
@@ -7617,12 +7683,13 @@ const bolznstienPendingStrikes = [];
               questBox.style.overflowY = 'auto';
 
               const questTitle = document.createElement('div');
-              questTitle.textContent = `ARENAAWEEN × ARENA FORGE • Stage ${getActiveSeasonQuestStage()}/${SEASON_QUEST_STAGE_COUNT}`;
+              const seasonProfileForQuests = getActiveSeasonProfile();
+              questTitle.textContent = `${seasonProfileForQuests.upperName} × ARENA FORGE • Stage ${getActiveSeasonQuestStage()}/${SEASON_QUEST_STAGE_COUNT}`;
               questTitle.style.fontWeight = '900';
               questTitle.style.color = '#8fd8ff';
               questTitle.style.marginBottom = '6px';
               const questHint = document.createElement('div');
-              questHint.textContent = `${isSeason3PassActive() ? 'Season ends October 31, 2026.' : 'Season ended — progression and claims are closed.'} Complete and claim quests to push the ladder.`;
+              questHint.textContent = `${isSeason3PassActive() ? `Season ends ${seasonProfileForQuests.endLabel}.` : 'Season ended — progression and claims are closed.'} Complete and claim quests to push the ladder.`;
               questHint.style.fontSize = '11px';
               questHint.style.color = '#aac7e5';
               questHint.style.marginBottom = '10px';
@@ -7753,7 +7820,7 @@ const bolznstienPendingStrikes = [];
               const freeClaimed = new Set(pass.claimedFreeRewards || []);
               const premiumClaimed = new Set(pass.claimedPremiumRewards || []);
               const ladderList = document.createElement('div');
-              for (const tier of SEASON_PASS_TIERS) {
+              for (const tier of getActiveSeasonPassTiers()) {
                   const tierUnlocked = (pass.level || 1) >= tier.tier;
                   const freeDone = freeClaimed.has(tier.tier);
                   const premiumDone = premiumClaimed.has(tier.tier);
@@ -9762,6 +9829,7 @@ const bolznstienPendingStrikes = [];
   let towerDuelPowerLoadouts = {};
   let towerDuelBotPowerLoadouts = {};
   let isTraining = false;
+  let activeSkinTrial = null; // { skinId, brawler } — training-only skin preview; never written to the save
   let isBrawlerLabMode = false;
     let isTutorialMode = false;
     let tutorialStartedAt = 0;
@@ -9782,6 +9850,7 @@ const bolznstienPendingStrikes = [];
     let tutorialLastPlayerPos = { x: 0, y: 0 };
         let isDuoShowdown = false;
                 let isObjectiveMode = false;
+                let isTurkeyCaptureMode = false;
             let isConstructionMode = false;
     let isDamageFillerMode = false;
     let isPowerGodsMode = false;
@@ -11815,6 +11884,10 @@ function isPowerPlayModifierActive(entity = player) {
     const CONSTRUCTION_PUSHBACK_PERCENT = 10;
     const CONSTRUCTION_RESPAWN_SECONDS = 6;
     const OBJECTIVE_RESPAWN_SECONDS = 4;
+    const TURKEY_CAPTURE_GOAL = 3;
+    const TURKEY_CAPTURE_MATCH_SECONDS = 180;
+    const TURKEY_CAPTURE_BASE_RADIUS = 120;
+    const TURKEY_CAPTURE_PICKUP_RADIUS = 46;
     const DAMAGE_FILLER_RESPAWN_SECONDS = 2.5;
     const MIRROR_RESPAWN_SECONDS = 3;
     const KNOCK_DONATE_TEAM_SIZE = 3;
@@ -11957,6 +12030,7 @@ function isPowerPlayModifierActive(entity = player) {
     let brickCountdownTimer = 15.0;
     let objectiveZones = [];
     let objectiveScores = { player: 0, enemy: 0 };
+    let turkeyCaptureState = null;
     let timedDetonationStage = 0;
 
     function triggerTimedDetonationWave() {
@@ -12500,7 +12574,7 @@ let heistFeverActive = false;
       selectedSkins: {}, // { brawler: 'skinId' } for currently equipped skin per brawler
       skinFeaturedRotationStart: 0, // Timestamp when skins went into Featured
       seasonPass: {
-          seasonId: SEASON_PASS_ID,
+          seasonId: getActiveSeasonPassId(),
           xp: 0,
           level: 1,
           premiumUnlocked: false,
@@ -12774,6 +12848,18 @@ let heistFeverActive = false;
   function openSeason3Hub(){
       const {packets,season}=ensureSeason3State(),overlay=document.createElement('div');overlay.className='season3-overlay',panel=document.createElement('section');panel.className='season3-panel';
       const unlocked=Object.keys(packets.unlocked).filter(id=>packets.unlocked[id]).length;
+      if (getActiveSeasonProfile().key === 'turkey') {
+          panel.innerHTML=`<header><div><small>SEASON 5</small><h1>TURKEY TROUBLE × ARENA FORGE</h1><p>Ends November 30, 2026</p></div><button aria-label="Close">X</button></header><div class="season3-breach"><small>THE TURKEYS ARE LOOSE</small><b>CAPTURE THE TURKEY IS LIVE ALL NOVEMBER</b></div><div class="season3-hub-grid"><button data-action="pass"><i>S5</i><b>Season Pass</b><span>Harvest rewards • ends Nov 30</span></button><button data-action="turkey"><i>🦃</i><b>Capture the Turkey</b><span>3v3 CTF • grab the bird, haul it home • first to 3 captures</span></button><button data-action="quests"><i>Q</i><b>Season Quests</b><span>Gobble the ladder for feast rewards</span></button><button data-action="boss"><i>🎃</i><b>Headless Bolznstien Boss Fight</b><span>Still haunting • up to 3 Spooky Boxes • his skin FREE on full clear</span></button><button data-action="corrupted"><i>CS</i><b>Corrupted Showdown</b><span>Season 5 chaos in the feast arena</span></button><button data-action="spooky"><i>🎃</i><b>Spooky Boxes</b><span>${playerData.spookyBoxCount||0} unopened leftovers from Arenaaween</span></button></div><div class="tower-retired-note"><b>SEASON 4 — ARCHIVED</b><span>Arenaaween is over. Your Spooky Boxes, skins and collections are preserved.</span></div><div class="tower-retired-note"><b>PACKETS — RETIRED</b><span>Packets are still gone. Your collection (${unlocked}/20 discovered) is preserved and will return in a future rework.</span></div><div class="tower-retired-note"><b>TOWER POWERS — TEMPORARILY RETIRED</b><span>Your collection is preserved and will return in a future rework.</span></div>`;
+          panel.querySelector('header button').onclick=()=>overlay.remove();
+          panel.querySelector('[data-action="pass"]').onclick=()=>{overlay.remove();openSeasonPass();};
+          panel.querySelector('[data-action="turkey"]').onclick=()=>{overlay.remove();showdownMode='capture_turkey';updateShowdownModeUI();setHomeTab('events');};
+          panel.querySelector('[data-action="quests"]').onclick=()=>{overlay.remove();openQuestBoard('season');};
+          panel.querySelector('[data-action="boss"]').onclick=()=>{overlay.remove();openHeadlessBossEvent();};
+          panel.querySelector('[data-action="corrupted"]').onclick=()=>{overlay.remove();showdownMode='corrupted_showdown';updateShowdownModeUI();setHomeTab('events');};
+          panel.querySelector('[data-action="spooky"]').onclick=()=>{overlay.remove();if((playerData.spookyBoxCount||0)>0)openSpookyBox();else alert('No Spooky Boxes left — Arenaaween is over, but Turkey Trouble rewards are live!');};
+          overlay.onclick=e=>{if(e.target===overlay)overlay.remove();};overlay.appendChild(panel);document.body.appendChild(overlay);
+          return;
+      }
       panel.innerHTML=`<header><div><small>SEASON 4</small><h1>ARENAAWEEN × ARENA FORGE</h1><p>Ends October 31, 2026</p></div><button aria-label="Close">X</button></header><div class="season3-breach"><small>THE HAUNTING IS LIVE</small><b>SPOOKY BOXES HAVE INFESTED THE ARENA</b></div><div class="season3-hub-grid"><button data-action="pass"><i>S4</i><b>Season Pass</b><span>Spooky rewards • ends Oct 31</span></button><button data-action="spooky"><i>🎃</i><b>Spooky Boxes</b><span>${playerData.spookyBoxCount||0} unopened • 6 skins, coins, or souls</span></button><button data-action="quests"><i>Q</i><b>Season Quests</b><span>Haunt the ladder for Spooky Boxes</span></button><button data-action="corrupted"><i>CS</i><b>Corrupted Showdown</b><span>Season 4 chaos in the haunted arena</span></button><button data-action="boss"><i>🎃</i><b>Headless Bolznstien Boss Fight</b><span>Hard through Impossible XV • up to 3 Spooky Boxes • his skin FREE on full clear</span></button><button data-action="skins"><i>👻</i><b>Arenaaween Skins</b><span>${unownedArenaweenSkins().length===0?'Full collection!':unownedArenaweenSkins().length+' of 6 still hiding in Spooky Boxes'}</span></button></div><div class="tower-retired-note"><b>BOSS EVENTS — REPLACED</b><span>The Lava Villain and Bouncin' Balls boss events were retired in Season 4. Headless Bolznstien has taken over the arena — your old boss progress is preserved.</span></div><div class="tower-retired-note"><b>PACKETS — RETIRED</b><span>Packets are gone in Season 4. Your collection (${unlocked}/20 discovered) is preserved and will return in a future rework.</span></div><div class="tower-retired-note"><b>TOWER POWERS — TEMPORARILY RETIRED</b><span>Your collection is preserved and will return in a future rework.</span></div>`;
       panel.querySelector('header button').onclick=()=>overlay.remove();panel.querySelector('[data-action="pass"]').onclick=()=>{overlay.remove();openSeasonPass();};panel.querySelector('[data-action="spooky"]').onclick=()=>{overlay.remove();if((playerData.spookyBoxCount||0)>0)openSpookyBox();else alert('No Spooky Boxes yet — earn them from the Arenaaween Pass and Season Quests!');};panel.querySelector('[data-action="skins"]').onclick=()=>{overlay.remove();alert('Arenaaween skins hide inside Spooky Boxes: Pumpkin King, Count Curseula, Phantom Phase, Midnight Reaper Darkener, Nightmare Awakenator, and Jack-o-Demon. Pumpkin King is also the Tier 25 Premium reward.');};panel.querySelector('[data-action="quests"]').onclick=()=>{overlay.remove();openQuestBoard('season');};panel.querySelector('[data-action="corrupted"]').onclick=()=>{overlay.remove();showdownMode='corrupted_showdown';updateShowdownModeUI();setHomeTab('events');};panel.querySelector('[data-action="boss"]').onclick=()=>{overlay.remove();openHeadlessBossEvent();};overlay.onclick=e=>{if(e.target===overlay)overlay.remove();};overlay.appendChild(panel);document.body.appendChild(overlay);
   }
@@ -14090,7 +14176,7 @@ let heistFeverActive = false;
           // Persist featured rotation start so it doesn't reset on every open
           save.persistent.skinFeaturedRotationStart = playerData.skinFeaturedRotationStart || 0;
           save.persistent.seasonPass = playerData.seasonPass || {
-              seasonId: SEASON_PASS_ID,
+              seasonId: getActiveSeasonPassId(),
               xp: 0,
               level: 1,
               premiumUnlocked: false,
@@ -14205,7 +14291,7 @@ let heistFeverActive = false;
                 const quickActions = document.getElementById('homeQuickActions') || document.getElementById('homeHeader') || homeScreen.firstElementChild;
                 const evBtn = document.createElement('button');
                 evBtn.id = 'eventHubBtn';
-                evBtn.textContent = 'ARENAAWEEN • SEASON 4';
+                evBtn.textContent = `${getActiveSeasonProfile().upperName} • SEASON ${getActiveSeasonProfile().seasonNumber}`;
                 evBtn.style.position = 'relative';
                 evBtn.style.padding = '8px 12px';
                 evBtn.style.borderRadius = '10px';
@@ -16153,7 +16239,14 @@ let heistFeverActive = false;
   function getShopClaimKey(prefix,cycleKey){return `${prefix}::${cycleKey}`;}
   function pickTimedEntry(entries,seed){return entries[hashShopKey(seed)%entries.length];}
   function syncShopState(){if(playerData.gems==null)playerData.gems=0;if(!playerData.shopClaims)playerData.shopClaims={};}
-  function trySkinInTraining(skinId){const skin=skinsDatabase[skinId];if(!skin)return;playerData.selectedSkins[skin.brawler]=skin.id;saveProgress();launchTrainingSandbox(skin.brawler);}
+  function trySkinInTraining(skinId){
+      const skin=skinsDatabase[skinId]; if(!skin) return;
+      // Trial only: preview any skin in Training — even for a fighter you do not own.
+      // The trial lives in memory only; it never equips or saves the skin.
+      activeSkinTrial={skinId:skin.id,brawler:skin.brawler};
+      document.querySelectorAll('.brawe-shop-overlay').forEach(el => el.remove());
+      launchTrainingSandbox(skin.brawler);
+  }
   function getSoulBalance(){return (playerData.souls||0)+(playerData.soulSummoner?.soulBank||0);}
   function deductSouls(amount){let left=amount;if((playerData.souls||0)>=left)playerData.souls-=left;else{left-=playerData.souls||0;playerData.souls=0;if(playerData.soulSummoner)playerData.soulSummoner.soulBank=Math.max(0,(playerData.soulSummoner.soulBank||0)-left);}}
 
@@ -16216,6 +16309,9 @@ let heistFeverActive = false;
       panel.appendChild(shopBody);
 
       let activeTab = 'daily';
+      let shopSkinQuery = '';
+      let shopSkinOwnership = 'all';
+      let shopSkinSort = 'featured';
 
       const ensureShopButtonRefresh = () => {
           saveProgress();
@@ -16627,8 +16723,63 @@ let heistFeverActive = false;
       };
 
       const renderSkinsTab = () => {
+          const wrap = document.createElement('div');
+          wrap.style.display = 'flex';
+          wrap.style.flexDirection = 'column';
+          wrap.style.gap = '12px';
+          const toolbar = document.createElement('div');
+          toolbar.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:rgba(8,16,32,0.85);border:1px solid rgba(120,176,240,0.18);border-radius:12px;padding:10px;position:sticky;top:0;z-index:5;';
+          const search = document.createElement('input');
+          search.type = 'search';
+          search.placeholder = '🔍 Search skins or fighters…';
+          search.value = shopSkinQuery;
+          search.style.cssText = 'flex:1;min-width:170px;padding:9px 11px;border-radius:9px;border:1px solid rgba(130,190,255,.25);background:#0a1428;color:#fff;font-weight:700;';
+          search.oninput = () => {
+              shopSkinQuery = search.value;
+              const q = shopSkinQuery.trim().toLowerCase();
+              let visible = 0;
+              wrap.querySelectorAll('[data-skin-card]').forEach(card => {
+                  const show = !q || (card.getAttribute('data-search') || '').includes(q);
+                  card.style.display = show ? '' : 'none';
+                  if (show) visible++;
+              });
+              const count = wrap.querySelector('[data-skin-count]');
+              if (count) count.textContent = `${visible} skins`;
+          };
+          const ownershipSel = document.createElement('select');
+          ownershipSel.style.cssText = 'padding:9px;border-radius:9px;background:#0a1428;color:#fff;border:1px solid rgba(130,190,255,.25);font-weight:800;';
+          ownershipSel.innerHTML = '<option value="all">All skins</option><option value="owned">Owned</option><option value="buyable">Buyable</option><option value="locked">Fighter locked</option>';
+          ownershipSel.value = shopSkinOwnership;
+          ownershipSel.onchange = () => { shopSkinOwnership = ownershipSel.value; renderTabContent(); };
+          const sortSel = document.createElement('select');
+          sortSel.style.cssText = ownershipSel.style.cssText;
+          sortSel.innerHTML = '<option value="featured">Featured</option><option value="price-asc">Price ↑</option><option value="price-desc">Price ↓</option><option value="rarity">Rarity</option><option value="name">A–Z</option>';
+          sortSel.value = shopSkinSort;
+          sortSel.onchange = () => { shopSkinSort = sortSel.value; renderTabContent(); };
+          const countEl = document.createElement('span');
+          countEl.setAttribute('data-skin-count', '1');
+          countEl.style.cssText = 'font-size:11px;font-weight:900;color:#9dc0e4;';
+          toolbar.append(search, ownershipSel, sortSel, countEl);
+          wrap.appendChild(toolbar);
           const grid = cardGrid();
-          Object.values(skinsDatabase).forEach(skin => {
+          wrap.appendChild(grid);
+          const rarityRank = { legendary: 5, mythic: 4, epic: 3, 'super-rare': 2, rare: 1 };
+          const skinList = Object.values(skinsDatabase).filter(skin => {
+              const owned = !!(playerData.ownedSkins[skin.brawler] && playerData.ownedSkins[skin.brawler].includes(skin.id));
+              const locked = !playerData.unlockedBrawlers[skin.brawler];
+              if (shopSkinOwnership === 'owned') return owned;
+              if (shopSkinOwnership === 'buyable') return !owned && !locked;
+              if (shopSkinOwnership === 'locked') return locked;
+              return true;
+          }).sort((a, b) => {
+              if (shopSkinSort === 'price-asc') return (a.price || 0) - (b.price || 0);
+              if (shopSkinSort === 'price-desc') return (b.price || 0) - (a.price || 0);
+              if (shopSkinSort === 'rarity') return (rarityRank[b.rarity] || 0) - (rarityRank[a.rarity] || 0);
+              if (shopSkinSort === 'name') return String(a.name).localeCompare(String(b.name));
+              return 0;
+          });
+          countEl.textContent = `${skinList.length} skins`;
+          skinList.forEach(skin => {
               const isOwned = !!(playerData.ownedSkins[skin.brawler] && playerData.ownedSkins[skin.brawler].includes(skin.id));
               const isLocked = !playerData.unlockedBrawlers[skin.brawler];
               
@@ -16650,6 +16801,8 @@ let heistFeverActive = false;
               card.style.flexDirection = 'column';
               card.style.justifyContent = 'space-between';
               card.style.gap = '8px';
+              card.setAttribute('data-skin-card', '1');
+              card.setAttribute('data-search', `${skin.name} ${skin.id} ${brawlerData[skin.brawler]?.name || skin.brawler} ${skin.set || ''} ${skin.rarity || ''}`.toLowerCase());
 
               const body = document.createElement('div');
               body.innerHTML = `
@@ -16658,7 +16811,7 @@ let heistFeverActive = false;
                       <span style="font-size:9px;font-weight:900;background:${color}15;color:${color};border:1px solid ${color}33;padding:1px 5px;border-radius:4px;text-transform:uppercase;">${skin.rarity}</span>
                   </div>
                   <div style="font-size:11px;color:#89b5d9;margin-top:6px;line-height:1.35;">${skin.description}</div>
-                  <div style="font-size:10px;color:${color};margin-top:4px;font-weight:700;">Set: ${skin.set || 'Global'}</div>
+                  <div style="font-size:10px;color:${color};margin-top:4px;font-weight:700;">Fighter: ${brawlerData[skin.brawler]?.name || skin.brawler} • Set: ${skin.set || 'Global'}${isLocked ? ' • 🔒 Fighter locked — trial available' : ''}</div>
               `;
 
               const actions = document.createElement('div');
@@ -16687,19 +16840,21 @@ let heistFeverActive = false;
                       renderTabContent();
                   };
                   actions.appendChild(equipBtn);
+                  const ownedTryBtn = document.createElement('button');
+                  ownedTryBtn.textContent = 'TRY IN TRAINING';
+                  ownedTryBtn.style.cssText = 'width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:#fff;font-weight:bold;font-size:12px;cursor:pointer;';
+                  ownedTryBtn.onclick = () => { trySkinInTraining(skin.id); };
+                  actions.appendChild(ownedTryBtn);
               } else if (isLocked) {
-                  const lockedBtn = document.createElement('button');
-                  lockedBtn.textContent = 'UNLOCKED BRAWLER REQUIRED';
-                  lockedBtn.disabled = true;
-                  lockedBtn.style.width = '100%';
-                  lockedBtn.style.padding = '8px';
-                  lockedBtn.style.borderRadius = '8px';
-                  lockedBtn.style.border = 'none';
-                  lockedBtn.style.fontWeight = 'bold';
-                  lockedBtn.style.fontSize = '11px';
-                  lockedBtn.style.background = 'rgba(255,255,255,0.03)';
-                  lockedBtn.style.color = '#555';
-                  actions.appendChild(lockedBtn);
+                  const lockedNote = document.createElement('div');
+                  lockedNote.textContent = `💎 ${skin.price} • Unlock ${brawlerData[skin.brawler]?.name || skin.brawler} to buy — or try it free:`;
+                  lockedNote.style.cssText = 'font-size:11px;color:#89b5d9;font-weight:700;line-height:1.35;';
+                  actions.appendChild(lockedNote);
+                  const lockedTryBtn = document.createElement('button');
+                  lockedTryBtn.textContent = 'TRY IN TRAINING';
+                  lockedTryBtn.style.cssText = 'width:100%;padding:8px;border-radius:8px;border:1px solid rgba(93,242,194,0.5);background:rgba(93,242,194,0.12);color:#5df2c2;font-weight:900;font-size:12px;cursor:pointer;';
+                  lockedTryBtn.onclick = () => { trySkinInTraining(skin.id); };
+                  actions.appendChild(lockedTryBtn);
               } else {
                   const row = document.createElement('div');
                   row.style.display = 'flex';
@@ -16747,7 +16902,7 @@ let heistFeverActive = false;
               card.appendChild(actions);
               grid.appendChild(card);
           });
-          return grid;
+          return wrap;
       };
 
       const renderWheelTab = () => {
@@ -17051,7 +17206,7 @@ let heistFeverActive = false;
       };
 
       const infoBar = document.createElement('div');
-      infoBar.textContent = 'Tip: Daily freebies reset each day, and timed offers rotate automatically.';
+      infoBar.textContent = 'Tip: Daily freebies reset each day, and timed offers rotate automatically. Any skin can be tried free in Training — even for a fighter you have not unlocked yet.';
       infoBar.style.color = '#9dc0e4';
       infoBar.style.fontSize = '12px';
       infoBar.style.padding = '10px 12px';
@@ -17590,6 +17745,125 @@ let heistFeverActive = false;
         objectiveControl = 0;
         objectiveTimer = 0;
         objectiveWon = false;
+    }
+
+    function getTurkeyCaptureBase(team) {
+        return getObjectiveSpawnPoint(team, 1, 3);
+    }
+
+    function initTurkeyCaptureState() {
+        const playerBase = getTurkeyCaptureBase('player');
+        const enemyBase = getTurkeyCaptureBase('enemy');
+        const mid = findNearestDrySpot(WORLD_W * 0.5, WORLD_H * 0.5, 16);
+        turkeyCaptureState = {
+            playerBase, enemyBase,
+            turkeyX: mid.x, turkeyY: mid.y,
+            carrierId: null, turkeyActive: true, respawnAt: 0,
+            scores: { player: 0, enemy: 0 }, timer: 0, winnerTeam: null
+        };
+        objectiveWon = false;
+        progressSeasonPassQuest('capture_turkey_matches', 1);
+    }
+
+    function getTurkeyCaptureCarrier() {
+        if (!turkeyCaptureState || turkeyCaptureState.carrierId == null) return null;
+        if (turkeyCaptureState.carrierId === player.id) return player;
+        return bots.find(b => b && b.id === turkeyCaptureState.carrierId) || null;
+    }
+
+    function resetTurkeyToCenter() {
+        if (!turkeyCaptureState) return;
+        const mid = findNearestDrySpot(WORLD_W * 0.5, WORLD_H * 0.5, 16);
+        turkeyCaptureState.turkeyX = mid.x;
+        turkeyCaptureState.turkeyY = mid.y;
+        turkeyCaptureState.carrierId = null;
+        turkeyCaptureState.turkeyActive = true;
+    }
+
+    function updateTurkeyCapture(dt) {
+        const state = turkeyCaptureState;
+        if (!state || gameOver) return;
+        state.timer += dt;
+        const now = performance.now();
+        if (!state.turkeyActive && state.respawnAt && now >= state.respawnAt) {
+            resetTurkeyToCenter();
+            spawnFloatingText(state.turkeyX, state.turkeyY - 54, '🦃 THE TURKEY IS BACK!', '#ffb347');
+        }
+        let carrier = getTurkeyCaptureCarrier();
+        if (carrier && carrier.hp <= 0) {
+            state.turkeyX = carrier.x;
+            state.turkeyY = carrier.y;
+            state.carrierId = null;
+            carrier = null;
+            spawnFloatingText(state.turkeyX, state.turkeyY - 46, '🦃 TURKEY DROPPED!', '#ffd166');
+        }
+        if (carrier) {
+            state.turkeyX = carrier.x;
+            state.turkeyY = carrier.y - (carrier.radius || 14) - 18;
+        }
+        if (!carrier && state.turkeyActive) {
+            const seekers = [player, ...bots.filter(b => b && b.hp > 0 && !b.isDummy && !b.isStructure)];
+            for (const entity of seekers) {
+                if (entity.hp > 0 && Math.hypot(entity.x - state.turkeyX, entity.y - state.turkeyY) <= TURKEY_CAPTURE_PICKUP_RADIUS + (entity.radius || 14)) {
+                    state.carrierId = entity.id;
+                    carrier = entity;
+                    const playerTeam = entity.id === player.id || entity.team === 'player';
+                    spawnFloatingText(entity.x, entity.y - 54, playerTeam ? '🦃 YOUR TEAM HAS THE TURKEY!' : '🦃 ENEMY HAS THE TURKEY!', playerTeam ? '#5df2c2' : '#ff6b6b');
+                    break;
+                }
+            }
+        }
+        if (carrier && carrier.hp > 0) {
+            const team = (carrier.id === player.id || carrier.team === 'player') ? 'player' : 'enemy';
+            const base = team === 'player' ? state.playerBase : state.enemyBase;
+            if (Math.hypot(carrier.x - base.x, carrier.y - base.y) <= TURKEY_CAPTURE_BASE_RADIUS) {
+                state.scores[team] = (state.scores[team] || 0) + 1;
+                explosions.push({ x: base.x, y: base.y, radius: 130, life: 0, maxLife: 0.4, color: team === 'player' ? 'rgba(93,242,194,0.55)' : 'rgba(255,107,107,0.55)' });
+                spawnFloatingText(base.x, base.y - 74, team === 'player' ? `🦃 CAPTURED! ${state.scores.player} - ${state.scores.enemy}` : `🦃 ENEMY CAPTURED! ${state.scores.player} - ${state.scores.enemy}`, team === 'player' ? '#5df2c2' : '#ff6b6b');
+                if (team === 'player') progressSeasonPassQuest('capture_turkey_captures', 1);
+                state.carrierId = null;
+                state.turkeyActive = false;
+                state.respawnAt = now + 2500;
+                if (state.scores[team] >= TURKEY_CAPTURE_GOAL) {
+                    state.winnerTeam = team;
+                    objectiveWon = team === 'player';
+                    gameOver = true;
+                    return;
+                }
+            }
+        }
+        if (state.timer >= TURKEY_CAPTURE_MATCH_SECONDS) {
+            state.winnerTeam = state.scores.player === state.scores.enemy ? 'draw' : (state.scores.player > state.scores.enemy ? 'player' : 'enemy');
+            objectiveWon = state.winnerTeam === 'player';
+            gameOver = true;
+        }
+    }
+
+    function renderTurkeyCaptureEvent() {
+        if (!isTurkeyCaptureMode || !playing || !turkeyCaptureState) return;
+        const state = turkeyCaptureState;
+        const pulse = 1 + Math.sin(performance.now() / 220) * 0.04;
+        const bases = [
+            { base: state.playerBase, fill: 'rgba(56,189,248,0.14)', stroke: '#38bdf8', label: 'YOUR BASE' },
+            { base: state.enemyBase, fill: 'rgba(248,113,113,0.14)', stroke: '#f87171', label: 'ENEMY BASE' }
+        ];
+        for (const entry of bases) {
+            ctx.save();
+            ctx.fillStyle = entry.fill;
+            ctx.beginPath(); ctx.arc(entry.base.x, entry.base.y, TURKEY_CAPTURE_BASE_RADIUS * pulse, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = entry.stroke; ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.arc(entry.base.x, entry.base.y, TURKEY_CAPTURE_BASE_RADIUS * pulse, 0, Math.PI * 2); ctx.stroke();
+            ctx.fillStyle = '#ffffff'; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center';
+            ctx.fillText(entry.label, entry.base.x, entry.base.y + 5);
+            ctx.restore();
+        }
+        if (state.turkeyActive) {
+            ctx.save();
+            ctx.font = '40px sans-serif'; ctx.textAlign = 'center';
+            ctx.shadowColor = '#ffb347'; ctx.shadowBlur = 18;
+            ctx.fillText('🦃', state.turkeyX, state.turkeyY + 14);
+            ctx.restore();
+        }
     }
 
     function getObjectiveSpawnPoint(team, slot = 0, teamSize = 3) {
@@ -21772,7 +22046,7 @@ let heistFeverActive = false;
         }
         return;
     }
-    if(isBlinkEyeDodgeMode || isDuels || isTraining || isBraweBallMode || isKnockoutMode || isImpossibleMode || isDamageFillerMode || isMirrorMode || isKnockDonateMode || isBrickVaultMode || isArenaForgeMode || isMarkedMayhemMode || isTugZoneMode || isOrboBossMode || isRamageBossMode || isDemonVillainsBossMode || isWeeFeeBossMode) return;
+    if(isBlinkEyeDodgeMode || isDuels || isTraining || isBraweBallMode || isKnockoutMode || isImpossibleMode || isDamageFillerMode || isMirrorMode || isKnockDonateMode || isBrickVaultMode || isArenaForgeMode || isMarkedMayhemMode || isTugZoneMode || isTurkeyCaptureMode || isOrboBossMode || isRamageBossMode || isDemonVillainsBossMode || isWeeFeeBossMode) return;
       const towerBoxMult=isTowerTroubleMode&&towerTroubleVariant!=='gauntlet'?(towerTroubleVariant==='chaos'?(getChaosCrownRule(playerData.slopSushi?.chaosRun?.floor||1).boxMult||1):(TOWER_FLOOR_CHALLENGES[Math.max(0,(playerData.slopSushi?.run?.floor||1)-1)]?.boxMult||1)):1;
       const showdownBoxCount = Math.round(((isDuoShowdown || isTrioShowdownMode) ? 90 : 75)*towerBoxMult);
       for(let i=0; i<showdownBoxCount; i++){
@@ -22346,7 +22620,7 @@ let heistFeverActive = false;
       document.querySelectorAll('#homeCurrencyBar .home-currency-pill').forEach((el,i)=>el.dataset.homeCurrency=['coins','gems','souls'][i]);
       const snapshot=document.getElementById('homeCareerSnapshot'),progress=playerData?.brawlers?.[selectedBrawler]||{};
       if(snapshot)snapshot.innerHTML=[['FIGHTERS',getUnlockedBrawlerPool().length],['WIN STREAK',playerData.winStreak||0],['SELECTED BRICKS',getLifetimeBricks(progress)],['POWER',progress.level||1]].map(([label,value])=>`<div class="home-career-stat"><small>${label}</small><b>${value}</b></div>`).join('');
-      const pulse=document.getElementById('homeSeasonPulse');if(pulse)pulse.textContent='Season 4 · Arenaaween';
+      const pulse=document.getElementById('homeSeasonPulse');if(pulse){const seasonPulseProfile=getActiveSeasonProfile();pulse.textContent=`Season ${seasonPulseProfile.seasonNumber} · ${seasonPulseProfile.name}`;}
   }
   function ensureBoomArangInstinctState(entity, now = performance.now()) {
       if (!isSpecialAbilityAvailableForEntity(entity, 'boom_arang')) return null;
@@ -36146,6 +36420,7 @@ let heistFeverActive = false;
       ['power_play_showdown', '⚡', 'Power Play Showdown', '3-Powers LTM with 5 curated hypercharged fighters'],
       ['corrupted_showdown', 'CS', 'Corrupted Showdown', 'Season 3 unstable Packet signals'],
       ['headless_boss_s4', '🎃', 'Headless Bolznstien Boss', 'Season 4 co-op ladder • Hard to Impossible XV • Spooky Boxes + free skin'],
+      ['capture_turkey', '🦃', 'Capture the Turkey', 'Season 5 Event • 3v3 CTF • grab the turkey, haul it home • first to 3 captures'],
       ['tower_duels_weekend', 'TD', 'Tower Duels Weekend', '5 floors - fresh random P11 trio each floor'],
       ['slop_sushi_plus', '🗼', 'Tower Fusion Lab', 'Legacy seven-power sandbox'],
       ['slop_sushi', '🏰', 'Tower Trouble', '10 floors • random maxed brawler • fuse 4'],
@@ -36193,7 +36468,7 @@ let heistFeverActive = false;
   function isTowerDuelsWeekendActive(now = Date.now()) { return now >= TOWER_DUELS_WEEKEND_START && now < TOWER_DUELS_WEEKEND_END; }
   function isTowerPowerVaultWeekendActive(now = Date.now()) { return now >= TOWER_POWER_VAULT_WEEKEND_START && now < TOWER_POWER_VAULT_WEEKEND_END; }
   function getHomePermanentModeIds(now = Date.now()) {
-      return [...new Set([...HOME_PERMANENT_MODE_IDS, ...(TOWER_EVENT_MODES_ENABLED&&isTowerDuelsWeekendActive(now) ? ['tower_duels_weekend'] : []), ...(isWeeklyTowerFeatureActive(now) ? WEEKLY_FEATURED_MODE_IDS : []), ...(TOWER_POWER_SYSTEM_ENABLED&&isTowerPowerVaultWeekendActive(now) ? ['brick_vault'] : [])])].filter(id=>!isRetiredTowerMode(id));
+      return [...new Set([...HOME_PERMANENT_MODE_IDS, ...(isTurkeyTroubleSeasonActive(now) ? ['capture_turkey'] : []), ...(TOWER_EVENT_MODES_ENABLED&&isTowerDuelsWeekendActive(now) ? ['tower_duels_weekend'] : []), ...(isWeeklyTowerFeatureActive(now) ? WEEKLY_FEATURED_MODE_IDS : []), ...(TOWER_POWER_SYSTEM_ENABLED&&isTowerPowerVaultWeekendActive(now) ? ['brick_vault'] : [])])].filter(id=>!isRetiredTowerMode(id));
   }
   function getHomeRotatingModeIds(now = Date.now()) {
       return HOME_ROTATING_MODE_IDS.filter(id => !isRetiredTowerMode(id) && (!isWeeklyTowerFeatureActive(now) || !WEEKLY_FEATURED_MODE_IDS.includes(id)));
@@ -36218,6 +36493,7 @@ let heistFeverActive = false;
       arena_forge_overclocked: { type:'coins', amount:50, label:'+50 Coins' },
       arena_forge_minion_surge: { type:'coins', amount:40, label:'+40 Coins' },
       marked_mayhem: { type:'souls', amount:14, label:'+14 Souls' },
+      capture_turkey: { type:'coins', amount:60, label:'+60 Coins' },
       objective: { type:'coins', amount:30, label:'+30 Coins' },
       brick_vault: { type:'souls', amount:12, label:'+12 Souls' },
       mirror: { type:'coins', amount:35, label:'+35 Coins' },
@@ -36231,6 +36507,7 @@ let heistFeverActive = false;
       blink_eye_dodge: ['1-Player Boss Battle: 1 vs Mega Boss BlinkEye!', 'Zero Power Cubes — Pure skill showdown', 'Dodge bouncing Ricochet Gaze lasers, Retinal Flash & All-Seeing Eyes', 'Defeat Mega Boss BlinkEye & his Sentinels to claim Victory!'],
       knock_donate: ['Ring-out 3v3 battles with friendly fire', 'Friendly Fire Active'],
       headless_boss_s4: ['3v1 Co-op vs the Headless Bolznstien!', 'Dodge pumpkin bombs, anvil rain and the Ecto Nova', 'First clears pay coins, souls and up to 3 Spooky Boxes', 'Clear Impossible XV to earn his skin FREE'],
+      capture_turkey: ['3v3 Capture the Flag — with a live turkey!', 'Grab the turkey at mid and haul it back to YOUR base', 'Carriers drop the turkey when defeated • it respawns at mid after a capture', 'First team to 3 captures wins • 3:00 match • Season 5: Turkey Trouble event (Nov 1-30)'],
       orbo_boss: ['1-Player Boss Battle: 1 vs Mega Boss Orbo!', 'Zero Power Cubes — Pure skill showdown', 'Dodge crisscross orbits, bouncing Horizon Super & gravity vortexes'],
       demon_villains_boss: [
         'Story Boss Battle: Demon has possessed the 6 Villains!',
@@ -37848,7 +38125,7 @@ let heistFeverActive = false;
           <div class="home-career-stat"><small>WIN STREAK</small><b>${Math.max(0, playerData?.winStreak || 0)}</b></div>
           <div class="home-career-stat"><small>SELECTED BRICKS</small><b>${lifetime.toLocaleString()}</b></div>
           <div class="home-career-stat"><small>POWER</small><b>${Math.max(1, Math.min(11, progress.level || 1))}</b></div>`;
-      if (season) season.innerHTML = `<b>SEASON 4 · ARENAAWEEN × ARENA FORGE</b><br>Spooky Boxes are dropping across the arena — crack them for skins, coins, or souls. Packets have been retired.`;
+      if (season) { const homeSeasonProfile = getActiveSeasonProfile(); season.innerHTML = homeSeasonProfile.key === 'turkey' ? `<b>SEASON 5 · TURKEY TROUBLE × ARENA FORGE</b><br>The turkeys are loose! Capture the Turkey is live all November — grab the bird, haul it home, first to 3 captures wins.` : `<b>SEASON 4 · ARENAAWEEN × ARENA FORGE</b><br>Spooky Boxes are dropping across the arena — crack them for skins, coins, or souls. Packets have been retired.`; }
   }
 
   function setHomeTab(tab = 'home') {
@@ -37893,6 +38170,7 @@ let heistFeverActive = false;
           solo: '#ff5c5c',
           duo: '#ff8552',
           trio: '#ffb638',
+          capture_turkey: '#ffb347',
           objective: '#389eff',
           construction: '#f2a25d',
           knock_donate: '#ff7bd1',
@@ -39824,6 +40102,12 @@ let heistFeverActive = false;
           updateShowdownModeUI();
       }
       resetPacketRuntime(player);
+      if (showdownMode === 'capture_turkey' && !isTurkeyTroubleSeasonActive()) {
+          alert('🦃 Capture the Turkey is a Season 5: Turkey Trouble event — it runs November 1-30, 2026!');
+          showdownMode = 'solo';
+          updateShowdownModeUI();
+          return;
+      }
       const brickGate = getSelectedBrickPowerGate();
       if (brickGate.locked) { updateBrickPowerGateUI(); return; }
       if (showdownMode === 'splitter_powered') showdownMode = 'power_gods';
@@ -39834,11 +40118,9 @@ let heistFeverActive = false;
       isLavaBossEvent = showdownMode === 'lava_boss_s3';
       isHeadlessBossEvent = showdownMode === 'headless_boss_s4';
       isBossFight = isLavaBossEvent || isBouncinBossEvent || isHeadlessBossEvent;
+      activeSkinTrial = null; // real matches never use trial skins
       if (isBouncinBossEvent) {
           initBouncinBossMatch();
-      }
-      if (isHeadlessBossEvent) {
-          initHeadlessBossMatch();
       }
       isOverlordTrialEvent = false;
       isHyperEvent = false;
@@ -39938,7 +40220,8 @@ let heistFeverActive = false;
       } else if (isKnockDonateMode) {
           initKnockDonateModeState();
       }
-      isObjectiveMode = showdownMode === 'objective';
+      isTurkeyCaptureMode = showdownMode === 'capture_turkey';
+      isObjectiveMode = showdownMode === 'objective' || isTurkeyCaptureMode;
       isConstructionMode = showdownMode === 'construction';
       isDuoShowdown = showdownMode === 'duo';
       setShowdownModifier(showdownMode);
@@ -39969,6 +40252,7 @@ let heistFeverActive = false;
           else if (isTugZoneMode) baseTitle = 'Arena Forge - Tug Zone 3v3';
           else if (isTrioShowdownMode) baseTitle = 'Arena Forge - Trio Showdown';
           else if (isDamageFillerMode) baseTitle = `Arena Forge - Damage Filler ${damageFillerTeamSize}v${damageFillerTeamSize}`;
+          else if (isTurkeyCaptureMode) baseTitle = 'Arena Forge - Capture the Turkey (Season 5)';
           else if (isObjectiveMode) baseTitle = 'Arena Forge - Control Clash (Prototype)';
           else if (isDuoShowdown) baseTitle = 'Arena Forge - Duo Showdown';
           else if (isImpossibleMode) baseTitle = 'Arena Forge - The Impossible';
@@ -39994,6 +40278,9 @@ let heistFeverActive = false;
       if (isLavaBossEvent || isHeadlessBossEvent) {
           WORLD_W = 2400;
           WORLD_H = 2200;
+      } else if (isTurkeyCaptureMode) {
+          WORLD_W = 2600;
+          WORLD_H = 2000;
       } else if (isMirrorMode) {
           WORLD_W = 2400;
           WORLD_H = 1800;
@@ -40071,6 +40358,8 @@ let heistFeverActive = false;
             spawnPos = { x: 1000, y: 1600 };
         } else if (isConstructionMode) {
             spawnPos = getConstructionSpawnPoint('player', 0, 3);
+        } else if (isTurkeyCaptureMode) {
+            spawnPos = getObjectiveSpawnPoint('player', 0, 3);
         } else if (isObjectiveMode) {
             spawnPos = getObjectiveSpawnPoint('player', 0, 3);
         } else if (isMirrorMode) {
@@ -40111,6 +40400,7 @@ let heistFeverActive = false;
       if (isMarkedMayhemMode) initMarkedMayhemModeState();
       if (isTugZoneMode) initTugZoneModeState();
       if (isObjectiveMode) initObjectiveModeState();
+      if (isTurkeyCaptureMode) initTurkeyCaptureState();
       spawnBots();
       if (isRankedMatch || isCustomMutatorMatch) {
           timedDetonationStage = 0;
@@ -40173,6 +40463,7 @@ let heistFeverActive = false;
           }, 300);
       }
       if (isLavaBossEvent) initLavaBossMatch();
+      if (isHeadlessBossEvent) initHeadlessBossMatch();
       if (isBrickVaultMode) initBrickVaultModeState();
       if (isArenaForgeMode) {
           spawnArenaForgeStructures();
@@ -40222,6 +40513,7 @@ let heistFeverActive = false;
       isMirrorMode = false;
       isImpossibleMode = false;
       isObjectiveMode = false;
+      isTurkeyCaptureMode = false; turkeyCaptureState = null;
       isTraining = false;
       isDuels = true;
       isTowerDuelEvent = true;
@@ -41309,6 +41601,7 @@ isBrawlerLabMode = false;
       isTowerDuelEvent = false;
       isWarperEvent = false;
       isObjectiveMode = false;
+      isTurkeyCaptureMode = false; turkeyCaptureState = null;
       soloTrialWave = 0;
       soloTrialPending = false;
       playing = true;
@@ -41408,6 +41701,7 @@ isBrawlerLabMode = false;
   }
 
   trainingBtn.addEventListener('click', ()=>{
+      activeSkinTrial = null;
       launchTrainingSandbox(selectedBrawler);
   });
 
@@ -41441,6 +41735,7 @@ isBrawlerLabMode = false;
       isDuels = false;
       isWarperEvent = false;
       isObjectiveMode = false;
+      isTurkeyCaptureMode = false; turkeyCaptureState = null;
     isConstructionMode = false;
       if (document.getElementById('topbar')) document.getElementById('topbar').textContent = 'Arena Forge - Rookie Course';
       playing = true;
@@ -42347,6 +42642,7 @@ isBrawlerLabMode = false;
             sort: localStorage.getItem('brawl_arena_brawler_sort') || 'rarity-desc',
             role: localStorage.getItem('brawl_arena_brawler_role_filter') || 'all',
             rarity: localStorage.getItem('brawl_arena_brawler_rarity_filter') || 'all',
+            ownership: localStorage.getItem('brawl_arena_brawler_ownership_filter') || 'all',
             search: '',
         };
         
@@ -42552,6 +42848,13 @@ isBrawlerLabMode = false;
             controlsRow.style.width = '1000px';
             controlsRow.style.maxWidth = '90%';
             controlsRow.style.marginBottom = '20px';
+            controlsRow.style.position = 'sticky';
+            controlsRow.style.top = '10px';
+            controlsRow.style.zIndex = '6';
+            controlsRow.style.background = 'rgba(8,17,31,0.94)';
+            controlsRow.style.padding = '10px';
+            controlsRow.style.borderRadius = '12px';
+            controlsRow.style.flexWrap = 'wrap';
 
             const sortLabel = document.createElement('span');
             sortLabel.textContent = 'Sort';
@@ -42602,13 +42905,21 @@ isBrawlerLabMode = false;
             searchInput.placeholder = 'Search brawlers';
             searchInput.value = modalSortState.search;
             searchInput.setAttribute('aria-label', 'Search brawlers');
+            overlay.addEventListener('keydown', (event) => {
+                if (event.key === '/' && document.activeElement !== searchInput) { event.preventDefault(); searchInput.focus(); }
+            });
             searchInput.oninput = () => {
                 modalSortState.search = searchInput.value;
                 const query = modalSortState.search.trim().toLowerCase();
+                let visibleCards = 0;
                 overlay.querySelectorAll('[data-brawler-card]').forEach((card) => {
                     const haystack = card.getAttribute('data-search') || '';
-                    card.style.display = !query || haystack.includes(query) ? '' : 'none';
+                    const show = !query || haystack.includes(query);
+                    card.style.display = show ? '' : 'none';
+                    if (show) visibleCards++;
                 });
+                const countEl = overlay.querySelector('#brawlerBrowserCount');
+                if (countEl) countEl.textContent = `${visibleCards} fighters`;
             };
 
             modalSortSelect.onchange = () => {
@@ -42632,6 +42943,32 @@ isBrawlerLabMode = false;
             controlsRow.appendChild(modalSortSelect);
             controlsRow.appendChild(roleFilter);
             controlsRow.appendChild(rarityFilter);
+            const ownershipChips = document.createElement('div');
+            ownershipChips.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;';
+            [['all','All'],['owned','Owned'],['locked','Locked'],['favorites','⭐ Favorites']].forEach(([value,label]) => {
+                const chip = document.createElement('button');
+                chip.textContent = label;
+                const activeChip = modalSortState.ownership === value;
+                chip.style.cssText = `padding:7px 11px;border-radius:999px;border:1px solid ${activeChip ? '#5df2c2' : '#4462a3'};background:${activeChip ? 'rgba(93,242,194,0.18)' : '#1a2a4f'};color:#fff;font-weight:800;cursor:pointer;`;
+                chip.onclick = () => { modalSortState.ownership = value; localStorage.setItem('brawl_arena_brawler_ownership_filter', value); showList(); };
+                ownershipChips.appendChild(chip);
+            });
+            controlsRow.appendChild(ownershipChips);
+            const resultCount = document.createElement('span');
+            resultCount.id = 'brawlerBrowserCount';
+            resultCount.style.cssText = 'font-size:11px;font-weight:900;color:#9dc0e4;';
+            controlsRow.appendChild(resultCount);
+            const clearFiltersBtn = document.createElement('button');
+            clearFiltersBtn.textContent = '✖ Clear filters';
+            clearFiltersBtn.style.cssText = 'padding:7px 11px;border-radius:999px;border:1px solid #4462a3;background:#1a2a4f;color:#fff;font-weight:800;cursor:pointer;';
+            clearFiltersBtn.onclick = () => {
+                modalSortState.search = ''; modalSortState.role = 'all'; modalSortState.rarity = 'all'; modalSortState.ownership = 'all';
+                localStorage.setItem('brawl_arena_brawler_role_filter', 'all');
+                localStorage.setItem('brawl_arena_brawler_rarity_filter', 'all');
+                localStorage.setItem('brawl_arena_brawler_ownership_filter', 'all');
+                showList();
+            };
+            controlsRow.appendChild(clearFiltersBtn);
             overlay.appendChild(controlsRow);
 
             const container = document.createElement('div');
@@ -42659,6 +42996,9 @@ isBrawlerLabMode = false;
                     const role = (brawlerData[id]?.role || '').toLowerCase();
                     const rarity = brawlerRarities[id] || 'Starter';
                     const query = modalSortState.search.trim().toLowerCase();
+                    if (modalSortState.ownership === 'owned' && !isBrawlerUnlocked(id)) return false;
+                    if (modalSortState.ownership === 'locked' && isBrawlerUnlocked(id)) return false;
+                    if (modalSortState.ownership === 'favorites' && !isFavoriteBrawler(id)) return false;
                     if (modalSortState.role !== 'all' && role !== modalSortState.role) return false;
                     if (modalSortState.rarity !== 'all' && rarity !== modalSortState.rarity) return false;
                     if (query && !`${brawlerData[id]?.name || ''} ${role} ${rarity} ${getDisplayRarityName(rarity)}`.toLowerCase().includes(query)) return false;
@@ -42673,6 +43013,8 @@ isBrawlerLabMode = false;
                     if (a[1] > b[1]) return 1;
                     return 0;
                 });
+            const browserCountEl = overlay.querySelector('#brawlerBrowserCount');
+            if (browserCountEl) browserCountEl.textContent = `${visibleBrawlers.length} fighters`;
             const unlockedVisibleBrawlers = visibleBrawlers.filter((id) => isBrawlerUnlocked(id));
             const lockedVisibleBrawlers = visibleBrawlers.filter((id) => !isBrawlerUnlocked(id));
             const orderedBrawlers = [...unlockedVisibleBrawlers, ...lockedVisibleBrawlers];
@@ -46860,7 +47202,10 @@ function checkHit(target, b, i){
     const aliveBotsInUpdate = bots.filter(t => t.hp > 0);
     const aliveBots = aliveBotsInUpdate;
 
-    if (isObjectiveMode && !isBossFight && !isSoloTrial && !isDuels && !gameOver) {
+    if (isTurkeyCaptureMode && !isBossFight && !isSoloTrial && !isDuels && !gameOver) {
+        updateTurkeyCapture(dt);
+    }
+    if (isObjectiveMode && !isTurkeyCaptureMode && !isBossFight && !isSoloTrial && !isDuels && !gameOver) {
         objectiveTimer += dt;
         let playerHoldingZones = 0;
         let enemyHoldingZones = 0;
@@ -47282,6 +47627,32 @@ function checkHit(target, b, i){
             bot.respawnTimer = (bot.respawnTimer || 0) + dt;
             if (bot.respawnTimer < OBJECTIVE_RESPAWN_SECONDS) continue;
             const slot = team === 'player' ? playerSlot++ : enemySlot++;
+            restoreRespawningEntity(bot, getObjectiveSpawnPoint(team, slot, 3), false, 1200);
+        }
+    } else if (isTurkeyCaptureMode) {
+        if (player.hp <= 0 && !gameOver) {
+            player.respawnTimer = (player.respawnTimer || 0) + dt;
+            if (player.respawnTimer >= OBJECTIVE_RESPAWN_SECONDS) {
+                restoreRespawningEntity(player, getObjectiveSpawnPoint('player', 0, 3), true, 1200);
+            }
+        } else {
+            player.respawnTimer = 0;
+        }
+
+        let turkeyPlayerSlot = 1;
+        let turkeyEnemySlot = 0;
+        for (const bot of bots) {
+            if (!bot || bot.isPet || bot.isDummy || bot.isStructure || bot.noRespawn) continue;
+            const team = bot.team === 'player' ? 'player' : 'enemy';
+            if (bot.hp > 0) {
+                if (team === 'player') turkeyPlayerSlot++;
+                else turkeyEnemySlot++;
+                bot.respawnTimer = 0;
+                continue;
+            }
+            bot.respawnTimer = (bot.respawnTimer || 0) + dt;
+            if (bot.respawnTimer < OBJECTIVE_RESPAWN_SECONDS) continue;
+            const slot = team === 'player' ? turkeyPlayerSlot++ : turkeyEnemySlot++;
             restoreRespawningEntity(bot, getObjectiveSpawnPoint(team, slot, 3), false, 1200);
         }
     } else if (isConstructionMode) {
@@ -53111,6 +53482,26 @@ function checkHit(target, b, i){
                       if (focusEnemy) forcedObjectiveTarget = focusEnemy;
                   }
               }
+          } else if (isTurkeyCaptureMode && turkeyCaptureState) {
+              // Bots 3.0: Capture the Turkey routing — carrier runs home, allies escort, enemies chase the carrier or the bird
+              const tState = turkeyCaptureState;
+              const tTeam = t.team === 'player' ? 'player' : 'enemy';
+              const ownBase = tTeam === 'player' ? tState.playerBase : tState.enemyBase;
+              const carrierEnt = tState.carrierId == null ? null : (tState.carrierId === player.id ? player : bots.find(bt => bt && bt.id === tState.carrierId));
+              if (carrierEnt && carrierEnt.id === t.id) {
+                  forcedObjectiveTarget = { x: ownBase.x, y: ownBase.y, id: 'center' };
+              } else if (carrierEnt) {
+                  if (areAlliedEntities(t, carrierEnt)) {
+                      const flankSide = (botAi.slot % 2 === 0 ? -170 : 170);
+                      forcedObjectiveTarget = { x: carrierEnt.x + flankSide, y: carrierEnt.y + (tTeam === 'player' ? 150 : -150), id: 'center' };
+                  } else {
+                      forcedObjectiveTarget = carrierEnt;
+                  }
+              } else if (tState.turkeyActive) {
+                  forcedObjectiveTarget = { x: tState.turkeyX, y: tState.turkeyY, id: 'center' };
+              } else {
+                  forcedObjectiveTarget = { x: WORLD_W * 0.5, y: WORLD_H * 0.5, id: 'center' };
+              }
           } else if (isBraweBallMode && braweBallState && braweBallState.ball) {
               // Bots 3.0: Brawe Ball 3v3 Integrated Objective Routing
               const ball = braweBallState.ball;
@@ -56497,6 +56888,7 @@ function checkHit(target, b, i){
     renderCorruptedShowdown();
     renderLavaBossEvent();
     renderHeadlessBossEvent();
+    renderTurkeyCaptureEvent();
     if (typeof renderBouncinBossEvent === 'function') renderBouncinBossEvent('ground');
     if (isBraweBallMode) renderBraweBallWorld(ctx);
     if (isKnockoutMode) renderKnockoutWorld(ctx);
@@ -68504,7 +68896,7 @@ function checkHit(target, b, i){
     }
     
     // Draw mode objective geometry
-    if (isObjectiveMode && playing && !isBossFight && !isSoloTrial && !isDuels) {
+    if (isObjectiveMode && !isTurkeyCaptureMode && playing && !isBossFight && !isSoloTrial && !isDuels) {
         const now = performance.now();
         const pulse = 1 + Math.sin(now / 220) * 0.04;
         const zonesToDraw = (Array.isArray(objectiveZones) && objectiveZones.length > 0)
@@ -69958,7 +70350,21 @@ function checkHit(target, b, i){
         }
     }
 
-    if (isObjectiveMode && playing) {
+    if (isTurkeyCaptureMode && playing && turkeyCaptureState) {
+        const tScores = turkeyCaptureState.scores || { player: 0, enemy: 0 };
+        const tLeft = Math.max(0, Math.ceil(TURKEY_CAPTURE_MATCH_SECONDS - (turkeyCaptureState.timer || 0)));
+        const bannerW = 460;
+        ctx.fillStyle = 'rgba(32, 16, 4, 0.85)';
+        ctx.fillRect(innerWidth / 2 - bannerW / 2, 78, bannerW, 36);
+        ctx.strokeStyle = 'rgba(255, 179, 71, 0.8)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(innerWidth / 2 - bannerW / 2, 78, bannerW, 36);
+        ctx.fillStyle = '#ffe3b3';
+        ctx.font = 'bold 13px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`CAPTURE THE TURKEY 🦃 • 🟦 ${tScores.player} vs ${tScores.enemy} 🟥 • FIRST TO ${TURKEY_CAPTURE_GOAL} • ⏱️ ${tLeft}s`, innerWidth / 2, 96);
+        ctx.textAlign = 'left';
+    } else if (isObjectiveMode && playing) {
         const bluePct = Math.round(objectiveScores?.player || 0);
         const redPct = Math.round(objectiveScores?.enemy || 0);
         const timeLeft = Math.max(0, Math.ceil(180 - objectiveTimer));
@@ -70665,8 +71071,10 @@ function checkHit(target, b, i){
             const endProgress = getSelectedProgress();
 
             if (isBossFight) {
-                const boss = bots.find(b => b.isBoss);
-                won = (!boss || boss.hp <= 0);
+                const boss = isHeadlessBossEvent
+                    ? bots.find(b => b.isHeadlessBoss && b.id === headlessBossRuntime?.bossId)
+                    : bots.find(b => b.isBoss);
+                won = !!boss && boss.hp <= 0;
                 if (isLavaBossEvent) {
                     const cfg=getLavaBossDifficulty(lavaBossRuntime?.difficulty||activeLavaBossDifficulty);
                     rankText=`Difficulty: ${cfg.name}`;
@@ -70697,6 +71105,13 @@ function checkHit(target, b, i){
                 won = playerScore >= 5;
                 matchText = won ? "YOU WON THE DUEL!" : "BOT WON THE DUEL!";
                 rankText = `Score: ${playerScore} - ${botScore}`;
+            } else if (isTurkeyCaptureMode) {
+                won = !!objectiveWon;
+                const tFinal = turkeyCaptureState?.scores || { player: 0, enemy: 0 };
+                if (won) progressSeasonPassQuest('capture_turkey_wins', 1);
+                rankNum = won ? 1 : 2;
+                matchText = won ? 'TURKEY CAPTURED — YOU WIN!' : (turkeyCaptureState?.winnerTeam === 'draw' ? 'TURKEY TIE!' : 'THE TURKEY GOT AWAY!');
+                rankText = `Captures: You ${tFinal.player} - ${tFinal.enemy} Enemy`;
             } else if (isObjectiveMode) {
                 won = !!objectiveWon;
                 const capNow = Math.round(objectiveControl);
@@ -71976,7 +72391,7 @@ function checkHit(target, b, i){
       overlay.className = 'circuit-overlay';
       overlay.setAttribute('role','dialog');
       overlay.setAttribute('aria-modal','true');
-      overlay.setAttribute('aria-label','Arenaaween Pass');
+      overlay.setAttribute('aria-label','Season Pass');
       const close = () => { overlay.remove(); document.removeEventListener('keydown',keyboard); previousFocus?.focus?.(); refreshHomeUI(); };
       const keyboard = event => {
           if(event.key === 'Escape') { event.stopPropagation(); close(); }
@@ -71991,10 +72406,10 @@ function checkHit(target, b, i){
       let tab = 'road', scrollLeft = 0;
       const render = () => {
           ensureSeasonPassState();
-          const pass=playerData.seasonPass, active=isSeason3PassActive();
+          const pass=playerData.seasonPass, active=isSeason3PassActive(), seasonProfile=getActiveSeasonProfile();
           const progress=Math.min(100,pass.xp % 100), next=Math.max(0,100-progress);
           overlay.innerHTML = `<section class="circuit-panel">
-              <header class="circuit-header"><div><small>SEASON 04 / ARENAAWEEN</small><h1>ARENAAWEEN <span>PASS</span></h1></div><button data-action="close" aria-label="Close pass">✕</button></header>
+              <header class="circuit-header"><div><small>SEASON 0${seasonProfile.seasonNumber} / ${seasonProfile.upperName}</small><h1>${seasonProfile.upperName} <span>PASS</span></h1></div><button data-action="close" aria-label="Close pass">✕</button></header>
               <div class="circuit-summary"><div class="circuit-level"><b>${pass.level}</b><span>LEVEL / 25</span></div><div class="circuit-progress"><strong>${pass.level >= 25 ? 'REWARD ROAD COMPLETE' : next+' TOKENS TO NEXT LEVEL'}</strong><progress max="100" value="${pass.level>=25?100:progress}"></progress><small>${active?'15 tokens per completed match · 25 on a win · missions earn more':'Season ended'} · spending never removes progress</small></div><div class="circuit-wallet"><small>PASS TOKENS</small><b>◈ ${pass.tokenWallet.toLocaleString()}</b><span>${pass.tokensEarned.toLocaleString()} earned this season</span></div></div>
               <nav class="circuit-tabs"><button data-tab="road" aria-pressed="${tab==='road'}">REWARD ROAD</button><button data-tab="shop" aria-pressed="${tab==='shop'}">TOKEN EXCHANGE</button><button data-action="quests">MISSIONS ↗</button></nav>
               <main class="circuit-content"></main>
@@ -72013,7 +72428,7 @@ function checkHit(target, b, i){
               }
               content.appendChild(premium);
               const road=document.createElement('div');road.className='circuit-road';road.setAttribute('aria-label','Scroll through 25 reward tiers');
-              for(const tier of SEASON_PASS_TIERS){
+              for(const tier of getActiveSeasonPassTiers()){
                   const column=document.createElement('article');column.className='circuit-tier'+(pass.level>=tier.tier?' unlocked':'');
                   const heading=document.createElement('h2');heading.textContent=String(tier.tier).padStart(2,'0');column.appendChild(heading);
                   const title=document.createElement('h3');title.textContent=tier.title;column.appendChild(title);
