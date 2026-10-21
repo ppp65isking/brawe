@@ -271,6 +271,10 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             const scale = 0.55 + (level - 1) * 0.045;
             return { hp: Math.round(6400 * scale), dmg: Math.round(1400 * scale), batDmg: Math.round(300 * scale), speed: 280 };
         }
+        if (brawlerId === 'feathers') {
+            const scale = 0.55 + (level - 1) * 0.045;
+            return { hp: Math.round(5600 * scale), dmg: Math.round(1000 * scale), speed: 268 };
+        }
         if (brawlerId === 'magnatar') {
             const scale = 0.55 + (level - 1) * 0.045;
             return { hp: Math.round(6600 * scale), dmg: Math.round(864 * scale), speed: 270 };
@@ -4645,10 +4649,12 @@ const bolznstienPendingStrikes = [];
         bolznstien: 1.0,
             magnatar: 1.0,
             oil_maker: 1.0,
-            badbat: 1.0
+            badbat: 1.0,
+            feathers: 1.0
         },
         reloadMsByBrawler: {
             badbat: 1300,
+            feathers: 1400,
             carmela_fudge: 1400,
             oil_maker: 90,
             magnatar: 1450,
@@ -4706,6 +4712,7 @@ const bolznstienPendingStrikes = [];
         },
         fireDelayMsByBrawler: {
             badbat: 200,
+            feathers: 240,
             carmela_fudge: 180,
             oil_maker: 56,
             magnatar: 200,
@@ -4936,7 +4943,8 @@ const bolznstienPendingStrikes = [];
         'scuba_diver', 'hoop', 'screener', 'malakor', 'beam', 'paradox', 'sera_eclipse',
         'boom_arang', 'teether', 'fuel', 'xray', 'angel', 'demon', 'warrior', 'relay',
         'upiedown', 'chickpig', 'jetpack', 'snapper', 'robber', 'rocketeer',
-        'carmela_fudge', 'peter_pickle', 'unstable', 'homer', 'orbo', 'predator', 'fastpass', 'freestyle', 'portalo', 'ghoul', 'jacktrade', 'darkener', 'awakenator', 'adlof', 'cluster', 'witch', 'boomer', 'blade_vane', 'daggershard', 'ice_cream', 'swimmer', 'kage', 'drainbow', 'draflygon', 'axeywaxy', 'trampaheal', 'mageny', 'ramage', 'upgradart', 'cinderion', 'cursed', 'king', 'anti_royal', 'sir_cheeseburger', 'weefee', 'blinkeye', 'bolznstien', 'magnatar', 'oil_maker', 'rager', 'badbat', 'looma'
+        'carmela_fudge', 'peter_pickle', 'unstable', 'homer', 'orbo', 'predator', 'fastpass', 'freestyle', 'portalo', 'ghoul', 'jacktrade', 'darkener', 'awakenator', 'adlof', 'cluster', 'witch', 'boomer', 'blade_vane', 'daggershard', 'ice_cream', 'swimmer', 'kage', 'drainbow', 'draflygon', 'axeywaxy', 'trampaheal', 'mageny', 'ramage', 'upgradart', 'cinderion', 'cursed', 'king', 'anti_royal', 'sir_cheeseburger', 'weefee', 'blinkeye', 'bolznstien', 'magnatar', 'oil_maker', 'rager', 'badbat', 'looma',
+        'feathers'
     ];
     const registeredBrawlerModules = window.ArenaForgeModules?.brawlers || Object.create(null);
     for (const moduleId of Object.keys(registeredBrawlerModules)) {
@@ -5036,6 +5044,7 @@ const bolznstienPendingStrikes = [];
             upiedown: 'Mythic',
             chickpig: 'Mythic',
             jetpack: 'Mythic',
+            feathers: 'Mythic',
             freestyle: 'Mythic',
 
             // Exotic (10)
@@ -8522,6 +8531,7 @@ const bolznstienPendingStrikes = [];
             'hoop': { name: 'Hoop', role: 'Controller', desc: 'Streetball playmaker with a SWISH/Bank-shot rhythm: direct hits power your next shot, wall bounces charge Heat Check.', color: '#ff9f43', attack: 'Bounce Breaker', attackDesc: 'Shoots a bouncing basketball that explodes in a small area on each impact. Direct hit before first bounce grants SWISH buff. Wall bounces build Bank Stacks; at 3 stacks your next shot becomes Heat Check.', super: 'Full-Court Crash', superDesc: 'Launches a giant slam ball that bounces multiple times, each bounce creating a heavy area blast.', hyper: 'Main attack throws an extra angle ball and first impact spawns mini-balls. Super gains extra bounce count, bigger blast radius, and stuns enemies in the blast.', g1: 'Backboard Bank (Next ball gets larger splash and extra bounce)', g2: 'Crossover Drive (Dash forward, gain shield, and speed burst)', sp1: 'Ankle Breaker (Main splash slows enemies briefly)', sp2: 'Deep Range (Main and super travel farther with faster arc)' },
             'screener': { name: 'Screener', role: 'Controller', desc: 'Battery-based projector brawler. Starts at 100% battery that drains over time; recharge by landing screen hits.', color: '#7ec8ff', attack: 'Projected Sweep', attackDesc: 'Fires a 360-degree radial burst of screen projectors around you. Each hit recharges battery.', super: 'Projected Charge', superDesc: 'Activates a static projector field for 4s. Incoming shots that touch the field are converted into projector blasts fired out at that angle.', hyper: 'Main attack spins with multiple rotating sweeps. Super gains an extra projector layer and stronger conversions.', g1: 'Power Cell (Instant battery refill + heal)', g2: 'Overclock Grid (Temporarily boost projector output and battery gain)', sp1: 'Efficient Panel (Battery decays slower)', sp2: 'Capacitor Bank (Larger battery capacity and stronger low-battery safety)' },
             'malakor': { name: 'Malakor', role: 'Controller', desc: 'The fallen red-staff child who commands infernal terrain and demon hands.', color: '#ff4a4a', attack: 'Putting You Down', attackDesc: 'Slams his staff and corrupts the ground into Hell around him. Enemies standing in Hell take constant damage. Hell terrain lasts until the match ends.', super: 'Hell Is Forever!', superDesc: 'Slam to create a huge Hell zone and summon demon hands that punish enemies standing in Hell.', hyper: 'UPSIDE DOWN!: Super corrupts the whole map into Hell and summons many more demon hands. Main attack corrupts a larger area.', g1: 'Crimson Surge (Create a bonus Hell pulse and heal)', g2: 'Damnation Mark (Next main attack also summons a demon hand)', sp1: 'Infernal Dominion (Hell terrain deals more damage)', sp2: 'Abyssal Grip (Demon hands strike wider and stun longer)' },
+            'feathers': { name: 'Feathers', role: 'Controller', desc: 'A breezy storm-dancer whose feathers ride the wind - and leave it behind to trip up everyone else.', color: '#7fe7ff', attack: 'Feather Shot', attackDesc: 'Flicks a sharp feather that deals damage on hit. When it reaches max range it bursts into a gust of wind: anyone standing in the wind slides around like the floor is ice.', super: 'Windstorm', superDesc: 'Calls down a huge storm at the target spot. Thick fog fills the storm so everyone inside is harder to see - even Feathers - and the ground inside turns slippery.', hyper: 'Cyclone Heart: Feather Shots vacuum nearby enemies inward when their wind bursts. Windstorm crackles with Bolznstien-style lightning that strikes enemies inside for reduced damage.', g1: 'Tailwind Rush (Dash forward, gain speed, and leave slippery wind behind you)', g2: 'Gust Burst (Blast nearby enemies away and shake off slows)', sp1: 'Wide Skies (Wind zones are bigger and last longer)', sp2: 'Slipstream Rider (Move faster inside your own wind and storms)' },
             'boom_arang': {
                 name: 'Boom-Arang',
                 role: 'Marksman',
@@ -8761,7 +8771,7 @@ const bolznstienPendingStrikes = [];
 
     // V4 standardized primary-role organization: exactly one gameplay role per brawler.
     const PRIMARY_ROLE_BY_BRAWLER = {
-        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank', rager:'Controller', looma:'Controller',
+        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank', rager:'Controller', looma:'Controller', feathers:'Controller',
     carmela_fudge:'Damage Dealer', bolznstien:'Damage Dealer', badbat:'Damage Dealer', magnatar:'Controller', oil_maker:'Controller', sir_cheeseburger:'Tank',
         blade_vane:'Assassin', kage:'Assassin', drainbow:'Controller', bowlin_rida:'Assassin', dashaholic:'Assassin', demon:'Assassin', jetpack:'Assassin', malakor:'Assassin', predator:'Assassin', swimmer:'Assassin', teether:'Assassin',
         boom_arang:'Marksman', cheseypuff:'Marksman', crystila:'Marksman', homer:'Marksman', hunter:'Marksman', orbo:'Marksman', snapper:'Marksman', xray:'Marksman',
@@ -8781,6 +8791,7 @@ const bolznstienPendingStrikes = [];
     carmela_fudge: '🍬🍫',
     bolznstien: '⚡🧟',
     badbat: '🦇🏏',
+    feathers: '🪶',
     looma: '🪡🧵',
         sir_cheeseburger: '🛡️',
         anti_royal: '🏴‍☠️',
@@ -8987,6 +8998,7 @@ const bolznstienPendingStrikes = [];
             trapper: { g1:'Loaded Blast radius grows to 235 and drops a short trap at your feet.', g2:'Field Repair heals 1900 and arms the next gate.', slow:'Caught enemies remain 18% slowed for 1.5 seconds.', long:'An expired or destroyed trap fires a 45% mini gate at the nearest enemy.' },
             classy: { g1:'Perfect Pitch grants 35 Symphony and makes the next note 25% larger.', g2:'Encore Fan notes return once for 35% damage.', slow:'Golden notes burst again for 40% damage after 0.55 seconds.', long:'Taking damage pauses Symphony decay for 3 seconds.' },
             hyperorigin: { g1:'Core Overflow grants 4 Energy; excess Energy becomes a 500 shield each.', g2:'Fault Line dashes 260 units and grants an 1800 shield.', slow:'Heavy Singularity pulls enemies 70 units before suspending them.', long:'Stable Origin raises the 5+ Energy damage reduction from 18% to 24%.' },
+            feathers: { g1:'Tailwind Rush dashes 210 units toward your aim, grants brief bonus speed, and drops slippery wind at both ends of the dash.', g2:'Gust Burst blasts enemies within 185 units away for 350 damage and clears slows from Feathers.', slow:'Wide Skies: wind zones are 20% bigger and last 40% longer; Windstorm is bigger and lasts longer too.', long:'Slipstream Rider: Feathers moves 18% faster inside his own wind zones and storms.' },
             heater_miser: { g1:'Pressure Spike burns for 100 damage every 0.5 seconds for 2 seconds.', g2:'Three-Way Flux chains to 2 extra targets at 70% power.', slow:'Stored Heat loses only one ramp stage when the tether disconnects.', long:'Closed Circuit lets the Super zone retether through walls at 75% power.' },
             minigunnin: { g1:'Full Overclock fires 8 radial bullets and grants a 600 shield for 2 seconds.', g2:'Efficient Fortify costs 750 max HP and heals 3500.', slow:'Every 10th bullet pierces once and deals 130% damage.', long:'Walls and forts gain 25% HP and resist their first wall-breaking hit.' },
             steamer: { g1:'Boiler Burst grows 30%; enemies in the inner ring are stunned for 0.45 seconds.', g2:'Express Service lasts 6.5 seconds and grants 15% reload speed.', slow:'Pressure trails burn enemies for 240 damage over 2 seconds.', long:'Last Stop ends with a knockback ring and heals Steamer for 900.' },
@@ -9602,6 +9614,7 @@ const bolznstienPendingStrikes = [];
       magnatar: { g1: 14000, g2: 15000 },
       rager: { g1: 15000, g2: 18000 },
       badbat: { g1: 14000, g2: 15000 },
+      feathers: { g1: 12000, g2: 14000 },
       carmela_fudge: { g1: 8000, g2: 8000 },
       bolznstien: { g1: 14000, g2: 15000 },
       sir_cheeseburger: { g1: 13000, g2: 14000 },
@@ -10866,6 +10879,35 @@ function isPowerPlayModifierActive(entity = player) {
             color: isHyper ? 'rgba(224, 86, 253, 0.85)' : 'rgba(123, 44, 191, 0.8)'
         });
         spawnFloatingText(entity.x, entity.y - 40, isHyper ? '🦇 NOCTURNAL SWARM! 🦇' : '🦇 BAT COLONY ERUPTION!', isHyper ? '#e056fd' : '#9d4edd');
+    }
+
+    function executeFeathersG1(entity) {
+        if (!entity || entity.hp <= 0) return;
+        const now = performance.now();
+        let ang;
+        if (entity.id === player.id) { const wm = getMouseWorld(); ang = Math.atan2(wm.y - entity.y, wm.x - entity.x); }
+        else { const t = [player, ...bots].find((e) => e && e.id === entity.lastTargetId) || player; ang = Math.atan2((t ? t.y : entity.y) - entity.y, (t ? t.x : entity.x) - entity.x); }
+        const startX = entity.x, startY = entity.y;
+        entity.x = clamp(entity.x + Math.cos(ang) * 210, entity.radius, WORLD_W - entity.radius);
+        entity.y = clamp(entity.y + Math.sin(ang) * 210, entity.radius, WORLD_H - entity.radius);
+        entity.feathersHasteUntil = now + 1500;
+        spawnFeathersWind(startX, startY, Math.cos(ang), Math.sin(ang), entity.id);
+        spawnFeathersWind(entity.x, entity.y, Math.cos(ang), Math.sin(ang), entity.id);
+        explosions.push({ x: entity.x, y: entity.y, radius: 60, life: 0, maxLife: .22, color: 'rgba(127,231,255,.55)' });
+        spawnFloatingText(entity.x, entity.y - 32, '🪶 TAILWIND RUSH', '#7fe7ff');
+    }
+
+    function executeFeathersG2(entity) {
+        if (!entity || entity.hp <= 0) return;
+        entity.slowUntil = 0;
+        AOEDamage(entity.x, entity.y, 185, 350, entity.id, false);
+        for (const e of [player, ...bots]) {
+            if (!e || e.hp <= 0 || e.id === entity.id) continue;
+            if (areAlliedEntities(entity, e)) continue;
+            if (Math.hypot(e.x - entity.x, e.y - entity.y) <= 185) applyKnockback(e, entity.x, entity.y, 175);
+        }
+        explosions.push({ x: entity.x, y: entity.y, radius: 185, life: 0, maxLife: .25, color: 'rgba(191,239,255,.5)' });
+        spawnFloatingText(entity.x, entity.y - 32, '💨 GUST BURST', '#bfefff');
     }
 
     function executeBadBatG1(entity) {
@@ -12852,7 +12894,7 @@ let heistFeverActive = false;
       const {packets,season}=ensureSeason3State(),overlay=document.createElement('div');overlay.className='season3-overlay',panel=document.createElement('section');panel.className='season3-panel';
       const unlocked=Object.keys(packets.unlocked).filter(id=>packets.unlocked[id]).length;
       if (getActiveSeasonProfile().key === 'turkey') {
-          panel.innerHTML=`<header><div><small>SEASON 5</small><h1>TURKEY TROUBLE × ARENA FORGE</h1><p>Ends November 30, 2026</p></div><button aria-label="Close">X</button></header><div class="season3-breach"><small>THE TURKEYS ARE LOOSE</small><b>CAPTURE THE TURKEY IS LIVE ALL NOVEMBER</b></div><div class="season3-hub-grid"><button data-action="pass"><i>S5</i><b>Season Pass</b><span>Harvest rewards • ends Nov 30</span></button><button data-action="turkey"><i>🦃</i><b>Capture the Turkey</b><span>3v3 CTF • grab the bird, haul it home • first to 3 captures</span></button><button data-action="quests"><i>Q</i><b>Season Quests</b><span>Gobble the ladder for feast rewards</span></button><button data-action="boss"><i>🎃</i><b>Headless Bolznstien Boss Fight</b><span>Still haunting • up to 3 Spooky Boxes • his skin FREE on full clear</span></button><button data-action="corrupted"><i>CS</i><b>Corrupted Showdown</b><span>Season 5 chaos in the feast arena</span></button><button data-action="spooky"><i>🎃</i><b>Spooky Boxes</b><span>${playerData.spookyBoxCount||0} unopened leftovers from Arenaaween</span></button></div><div class="tower-retired-note"><b>SEASON 4 — ARCHIVED</b><span>Arenaaween is over. Your Spooky Boxes, skins and collections are preserved.</span></div><div class="tower-retired-note"><b>PACKETS — RETIRED</b><span>Packets are still gone. Your collection (${unlocked}/20 discovered) is preserved and will return in a future rework.</span></div><div class="tower-retired-note"><b>TOWER POWERS — TEMPORARILY RETIRED</b><span>Your collection is preserved and will return in a future rework.</span></div>`;
+          panel.innerHTML=`<header><div><small>SEASON 5</small><h1>TURKEY TROUBLE × ARENA FORGE</h1><p>Ends November 30, 2026</p></div><button aria-label="Close">X</button></header><div class="season3-breach"><small>THE TURKEYS ARE LOOSE</small><b>CAPTURE THE TURKEY IS LIVE ALL NOVEMBER</b></div><div class="season3-hub-grid"><button data-action="pass"><i>S5</i><b>Season Pass</b><span>Harvest rewards • ends Nov 30</span></button><button data-action="turkey"><i>🦃</i><b>Capture the Turkey</b><span>3v3 CTF • grab the bird, haul it home • first to 3 captures</span></button><button data-action="quests"><i>Q</i><b>Season Quests</b><span>Gobble the ladder for feast rewards</span></button><button data-action="boss"><i>🎃</i><b>Headless Bolznstien Boss Fight</b><span>Still haunting • up to 3 Spooky Boxes • his skin FREE on full clear</span></button><button data-action="corrupted"><i>CS</i><b>Corrupted Showdown</b><span>Season 5 chaos in the feast arena</span></button><button data-action="spooky"><i>🎃</i><b>Spooky Boxes</b><span>${playerData.spookyBoxCount||0} unopened leftovers from Arenaaween</span></button></div><div class="tower-retired-note"><b>SEASON 4 — ARCHIVED</b><span>Arenaaween is over. Your Spooky Boxes, skins and collections are preserved.</span></div><div class="tower-retired-note"><b>PACKETS — REMOVED</b><span>Packets are gone for good — the system has been removed. Your collection (${unlocked}/20 discovered) stays in your save as a souvenir.</span></div><div class="tower-retired-note"><b>TOWER POWERS — TEMPORARILY RETIRED</b><span>Your collection is preserved and will return in a future rework.</span></div>`;
           panel.querySelector('header button').onclick=()=>overlay.remove();
           panel.querySelector('[data-action="pass"]').onclick=()=>{overlay.remove();openSeasonPass();};
           panel.querySelector('[data-action="turkey"]').onclick=()=>{overlay.remove();showdownMode='capture_turkey';updateShowdownModeUI();setHomeTab('events');};
@@ -12863,7 +12905,7 @@ let heistFeverActive = false;
           overlay.onclick=e=>{if(e.target===overlay)overlay.remove();};overlay.appendChild(panel);document.body.appendChild(overlay);
           return;
       }
-      panel.innerHTML=`<header><div><small>SEASON 4</small><h1>ARENAAWEEN × ARENA FORGE</h1><p>Ends October 31, 2026</p></div><button aria-label="Close">X</button></header><div class="season3-breach"><small>THE HAUNTING IS LIVE</small><b>SPOOKY BOXES HAVE INFESTED THE ARENA</b></div><div class="season3-hub-grid"><button data-action="pass"><i>S4</i><b>Season Pass</b><span>Spooky rewards • ends Oct 31</span></button><button data-action="spooky"><i>🎃</i><b>Spooky Boxes</b><span>${playerData.spookyBoxCount||0} unopened • 6 skins, coins, or souls</span></button><button data-action="quests"><i>Q</i><b>Season Quests</b><span>Haunt the ladder for Spooky Boxes</span></button><button data-action="corrupted"><i>CS</i><b>Corrupted Showdown</b><span>Season 4 chaos in the haunted arena</span></button><button data-action="boss"><i>🎃</i><b>Headless Bolznstien Boss Fight</b><span>Hard through Impossible XV • up to 3 Spooky Boxes • his skin FREE on full clear</span></button><button data-action="skins"><i>👻</i><b>Arenaaween Skins</b><span>${unownedArenaweenSkins().length===0?'Full collection!':unownedArenaweenSkins().length+' of 6 still hiding in Spooky Boxes'}</span></button></div><div class="tower-retired-note"><b>BOSS EVENTS — REPLACED</b><span>The Lava Villain and Bouncin' Balls boss events were retired in Season 4. Headless Bolznstien has taken over the arena — your old boss progress is preserved.</span></div><div class="tower-retired-note"><b>PACKETS — RETIRED</b><span>Packets are gone in Season 4. Your collection (${unlocked}/20 discovered) is preserved and will return in a future rework.</span></div><div class="tower-retired-note"><b>TOWER POWERS — TEMPORARILY RETIRED</b><span>Your collection is preserved and will return in a future rework.</span></div>`;
+      panel.innerHTML=`<header><div><small>SEASON 4</small><h1>ARENAAWEEN × ARENA FORGE</h1><p>Ends October 31, 2026</p></div><button aria-label="Close">X</button></header><div class="season3-breach"><small>THE HAUNTING IS LIVE</small><b>SPOOKY BOXES HAVE INFESTED THE ARENA</b></div><div class="season3-hub-grid"><button data-action="pass"><i>S4</i><b>Season Pass</b><span>Spooky rewards • ends Oct 31</span></button><button data-action="spooky"><i>🎃</i><b>Spooky Boxes</b><span>${playerData.spookyBoxCount||0} unopened • 6 skins, coins, or souls</span></button><button data-action="quests"><i>Q</i><b>Season Quests</b><span>Haunt the ladder for Spooky Boxes</span></button><button data-action="corrupted"><i>CS</i><b>Corrupted Showdown</b><span>Season 4 chaos in the haunted arena</span></button><button data-action="boss"><i>🎃</i><b>Headless Bolznstien Boss Fight</b><span>Hard through Impossible XV • up to 3 Spooky Boxes • his skin FREE on full clear</span></button><button data-action="skins"><i>👻</i><b>Arenaaween Skins</b><span>${unownedArenaweenSkins().length===0?'Full collection!':unownedArenaweenSkins().length+' of 6 still hiding in Spooky Boxes'}</span></button></div><div class="tower-retired-note"><b>BOSS EVENTS — REPLACED</b><span>The Lava Villain and Bouncin' Balls boss events were retired in Season 4. Headless Bolznstien has taken over the arena — your old boss progress is preserved.</span></div><div class="tower-retired-note"><b>PACKETS — REMOVED</b><span>Packets are gone for good — the system has been removed. Your collection (${unlocked}/20 discovered) stays in your save as a souvenir.</span></div><div class="tower-retired-note"><b>TOWER POWERS — TEMPORARILY RETIRED</b><span>Your collection is preserved and will return in a future rework.</span></div>`;
       panel.querySelector('header button').onclick=()=>overlay.remove();panel.querySelector('[data-action="pass"]').onclick=()=>{overlay.remove();openSeasonPass();};panel.querySelector('[data-action="spooky"]').onclick=()=>{overlay.remove();if((playerData.spookyBoxCount||0)>0)openSpookyBox();else alert('No Spooky Boxes yet — earn them from the Arenaaween Pass and Season Quests!');};panel.querySelector('[data-action="skins"]').onclick=()=>{overlay.remove();alert('Arenaaween skins hide inside Spooky Boxes: Pumpkin King, Count Curseula, Phantom Phase, Midnight Reaper Darkener, Nightmare Awakenator, and Jack-o-Demon. Pumpkin King is also the Tier 25 Premium reward.');};panel.querySelector('[data-action="quests"]').onclick=()=>{overlay.remove();openQuestBoard('season');};panel.querySelector('[data-action="corrupted"]').onclick=()=>{overlay.remove();showdownMode='corrupted_showdown';updateShowdownModeUI();setHomeTab('events');};panel.querySelector('[data-action="boss"]').onclick=()=>{overlay.remove();openHeadlessBossEvent();};overlay.onclick=e=>{if(e.target===overlay)overlay.remove();};overlay.appendChild(panel);document.body.appendChild(overlay);
   }
 
@@ -17750,6 +17792,138 @@ let heistFeverActive = false;
         objectiveWon = false;
     }
 
+    // ===== FEATHERS: wind zones + windstorms =====
+    const FEATHERS_WIND_RADIUS = 95;
+    const FEATHERS_WIND_MS = 2600;
+    const FEATHERS_STORM_RADIUS = 330;
+    const FEATHERS_STORM_MS = 6000;
+    const FEATHERS_STORM_BOLT_MS = 900;
+    const FEATHERS_STORM_BOLT_DMG = 800;
+    const FEATHERS_PULL_RADIUS = 210;
+    let feathersWindZones = [];
+    let feathersStorms = [];
+    function feathersStarChoice(entity) { try { return getEntityStarChoice(entity); } catch (_) { return entity ? entity.selectedStar : null; } }
+    function feathersHasSP(entity, slot) { const c = feathersStarChoice(entity); return slot === 'sp1' ? (c === 'sp1' || c === 'slow') : (c === 'sp2' || c === 'long' || c === 'fast'); }
+    function findFeathersOwner(ownerId) { if (player && player.id === ownerId) return player; return bots.find((b) => b && b.id === ownerId) || null; }
+    function spawnFeathersWind(x, y, dirX, dirY, ownerId) {
+        const owner = findFeathersOwner(ownerId);
+        const sp1 = !!(owner && owner.brawler === 'feathers' && feathersHasSP(owner, 'sp1'));
+        feathersWindZones.push({ x, y, radius: FEATHERS_WIND_RADIUS * (sp1 ? 1.2 : 1), dirX, dirY, ownerId, expiresAt: performance.now() + FEATHERS_WIND_MS * (sp1 ? 1.4 : 1) });
+        const mine = feathersWindZones.filter((z) => z.ownerId === ownerId);
+        if (mine.length > 4) feathersWindZones.splice(feathersWindZones.indexOf(mine[0]), 1);
+    }
+    function spawnFeathersStorm(x, y, ownerId, hyper) {
+        const owner = findFeathersOwner(ownerId);
+        const sp1 = !!(owner && feathersHasSP(owner, 'sp1'));
+        feathersStorms.push({ x, y, radius: FEATHERS_STORM_RADIUS * (sp1 ? 1.15 : 1), ownerId, hyper: !!hyper, expiresAt: performance.now() + FEATHERS_STORM_MS * (sp1 ? 1.3 : 1), nextBoltAt: performance.now() + 500, seed: Math.random() * 10 });
+    }
+    function castFeathersSuper(entity, hyper, tx, ty) {
+        const dx = tx - entity.x, dy = ty - entity.y;
+        const dist = Math.hypot(dx, dy) || 1;
+        const clamped = Math.min(dist, 560);
+        const x = clamp(entity.x + dx / dist * clamped, 40, WORLD_W - 40);
+        const y = clamp(entity.y + dy / dist * clamped, 40, WORLD_H - 40);
+        spawnFeathersStorm(x, y, entity.id, hyper);
+        explosions.push({ x, y, radius: 120, life: 0, maxLife: .3, color: 'rgba(127,231,255,.5)', fxKind: 'feathersStormSpawn' });
+    }
+    function feathersWindBurst(b) {
+        const ang = Math.atan2(b.vy, b.vx);
+        spawnFeathersWind(b.x, b.y, Math.cos(ang), Math.sin(ang), b.ownerId);
+        if (b.featherHyper) {
+            const owner = findFeathersOwner(b.ownerId);
+            for (const e of [player, ...bots]) {
+                if (!e || e.hp <= 0 || e.id === b.ownerId) continue;
+                if (owner && areAlliedEntities(owner, e)) continue;
+                const d = Math.hypot(e.x - b.x, e.y - b.y);
+                if (d > FEATHERS_PULL_RADIUS || d < 1) continue;
+                applyKnockback(e, e.x + (e.x - b.x), e.y + (e.y - b.y), Math.min(110, d * 0.6));
+            }
+        }
+    }
+    function updateFeathersSystems(dt) {
+        const now = performance.now();
+        feathersWindZones = feathersWindZones.filter((z) => now < z.expiresAt);
+        feathersStorms = feathersStorms.filter((s) => now < s.expiresAt);
+        const entities = [player, ...bots].filter((e) => e && e.hp > 0);
+        const zones = [...feathersWindZones];
+        for (const s of feathersStorms) {
+            const a = now / 1400 + s.seed;
+            zones.push({ x: s.x, y: s.y, radius: s.radius, dirX: Math.cos(a), dirY: Math.sin(a), ownerId: s.ownerId });
+            if (s.hyper && now >= s.nextBoltAt) {
+                s.nextBoltAt = now + FEATHERS_STORM_BOLT_MS;
+                const owner = findFeathersOwner(s.ownerId);
+                const inside = entities.filter((e) => e.id !== s.ownerId && (!owner || !areAlliedEntities(owner, e)) && Math.hypot(e.x - s.x, e.y - s.y) <= s.radius);
+                if (inside.length) {
+                    const target = inside[Math.floor(Math.random() * inside.length)];
+                    scheduleBolznstienStrikes(s.ownerId, target.x, target.y, FEATHERS_STORM_BOLT_DMG, false, target.id);
+                }
+            }
+        }
+        for (const e of entities) {
+            if (e.feathersHasteUntil && now < e.feathersHasteUntil) { e.x += (e.vx || 0) * 0.3 * dt; e.y += (e.vy || 0) * 0.3 * dt; }
+        }
+        const inWind = new Set();
+        for (const z of zones) {
+            for (const e of entities) {
+                if (Math.hypot(e.x - z.x, e.y - z.y) > z.radius + (e.radius || 14)) continue;
+                inWind.add(e.id);
+                e._slipVx = (e._slipVx || 0) + (((e.vx || 0) + z.dirX * 85) - (e._slipVx || 0)) * Math.min(1, dt * 5);
+                e._slipVy = (e._slipVy || 0) + (((e.vy || 0) + z.dirY * 85) - (e._slipVy || 0)) * Math.min(1, dt * 5);
+                if (z.ownerId === e.id && e.brawler === 'feathers' && feathersHasSP(e, 'sp2')) {
+                    e.x += (e.vx || 0) * 0.18 * dt;
+                    e.y += (e.vy || 0) * 0.18 * dt;
+                }
+            }
+        }
+        for (const e of entities) {
+            if (!e._slipVx && !e._slipVy) continue;
+            e.x = clamp(e.x + e._slipVx * dt * 0.55, e.radius || 14, WORLD_W - (e.radius || 14));
+            e.y = clamp(e.y + e._slipVy * dt * 0.55, e.radius || 14, WORLD_H - (e.radius || 14));
+            if (!inWind.has(e.id)) {
+                const decay = Math.pow(0.004, dt);
+                e._slipVx *= decay; e._slipVy *= decay;
+                if (Math.abs(e._slipVx) < 4) e._slipVx = 0;
+                if (Math.abs(e._slipVy) < 4) e._slipVy = 0;
+            }
+        }
+    }
+    function renderFeathersEffects() {
+        const now = performance.now();
+        for (const z of feathersWindZones) {
+            ctx.save();
+            ctx.translate(z.x, z.y);
+            ctx.globalAlpha = 0.45;
+            ctx.strokeStyle = '#bfefff';
+            ctx.lineWidth = 3;
+            for (let i = 0; i < 3; i++) {
+                ctx.beginPath();
+                ctx.arc(0, 0, z.radius * (0.45 + i * 0.24), now / 300 + i * 2.1, now / 300 + i * 2.1 + 3.6);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+        for (const s of feathersStorms) {
+            ctx.save();
+            ctx.translate(s.x, s.y);
+            const grad = ctx.createRadialGradient(0, 0, s.radius * 0.15, 0, 0, s.radius);
+            grad.addColorStop(0, 'rgba(196,214,228,0.52)');
+            grad.addColorStop(0.75, 'rgba(170,192,210,0.44)');
+            grad.addColorStop(1, 'rgba(170,192,210,0.05)');
+            ctx.fillStyle = grad;
+            ctx.beginPath(); ctx.arc(0, 0, s.radius, 0, Math.PI * 2); ctx.fill();
+            ctx.globalAlpha = 0.5;
+            ctx.strokeStyle = '#e8f6ff';
+            ctx.lineWidth = 4;
+            for (let i = 0; i < 4; i++) {
+                ctx.beginPath();
+                ctx.arc(0, 0, s.radius * (0.3 + i * 0.17), now / 420 + i * 1.7 + s.seed, now / 420 + i * 1.7 + s.seed + 2.6);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+        ctx.globalAlpha = 1;
+    }
+
     function getTurkeyCaptureBase(team) {
         return getObjectiveSpawnPoint(team, 1, 3);
     }
@@ -22504,7 +22678,7 @@ let heistFeverActive = false;
       beam:8, fuser:24, heater_miser:20, minigunnin:72, money_and_tax:24, outlit:30, steamer:8,
       bouncin_balls:6, chickpig:12, classy:6, copyphase:6, goonbob:6, hoop:5, hyperorigin:5, robber:42,
       portalo:7, ghoul:6, jacktrade:18, darkener:6, awakenator:8, trampaheal:6, axeywaxy:6, mageny:6, draflygon:6, ramage:6, upgradart:10, cinderion:10, cursed:7, king:6, anti_royal:6, weefee:6, rager:4,
-    carmela_fudge:5, bolznstien:5, sir_cheeseburger:4, blinkeye:4, magnatar:6, oil_maker:16, badbat:5, looma:7
+    carmela_fudge:5, bolznstien:5, sir_cheeseburger:4, blinkeye:4, magnatar:6, oil_maker:16, badbat:5, looma:7, feathers:5
   });
   let nextMainAttackActivationId = 1;
   function getSuperChargeHitsForBrawler(brawler) {
@@ -28398,6 +28572,10 @@ let heistFeverActive = false;
             bullets.push({ownerBrawler:'cluster',isClusterBomb:true,x:fromEntity.x+Math.cos(shotAng)*(fromEntity.radius+7),y:fromEntity.y+Math.sin(shotAng)*(fromEntity.radius+7),vx:Math.cos(shotAng)*520,vy:Math.sin(shotAng)*520,life:0,maxLife:.88,damage:isBot?700:1050,pierce:false,ownerId:fromEntity.id,hitIds:{},hitboxMod:1.55,hyperVisual:hyper,clusterSticky:getEntityStarChoice(fromEntity)==='long',clusterHeavy:getEntityStarChoice(fromEntity)==='slow'});
         }
         return;
+    } else if (brawler === 'feathers') {
+        const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
+        bullets.push({ownerBrawler:'feathers',isFeatherShot:true,featherHyper:hyper,x:fromEntity.x+Math.cos(ang)*(fromEntity.radius+7),y:fromEntity.y+Math.sin(ang)*(fromEntity.radius+7),vx:Math.cos(ang)*840,vy:Math.sin(ang)*840,life:0,maxLife:.76,damage:isBot?720:1000,pierce:false,ownerId:fromEntity.id,hitIds:{},hitboxMod:1.3,hyperVisual:hyper});
+        return;
     } else if (brawler === 'duck') {
         castDuckMain(fromEntity,targetX,targetY,isBot,isBot?!!fromEntity.isHypercharged:!!isHypercharged);
         return;
@@ -33031,6 +33209,7 @@ let heistFeverActive = false;
 
     if (combatBrawler === 'trampaheal') { castTrampahealSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'looma') { castLoomaSuper(player, wm.x, wm.y, !!isHypercharged); updateSuperButton(); return; }
+    if (combatBrawler === 'feathers') { castFeathersSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'ramage') { castRamageSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
         if (combatBrawler === 'upgradart') { castUpgradartSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'axeywaxy') { castAxeyWaxySuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
@@ -34281,6 +34460,10 @@ let heistFeverActive = false;
       executeMagnatarG1(bot);
     } else if (bot.brawler === 'magnatar' && g === 'g2') {
       executeMagnatarG2(bot);
+    } else if (bot.brawler === 'feathers' && g === 'g1') {
+      executeFeathersG1(bot);
+    } else if (bot.brawler === 'feathers' && g === 'g2') {
+      executeFeathersG2(bot);
     } else if (bot.brawler === 'rager' && g === 'g1') {
       executeRagerG1(bot);
     } else if (bot.brawler === 'rager' && g === 'g2') {
@@ -34808,6 +34991,7 @@ let heistFeverActive = false;
     if (botCombatBrawler === 'looma') { castLoomaSuper(bot, targetX, targetY, isHyper); return; }
     if (botCombatBrawler === 'mageny') { castMagenySuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'trampaheal') { castTrampahealSuper(bot, isHyper, targetX, targetY); return; }
+    if (botCombatBrawler === 'feathers') { castFeathersSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'ramage') { castRamageSuper(bot, isHyper, targetX, targetY); return; }
             if (botCombatBrawler === 'upgradart') { castUpgradartSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'axeywaxy') { castAxeyWaxySuper(bot, isHyper, targetX, targetY); return; }
@@ -36346,6 +36530,16 @@ let heistFeverActive = false;
         gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
         updateGadgetButton();
         return;
+    } else if (curBrawler === 'feathers' && curGadget === 'g1') {
+        executeFeathersG1(player);
+        gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
+        updateGadgetButton();
+        return;
+    } else if (curBrawler === 'feathers' && curGadget === 'g2') {
+        executeFeathersG2(player);
+        gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
+        updateGadgetButton();
+        return;
     } else if (curBrawler === 'rager' && curGadget === 'g1') {
         executeRagerG1(player);
         gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
@@ -36473,10 +36667,16 @@ let heistFeverActive = false;
   function getHomePermanentModeIds(now = Date.now()) {
       return [...new Set([...HOME_PERMANENT_MODE_IDS, ...(isTurkeyTroubleSeasonActive(now) ? ['capture_turkey'] : []), ...(TOWER_EVENT_MODES_ENABLED&&isTowerDuelsWeekendActive(now) ? ['tower_duels_weekend'] : []), ...(isWeeklyTowerFeatureActive(now) ? WEEKLY_FEATURED_MODE_IDS : []), ...(TOWER_POWER_SYSTEM_ENABLED&&isTowerPowerVaultWeekendActive(now) ? ['brick_vault'] : [])])].filter(id=>!isRetiredTowerMode(id));
   }
+  function getHomeEventCyclePool(now = Date.now()) {
+      const ids = [...HOME_PERMANENT_MODE_IDS, ...HOME_ROTATING_MODE_IDS, 'slop_sushi_plus',
+          ...(isTurkeyTroubleSeasonActive(now) ? ['capture_turkey'] : []),
+          ...(TOWER_EVENT_MODES_ENABLED && isTowerDuelsWeekendActive(now) ? ['tower_duels_weekend'] : [])];
+      return [...new Set(ids)].filter((id) => HOME_MODE_DATA[id] && !isRetiredTowerMode(id) && (id !== 'slop_sushi_plus' || isSlopSushiLive()));
+  }
   function getHomeRotatingModeIds(now = Date.now()) {
       return HOME_ROTATING_MODE_IDS.filter(id => !isRetiredTowerMode(id) && (!isWeeklyTowerFeatureActive(now) || !WEEKLY_FEATURED_MODE_IDS.includes(id)));
   }
-  const HOME_EVENT_ROTATION_KEY = 'arenaForgeHomeEventRotationV3';
+  const HOME_EVENT_ROTATION_KEY = 'arenaForgeHomeEventRotationV4';
   const HOME_SHOWDOWN_CHOICE_KEY = 'arenaForgeLastShowdownChoice';
   const HOME_EVENT_REWARDS = {
       orbo_boss: { type:'coins', amount:85, label:'+85 Coins & +30 Souls' },
@@ -36564,9 +36764,9 @@ let heistFeverActive = false;
   function getHomeEventRotationState(now = Date.now()) {
       let state = null;
       try { state = JSON.parse(localStorage.getItem(HOME_EVENT_ROTATION_KEY) || 'null'); } catch (_) {}
-      if (!state || !Array.isArray(state.slots) || state.slots.length !== 3) {
+      if (!state || !Array.isArray(state.slots) || state.slots.length !== 7) {
           const baseSeed = hashHomeEventSeed(Math.floor(now / 3600000));
-          state = { slots: Array.from({ length: 3 }, (_, index) => {
+          state = { slots: Array.from({ length: 7 }, (_, index) => {
               const seed = hashHomeEventSeed(baseSeed + Math.imul(index + 1, 2654435761));
               const hours = index === 0 ? 8 + (seed % 2) : 3 + (seed % 7);
               return { startedAt: now, endsAt: now + hours * 3600000, seed, currentMode:null, previousMode:null };
@@ -36592,7 +36792,7 @@ let heistFeverActive = false;
   }
 
   function getActiveHomeEventIds(state = getHomeEventRotationState()) {
-      const pool = getHomeRotatingModeIds().filter((id) => id !== 'slop_sushi_plus' || isSlopSushiLive());
+      const pool = getHomeEventCyclePool();
       const picked = [];
       state.slots.forEach((slot, slotIndex) => {
           let candidate = pool.includes(slot.currentMode) && !picked.includes(slot.currentMode) ? slot.currentMode : null;
@@ -36612,7 +36812,7 @@ let heistFeverActive = false;
   }
 
   function getNextHomeEventIds(state, currentIds) {
-      const pool = getHomeRotatingModeIds().filter((id) => id !== 'slop_sushi_plus' || isSlopSushiLive());
+      const pool = getHomeEventCyclePool();
       const upcoming = [];
       state.slots.forEach((slot, slotIndex) => {
           const nextSeed = hashHomeEventSeed(slot.seed + 0x9e3779b9 + slotIndex);
@@ -38316,58 +38516,10 @@ let heistFeverActive = false;
           };
       });
 
-      const permanent = createSection('ALWAYS AVAILABLE', 'NO TIMER. PLAY ANYTIME.', 'permanent-section');
-      const permanentModeIds = getHomePermanentModeIds();
-      permanentModeIds.forEach((id) => {
-          const card = createModeCard(id);
-          if (card) {
-              if (id === 'tower_duels_weekend') {
-                  card.classList.add('featured-event-card');
-                  ensureSlopSushiState();
-                  const progress = playerData.slopSushi.towerDuelWeekend;
-                  const badge = document.createElement('div');
-                  badge.className = 'rotating-event-reward';
-                  badge.textContent = progress.completed ? 'TITLE EARNED - TOWER DUELAR' : `WEEKEND EVENT - FLOOR ${progress.floor}/5`;
-                  card.appendChild(badge);
-                  const timer = document.createElement('div');
-                  timer.className = 'rotating-event-timer';
-                  timer.innerHTML = `<span>EVENT ENDS IN</span><strong data-tower-duels-countdown>${formatHomeEventCountdown(TOWER_DUELS_WEEKEND_END-Date.now())}</strong>`;
-                  card.appendChild(timer);
-              }
-              if (isWeeklyTowerFeatureActive() && WEEKLY_FEATURED_MODE_IDS.includes(id) && !(id === 'brick_vault' && isTowerPowerVaultWeekendActive())) {
-                  card.classList.add('featured-event-card');
-                  const reward = getHomeEventRewardForMode(id);
-                  const badge = document.createElement('div');
-                  badge.className = 'rotating-event-reward';
-                  badge.textContent = `FEATURED THIS WEEK • ${reward?.label || '2X REWARDS'}`;
-                  card.appendChild(badge);
-                  const timer = document.createElement('div');
-                  timer.className = 'rotating-event-timer';
-                  timer.innerHTML = `<span>FEATURE ENDS IN</span><strong data-weekly-feature-countdown>${formatHomeEventCountdown(WEEKLY_FEATURED_END-Date.now())}</strong>`;
-                  card.appendChild(timer);
-              }
-              if (id === 'brick_vault' && isTowerPowerVaultWeekendActive()) {
-                  card.classList.add('featured-event-card');
-                  card.dataset.baseSubtitle = 'ALL 8 Tower Powers • vault HP +350%';
-                  const subtitle = card.querySelector('.home-mode-subtitle');
-                  if (subtitle) subtitle.textContent = 'ALL 8 Tower Powers • vault HP +350%';
-                  const badge = document.createElement('div');
-                  badge.className = 'rotating-event-reward';
-                  badge.textContent = 'WEEKEND • TOWER POWER VAULT SIEGE';
-                  card.appendChild(badge);
-                  const timer = document.createElement('div');
-                  timer.className = 'rotating-event-timer';
-                  timer.innerHTML = `<span>EVENT ENDS IN</span><strong data-vault-weekend-countdown>${formatHomeEventCountdown(TOWER_POWER_VAULT_WEEKEND_END-Date.now())}</strong>`;
-                  card.appendChild(timer);
-              }
-              permanent.grid.appendChild(card);
-          }
-      });
-
       const rotationState = getHomeEventRotationState();
       const activeEventIds = getActiveHomeEventIds(rotationState);
       const nextEventIds = getNextHomeEventIds(rotationState, activeEventIds);
-      const rotating = createSection('LIVE EVENTS', 'EACH SLOT ROTATES ON ITS OWN.', 'rotating-section');
+      const rotating = createSection('ACTIVE EVENTS', '7 EVENTS LIVE - EACH SLOT CYCLES ON ITS OWN TIMER.', 'rotating-section');
       activeEventIds.forEach((id, slotIndex) => {
           const card = createModeCard(id, true);
           if (card) {
@@ -38390,7 +38542,7 @@ let heistFeverActive = false;
           }
       });
 
-      const availableIds = new Set(['solo', 'duo', 'trio', ...permanentModeIds, ...activeEventIds]);
+      const availableIds = new Set(['solo', 'duo', 'trio', ...activeEventIds]);
       if (!availableIds.has(showdownMode)) {
           let remembered = 'solo';
           try { remembered = localStorage.getItem(HOME_SHOWDOWN_CHOICE_KEY) || 'solo'; } catch (_) {}
@@ -40122,6 +40274,7 @@ let heistFeverActive = false;
       isHeadlessBossEvent = showdownMode === 'headless_boss_s4';
       isBossFight = isLavaBossEvent || isBouncinBossEvent || isHeadlessBossEvent;
       activeSkinTrial = null; // real matches never use trial skins
+      feathersWindZones = []; feathersStorms = [];
       if (isBouncinBossEvent) {
           initBouncinBossMatch();
       }
@@ -40516,7 +40669,7 @@ let heistFeverActive = false;
       isMirrorMode = false;
       isImpossibleMode = false;
       isObjectiveMode = false;
-      isTurkeyCaptureMode = false; turkeyCaptureState = null;
+      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = [];
       isTraining = false;
       isDuels = true;
       isTowerDuelEvent = true;
@@ -41604,7 +41757,7 @@ isBrawlerLabMode = false;
       isTowerDuelEvent = false;
       isWarperEvent = false;
       isObjectiveMode = false;
-      isTurkeyCaptureMode = false; turkeyCaptureState = null;
+      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = [];
       soloTrialWave = 0;
       soloTrialPending = false;
       playing = true;
@@ -41738,7 +41891,7 @@ isBrawlerLabMode = false;
       isDuels = false;
       isWarperEvent = false;
       isObjectiveMode = false;
-      isTurkeyCaptureMode = false; turkeyCaptureState = null;
+      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = [];
     isConstructionMode = false;
       if (document.getElementById('topbar')) document.getElementById('topbar').textContent = 'Arena Forge - Rookie Course';
       playing = true;
@@ -44072,20 +44225,6 @@ isBrawlerLabMode = false;
             trinketPanel.appendChild(trinketGrid);
             overlay.appendChild(trinketPanel);
 
-            const {packets}=ensureSeason3State();
-            const packetPanel=document.createElement('section');
-            packetPanel.className='packet-loadout';
-            packetPanel.innerHTML=`<div class="packet-loadout__head"><div><small>SEASON 4 • ARENAAWEEN</small><h2>PACKET — RETIRED</h2><p>Packets are gone in Season 4. Your collection is preserved and will return in a future rework.</p></div><b>${packets.equipped?(PACKET_DEFS[packets.equipped]?.name||'PACKET'):'NO PACKET'}</b></div>`;
-            const packetGrid=document.createElement('div');packetGrid.className='packet-catalog';
-            const noneCard=document.createElement('button');noneCard.className=`packet-card${packets.equipped?'':' is-equipped'}`;noneCard.innerHTML='<i>NONE</i><strong>No Packet</strong><span>Fight with the normal kit.</span>';
-            noneCard.onclick=()=>{packets.equipped=null;saveProgress();showDetails(id);};packetGrid.appendChild(noneCard);
-            for(const packet of Object.values(PACKET_DEFS)){
-                const unlocked=!!packets.unlocked[packet.id],equipped=packets.equipped===packet.id,card=document.createElement('button');
-                card.className=`packet-card${equipped?' is-equipped':unlocked?' is-unlocked':' is-locked'}`;card.disabled=!unlocked;
-                card.innerHTML=`<i>${packet.icon}</i><strong>${packet.name}</strong><small>${packet.biome}</small><span>${packet.description}</span><em>${equipped?'EQUIPPED':unlocked?'EQUIP':`LOCKED • ${Math.floor(Number(packets.progress[packet.id])||0)}% SIGNAL`}</em>`;
-                card.onclick=()=>{if(!packets.unlocked[packet.id])return;packets.equipped=packet.id;saveProgress();showDetails(id);};packetGrid.appendChild(card);
-            }
-            packetPanel.appendChild(packetGrid);overlay.appendChild(packetPanel);
 
             const btnRow = document.createElement('div');
             btnRow.style.display = 'flex'; btnRow.style.gap = '20px'; btnRow.style.marginTop = '40px';
@@ -47207,6 +47346,7 @@ function checkHit(target, b, i){
 
     if (isTurkeyCaptureMode && !isBossFight && !isSoloTrial && !isDuels && !gameOver) {
         updateTurkeyCapture(dt);
+        updateFeathersSystems(dt);
     }
     if (isObjectiveMode && !isTurkeyCaptureMode && !isBossFight && !isSoloTrial && !isDuels && !gameOver) {
         objectiveTimer += dt;
@@ -50771,6 +50911,9 @@ function checkHit(target, b, i){
               b.splitterTravelSplitDone = (b.splitterTravelSplitDone || 0) + 1;
               spawnSplitterTravelSplit(b);
           }
+      }
+      if (b.isFeatherShot && b.life >= b.maxLife) {
+          feathersWindBurst(b);
       }
       if (b.isWeeFeeToss && b.life >= b.maxLife) {
           const landX = clamp(b.targetX !== undefined ? b.targetX : b.x, 30, WORLD_W - 30);
@@ -56892,6 +57035,7 @@ function checkHit(target, b, i){
     renderLavaBossEvent();
     renderHeadlessBossEvent();
     renderTurkeyCaptureEvent();
+    renderFeathersEffects();
     if (typeof renderBouncinBossEvent === 'function') renderBouncinBossEvent('ground');
     if (isBraweBallMode) renderBraweBallWorld(ctx);
     if (isKnockoutMode) renderKnockoutWorld(ctx);
