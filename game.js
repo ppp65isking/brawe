@@ -6475,13 +6475,13 @@ const bolznstienPendingStrikes = [];
           {id:'arenaween_10',stage:10,kind:'win_match',title:'Halfway Haunt',desc:'Win 8 battles.',target:8,rewards:{spookyBoxes:1,coins:500},xpReward:100},
           {id:'arenaween_11',stage:11,kind:'corrupted_matches',title:'Corrupted Carnival',desc:'Play Corrupted Showdown 3 times.',target:3,rewards:{gems:6},xpReward:100},
           {id:'arenaween_12',stage:12,kind:'defeat_enemies',title:'Soul Reaper',desc:'Defeat 75 enemies.',target:75,rewards:{superTappers:1,souls:80},xpReward:100},
-          {id:'arenaween_13',stage:13,kind:'boss_hard',title:'Lava Legends',desc:'Clear Hard in Lava Villain Boss Fight.',target:1,rewards:{coins:800},xpReward:100},
+          {id:'arenaween_13',stage:13,kind:'boss_hard',title:'Headless Legends',desc:'Clear Hard in the Headless Bolznstien Boss Fight.',target:1,rewards:{coins:800},xpReward:100},
           {id:'arenaween_14',stage:14,kind:'win_match',title:'Fright Night',desc:'Win 12 battles.',target:12,rewards:{spookyBoxes:1},xpReward:100},
           {id:'arenaween_15',stage:15,kind:'deal_damage',title:'Box Bonanza',desc:'Deal 500,000 damage.',target:500000,rewards:{spookyBoxes:2},xpReward:100},
           {id:'arenaween_16',stage:16,kind:'perform_supers',title:'Super Scare',desc:'Activate 40 Power Moves.',target:40,rewards:{hyperTappers:1,souls:90},xpReward:100},
           {id:'arenaween_17',stage:17,kind:'corrupted_wins',title:'Corruption Survivor',desc:'Win 2 Corrupted Showdown matches.',target:2,rewards:{coins:1000},xpReward:100},
           {id:'arenaween_18',stage:18,kind:'deal_damage',title:'Damage Demon',desc:'Deal 1,000,000 damage.',target:1000000,rewards:{souls:120,gems:10},xpReward:100},
-          {id:'arenaween_19',stage:19,kind:'boss_impossible_2',title:'Impossible Pumpkin',desc:'Clear Impossible II in the Lava Boss Fight.',target:1,rewards:{spookyBoxes:2},xpReward:100},
+          {id:'arenaween_19',stage:19,kind:'boss_impossible_2',title:'Impossible Pumpkin',desc:'Clear Impossible II in the Headless Bolznstien Boss Fight.',target:1,rewards:{spookyBoxes:2},xpReward:100},
           {id:'arenaween_20',stage:20,kind:'win_match',title:'ARENAAWEEN MASTER',desc:'Win 20 battles this season.',target:20,rewards:{coins:1500,spookyBoxes:2,hyperTappers:1},xpReward:100}
       ];
       const SEASON_QUEST_STAGE_COUNT = SEASON_QUEST_DEFS.length;
@@ -12093,7 +12093,10 @@ let heistFeverActive = false;
     let isBossFight = false;
         let isBeastBossEvent = false;
         let isLavaBossEvent = false;
+    let isHeadlessBossEvent = false;
         let activeLavaBossDifficulty = 'hard';
+        let activeHeadlessBossDifficulty = 'hard';
+        let headlessBossRuntime = null;
         let lavaBossRuntime = null;
                 let isOverlordTrialEvent = false;
                 let isWarperEvent = false;
@@ -12118,6 +12121,28 @@ let heistFeverActive = false;
       return Object.fromEntries(defs.map((entry,index)=>[entry[0],Object.freeze({id:entry[0],name:entry[1],order:index,maxHp:entry[2],damageMult:entry[3],attackDelayMult:entry[4],availableAttacks:Object.freeze(entry[5]),coreSurgeEnabled:index>=8,coreSurgeFrequency:Math.max(7800,15000-index*360),rewardCoins:index<5?350+index*150:650+index*75,rewardSouls:index<5?30+index*15:80+index*8})]));
   })());
   const LAVA_BOSS_DIFFICULTY_ORDER = Object.freeze(Object.keys(LAVA_BOSS_DIFFICULTIES));
+  const HEADLESS_BOSS_DIFFICULTIES = Object.freeze((() => {
+      const defs = [
+          ['hard','Hard',300000,1.00,1.00,['bombs','slam']],
+          ['master','Master',390000,1.08,.93,['bombs','slam','rain']],
+          ['supreme','Supreme',500000,1.16,.87,['bombs','slam','rain','nova']],
+          ['impossible_1','Impossible I',650000,1.24,.82,['bombs','slam','rain','nova','toss']],
+          ['impossible_2','Impossible II',820000,1.32,.77,['bombs','slam','rain','nova','toss']]
+      ];
+      for(let i=3;i<=15;i++){
+          const key=`impossible_${i}`,roman=['','I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV','XV'][i];
+          defs.push([key,`Impossible ${roman}`,Math.round(820000*Math.pow(1.18,i-2)),1.32+(i-2)*.075,Math.max(.34,.77-(i-2)*.032),['bombs','slam','rain','nova','toss']]);
+      }
+      return Object.fromEntries(defs.map((entry,index)=>[entry[0],Object.freeze({id:entry[0],name:entry[1],order:index,maxHp:entry[2],damageMult:entry[3],attackDelayMult:entry[4],availableAttacks:Object.freeze(entry[5]),rewardCoins:index<5?350+index*150:650+index*75,rewardSouls:index<5?30+index*15:80+index*8})]));
+  })());
+  const HEADLESS_BOSS_DIFFICULTY_ORDER = Object.freeze(Object.keys(HEADLESS_BOSS_DIFFICULTIES));
+  const HEADLESS_BOSS_BOX_REWARDS = Object.freeze({ hard: 1, impossible_2: 1, impossible_15: 1 });
+  function getHeadlessBossDifficulty(id=activeHeadlessBossDifficulty){return HEADLESS_BOSS_DIFFICULTIES[id]||HEADLESS_BOSS_DIFFICULTIES.hard;}
+  function getHeadlessBossFightHp(cfg=getHeadlessBossDifficulty()){return Math.round(cfg.maxHp*LAVA_BOSS_3V1_HP_MULTIPLIER);}
+  function isHeadlessBossDifficultyUnlocked(id){
+      const cfg=getHeadlessBossDifficulty(id),completed=new Set(ensureSeason3State().season.headlessBoss?.completed||[]);
+      return cfg.order===0||completed.has(HEADLESS_BOSS_DIFFICULTY_ORDER[cfg.order-1]);
+  }
   const LAVA_BOSS_3V1_HP_MULTIPLIER = 0.72;
 
 
@@ -12522,7 +12547,7 @@ let heistFeverActive = false;
       profile: { playerName:'BRAWE PLAYER', favorites:[], equippedTitle:null, equippedProfileFrame:null, equippedProfileBackground:null, showcaseBadges:[], careerStats:{ matchesPlayed:0, soloWins:0, teamWins:0, rankedWins:0, eliminations:0 } },
       brickBonV2: { claimedRoad:[], claimedChallenges:[], unlockedTitles:[], unlockedBadges:[], unlockedFrames:[], unlockedBackgrounds:[], oldRoadMigrated:false },
       packets: { schemaVersion:1, unlocked:{}, progress:{}, equipped:null, discoveredGroups:[], stats:{damage:0,wins:0,triggers:0,used:[],discoveries:0} },
-      season3: { schemaVersion:SEASON_3_SCHEMA_VERSION, seasonId:SEASON_3_ID, coreBreachCompleted:false, coreBreachReplayDebug:false, coreBreachSignalsRevealed:false, boss:{completed:[],claimedRewards:[],extremeRevealSeen:false}, bouncinBoss:{completed:[],claimedRewards:[],extremeRevealSeen:false}, questClaims:[], questProgress:{} },
+      season3: { schemaVersion:SEASON_3_SCHEMA_VERSION, seasonId:SEASON_3_ID, coreBreachCompleted:false, coreBreachReplayDebug:false, coreBreachSignalsRevealed:false, boss:{completed:[],claimedRewards:[],extremeRevealSeen:false}, bouncinBoss:{completed:[],claimedRewards:[],extremeRevealSeen:false}, headlessBoss:{completed:[],claimedRewards:[],extremeRevealSeen:false,skinClaimed:false}, questClaims:[], questProgress:{} },
       weeklyTrials: { schemaVersion:1, weekKey:'', fighterIds:[], fallbackSpecials:false, loadouts:{} },
       brawlers: {}
   };
@@ -12749,8 +12774,8 @@ let heistFeverActive = false;
   function openSeason3Hub(){
       const {packets,season}=ensureSeason3State(),overlay=document.createElement('div');overlay.className='season3-overlay',panel=document.createElement('section');panel.className='season3-panel';
       const unlocked=Object.keys(packets.unlocked).filter(id=>packets.unlocked[id]).length;
-      panel.innerHTML=`<header><div><small>SEASON 4</small><h1>ARENAAWEEN × ARENA FORGE</h1><p>Ends October 31, 2026</p></div><button aria-label="Close">X</button></header><div class="season3-breach"><small>THE HAUNTING IS LIVE</small><b>SPOOKY BOXES HAVE INFESTED THE ARENA</b></div><div class="season3-hub-grid"><button data-action="pass"><i>S4</i><b>Season Pass</b><span>Spooky rewards • ends Oct 31</span></button><button data-action="spooky"><i>🎃</i><b>Spooky Boxes</b><span>${playerData.spookyBoxCount||0} unopened • 6 skins, coins, or souls</span></button><button data-action="quests"><i>Q</i><b>Season Quests</b><span>Haunt the ladder for Spooky Boxes</span></button><button data-action="corrupted"><i>CS</i><b>Corrupted Showdown</b><span>Season 4 chaos in the haunted arena</span></button><button data-action="boss"><i>LAVA</i><b>Lava Villain Boss Fight</b><span>Hard through Impossible XV</span></button><button data-action="skins"><i>👻</i><b>Arenaaween Skins</b><span>${unownedArenaweenSkins().length===0?'Full collection!':unownedArenaweenSkins().length+' of 6 still hiding in Spooky Boxes'}</span></button></div><div class="tower-retired-note"><b>PACKETS — RETIRED</b><span>Packets are gone in Season 4. Your collection (${unlocked}/20 discovered) is preserved and will return in a future rework.</span></div><div class="tower-retired-note"><b>TOWER POWERS — TEMPORARILY RETIRED</b><span>Your collection is preserved and will return in a future rework.</span></div>`;
-      panel.querySelector('header button').onclick=()=>overlay.remove();panel.querySelector('[data-action="pass"]').onclick=()=>{overlay.remove();openSeasonPass();};panel.querySelector('[data-action="spooky"]').onclick=()=>{overlay.remove();if((playerData.spookyBoxCount||0)>0)openSpookyBox();else alert('No Spooky Boxes yet — earn them from the Arenaaween Pass and Season Quests!');};panel.querySelector('[data-action="skins"]').onclick=()=>{overlay.remove();alert('Arenaaween skins hide inside Spooky Boxes: Pumpkin King, Count Curseula, Phantom Phase, Midnight Reaper Darkener, Nightmare Awakenator, and Jack-o-Demon. Pumpkin King is also the Tier 25 Premium reward.');};panel.querySelector('[data-action="quests"]').onclick=()=>{overlay.remove();openQuestBoard('season');};panel.querySelector('[data-action="corrupted"]').onclick=()=>{overlay.remove();showdownMode='corrupted_showdown';updateShowdownModeUI();setHomeTab('events');};panel.querySelector('[data-action="boss"]').onclick=()=>{overlay.remove();openLavaBossEvent();};overlay.onclick=e=>{if(e.target===overlay)overlay.remove();};overlay.appendChild(panel);document.body.appendChild(overlay);
+      panel.innerHTML=`<header><div><small>SEASON 4</small><h1>ARENAAWEEN × ARENA FORGE</h1><p>Ends October 31, 2026</p></div><button aria-label="Close">X</button></header><div class="season3-breach"><small>THE HAUNTING IS LIVE</small><b>SPOOKY BOXES HAVE INFESTED THE ARENA</b></div><div class="season3-hub-grid"><button data-action="pass"><i>S4</i><b>Season Pass</b><span>Spooky rewards • ends Oct 31</span></button><button data-action="spooky"><i>🎃</i><b>Spooky Boxes</b><span>${playerData.spookyBoxCount||0} unopened • 6 skins, coins, or souls</span></button><button data-action="quests"><i>Q</i><b>Season Quests</b><span>Haunt the ladder for Spooky Boxes</span></button><button data-action="corrupted"><i>CS</i><b>Corrupted Showdown</b><span>Season 4 chaos in the haunted arena</span></button><button data-action="boss"><i>🎃</i><b>Headless Bolznstien Boss Fight</b><span>Hard through Impossible XV • up to 3 Spooky Boxes • his skin FREE on full clear</span></button><button data-action="skins"><i>👻</i><b>Arenaaween Skins</b><span>${unownedArenaweenSkins().length===0?'Full collection!':unownedArenaweenSkins().length+' of 6 still hiding in Spooky Boxes'}</span></button></div><div class="tower-retired-note"><b>BOSS EVENTS — REPLACED</b><span>The Lava Villain and Bouncin' Balls boss events were retired in Season 4. Headless Bolznstien has taken over the arena — your old boss progress is preserved.</span></div><div class="tower-retired-note"><b>PACKETS — RETIRED</b><span>Packets are gone in Season 4. Your collection (${unlocked}/20 discovered) is preserved and will return in a future rework.</span></div><div class="tower-retired-note"><b>TOWER POWERS — TEMPORARILY RETIRED</b><span>Your collection is preserved and will return in a future rework.</span></div>`;
+      panel.querySelector('header button').onclick=()=>overlay.remove();panel.querySelector('[data-action="pass"]').onclick=()=>{overlay.remove();openSeasonPass();};panel.querySelector('[data-action="spooky"]').onclick=()=>{overlay.remove();if((playerData.spookyBoxCount||0)>0)openSpookyBox();else alert('No Spooky Boxes yet — earn them from the Arenaaween Pass and Season Quests!');};panel.querySelector('[data-action="skins"]').onclick=()=>{overlay.remove();alert('Arenaaween skins hide inside Spooky Boxes: Pumpkin King, Count Curseula, Phantom Phase, Midnight Reaper Darkener, Nightmare Awakenator, and Jack-o-Demon. Pumpkin King is also the Tier 25 Premium reward.');};panel.querySelector('[data-action="quests"]').onclick=()=>{overlay.remove();openQuestBoard('season');};panel.querySelector('[data-action="corrupted"]').onclick=()=>{overlay.remove();showdownMode='corrupted_showdown';updateShowdownModeUI();setHomeTab('events');};panel.querySelector('[data-action="boss"]').onclick=()=>{overlay.remove();openHeadlessBossEvent();};overlay.onclick=e=>{if(e.target===overlay)overlay.remove();};overlay.appendChild(panel);document.body.appendChild(overlay);
   }
 
   function openLavaBossEvent(){
@@ -12783,6 +12808,151 @@ let heistFeverActive = false;
       if(id==='impossible_2'&&!bossState.extremeRevealSeen){bossState.extremeRevealSeen=true;showLavaExtremeUnlockReveal();}
       saveProgress();return rewardText||'First-clear reward already claimed';
   }
+  // ===== Season 4: Headless Bolznstien Boss Fight (replaces the Lava Villain and Bouncin' Balls boss events) =====
+  function createHeadlessBossAlly(slot){
+      const choices=getBotBrawlerPool({exclude:[selectedBrawler]}),brawler=choices[(slot*7+Math.floor(Math.random()*Math.max(1,choices.length)))%Math.max(1,choices.length)]||'outlit';
+      const tier=getHPTier(brawler,11),unlocks=getUnlocksForLevel(11);
+      return {id:nextId++,x:WORLD_W*.5+(slot-.5)*120,y:WORLD_H-250,z:0,vx:0,vy:0,hp:tier.hp,maxHp:tier.hp,powerCubes:0,isDead:false,shield:0,shieldMax:0,shieldDecayTimer:0,reloadBuffUntil:0,radius:14,speed:(tier.speed*.43)+18,slowUntil:0,brawler,level:11,gadgetUnlocked:unlocks.gadgetUnlocked,starPowerUnlocked:unlocks.starPowerUnlocked,hyperchargeUnlocked:unlocks.hyperchargeUnlocked,lastTargetId:null,targetLockUntil:0,lastShot:Math.random()*1000,superCharge:0,hyperChargeCharge:0,isHypercharged:false,hyperchargeUntil:0,gadgetArmed:false,gadgetCooldownUntil:0,selectedStar:'slow',selectedGadget:'g1',unopcolocoCycle:0,minigunAmmo:100,minigunPierceShots:0,ridaSpeedMult:1,ridaHitCooldowns:{},isFlying:false,moneyAndTaxMode:'money',team:'player',isTeammate:true,isHeadlessRaidAlly:true,respawnTimer:0};
+  }
+  function initHeadlessBossMatch(){
+      const cfg=getHeadlessBossDifficulty();
+      bots.length=0;destructibleWalls.length=0;waterZones.length=0;bushZones.length=0;powerups.length=0;cubes.length=0;
+      player.team='player';player.x=WORLD_W*.5;player.y=WORLD_H-260;player.bossLives=999;player.respawnTimer=0;player.defenseUntil=performance.now()+1500;
+      for(let i=0;i<2;i++)bots.push(createHeadlessBossAlly(i));
+      const fightHp=getHeadlessBossFightHp(cfg),boss={id:nextId++,x:WORLD_W*.5,y:360,z:20,vx:0,vy:0,hp:fightHp,maxHp:fightHp,shield:0,shieldMax:0,radius:66,speed:118,brawler:'bolznstien',level:11,team:'headless_enemy',isBoss:true,isHeadlessBoss:true,noRespawn:true,noPowerupDrop:true,lastShot:0,superCharge:0,hyperChargeCharge:0,isHypercharged:false,gadgetArmed:false,selectedStar:'none',selectedGadget:'g1'};
+      bots.push(boss);
+      const now=performance.now();headlessBossRuntime={difficulty:cfg.id,bossId:boss.id,startedAt:now,timeLimitMs:180000,nextAttackAt:now+1800,nextSuperAt:now+9000,overdriveUntil:0,overdriveAnnounced:false,telegraphs:[],pools:[],projectiles:[],lastAttackIndex:-1,moveAngle:Math.PI*.5,nextMoveAt:now+900,dash:null,superName:'',superFlashUntil:0};
+      spawnFloatingText(player.x,player.y-70,`${cfg.name.toUpperCase()} \u2022 HEADLESS BOLZNSTIEN`,'#7dff6a');
+  }
+  function getHeadlessRaidTargets(){return [player,...bots].filter(e=>e&&e.hp>0&&(e===player||e.isHeadlessRaidAlly));}
+  function queueHeadlessTelegraph(kind,x,y,radius,delay,damage,extra={}){
+      if(!headlessBossRuntime)return;headlessBossRuntime.telegraphs.push({kind,x:clamp(x,45,WORLD_W-45),y:clamp(y,45,WORLD_H-45),radius,explodeAt:performance.now()+delay,damage,...extra});
+  }
+  function launchPumpkinBomb(boss,targetX,targetY,damage,small=false){
+      if(!headlessBossRuntime)return;const now=performance.now(),travel=small?620:850;
+      headlessBossRuntime.projectiles.push({ownerId:boss.id,startX:boss.x,startY:boss.y,x:boss.x,y:boss.y,targetX:clamp(targetX,45,WORLD_W-45),targetY:clamp(targetY,45,WORLD_H-45),createdAt:now,impactAt:now+travel,damage,radius:small?42:68,poolRadius:small?46:72,poolLife:small?1900:3400,small});
+  }
+  function chooseHeadlessBossAttack(cfg,boss,now){
+      const targets=getHeadlessRaidTargets(),target=targets[Math.floor(Math.random()*targets.length)]||player,attacks=cfg.availableAttacks,index=(headlessBossRuntime.lastAttackIndex+1+Math.floor(Math.random()*Math.max(1,attacks.length-1)))%attacks.length,kind=attacks[index];headlessBossRuntime.lastAttackIndex=index;
+      if(kind==='bombs'){
+          launchPumpkinBomb(boss,target.x,target.y,Math.round(760*cfg.damageMult));
+          if(cfg.order>=2){const other=targets[Math.floor(Math.random()*targets.length)]||player;launchPumpkinBomb(boss,other.x,other.y,Math.round(620*cfg.damageMult),true);}
+      }else if(kind==='slam'){
+          queueHeadlessTelegraph('slam',boss.x,boss.y,190,720,Math.round(880*cfg.damageMult));
+      }else if(kind==='rain'){
+          for(let k=0;k<3+Math.min(3,cfg.order);k++){const t=targets[Math.floor(Math.random()*targets.length)]||player;queueHeadlessTelegraph('anvil',t.x+(Math.random()-.5)*160,t.y+(Math.random()-.5)*160,120,900+k*130,Math.round(700*cfg.damageMult));}
+      }else if(kind==='nova'){
+          queueHeadlessTelegraph('nova',boss.x,boss.y,330,1050,Math.round(980*cfg.damageMult),{ringBand:64,safeAngle:Math.random()*Math.PI*2});
+      }else if(kind==='toss'){
+          const t=target;headlessBossRuntime.dash={startedAt:now,endsAt:now+620,startX:boss.x,startY:boss.y,targetX:t.x,targetY:t.y,nextTrailAt:now};
+          spawnFloatingText(boss.x,boss.y-100,'HEAD TOSS!','#7dff6a');
+      }
+  }
+  function triggerHeadlessBossSuper(cfg,boss,now){
+      const targets=getHeadlessRaidTargets(),target=targets[Math.floor(Math.random()*targets.length)]||player,roll=Math.floor(Math.random()*3);
+      if(roll===0){
+          headlessBossRuntime.superName='PUMPKIN BARRAGE';
+          for(let k=0;k<5;k++){const t=targets[k%Math.max(1,targets.length)]||player;launchPumpkinBomb(boss,t.x+(Math.random()-.5)*220,t.y+(Math.random()-.5)*220,Math.round(680*cfg.damageMult),k>1);}
+      }else if(roll===1){
+          headlessBossRuntime.superName='ANVIL RAIN';
+          for(let k=0;k<6;k++){const t=targets[Math.floor(Math.random()*targets.length)]||player;queueHeadlessTelegraph('anvil',t.x+(Math.random()-.5)*260,t.y+(Math.random()-.5)*260,130,800+k*120,Math.round(760*cfg.damageMult));}
+      }else{
+          headlessBossRuntime.superName='ECTO NOVA';
+          queueHeadlessTelegraph('nova',boss.x,boss.y,380,1100,Math.round(1050*cfg.damageMult),{ringBand:70,safeAngle:Math.random()*Math.PI*2});
+      }
+      headlessBossRuntime.superFlashUntil=now+1800;headlessBossRuntime.nextAttackAt=Math.max(headlessBossRuntime.nextAttackAt,now+1900);headlessBossRuntime.nextSuperAt=now+Math.max(14000,19000-cfg.order*140);
+      spawnFloatingText(boss.x,boss.y-105,`SUPER \u2022 ${headlessBossRuntime.superName}`,'#d8ffb0');
+  }
+  function updateHeadlessBossEvent(now,dt){
+      if(!isHeadlessBossEvent||!headlessBossRuntime||gameOver)return;const cfg=getHeadlessBossDifficulty(headlessBossRuntime.difficulty),boss=bots.find(b=>b.id===headlessBossRuntime.bossId);
+      if(!boss||boss.hp<=0){gameOver=true;return;}if(now-headlessBossRuntime.startedAt>=headlessBossRuntime.timeLimitMs){gameOver=true;return;}
+      const targets=getHeadlessRaidTargets(),nearest=targets.slice().sort((a,b)=>Math.hypot(a.x-boss.x,a.y-boss.y)-Math.hypot(b.x-boss.x,b.y-boss.y))[0]||player;
+      if(boss.hp<=boss.maxHp*.33&&!headlessBossRuntime.overdriveAnnounced){headlessBossRuntime.overdriveAnnounced=true;headlessBossRuntime.overdriveUntil=now+999999;spawnFloatingText(boss.x,boss.y-110,'HEADLESS OVERDRIVE!','#7dff6a');explosions.push({x:boss.x,y:boss.y,radius:190,life:0,maxLife:.55,color:'rgba(46,204,113,.8)',legendary:true});}
+      const overdrive=now<headlessBossRuntime.overdriveUntil;
+      if(headlessBossRuntime.dash){
+          const dash=headlessBossRuntime.dash,p=clamp((now-dash.startedAt)/Math.max(1,dash.endsAt-dash.startedAt),0,1),ease=1-Math.pow(1-p,3);boss.x=clamp(dash.startX+(dash.targetX-dash.startX)*ease,90,WORLD_W-90);boss.y=clamp(dash.startY+(dash.targetY-dash.startY)*ease,90,WORLD_H-90);boss.z=35+Math.sin(p*Math.PI)*65;
+          if(now>=dash.nextTrailAt){dash.nextTrailAt=now+140;headlessBossRuntime.pools.push({x:boss.x,y:boss.y,radius:52,until:now+2600,nextTickAt:now});}
+          if(now>=dash.endsAt){headlessBossRuntime.dash=null;AOEDamage(boss.x,boss.y,125,Math.round(900*cfg.damageMult),boss.id,true);explosions.push({x:boss.x,y:boss.y,radius:140,life:0,maxLife:.46,color:'rgba(46,204,113,.85)',legendary:true});}
+      }else{
+          if(now>=headlessBossRuntime.nextMoveAt){const toward=Math.atan2(nearest.y-boss.y,nearest.x-boss.x),distance=Math.hypot(nearest.x-boss.x,nearest.y-boss.y);headlessBossRuntime.moveAngle=toward+(distance<250?(Math.random()<.5?-1:1)*1.25:(Math.random()-.5)*1.1);headlessBossRuntime.nextMoveAt=now+700+Math.random()*600;}
+          const moveSpeed=(96+cfg.order*3)*(overdrive?1.35:1),nx=clamp(boss.x+Math.cos(headlessBossRuntime.moveAngle)*moveSpeed*dt,90,WORLD_W-90),ny=clamp(boss.y+Math.sin(headlessBossRuntime.moveAngle)*moveSpeed*dt,90,WORLD_H-90),dry=findNearestDrySpot(nx,ny,boss.radius);boss.x+=(dry.x-boss.x)*Math.min(1,dt*6);boss.y+=(dry.y-boss.y)*Math.min(1,dt*6);boss.z=20+Math.sin(now/170)*10;
+      }
+      for(let i=headlessBossRuntime.projectiles.length-1;i>=0;i--){
+          const shot=headlessBossRuntime.projectiles[i];if(now<shot.createdAt)continue;const p=clamp((now-shot.createdAt)/Math.max(1,shot.impactAt-shot.createdAt),0,1),ease=1-Math.pow(1-p,2);shot.x=shot.startX+(shot.targetX-shot.startX)*ease;shot.y=shot.startY+(shot.targetY-shot.startY)*ease;shot.z=Math.sin(p*Math.PI)*(shot.small?45:95);
+          if(now<shot.impactAt)continue;headlessBossRuntime.projectiles.splice(i,1);AOEDamage(shot.targetX,shot.targetY,shot.radius,shot.damage,boss.id,true);headlessBossRuntime.pools.push({x:shot.targetX,y:shot.targetY,radius:shot.poolRadius,until:now+shot.poolLife,nextTickAt:now});explosions.push({x:shot.targetX,y:shot.targetY,radius:shot.radius+18,life:0,maxLife:.42,color:'rgba(255,121,22,.86)',legendary:!shot.small});
+      }
+      if(now>=headlessBossRuntime.nextSuperAt&&!headlessBossRuntime.dash)triggerHeadlessBossSuper(cfg,boss,now);
+      if(now>=headlessBossRuntime.nextAttackAt&&!headlessBossRuntime.dash){chooseHeadlessBossAttack(cfg,boss,now);headlessBossRuntime.nextAttackAt=now+Math.max(1250,2600*Math.max(.58,cfg.attackDelayMult)*(overdrive?.82:1));}
+      for(let i=headlessBossRuntime.telegraphs.length-1;i>=0;i--){
+          const t=headlessBossRuntime.telegraphs[i];if(now<t.explodeAt)continue;headlessBossRuntime.telegraphs.splice(i,1);
+          if(t.kind==='nova'){
+              for(const entity of getHeadlessRaidTargets()){const dx=entity.x-t.x,dy=entity.y-t.y,dist=Math.hypot(dx,dy),angle=Math.atan2(dy,dx),gap=Math.abs(Math.atan2(Math.sin(angle-t.safeAngle),Math.cos(angle-t.safeAngle)));if(Math.abs(dist-t.radius)<=t.ringBand+(entity.radius||14)&&gap>.5)checkHit(entity,{ownerId:boss.id,ownerBrawler:'bolznstien',damage:t.damage,pierce:true,super:true,hitIds:{}},-1);}
+              explosions.push({x:t.x,y:t.y,radius:t.ringBand,life:0,maxLife:.34,color:'rgba(46,204,113,.8)',legendary:true});
+          }else{
+              AOEDamage(t.x,t.y,t.radius,t.damage,boss.id,true);
+              explosions.push({x:t.x,y:t.y,radius:t.radius,life:0,maxLife:.34,color:t.kind==='anvil'?'rgba(190,200,220,.85)':'rgba(255,140,26,.8)',legendary:true});
+              if(t.kind==='slam')headlessBossRuntime.pools.push({x:t.x,y:t.y,radius:t.radius*.6,until:now+2400,nextTickAt:now});
+          }
+      }
+      for(let i=headlessBossRuntime.pools.length-1;i>=0;i--){const p=headlessBossRuntime.pools[i];if(now>=p.until){headlessBossRuntime.pools.splice(i,1);continue;}if(now>=p.nextTickAt){p.nextTickAt=now+500;AOEDamage(p.x,p.y,p.radius,Math.round(150*cfg.damageMult),boss.id,true);}}
+      if(headlessBossRuntime.pools.length>32)headlessBossRuntime.pools.splice(0,headlessBossRuntime.pools.length-32);
+      if(headlessBossRuntime.telegraphs.length>54)headlessBossRuntime.telegraphs.splice(0,headlessBossRuntime.telegraphs.length-54);
+  }
+  function renderHeadlessBossEvent(){
+      if(!isHeadlessBossEvent||!headlessBossRuntime)return;const now=performance.now(),boss=bots.find(b=>b.id===headlessBossRuntime.bossId),cfg=getHeadlessBossDifficulty(headlessBossRuntime.difficulty),TAU=Math.PI*2;ctx.save();
+      for(const p of headlessBossRuntime.pools){const pulse=.82+.12*Math.sin(now/115+p.x*.01);ctx.save();ctx.fillStyle='rgba(10,60,26,.6)';ctx.strokeStyle='#2ecc71';ctx.lineWidth=4;ctx.beginPath();ctx.arc(p.x,p.y,p.radius*pulse,0,TAU);ctx.fill();ctx.stroke();ctx.fillStyle='rgba(46,204,113,.3)';ctx.beginPath();ctx.arc(p.x,p.y,p.radius*.66*pulse,0,TAU);ctx.fill();ctx.restore();}
+      for(const t of headlessBossRuntime.telegraphs){const remain=clamp((t.explodeAt-now)/900,0,1);ctx.save();ctx.strokeStyle=t.kind==='nova'?'#2ecc71':'#ff8c1a';ctx.fillStyle=t.kind==='nova'?'rgba(46,204,113,.13)':'rgba(255,140,26,.13)';ctx.lineWidth=3;ctx.beginPath();if(t.kind==='nova'){ctx.arc(t.x,t.y,t.radius,0,TAU);ctx.stroke();ctx.beginPath();ctx.arc(t.x,t.y,t.radius,0,TAU);ctx.clip();ctx.fillRect(t.x-t.radius,t.y-t.radius,t.radius*2,t.radius*2);}else{ctx.arc(t.x,t.y,t.radius,0,TAU);ctx.fill();ctx.stroke();ctx.beginPath();ctx.arc(t.x,t.y,t.radius*(1-remain),0,TAU);ctx.stroke();}ctx.restore();}
+      for(const shot of headlessBossRuntime.projectiles){ctx.save();ctx.fillStyle='#ff8c1a';ctx.strokeStyle='#7a3c00';ctx.lineWidth=3;ctx.beginPath();ctx.arc(shot.x,shot.y-(shot.z||0),shot.small?16:24,0,TAU);ctx.fill();ctx.stroke();ctx.fillStyle='#2ecc71';ctx.beginPath();ctx.arc(shot.x,shot.y-(shot.z||0)-4,5,0,TAU);ctx.fill();ctx.restore();}
+      if(boss){const overdrive=now<headlessBossRuntime.overdriveUntil;ctx.save();ctx.translate(boss.x,boss.y-(boss.z||0)*.2);ctx.shadowColor=overdrive?'#baffc9':'#2ecc71';ctx.shadowBlur=overdrive?30:16;ctx.fillStyle='#123324';ctx.strokeStyle=overdrive?'#baffc9':'#2ecc71';ctx.lineWidth=6;ctx.beginPath();ctx.arc(0,0,boss.radius+10,0,TAU);ctx.fill();ctx.stroke();ctx.fillStyle='#ff8c1a';ctx.beginPath();ctx.arc(0,-58,30+Math.sin(now/110)*2,0,TAU);ctx.fill();ctx.strokeStyle='#7a3c00';ctx.lineWidth=3;ctx.stroke();ctx.fillStyle='#201303';ctx.beginPath();ctx.arc(-11,-64,4.5,0,TAU);ctx.arc(11,-64,4.5,0,TAU);ctx.fill();ctx.strokeStyle='#201303';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-13,-48);for(let tooth=0;tooth<4;tooth++){ctx.lineTo(-13+tooth*7+3.5,-42);ctx.lineTo(-13+(tooth+1)*7,-48);}ctx.stroke();ctx.restore();ctx.fillStyle=overdrive?'#baffc9':'#a9ffbe';ctx.font='900 20px sans-serif';ctx.textAlign='center';ctx.fillText(`HEADLESS BOLZNSTIEN \u2022 ${cfg.name}${overdrive?' \u2022 OVERDRIVE':''}`,boss.x,boss.y-128);if(now<(headlessBossRuntime.superFlashUntil||0)){ctx.fillStyle='#d8ffb0';ctx.font='900 15px sans-serif';ctx.fillText(`SUPER: ${headlessBossRuntime.superName}`,boss.x,boss.y-103);}ctx.textAlign='left';}
+      ctx.restore();
+  }
+  function completeHeadlessBossDifficulty(id){
+      const cfg=getHeadlessBossDifficulty(id),{season}=ensureSeason3State();
+      season.headlessBoss=season.headlessBoss||{completed:[],claimedRewards:[],extremeRevealSeen:false,skinClaimed:false};
+      const hState=season.headlessBoss;
+      if(!hState.completed.includes(cfg.id))hState.completed.push(cfg.id);
+      let rewardText='';
+      if(!hState.claimedRewards.includes(cfg.id)){
+          hState.claimedRewards.push(cfg.id);
+          playerData.coins=(playerData.coins||0)+cfg.rewardCoins;playerData.souls=(playerData.souls||0)+cfg.rewardSouls;
+          rewardText=`+${cfg.rewardCoins} Coins \u2022 +${cfg.rewardSouls} Souls`;
+          const boxes=HEADLESS_BOSS_BOX_REWARDS[cfg.id]||0;
+          if(boxes){playerData.spookyBoxCount=(playerData.spookyBoxCount||0)+boxes;rewardText+=` \u2022 +${boxes} SPOOKY BOX${boxes===1?'':'ES'}`;}
+          if(cfg.id==='impossible_15'&&!hState.skinClaimed){
+              hState.skinClaimed=true;
+              const skin=skinsDatabase['headless-bolznstien'];
+              if(skin){
+                  if(!playerData.ownedSkins)playerData.ownedSkins={};
+                  if(!playerData.ownedSkins[skin.brawler])playerData.ownedSkins[skin.brawler]=[];
+                  if(!playerData.ownedSkins[skin.brawler].includes(skin.id))playerData.ownedSkins[skin.brawler].push(skin.id);
+                  if(!playerData.selectedSkins)playerData.selectedSkins={};
+                  playerData.selectedSkins[skin.brawler]=skin.id;
+                  rewardText+=' \u2022 HEADLESS BOLZNSTIEN SKIN \u2014 FREE!';
+              }
+          }
+      }
+      if(cfg.id==='hard')progressSeason3Quest('boss_hard',1);
+      if(cfg.id==='impossible_2'){progressSeason3Quest('boss_impossible_2',1);if(!hState.extremeRevealSeen){hState.extremeRevealSeen=true;showLavaExtremeUnlockReveal();}}
+      saveProgress();return rewardText||'First-clear reward already claimed';
+  }
+  function openHeadlessBossEvent(){
+      const {season}=ensureSeason3State();season.headlessBoss=season.headlessBoss||{completed:[],claimedRewards:[],extremeRevealSeen:false,skinClaimed:false};
+      const completed=new Set(season.headlessBoss.completed||[]),overlay=document.createElement('div');overlay.className='season3-overlay';
+      const panel=document.createElement('section');panel.className='season3-panel lava-boss-panel';
+      const impossible2Done=completed.has('impossible_2'),allDone=completed.has('impossible_15');
+      panel.innerHTML=`<header><div><small>SEASON 4 CO-OP EVENT</small><h1>HEADLESS BOLZNSTIEN \u2014 BOSS FIGHT</h1><p>Hard \u2192 Impossible XV \u2022 first-clear rewards cannot be farmed \u2022 up to 3 Spooky Boxes \u2022 clear it ALL for his skin, FREE</p></div><button aria-label="Close">X</button></header>${impossible2Done?'<div class="extreme-unlocked">EXTREME DIFFICULTIES UNLOCKED</div>':''}${allDone?'<div class="extreme-unlocked">\uD83C\uDF83 FULL CLEAR \u2014 HEADLESS BOLZNSTIEN SKIN CLAIMED</div>':''}`;
+      const ladder=document.createElement('div');ladder.className='lava-boss-ladder';
+      for(const cfg of Object.values(HEADLESS_BOSS_DIFFICULTIES)){
+          if(cfg.order>4&&!impossible2Done)continue;
+          const done=completed.has(cfg.id),unlocked=isHeadlessBossDifficultyUnlocked(cfg.id),row=document.createElement('button');
+          row.className=`lava-boss-tier${done?' is-complete':''}${cfg.id==='impossible_15'?' is-final':''}`;row.disabled=!unlocked;
+          const boxes=HEADLESS_BOSS_BOX_REWARDS[cfg.id]||0,special=cfg.id==='impossible_15'?' \u2022 HEADLESS SKIN':cfg.id==='impossible_2'?' \u2022 CORE CORRUPTOR':cfg.id==='hard'?' \u2022 FIRST HAUNT':'';
+          row.innerHTML=`<span><b>${cfg.name}${special}</b><small>${done?'COMPLETED':unlocked?'READY \u2022 3V1':'LOCKED \u2014 CLEAR PREVIOUS'}</small></span><em>${getHeadlessBossFightHp(cfg).toLocaleString()} HP<br>${done?'CLAIMED':`+${cfg.rewardCoins} Coins \u2022 +${cfg.rewardSouls} Souls${boxes?` \u2022 +${boxes} SPOOKY BOX`:''}`}</em>`;
+          row.onclick=()=>{activeHeadlessBossDifficulty=cfg.id;overlay.remove();showdownMode='headless_boss_s4';launchShowdownMatch();};ladder.appendChild(row);
+      }
+      panel.appendChild(ladder);panel.querySelector('header button').onclick=()=>overlay.remove();overlay.onclick=e=>{if(e.target===overlay)overlay.remove();};overlay.appendChild(panel);document.body.appendChild(overlay);
+  }
+
   function showLavaExtremeUnlockReveal(){
       const overlay=document.createElement('div');overlay.className='lava-extreme-reveal';overlay.innerHTML='<small>THE CORE CRACKS OPEN</small><h1>EXTREME DIFFICULTIES UNLOCKED</h1><p>Impossible III → Impossible XV</p><div><i></i><b>CORE SURGE BEGINS AT IMPOSSIBLE VI</b><i></i></div>';
       Object.assign(overlay.style,{position:'fixed',inset:'0',zIndex:'1500',display:'grid',placeContent:'center',textAlign:'center',color:'#fff4ad',background:'radial-gradient(circle,rgba(105,12,20,.72),rgba(3,5,12,.96))',pointerEvents:'none'});overlay.querySelector('h1').style.cssText='font:900 clamp(28px,6vw,72px) sans-serif;margin:8px;text-shadow:0 0 28px #ff5a24';overlay.querySelector('small').style.cssText='font:900 14px sans-serif;letter-spacing:.3em;color:#ff9b55';overlay.querySelector('p').style.cssText='font:800 20px sans-serif;color:#ffcf70';overlay.querySelector('div').style.cssText='display:flex;gap:18px;align-items:center;justify-content:center;margin-top:18px';document.body.appendChild(overlay);setTimeout(()=>overlay.remove(),3800);
@@ -35975,7 +36145,7 @@ let heistFeverActive = false;
       ['orbo_boss', '🪐', 'Boss Battle: 1 vs Orbo', '1-Player Boss Battle • Dodge cosmic orbits, giant returning Horizon Super & gravity wells!'],
       ['power_play_showdown', '⚡', 'Power Play Showdown', '3-Powers LTM with 5 curated hypercharged fighters'],
       ['corrupted_showdown', 'CS', 'Corrupted Showdown', 'Season 3 unstable Packet signals'],
-      ['lava_boss_s3', 'LAVA', 'Lava Villain Boss', 'Permanent co-op ladder • Hard to Impossible XV'],
+      ['headless_boss_s4', '🎃', 'Headless Bolznstien Boss', 'Season 4 co-op ladder • Hard to Impossible XV • Spooky Boxes + free skin'],
       ['tower_duels_weekend', 'TD', 'Tower Duels Weekend', '5 floors - fresh random P11 trio each floor'],
       ['slop_sushi_plus', '🗼', 'Tower Fusion Lab', 'Legacy seven-power sandbox'],
       ['slop_sushi', '🏰', 'Tower Trouble', '10 floors • random maxed brawler • fuse 4'],
@@ -35987,7 +36157,6 @@ let heistFeverActive = false;
       ['objective', '🏆', 'Control Clash', 'Control the zone'],
       ['construction', '🧱', 'Brick Run 3v3', 'Build race'],
       ['knock_donate', '🎯', 'Knock n Donate (Friendly Fire)', 'Ring-out 3v3 battles with friendly fire'],
-      ['bouncin_boss_s3', 'BO', "Bouncin' Balls Boss", 'Defeat the mega boss'],
       ['orbo_boss', '🪐', 'Boss Battle: 1 vs Orbo', 'Defeat the mega boss'],
       ['demon_villains_boss', '😈', 'Boss Battle: Possessed Villains', 'Story Boss Battle: Face 4 Waves of possessed villains and the Demon Overlord puppet master!'],
       ['ramage_boss', '🥊', 'Boss Battle: 1 vs Ramage', 'Defeat the mega boss'],
@@ -36010,7 +36179,7 @@ let heistFeverActive = false;
   ];
   const HOME_MODE_DATA = Object.fromEntries(HOME_MODE_CARDS.map((entry) => [entry[0], entry]));
   const POWER_PLAY_BRAWLERS = new Set(['blinkeye', 'fuser', 'rocketeer', 'bouncin_balls', 'echo', 'orbo', 'decayer', 'money_and_tax', 'ramage']);
-  const HOME_PERMANENT_MODE_IDS = ['blink_eye_dodge', 'bouncin_boss_s3', 'orbo_boss', 'ramage_boss', 'weefee_boss', 'demon_villains_boss', 'custom_clash', 'brawe_ball', 'knockout_3v3', 'duels', 'power_play_showdown', 'corrupted_showdown', 'lava_boss_s3', 'slop_sushi', 'slop_sushi_gauntlet', 'chaos_crown', 'arena_forge', 'arena_forge_overclocked', 'tug_zone', 'construction', 'knock_donate', 'damage_filler'];
+  const HOME_PERMANENT_MODE_IDS = ['blink_eye_dodge', 'headless_boss_s4', 'orbo_boss', 'ramage_boss', 'weefee_boss', 'demon_villains_boss', 'custom_clash', 'brawe_ball', 'knockout_3v3', 'duels', 'power_play_showdown', 'corrupted_showdown', 'slop_sushi', 'slop_sushi_gauntlet', 'chaos_crown', 'arena_forge', 'arena_forge_overclocked', 'tug_zone', 'construction', 'knock_donate', 'damage_filler'];
   HOME_PERMANENT_MODE_IDS.push('arena_forge_minion_surge');
   const HOME_ROTATING_MODE_IDS = ['marked_mayhem', 'objective', 'brick_vault', 'mirror', 'power_gods', 'solo_td', 'impossible'];
   const WEEKLY_FEATURED_MODE_IDS = ['brick_vault', 'power_gods'];
@@ -36061,7 +36230,7 @@ let heistFeverActive = false;
       orbo_boss: ['1-Player Boss Battle: 1 vs Mega Boss Orbo!', 'Zero Power Cubes — Pure skill showdown', 'Dodge crisscross orbits, bouncing Horizon Super & gravity vortexes', 'Defeat Mega Boss Orbo & his Planetary Moons across 3 Stages!'],
       blink_eye_dodge: ['1-Player Boss Battle: 1 vs Mega Boss BlinkEye!', 'Zero Power Cubes — Pure skill showdown', 'Dodge bouncing Ricochet Gaze lasers, Retinal Flash & All-Seeing Eyes', 'Defeat Mega Boss BlinkEye & his Sentinels to claim Victory!'],
       knock_donate: ['Ring-out 3v3 battles with friendly fire', 'Friendly Fire Active'],
-      bouncin_boss_s3: ["Defeat the mega boss Bouncin' Balls", 'Ricochet volley attacks'],
+      headless_boss_s4: ['3v1 Co-op vs the Headless Bolznstien!', 'Dodge pumpkin bombs, anvil rain and the Ecto Nova', 'First clears pay coins, souls and up to 3 Spooky Boxes', 'Clear Impossible XV to earn his skin FREE'],
       orbo_boss: ['1-Player Boss Battle: 1 vs Mega Boss Orbo!', 'Zero Power Cubes — Pure skill showdown', 'Dodge crisscross orbits, bouncing Horizon Super & gravity vortexes'],
       demon_villains_boss: [
         'Story Boss Battle: Demon has possessed the 6 Villains!',
@@ -37801,12 +37970,8 @@ let heistFeverActive = false;
                   openCustomMutatorPickerUI();
                   return;
               }
-              if (id === 'bouncin_boss_s3') {
-                  openBouncinBossEvent();
-                  return;
-              }
-              if (id === 'lava_boss_s3') {
-                  openLavaBossEvent();
+              if (id === 'headless_boss_s4') {
+                  openHeadlessBossEvent();
                   return;
               }
               showdownMode = id;
@@ -39667,9 +39832,13 @@ let heistFeverActive = false;
       isBeastBossEvent = false;
       isBouncinBossEvent = showdownMode === 'bouncin_boss_s3';
       isLavaBossEvent = showdownMode === 'lava_boss_s3';
-      isBossFight = isLavaBossEvent || isBouncinBossEvent;
+      isHeadlessBossEvent = showdownMode === 'headless_boss_s4';
+      isBossFight = isLavaBossEvent || isBouncinBossEvent || isHeadlessBossEvent;
       if (isBouncinBossEvent) {
           initBouncinBossMatch();
+      }
+      if (isHeadlessBossEvent) {
+          initHeadlessBossMatch();
       }
       isOverlordTrialEvent = false;
       isHyperEvent = false;
@@ -39822,7 +39991,7 @@ let heistFeverActive = false;
           showdownMapIndex=(floor-1)%TOWER_TROUBLE_FLOORS;
       }
     constructionMapIndex = getRotatingConstructionMapIndex();
-      if (isLavaBossEvent) {
+      if (isLavaBossEvent || isHeadlessBossEvent) {
           WORLD_W = 2400;
           WORLD_H = 2200;
       } else if (isMirrorMode) {
@@ -41132,6 +41301,7 @@ isBrawlerLabMode = false;
       isSoloTrial = false;
       isBeastBossEvent = false;
       isLavaBossEvent = false;
+      isHeadlessBossEvent = false;
       isOverlordTrialEvent = false;
       isHyperEvent = false;
       isBossFight = false;
@@ -41264,6 +41434,7 @@ isBrawlerLabMode = false;
       isSoloTrial = false;
       isBeastBossEvent = false;
       isLavaBossEvent = false;
+      isHeadlessBossEvent = false;
       isOverlordTrialEvent = false;
       isHyperEvent = false;
       isBossFight = false;
@@ -46468,6 +46639,7 @@ function checkHit(target, b, i){
     updateCoreBreachIntro(dt);
     updateCorruptedShowdown(now);
     updateLavaBossEvent(now,dt);
+    updateHeadlessBossEvent(now,dt);
 
     updateAngelDemonStates(dt);
       updateWeeFeeSystems(dt);
@@ -47271,12 +47443,12 @@ function checkHit(target, b, i){
     } else if (isBossFight) {
         if (player.hp <= 0 && !gameOver) {
             player.respawnTimer = (player.respawnTimer || 0) + dt;
-            if (player.respawnTimer >= (isBouncinBossEvent ? 5.5 : (isLavaBossEvent ? 3 : 20))) {
-                if (!isLavaBossEvent) player.bossLives = (player.bossLives || 3) - 1;
+            if (player.respawnTimer >= (isBouncinBossEvent ? 5.5 : ((isLavaBossEvent || isHeadlessBossEvent) ? 3 : 20))) {
+                if (!isLavaBossEvent && !isHeadlessBossEvent) player.bossLives = (player.bossLives || 3) - 1;
                 if (player.bossLives <= 0) {
                     gameOver = true;
                 } else {
-                    restoreRespawningEntity(player, { x: WORLD_W * 0.5, y: WORLD_H - 240 }, true, isLavaBossEvent ? 1400 : 2000);
+                    restoreRespawningEntity(player, { x: WORLD_W * 0.5, y: WORLD_H - 240 }, true, (isLavaBossEvent || isHeadlessBossEvent) ? 1400 : 2000);
                 }
             }
         }
@@ -47284,9 +47456,9 @@ function checkHit(target, b, i){
         for (const b of bots) {
             if (b.isTeammate && b.hp <= 0 && !gameOver) {
                 b.respawnTimer = (b.respawnTimer || 0) + dt;
-                if (b.respawnTimer >= (isLavaBossEvent ? 3 : 10)) {
+                if (b.respawnTimer >= ((isLavaBossEvent || isHeadlessBossEvent) ? 3 : 10)) {
                     const spawn = { x: 1200 + (Math.random() * 400 - 200), y: 2000 + (Math.random() * 200 - 100) };
-                    restoreRespawningEntity(b, spawn, false, isLavaBossEvent ? 1400 : 1500);
+                    restoreRespawningEntity(b, spawn, false, (isLavaBossEvent || isHeadlessBossEvent) ? 1400 : 1500);
                 }
             }
         }
@@ -56324,6 +56496,7 @@ function checkHit(target, b, i){
     renderCoreBreachIntro();
     renderCorruptedShowdown();
     renderLavaBossEvent();
+    renderHeadlessBossEvent();
     if (typeof renderBouncinBossEvent === 'function') renderBouncinBossEvent('ground');
     if (isBraweBallMode) renderBraweBallWorld(ctx);
     if (isKnockoutMode) renderKnockoutWorld(ctx);
@@ -70383,11 +70556,11 @@ function checkHit(target, b, i){
                 ctx.fillText(`⚔️ SOLO TRIAL MODE - WAVE ${Math.min(soloTrialWave + 1, SOLO_TRIAL_MAX_WAVES)}/${SOLO_TRIAL_MAX_WAVES} ⚔️`, innerWidth/2, 60);
         ctx.textAlign = 'left';
     } else if (isBossFight) {
-        ctx.fillStyle = isLavaBossEvent ? '#ff9a3d' : '#ff6bb2';
+        ctx.fillStyle = isLavaBossEvent ? '#ff9a3d' : isHeadlessBossEvent ? '#7dff6a' : '#ff6bb2';
         ctx.font = 'bold 14px sans-serif';
         ctx.textAlign = 'center';
         const diffName = getBeastBossDifficultyName(getBeastBossDifficultyIndex());
-        ctx.fillText(isLavaBossEvent?`LAVA VILLAIN 3V1 • ${getLavaBossDifficulty(lavaBossRuntime?.difficulty).name} • ${Math.max(0,Math.ceil((lavaBossRuntime.timeLimitMs-(performance.now()-lavaBossRuntime.startedAt))/1000))}s`:`🧬 BEAST BOSS 5V1 [${diffName}] - COLLECT CRYSTALS FOR 5s EMPOWERED BEAST 🧬`, innerWidth/2, 60);
+        ctx.fillText(isLavaBossEvent?`LAVA VILLAIN 3V1 • ${getLavaBossDifficulty(lavaBossRuntime?.difficulty).name} • ${Math.max(0,Math.ceil((lavaBossRuntime.timeLimitMs-(performance.now()-lavaBossRuntime.startedAt))/1000))}s`:isHeadlessBossEvent?`HEADLESS BOLZNSTIEN 3V1 • ${getHeadlessBossDifficulty(headlessBossRuntime?.difficulty).name} • ${Math.max(0,Math.ceil((headlessBossRuntime.timeLimitMs-(performance.now()-headlessBossRuntime.startedAt))/1000))}s`:`🧬 BEAST BOSS 5V1 [${diffName}] - COLLECT CRYSTALS FOR 5s EMPOWERED BEAST 🧬`, innerWidth/2, 60);
         ctx.textAlign = 'left';
     } else if (isConstructionMode) {
         ctx.fillStyle = '#7dd8ff';
@@ -70499,11 +70672,16 @@ function checkHit(target, b, i){
                     rankText=`Difficulty: ${cfg.name}`;
                     if(won)rankText+=` • ${completeLavaBossDifficulty(cfg.id)}`;
                     matchText=won?'LAVA VILLAIN DEFEATED!':'THE CORE OVERHEATED — TRY AGAIN!';
+                } else if (isHeadlessBossEvent) {
+                    const cfg=getHeadlessBossDifficulty(headlessBossRuntime?.difficulty||activeHeadlessBossDifficulty);
+                    rankText=`Difficulty: ${cfg.name}`;
+                    if(won)rankText+=` • ${completeHeadlessBossDifficulty(cfg.id)}`;
+                    matchText=won?'HEADLESS BOLZNSTIEN DEFEATED!':'THE HEADLESS ONE PREVAILS — TRY AGAIN!';
                 } else if (isBeastBossEvent) {
                     const diffName = getBeastBossDifficultyName(getBeastBossDifficultyIndex());
                     rankText = `Difficulty: ${diffName}`;
                 }
-                if(!isLavaBossEvent)matchText = won ? (isBeastBossEvent ? "BEAST BOSS DEFEATED!" : "BOSS DEFEATED!") : "TEAM WIPED OUT!";
+                if(!isLavaBossEvent&&!isHeadlessBossEvent)matchText = won ? (isBeastBossEvent ? "BEAST BOSS DEFEATED!" : "BOSS DEFEATED!") : "TEAM WIPED OUT!";
             } else if (isSoloTrial) {
                 won = player.hp > 0 && soloTrialWave >= SOLO_TRIAL_MAX_WAVES && bots.every(b => b.hp <= 0 || b.isDead);
                 matchText = won ? "SOLO TRIAL COMPLETE!" : "SOLO TRIAL FAILED!";
@@ -71143,6 +71321,7 @@ function checkHit(target, b, i){
                 isHyperEvent = false;
                 isBeastBossEvent = false;
                 isLavaBossEvent = false;
+      isHeadlessBossEvent = false;
                 isOverlordTrialEvent = false;
                 window.location.reload();
             };
