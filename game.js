@@ -896,7 +896,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             { threshold: 700, reward: '+1 Super Tapper', rewardType: 'superTapper', rewardAmount: 1 },
             { threshold: 950, reward: '+120 Coins', rewardType: 'coins', rewardAmount: 120 },
             { threshold: 1250, reward: '+1 Beast Boss Token', rewardType: 'beastBossToken', rewardAmount: 1 },
-            { threshold: 1600, reward: '+1 Hyper Tapper', rewardType: 'hyperTapper', rewardAmount: 1 },
+            { threshold: 1600, reward: '+1 Surge Tapper', rewardType: 'hyperTapper', rewardAmount: 1 },
             { threshold: 2000, reward: '+250 Coins', rewardType: 'coins', rewardAmount: 250 },
         ];
         return milestones.map((milestone) => ({
@@ -1092,21 +1092,21 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         { threshold:750, label:'1 Super Tapper', rewards:[['superTapper',1]] },
         { threshold:1000, label:'5 Gems', rewards:[['gems',5]] },
         { threshold:1500, label:'500 Coins', rewards:[['coins',500]] },
-        { threshold:2000, label:'1 Hyper Tapper', rewards:[['hyperTapper',1]] },
+        { threshold:2000, label:'1 Surge Tapper', rewards:[['hyperTapper',1]] },
         { threshold:2500, label:'750 Coins', rewards:[['coins',750]] },
         { threshold:3000, label:'BRICK LAYER + 3K Badge', rewards:[['title','brick_layer'],['badge','brick_3k']] },
         { threshold:4000, label:'10 Gems', rewards:[['gems',10]] },
-        { threshold:5000, label:'1 Hyper Tapper + 750 Coins', rewards:[['hyperTapper',1],['coins',750]] },
+        { threshold:5000, label:'1 Surge Tapper + 750 Coins', rewards:[['hyperTapper',1],['coins',750]] },
         { threshold:6000, label:'500 Coins + 1 Tapper', rewards:[['coins',500],['tapper',1]] },
         { threshold:7500, label:'BRICKED UP + 7.5K Badge', rewards:[['title','bricked_up'],['badge','brick_7500']] },
         { threshold:8500, label:'8 Gems', rewards:[['gems',8]] },
-        { threshold:10000, label:'20 Gems + 1 Hyper Tapper', rewards:[['gems',20],['hyperTapper',1]] },
+        { threshold:10000, label:'20 Gems + 1 Surge Tapper', rewards:[['gems',20],['hyperTapper',1]] },
         { threshold:11000, label:'1 Super Tapper', rewards:[['superTapper',1]] },
         { threshold:12500, label:'2 Super Tappers + 1,250 Coins', rewards:[['superTapper',2],['coins',1250]] },
         { threshold:15000, label:'2,000 Coins + 15K Badge', rewards:[['coins',2000],['badge','brick_15k']] },
         { threshold:17500, label:'1,000 Coins + 1 Tapper', rewards:[['coins',1000],['tapper',1]] },
         { threshold:20000, label:'Brick Frame + 20K Badge', rewards:[['frame','brick_frame'],['badge','brick_20k']] },
-        { threshold:22500, label:'1 Hyper Tapper', rewards:[['hyperTapper',1]] },
+        { threshold:22500, label:'1 Surge Tapper', rewards:[['hyperTapper',1]] },
         { threshold:25000, label:'THE ARCHITECT SET', rewards:[['title','architect'],['frame','architect_frame'],['badge','brick_25k'],['background','brick_architect']] , prestige:true},
     ];
     const PROFILE_TITLE_DEFS = {
@@ -1264,7 +1264,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         saveProgress();
         return true;
     }
-    function formatProfileReward([type,value]){const amount=Number(value)||0;if(type==='coins')return `${amount.toLocaleString()} Coin${amount===1?'':'s'}`;if(type==='gems')return `${amount} Gem${amount===1?'':'s'}`;if(type==='tapper')return `${amount} Tapper${amount===1?'':'s'}`;if(type==='superTapper')return `${amount} Super Tapper${amount===1?'':'s'}`;if(type==='hyperTapper')return `${amount} Hyper Tapper${amount===1?'':'s'}`;if(type==='title')return `Title: ${PROFILE_TITLE_DEFS[value]?.name||value}`;if(type==='badge')return `Badge: ${PROFILE_BADGE_DEFS[value]?.name||value}`;if(type==='frame')return `Frame: ${PROFILE_FRAME_DEFS[value]?.name||value}`;if(type==='background')return `Background: ${PROFILE_BACKGROUND_DEFS[value]?.name||value}`;return String(value);}
+    function formatProfileReward([type,value]){const amount=Number(value)||0;if(type==='coins')return `${amount.toLocaleString()} Coin${amount===1?'':'s'}`;if(type==='gems')return `${amount} Gem${amount===1?'':'s'}`;if(type==='tapper')return `${amount} Tapper${amount===1?'':'s'}`;if(type==='superTapper')return `${amount} Super Tapper${amount===1?'':'s'}`;if(type==='hyperTapper')return `${amount} Surge Tapper${amount===1?'':'s'}`;if(type==='title')return `Title: ${PROFILE_TITLE_DEFS[value]?.name||value}`;if(type==='badge')return `Badge: ${PROFILE_BADGE_DEFS[value]?.name||value}`;if(type==='frame')return `Frame: ${PROFILE_FRAME_DEFS[value]?.name||value}`;if(type==='background')return `Background: ${PROFILE_BACKGROUND_DEFS[value]?.name||value}`;return String(value);}
     function isMajorBrickReward(m){return !!m.prestige||m.rewards.some(([type])=>['title','badge','frame','background'].includes(type));}
     function showBrickBonClaimCelebration(m){if(!isMajorBrickReward(m))return;const toast=document.createElement('div');toast.className=`bon-major-celebration${m.prestige?' architect':''}`;toast.innerHTML=`<small>MILESTONE UNLOCKED</small><b>${m.prestige?'THE ARCHITECT':m.label}</b><span>${m.rewards.map(formatProfileReward).join(' + ')}</span>`;document.body.appendChild(toast);setTimeout(()=>toast.remove(),2200);}
     function getBrickChallengeProgress(challenge){const values=Object.values(playerData.brawlers||{});if(challenge.kind==='depth')return values.filter(p=>getLifetimeBricks(p)>=challenge.threshold).length;if(challenge.kind==='prestiged')return values.filter(p=>(p?.prestige||0)>=challenge.threshold).length;if(challenge.kind==='maxPrestige')return values.reduce((m,p)=>Math.max(m,p?.prestige||0),0);return 0;}
@@ -5979,6 +5979,42 @@ const bolznstienPendingStrikes = [];
             description: 'A grinning jack-o-lantern imp wreathed in candle-fire. Visual only. Exclusive to Spooky Boxes.',
             _displayColor: '#ff5722', icon: '🎃', visualOnly: true, isSpookyBoxReward: true
         },
+        'xploder-rocketeer': {
+            id: 'xploder-rocketeer', name: 'Xploder', brawler: 'rocketeer',
+            rarity: 'mythic', set: 'Xplodemis', price: 0, currency: 'gems',
+            description: 'Rocketeer becomes a walking firework battery — red-and-gold rockets with sparkling trails. Visual only. Exclusive to the Xplodemis Pass (Tier 25 Premium) and Presents.',
+            _displayColor: '#ff4757', icon: '🎆', visualOnly: true, isPresentReward: true
+        },
+        'krampus-darkener': {
+            id: 'krampus-darkener', name: 'Krampus Darkener', brawler: 'darkener',
+            rarity: 'legendary', set: 'Xplodemis', price: 0, currency: 'gems',
+            description: 'The Darkener wears the Krampus horns — chains, bells and a sack for naughty brawlers. Visual only. Exclusive to Presents.',
+            _displayColor: '#7d1f2d', icon: '👹', visualOnly: true, isPresentReward: true
+        },
+        'frostbite-feathers': {
+            id: 'frostbite-feathers', name: 'Frostbite Feathers', brawler: 'feathers',
+            rarity: 'mythic', set: 'Xplodemis', price: 0, currency: 'gems',
+            description: 'Feathers in icy blue plumes — his Windstorm rolls in as a full blizzard. Visual only. Exclusive to Presents.',
+            _displayColor: '#7fe7ff', icon: '❄️', visualOnly: true, isPresentReward: true
+        },
+        'tinsel-looma': {
+            id: 'tinsel-looma', name: 'Tinsel Looma', brawler: 'looma',
+            rarity: 'mythic', set: 'Xplodemis', price: 0, currency: 'gems',
+            description: 'Looma weaves garland and tinsel instead of thread, trailing fairy lights. Visual only. Exclusive to Presents.',
+            _displayColor: '#ffd76b', icon: '🎀', visualOnly: true, isPresentReward: true
+        },
+        'nutcracker-outlit': {
+            id: 'nutcracker-outlit', name: 'Nutcracker Outlit', brawler: 'outlit',
+            rarity: 'epic', set: 'Xplodemis', price: 0, currency: 'gems',
+            description: 'Outlit marches as a toy-soldier nutcracker, all polished wood and gold braid. Visual only. Exclusive to Presents.',
+            _displayColor: '#e84118', icon: '🥜', visualOnly: true, isPresentReward: true
+        },
+        'gingerbread-cheeseburger': {
+            id: 'gingerbread-cheeseburger', name: 'Gingerbread Cheeseburger', brawler: 'sir_cheeseburger',
+            rarity: 'epic', set: 'Xplodemis', price: 0, currency: 'gems',
+            description: 'Sir Cheeseburger rebuilt as a gingerbread house with icing trim and a gumdrop crown. Visual only. Exclusive to Presents.',
+            _displayColor: '#c97b2f', icon: '🍪', visualOnly: true, isPresentReward: true
+        },
         'boneless-boomarang': {
             id: 'boneless-boomarang',
             name: 'Boneless Boomarang',
@@ -6382,6 +6418,9 @@ const bolznstienPendingStrikes = [];
       const TURKEY_TROUBLE_SEASON_ID = 'turkey-trouble-arena-forge-2026-s5';
       const TURKEY_TROUBLE_START_UTC = Date.UTC(2026, 10, 1, 0, 0, 0); // Season 5 starts Nov 1, 2026
       const TURKEY_TROUBLE_END_UTC = Date.UTC(2026, 11, 1, 0, 0, 0); // Season 5 runs through Nov 30, 2026
+      const XPLODEMIS_SEASON_ID = 'xplodemis-arena-forge-2026-s6';
+      const XPLODEMIS_START_UTC = Date.UTC(2026, 11, 1, 0, 0, 0); // Season 6 starts Dec 1, 2026
+      const XPLODEMIS_END_UTC = Date.UTC(2027, 0, 1, 0, 0, 0); // Season 6 runs through Dec 31, 2026
       const SEASON_PASS_MAX_LEVEL = 25;
       const SEASON_PASS_XP_PER_LEVEL = 100;
       const SEASON_2_ARCHIVE_TIERS = [
@@ -6552,7 +6591,59 @@ const bolznstienPendingStrikes = [];
           {id:'turkey_19',stage:19,kind:'boss_impossible_2',title:'Impossible Leftovers',desc:'Clear Impossible II in the Headless Bolznstien Boss Fight.',target:1,rewards:{coins:1200},xpReward:100},
           {id:'turkey_20',stage:20,kind:'win_match',title:'TURKEY TROUBLE MASTER',desc:'Win 20 battles this season.',target:20,rewards:{coins:1500,hyperTappers:1},xpReward:100}
       ];
+      const XPLODEMIS_PASS_TIERS = [
+          {tier:1,title:'First Frost',free:{type:'coins',amount:250},premium:{type:'souls',amount:30}},
+          {tier:2,title:'Sleigh Bell Stash',free:{type:'souls',amount:25},premium:{type:'corePieces',amount:10}},
+          {tier:3,title:'Present I',free:{type:'present',amount:1},premium:{type:'coins',amount:450}},
+          {tier:4,title:'Reindeer Shift',free:{type:'coins',amount:400},premium:{type:'superTapper',amount:1}},
+          {tier:5,title:'Core Carol',free:{type:'corePieces',amount:10},premium:{type:'gems',amount:5}},
+          {tier:6,title:'Wrap Party',free:{type:'coins',amount:450},premium:{type:'present',amount:1}},
+          {tier:7,title:'Silent Night Surge',free:{type:'souls',amount:50},premium:{type:'coins',amount:600}},
+          {tier:8,title:'Tapper Tidings',free:{type:'tapper',amount:1},premium:{type:'corePieces',amount:15}},
+          {tier:9,title:'Present II',free:{type:'present',amount:1},premium:{type:'gems',amount:7}},
+          {tier:10,title:'Mistletoe Hoard',free:{type:'coins',amount:600},premium:{type:'superTapper',amount:1}},
+          {tier:11,title:'Frosty Credits',free:{type:'coins',amount:550},premium:{type:'present',amount:1}},
+          {tier:12,title:'Carol Core',free:{type:'corePieces',amount:15},premium:{type:'coins',amount:850}},
+          {tier:13,title:'Blizzard Fortune',free:{type:'gems',amount:5},premium:{type:'present',amount:1}},
+          {tier:14,title:'Surge Tidings',free:{type:'coins',amount:750},premium:{type:'hyperTapper',amount:1}},
+          {tier:15,title:'Present III',free:{type:'present',amount:1},premium:{type:'coins',amount:1100}},
+          {tier:16,title:'Full Sleigh Funds',free:{type:'souls',amount:85},premium:{type:'corePieces',amount:20}},
+          {tier:17,title:'Soul Feastivities',free:{type:'coins',amount:900},premium:{type:'present',amount:1}},
+          {tier:18,title:'Double Presents',free:{type:'superTapper',amount:1},premium:{type:'present',amount:2}},
+          {tier:19,title:'Tinsel Treasury',free:{type:'corePieces',amount:20},premium:{type:'coins',amount:1300}},
+          {tier:20,title:'Xplodemis Night',free:{type:'gems',amount:7},premium:{type:'present',amount:2}},
+          {tier:21,title:'Present IV',free:{type:'present',amount:1},premium:{type:'hyperTapper',amount:1}},
+          {tier:22,title:'Firework Riches',free:{type:'coins',amount:1100},premium:{type:'gems',amount:12}},
+          {tier:23,title:'Final Frost Funds',free:{type:'souls',amount:130},premium:{type:'corePieces',amount:25}},
+          {tier:24,title:'Present Storm',free:{type:'present',amount:2},premium:{type:'present',amount:2}},
+          {tier:25,title:'XPLODER',free:{type:'present',amount:2},premium:{type:'skin',id:'xploder-rocketeer',name:'Xploder Rocketeer'}}
+      ];
+      const XPLODEMIS_QUEST_DEFS = [
+          {id:'xplodemis_01',stage:1,kind:'play_match',title:'First Snowfall',desc:'Play 3 battles.',target:3,rewards:{coins:200,souls:12},xpReward:100},
+          {id:'xplodemis_02',stage:2,kind:'deal_damage',title:'Firework Warmup',desc:'Deal 25,000 damage.',target:25000,rewards:{coins:240,corePieces:5},xpReward:100},
+          {id:'xplodemis_03',stage:3,kind:'win_match',title:'Sleigh Ride',desc:'Win 2 battles.',target:2,rewards:{souls:20},xpReward:100},
+          {id:'xplodemis_04',stage:4,kind:'defeat_enemies',title:'Grinch Patrol',desc:'Defeat 15 enemies.',target:15,rewards:{coins:300,tappers:1},xpReward:100},
+          {id:'xplodemis_05',stage:5,kind:'perform_supers',title:'Carol Chorus',desc:'Activate 10 Power Moves.',target:10,rewards:{coins:340,souls:24},xpReward:100},
+          {id:'xplodemis_06',stage:6,kind:'christmas_showdown_matches',title:'First Christmas Showdown',desc:'Play 2 Christmas Showdown battles.',target:2,rewards:{presents:1},xpReward:100},
+          {id:'xplodemis_07',stage:7,kind:'use_gadget',title:'Toy Workshop',desc:'Use 10 Tools.',target:10,rewards:{coins:380,corePieces:8},xpReward:100},
+          {id:'xplodemis_08',stage:8,kind:'deal_damage',title:'Blizzard Grind',desc:'Deal 150,000 damage.',target:150000,rewards:{souls:55,superTappers:1},xpReward:100},
+          {id:'xplodemis_09',stage:9,kind:'different_fighters',title:'Reindeer Squad',desc:'Finish battles with 6 different Fighters.',target:6,rewards:{souls:65},xpReward:100},
+          {id:'xplodemis_10',stage:10,kind:'christmas_powerups',title:'Buff Collector',desc:'Pick up 5 buffs in Christmas Showdown.',target:5,rewards:{presents:1,coins:500},xpReward:100},
+          {id:'xplodemis_11',stage:11,kind:'win_match',title:'Halfway to Christmas',desc:'Win 8 battles.',target:8,rewards:{coins:500,tappers:1},xpReward:100},
+          {id:'xplodemis_12',stage:12,kind:'defeat_enemies',title:'Krampus Reaper',desc:'Defeat 75 enemies.',target:75,rewards:{superTappers:1,corePieces:12},xpReward:100},
+          {id:'xplodemis_13',stage:13,kind:'boss_hard',title:'Still Headless (Holiday Edition)',desc:'Clear Hard in the Headless Bolznstien Boss Fight.',target:1,rewards:{coins:800},xpReward:100},
+          {id:'xplodemis_14',stage:14,kind:'christmas_showdown_wins',title:'Christmas Champion',desc:'Win a Christmas Showdown.',target:1,rewards:{presents:1,souls:90},xpReward:100},
+          {id:'xplodemis_15',stage:15,kind:'deal_damage',title:'Present Bonanza',desc:'Deal 500,000 damage.',target:500000,rewards:{presents:2},xpReward:100},
+          {id:'xplodemis_16',stage:16,kind:'perform_supers',title:'Super Stockings',desc:'Activate 40 Power Moves.',target:40,rewards:{hyperTappers:1,corePieces:15},xpReward:100},
+          {id:'xplodemis_17',stage:17,kind:'christmas_powerups',title:'Buff Blizzard',desc:'Pick up 15 buffs in Christmas Showdown.',target:15,rewards:{coins:1000},xpReward:100},
+          {id:'xplodemis_18',stage:18,kind:'deal_damage',title:'Damage Decorator',desc:'Deal 1,000,000 damage.',target:1000000,rewards:{souls:120,gems:10},xpReward:100},
+          {id:'xplodemis_19',stage:19,kind:'boss_impossible_2',title:'Impossible Snowfall',desc:'Clear Impossible II in the Headless Bolznstien Boss Fight.',target:1,rewards:{presents:2,coins:1200},xpReward:100},
+          {id:'xplodemis_20',stage:20,kind:'win_match',title:'XPLODEMIS MASTER',desc:'Win 20 battles this season.',target:20,rewards:{coins:1500,presents:2,hyperTappers:1},xpReward:100}
+      ];
       function getActiveSeasonProfile(now = Date.now()) {
+          if (now >= XPLODEMIS_START_UTC) {
+              return { key:'xplodemis', seasonNumber:6, id:XPLODEMIS_SEASON_ID, name:'Xplodemis', upperName:'XPLODEMIS', tiers:XPLODEMIS_PASS_TIERS, quests:XPLODEMIS_QUEST_DEFS, startUtc:XPLODEMIS_START_UTC, endUtc:XPLODEMIS_END_UTC, endLabel:'December 31, 2026' };
+          }
           if (now >= TURKEY_TROUBLE_START_UTC) {
               return { key:'turkey', seasonNumber:5, id:TURKEY_TROUBLE_SEASON_ID, name:'Turkey Trouble', upperName:'TURKEY TROUBLE', tiers:TURKEY_TROUBLE_PASS_TIERS, quests:TURKEY_TROUBLE_QUEST_DEFS, startUtc:TURKEY_TROUBLE_START_UTC, endUtc:TURKEY_TROUBLE_END_UTC, endLabel:'November 30, 2026' };
           }
@@ -6562,6 +6653,34 @@ const bolznstienPendingStrikes = [];
       function getActiveSeasonPassTiers() { return getActiveSeasonProfile().tiers; }
       function getActiveSeasonQuestDefs() { return getActiveSeasonProfile().quests; }
       function isTurkeyTroubleSeasonActive(now = Date.now()) { return now >= TURKEY_TROUBLE_START_UTC && now < TURKEY_TROUBLE_END_UTC; }
+      function isXplodemisSeasonActive(now = Date.now()) { return now >= XPLODEMIS_START_UTC && now < XPLODEMIS_END_UTC; }
+      function ensureXplodemisDaily() {
+          const today = new Date();
+          const dayKey = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`;
+          if (!playerData.xplodemisDaily || playerData.xplodemisDaily.dayKey !== dayKey) {
+              playerData.xplodemisDaily = { dayKey, played: false, claimed: 0 };
+          }
+          return playerData.xplodemisDaily;
+      }
+      function getDailyPresentAllowance(now = new Date()) {
+          return (now.getMonth() === 11 && now.getDate() >= 21 && now.getDate() <= 27) ? 2 : 1; // Christmas week: 2/day
+      }
+      function markXplodemisDailyPlayed() {
+          if (!isXplodemisSeasonActive()) return;
+          const daily = ensureXplodemisDaily();
+          if (!daily.played) { daily.played = true; saveProgress(); }
+      }
+      function claimDailyPresent() {
+          if (!isXplodemisSeasonActive()) return false;
+          const daily = ensureXplodemisDaily();
+          const allowance = getDailyPresentAllowance();
+          if (!daily.played || (daily.claimed || 0) >= allowance) return false;
+          const grant = allowance - (daily.claimed || 0);
+          daily.claimed = allowance;
+          playerData.presentCount = (playerData.presentCount || 0) + grant;
+          saveProgress();
+          return grant;
+      }
       const SEASON_QUEST_STAGE_COUNT = getActiveSeasonQuestDefs().length;
 
       function buildSeasonPassQuests() {
@@ -6654,7 +6773,7 @@ const bolznstienPendingStrikes = [];
           }
       }
 
-      function isSeason3PassActive(now=Date.now()){return now<TURKEY_TROUBLE_END_UTC;} // Seasons 4-5 run back to back through Nov 30, 2026
+      function isSeason3PassActive(now=Date.now()){return now<XPLODEMIS_END_UTC;} // Seasons 4-6 run back to back through Dec 31, 2026
 
       function resetSeasonPass() {
           resetSeasonPassForAll();
@@ -6729,6 +6848,8 @@ const bolznstienPendingStrikes = [];
               const badgeIds=new Set(['packet_scout_badge','corrupted_crest']),frameIds=new Set(['cracked_core_frame','biome_walker_frame']),field=badgeIds.has(reward.id)?'unlockedBadges':frameIds.has(reward.id)?'unlockedFrames':'unlockedBackgrounds';if(!bon[field].includes(reward.id))bon[field].push(reward.id);
           } else if (reward.type === 'superTapper') playerData.superTapperCount = (playerData.superTapperCount || 0) + (reward.amount || 0);
           else if (reward.type === 'spookyBox') playerData.spookyBoxCount = (playerData.spookyBoxCount || 0) + (reward.amount || 0);
+          else if (reward.type === 'present') playerData.presentCount = (playerData.presentCount || 0) + (reward.amount || 0);
+          else if (reward.type === 'corePieces') addCorePieces(reward.amount || 0);
           else if (reward.type === 'hyperTapper') playerData.hyperTapperCount = (playerData.hyperTapperCount || 0) + (reward.amount || 0);
           else if (reward.type === 'skin') {
               const skin = skinsDatabase[reward.id];
@@ -6775,6 +6896,8 @@ const bolznstienPendingStrikes = [];
           if (rewards.superTappers) playerData.superTapperCount = (playerData.superTapperCount || 0) + rewards.superTappers;
           if (rewards.hyperTappers) playerData.hyperTapperCount = (playerData.hyperTapperCount || 0) + rewards.hyperTappers;
           if (rewards.spookyBoxes) playerData.spookyBoxCount = (playerData.spookyBoxCount || 0) + rewards.spookyBoxes;
+          if (rewards.presents) playerData.presentCount = (playerData.presentCount || 0) + rewards.presents;
+          if (rewards.corePieces) addCorePieces(rewards.corePieces);
           if (rewards.towerDrops) {
               ensureSlopSushiState();
               playerData.slopSushi.tappers = (playerData.slopSushi.tappers || 0) + rewards.towerDrops;
@@ -6959,6 +7082,7 @@ const bolznstienPendingStrikes = [];
           {id:'coin_ascent_20',stage:20,kind:'deal_damage',title:'Coin Ascent Finale',desc:'Deal 1,000,000 damage.',target:1000000,rewards:{coins:500}}
       ];
       const FULL_ON_DAMAGE_EVENT_ID='full-on-damage-2026-08';
+      const FULL_ON_DAMAGE_ENABLED=false; // RETIRED 2026-10-21 (Season 6 Core update) — state preserved.
       const FULL_ON_DAMAGE_DURATION_MS=7*24*60*60*1000;
       const FULL_ON_DAMAGE_MILESTONES=[
           {target:25000,rewards:{coins:250}},{target:75000,rewards:{coins:350}},{target:150000,rewards:{coins:500}},
@@ -7021,7 +7145,7 @@ const bolznstienPendingStrikes = [];
           }
           return event;
       }
-      function isFullOnDamageActive(){const event=ensureFullOnDamageEventState();return Date.now()<(event.endAt||0);}
+      function isFullOnDamageActive(){if(!FULL_ON_DAMAGE_ENABLED)return false;const event=ensureFullOnDamageEventState();return Date.now()<(event.endAt||0);}
       function formatFullOnDamageTimeLeft(){
           const event=ensureFullOnDamageEventState(),left=Math.max(0,(event.endAt||0)-Date.now());
           if(!left)return 'EVENT ENDED';
@@ -7037,6 +7161,7 @@ const bolznstienPendingStrikes = [];
           if(rewards.hyperTappers)playerData.hyperTapperCount=(playerData.hyperTapperCount||0)+rewards.hyperTappers;
       }
       function addFullOnDamageMatchDamage(amount){
+          if(!FULL_ON_DAMAGE_ENABLED)return false;
           const event=ensureFullOnDamageEventState();
           if(Date.now()>=(event.endAt||0))return false;
           const gained=Math.max(0,Math.round(Number(amount)||0));
@@ -7506,6 +7631,8 @@ const bolznstienPendingStrikes = [];
           if (rewards.superTappers) playerData.superTapperCount = (playerData.superTapperCount || 0) + rewards.superTappers;
           if (rewards.hyperTappers) playerData.hyperTapperCount = (playerData.hyperTapperCount || 0) + rewards.hyperTappers;
           if (rewards.spookyBoxes) playerData.spookyBoxCount = (playerData.spookyBoxCount || 0) + rewards.spookyBoxes;
+          if (rewards.presents) playerData.presentCount = (playerData.presentCount || 0) + rewards.presents;
+          if (rewards.corePieces) addCorePieces(rewards.corePieces);
           if (rewards.questXP) grantContractXP(rewards.questXP);
           if (rewards.brawlerUnlock && !playerData.unlockedBrawlers[rewards.brawlerUnlock]) {
               playerData.unlockedBrawlers[rewards.brawlerUnlock] = true;
@@ -7528,7 +7655,7 @@ const bolznstienPendingStrikes = [];
       }
 
       function questRewardText(rewards = {}) {
-          const labels = {coins:['Coin','Coins'],gems:['Gem','Gems'],souls:['Soul','Souls'],tappers:['Tapper','Tappers'],superTappers:['Super Tapper','Super Tappers'],hyperTappers:['Hyper Tapper','Hyper Tappers'],spookyBoxes:['Spooky Box','Spooky Boxes'],questXP:['Contract XP','Contract XP']};
+          const labels = {coins:['Coin','Coins'],gems:['Gem','Gems'],souls:['Soul','Souls'],tappers:['Tapper','Tappers'],superTappers:['Super Tapper','Super Tappers'],hyperTappers:['Surge Tapper','Surge Tappers'],spookyBoxes:['Spooky Box','Spooky Boxes'],presents:['Present','Presents'],corePieces:['Core Piece','Core Pieces'],questXP:['Contract XP','Contract XP']};
           const parts = [];
           for (const [key, names] of Object.entries(labels)) {
               const amount = Number(rewards?.[key]);
@@ -7638,8 +7765,10 @@ const bolznstienPendingStrikes = [];
                   if (quest.rewards?.souls) rewardParts.push(`${quest.rewards.souls} Souls`);
                   if (quest.rewards?.tappers) rewardParts.push(`${quest.rewards.tappers} Tapper Upper`);
                   if (quest.rewards?.superTappers) rewardParts.push(`${quest.rewards.superTappers} Super Tapper`);
-                  if (quest.rewards?.hyperTappers) rewardParts.push(`${quest.rewards.hyperTappers} Hyper Tapper`);
+                  if (quest.rewards?.hyperTappers) rewardParts.push(`${quest.rewards.hyperTappers} Surge Tapper`);
                   if (quest.rewards?.spookyBoxes) rewardParts.push(`${quest.rewards.spookyBoxes} Spooky Box`);
+                  if (quest.rewards?.presents) rewardParts.push(`${quest.rewards.presents} Present${quest.rewards.presents > 1 ? 's' : ''}`);
+                  if (quest.rewards?.corePieces) rewardParts.push(`${quest.rewards.corePieces} Core Pieces`);
                   if (quest.rewards?.questXP) rewardParts.push(`${quest.rewards.questXP} Quest XP`);
                   if (quest.rewards?.brawlerUnlock) rewardParts.push(`Unlock ${brawlerData[quest.rewards.brawlerUnlock]?.name || quest.rewards.brawlerUnlock}`);
                   if (quest.rewards?.skin) rewardParts.push(`Unlock ${skinsDatabase[quest.rewards.skin]?.name || 'Exclusive Skin'}`);
@@ -7707,6 +7836,21 @@ const bolznstienPendingStrikes = [];
               questHint.style.marginBottom = '10px';
               questBox.appendChild(questTitle);
               questBox.appendChild(questHint);
+              if (seasonProfileForQuests.key === 'xplodemis') {
+                  const daily = ensureXplodemisDaily();
+                  const allowance = getDailyPresentAllowance();
+                  const claimedToday = Math.min(daily.claimed || 0, allowance);
+                  const canClaim = daily.played && claimedToday < allowance;
+                  const dailyCard = document.createElement('div');
+                  dailyCard.style.cssText = 'padding:12px;border:1px solid #ffd76b;border-radius:10px;background:linear-gradient(180deg, rgba(255,215,107,0.14), rgba(20,34,52,0.6));margin-bottom:12px';
+                  dailyCard.innerHTML = `<div style="font-size:13px;font-weight:900;color:#ffd76b">🎁 DAILY PRESENT QUEST</div><div style="font-size:11px;color:#ffe9b8;margin-top:3px">${claimedToday >= allowance ? 'All claimed for today — come back tomorrow!' : daily.played ? 'Battle played — your Present is ready!' : 'Play 1 battle today to earn a free Present.'}${allowance > 1 ? ' 🎄 Christmas week: 2 Presents a day!' : ''}</div><div style="font-size:11px;color:#c1d8ee;margin-top:3px">Claimed today: ${claimedToday}/${allowance}</div>`;
+                  const dailyBtn = document.createElement('button');
+                  dailyBtn.textContent = claimedToday >= allowance ? 'Claimed' : (canClaim ? `Claim ${allowance - claimedToday} Present${allowance - claimedToday > 1 ? 's' : ''}` : 'Play a Battle First');
+                  dailyBtn.style.cssText = `margin-top:8px;width:100%;padding:7px 10px;border:none;border-radius:7px;font-weight:800;cursor:${canClaim ? 'pointer' : 'default'};background:${canClaim ? '#ffd76b' : '#2a3d54'};color:#07111d`;
+                  dailyBtn.onclick = () => { if (claimDailyPresent()) { setActiveTab('season'); refreshHomeUI(); } };
+                  dailyCard.appendChild(dailyBtn);
+                  questBox.appendChild(dailyCard);
+              }
 
               const stagedQuests = buildSeasonPassQuests().sort((a, b) => a.stage - b.stage);
               for (const quest of stagedQuests) {
@@ -7763,7 +7907,7 @@ const bolznstienPendingStrikes = [];
               ladderBox.style.overflowY = 'auto';
 
               const ladderTitle = document.createElement('div');
-              ladderTitle.textContent = 'Season 3 Signal Ladder';
+              ladderTitle.textContent = `${seasonProfileForQuests.name} Pass — Tier Track`;
               ladderTitle.style.fontWeight = '900';
               ladderTitle.style.color = '#ffd39a';
               ladderTitle.style.fontSize = '16px';
@@ -7919,47 +8063,51 @@ const bolznstienPendingStrikes = [];
           }
 
           function createSpecialBreakthroughView() {
-              const state=ensureSpecialAbilityQuestState();
-              const eventActive=isUnleashPotentialActive();
+              // Core Pieces shop (Season 6): Breakthrough Quests retired — pieces are bought here.
               const body=document.createElement('div');
               body.style.cssText='height:100%;overflow-y:auto;padding:2px 4px 18px';
               const hero=document.createElement('div');
-              hero.style.cssText='padding:18px;border:2px solid #7de9ff;border-radius:16px;background:linear-gradient(120deg,#102744,#20184a);margin-bottom:14px;color:#fff';
-              hero.innerHTML=`<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div style="font-size:28px;font-weight:1000;letter-spacing:.04em">✨ UNLEASH POTENTIAL</div><b style="color:${eventActive?'#ffe073':'#ff7b87'}">${formatUnleashPotentialTimeLeft()}</b></div><div style="margin-top:5px;color:#c8e9ff">Seven days to unlock Minigunnin's Mutation, Classy's Signature, and Splitter's Instinct completely free. Earlier Specials now come from other sources.</div>`;
+              hero.style.cssText='padding:18px;border:2px solid #59f2d6;border-radius:16px;background:linear-gradient(120deg,#0b2b26,#12294d);margin-bottom:14px;color:#fff';
+              hero.innerHTML=`<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><div style="font-size:28px;font-weight:1000;letter-spacing:.04em">💠 CORE PIECES</div><b style="color:#7dfcd9;font-size:20px">${getCorePieces()} Core Pieces</b></div><div style="margin-top:5px;color:#c9f5ea">Spend Core Pieces to unlock Mutations, Signature Abilities and Instincts — no quests, no event windows. Buy single Pieces (40 Core Pieces each, 3 fill the triangle) or unlock an ability outright (100 Core Pieces). Earn Core Pieces from Tapper Uppers, Super Tappers, the Season Pass and Presents.</div>`;
               body.appendChild(hero);
               const grid=document.createElement('div');
               grid.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px';
-              for(const fighterId of UNLEASH_POTENTIAL_FIGHTERS){
+              for(const fighterId of Object.keys(SPECIAL_ABILITY_DEFS)){
                   const def=getSpecialAbilityDef(fighterId);
                   if (!def) continue;
-                  const ability=getSpecialAbilityState(def.type,fighterId),quests=SPECIAL_BREAKTHROUGH_QUESTS[fighterId] || [],bucket=state[fighterId] || {};
-                  const path=document.createElement('section');
-                  const readyCount=quests.filter(q=>bucket[q.id]?.completed&&!bucket[q.id]?.rewardClaimed).length;
-                  path.style.cssText=`padding:14px;border:2px solid ${def.color};border-radius:16px;background:linear-gradient(155deg,${def.color}1e,#07111d);box-shadow:${readyCount?`0 0 22px ${def.color}55`:'none'}`;
+                  const ability=getSpecialAbilityState(def.type,fighterId);
+                  const balance=getCorePieces();
+                  const card=document.createElement('section');
+                  card.style.cssText=`padding:14px;border:2px solid ${def.color};border-radius:16px;background:linear-gradient(155deg,${def.color}1e,#07111d)`;
                   const head=document.createElement('div');
                   head.style.cssText='display:flex;gap:11px;align-items:center;margin-bottom:10px';
-                  head.innerHTML=`<div style="width:54px;height:54px;border-radius:50%;display:grid;place-items:center;background:#07111d;border:2px solid ${def.color};font-size:30px">${getBrawlerPortraitIcon(fighterId)}</div><div style="min-width:0;flex:1"><div style="font-size:18px;font-weight:1000">${brawlerData[fighterId]?.name||fighterId}</div><div style="color:${def.color};font-size:12px;font-weight:1000;letter-spacing:.1em">${def.type.toUpperCase()} — ${def.name.toUpperCase()}</div><div style="margin-top:3px;font-size:12px;color:#d2e3f5">${ability.unlocked?'UNLOCKED':`Pieces: ${ability.pieces} / 3`}</div></div>${readyCount?`<b style="border-radius:999px;background:${def.color};color:#07111d;padding:5px 9px">${readyCount}</b>`:''}`;
-                  path.appendChild(head);
-                  if (!quests.length) {
-                      const note=document.createElement('p');
-                      note.textContent='No active quest path for this ability. Your existing pieces and unlock are preserved.';
-                      note.style.cssText='font-size:12px;color:#b8cce1';
-                      path.appendChild(note);
-                  }
-                  for(const quest of quests){
-                      const entry=bucket[quest.id] || {progress:0,completed:false,rewardClaimed:false},done=!!entry.completed,claimed=!!entry.rewardClaimed,pct=Math.round(Math.min(1,(entry.progress||0)/quest.target)*100);
-                      const converted=ability.unlocked&&!claimed;
+                  head.innerHTML=`<div style="width:54px;height:54px;border-radius:50%;display:grid;place-items:center;background:#07111d;border:2px solid ${def.color};font-size:30px">${getBrawlerPortraitIcon(fighterId)}</div><div style="min-width:0;flex:1"><div style="font-size:18px;font-weight:1000">${brawlerData[fighterId]?.name||fighterId}</div><div style="color:${def.color};font-size:12px;font-weight:1000;letter-spacing:.1em">${def.type.toUpperCase()} — ${def.name.toUpperCase()}</div><div style="margin-top:3px;font-size:12px;color:#d2e3f5">${ability.unlocked?'✅ UNLOCKED':`🔺 Pieces: ${ability.pieces} / 3`}</div></div>`;
+                  card.appendChild(head);
+                  const desc=document.createElement('p');
+                  desc.textContent=def.shortDesc || '';
+                  desc.style.cssText='font-size:12px;color:#b8cce1;margin:0 0 10px';
+                  card.appendChild(desc);
+                  if (!ability.unlocked) {
                       const row=document.createElement('div');
-                      row.style.cssText=`margin-top:9px;padding:10px;border:1px solid ${claimed?'#40566d':done?def.color:'#263d56'};border-radius:11px;background:${done&&!claimed?`${def.color}16`:'rgba(4,12,23,.72)'}`;
-                      row.innerHTML=`<div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div><b>${quest.title}</b><div style="font-size:12px;color:#a9bed3;margin-top:2px">${quest.desc}</div><div style="font-size:11px;color:${converted?'#ffd76b':def.color};margin-top:5px">Reward: ${converted?'120 Coins (duplicate piece conversion)':`+1 ${def.pieceName}`}</div>${ability.unlocked&&!done?'<div style="font-size:10px;color:#8fe9ce;margin-top:3px">ABILITY ALREADY UNLOCKED — quest history remains available</div>':''}</div></div><div style="height:7px;margin-top:8px;border-radius:99px;background:#07111d;overflow:hidden"><div style="height:100%;width:${pct}%;background:${done?def.color:'#6683a4'}"></div></div><div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px"><span style="font-size:12px;color:#d5e4f2">${Math.floor(entry.progress||0).toLocaleString()} / ${quest.target.toLocaleString()}</span></div>`;
-                      const action=document.createElement('button');
-                      action.textContent=claimed?'CLAIMED':(!eventActive?'EVENT ENDED':done?'CLAIM':'IN PROGRESS');
-                      action.disabled=!eventActive||!done||claimed;
-                      action.style.cssText=`margin-top:7px;width:100%;padding:8px;border:0;border-radius:8px;font-weight:1000;cursor:${done&&!claimed?'pointer':'default'};background:${claimed?'#40566d':done?def.color:'#1d3045'};color:${done&&!claimed?'#07111d':'#9ab0c5'}`;
-                      action.onclick=()=>{if(claimSpecialQuestReward(fighterId,quest.id))setActiveTab('special');};
-                      row.appendChild(action);path.appendChild(row);
+                      row.style.cssText='display:flex;gap:8px';
+                      const pieceBtn=document.createElement('button');
+                      pieceBtn.textContent=`Buy 1 Piece • 40`;
+                      pieceBtn.disabled=balance<CORE_PIECE_PRICE;
+                      pieceBtn.style.cssText=`flex:1;padding:9px;border:0;border-radius:9px;font-weight:1000;cursor:${balance>=CORE_PIECE_PRICE?'pointer':'not-allowed'};background:${balance>=CORE_PIECE_PRICE?def.color:'#40566d'};color:${balance>=CORE_PIECE_PRICE?'#07111d':'#9ab0c5'}`;
+                      pieceBtn.onclick=()=>{ if(buySpecialAbilityPiece(fighterId)) setActiveTab('special'); };
+                      const fullBtn=document.createElement('button');
+                      fullBtn.textContent=`Unlock Fully • 100`;
+                      fullBtn.disabled=balance<CORE_FULL_UNLOCK_PRICE;
+                      fullBtn.style.cssText=`flex:1;padding:9px;border:0;border-radius:9px;font-weight:1000;cursor:${balance>=CORE_FULL_UNLOCK_PRICE?'pointer':'not-allowed'};background:${balance>=CORE_FULL_UNLOCK_PRICE?'#ffd76b':'#40566d'};color:${balance>=CORE_FULL_UNLOCK_PRICE?'#07111d':'#9ab0c5'}`;
+                      fullBtn.onclick=()=>{ if(buySpecialAbilityFullUnlock(fighterId)) setActiveTab('special'); };
+                      row.appendChild(pieceBtn); row.appendChild(fullBtn);
+                      card.appendChild(row);
+                      const pieceLine=document.createElement('div');
+                      pieceLine.style.cssText='font-size:11px;color:#8fe9ce;margin-top:7px';
+                      pieceLine.textContent=`Next: ${def.pieceName} (${ability.pieces}/3)`;
+                      card.appendChild(pieceLine);
                   }
-                  grid.appendChild(path);
+                  grid.appendChild(card);
               }
               body.appendChild(grid);return body;
           }
@@ -8157,8 +8305,7 @@ const bolznstienPendingStrikes = [];
 
           makeTab('core', '📋 Contracts');
           makeTab('gold', '🪙 Gold Event');
-          makeTab('damage', `💥 Full On Damage${getFullOnDamageClaimableCount()?` (${getFullOnDamageClaimableCount()})`:''}`);
-          makeTab('special', `✨ Unleash Potential${getSpecialClaimableCount()?` (${getSpecialClaimableCount()})`:''}`);
+          makeTab('special', '💠 Core Pieces');
           if (ENABLE_SEASON_QUESTS) makeTab('season', '⚡ Core Circuit Pass');
           setActiveTab(views[initialTab] ? initialTab : 'core');
 
@@ -12601,6 +12748,7 @@ let heistFeverActive = false;
       superTapperCount: 0,
       hyperTapperCount: 0,
       spookyBoxCount: 0,
+      presentCount: 0,
     beastBossTokens: 0,
             beastBossDifficulty: 0,
       firstWinSuperAwarded: false,
@@ -12663,6 +12811,8 @@ let heistFeverActive = false;
       specialAbilities: null,
       specialAbilityQuests: null,
       specialAbilityQuestEvent: null,
+      corePieces: 0,
+      xplodemisDaily: null,
       majorUpdateVNext: { version: 2, retiredAttachiesRefunded: false, hyperAttachiesRetiredRefunded: false, hyperAttachieRefundCoins: 0 },
       profile: { playerName:'BRAWE PLAYER', favorites:[], equippedTitle:null, equippedProfileFrame:null, equippedProfileBackground:null, showcaseBadges:[], careerStats:{ matchesPlayed:0, soloWins:0, teamWins:0, rankedWins:0, eliminations:0 } },
       brickBonV2: { claimedRoad:[], claimedChallenges:[], unlockedTitles:[], unlockedBadges:[], unlockedFrames:[], unlockedBackgrounds:[], oldRoadMigrated:false },
@@ -12894,6 +13044,18 @@ let heistFeverActive = false;
   function openSeason3Hub(){
       const {packets,season}=ensureSeason3State(),overlay=document.createElement('div');overlay.className='season3-overlay',panel=document.createElement('section');panel.className='season3-panel';
       const unlocked=Object.keys(packets.unlocked).filter(id=>packets.unlocked[id]).length;
+      if (getActiveSeasonProfile().key === 'xplodemis') {
+          panel.innerHTML=`<header><div><small>SEASON 6</small><h1>XPLODEMIS × ARENA FORGE</h1><p>Ends December 31, 2026</p></div><button aria-label="Close">X</button></header><div class="season3-breach"><small>CHRISTMAS WITH EXPLOSIONS</small><b>PRESENTS, CHRISTMAS SHOWDOWN AND CORE PIECES ARE LIVE</b></div><div class="season3-hub-grid"><button data-action="pass"><i>S6</i><b>Season Pass</b><span>Festive rewards • ends Dec 31 • lives in the Quests tab now</span></button><button data-action="showdown"><i>🎄</i><b>Christmas Showdown</b><span>Solo Showdown • grab DMG, Speed and Double HP buffs</span></button><button data-action="quests"><i>Q</i><b>Season Quests</b><span>Climb the ladder • claim a free Present every day</span></button><button data-action="present"><i>🎁</i><b>Presents</b><span>${playerData.presentCount||0} unopened • 1-4 rewards inside • Xplodemis skins hide within</span></button><button data-action="boss"><i>🎃</i><b>Headless Bolznstien Boss Fight</b><span>Still haunting • up to 3 Spooky Boxes • his skin FREE on full clear</span></button><button data-action="corrupted"><i>CS</i><b>Corrupted Showdown</b><span>Season 6 chaos in the winter arena</span></button></div><div class="tower-retired-note"><b>SEASON 5 — ARCHIVED</b><span>Turkey Trouble is over. Capture the Turkey returns next November; your collections are preserved.</span></div><div class="tower-retired-note"><b>💠 CORE PIECES</b><span>The new currency is LIVE: earn it from Tappers, this Pass and Presents — spend it on Mutation, Signature and Instinct unlocks in the Quests tab.</span></div>`;
+          panel.querySelector('header button').onclick=()=>overlay.remove();
+          panel.querySelector('[data-action="pass"]').onclick=()=>{overlay.remove();openSeasonPass();};
+          panel.querySelector('[data-action="showdown"]').onclick=()=>{overlay.remove();selectedMode='showdown';showdownMode='christmas_showdown';updateShowdownModeUI();setHomeTab('events');};
+          panel.querySelector('[data-action="quests"]').onclick=()=>{overlay.remove();openQuestBoard('season');};
+          panel.querySelector('[data-action="present"]').onclick=()=>{overlay.remove();if((playerData.presentCount||0)>0)openPresent();else alert('No Presents yet — earn them from the Xplodemis Pass, Season Quests and the daily Present quest!');};
+          panel.querySelector('[data-action="boss"]').onclick=()=>{overlay.remove();openHeadlessBossEvent();};
+          panel.querySelector('[data-action="corrupted"]').onclick=()=>{overlay.remove();showdownMode='corrupted_showdown';updateShowdownModeUI();setHomeTab('events');};
+          overlay.onclick=e=>{if(e.target===overlay)overlay.remove();};overlay.appendChild(panel);document.body.appendChild(overlay);
+          return;
+      }
       if (getActiveSeasonProfile().key === 'turkey') {
           panel.innerHTML=`<header><div><small>SEASON 5</small><h1>TURKEY TROUBLE × ARENA FORGE</h1><p>Ends November 30, 2026</p></div><button aria-label="Close">X</button></header><div class="season3-breach"><small>THE TURKEYS ARE LOOSE</small><b>CAPTURE THE TURKEY IS LIVE ALL NOVEMBER</b></div><div class="season3-hub-grid"><button data-action="pass"><i>S5</i><b>Season Pass</b><span>Harvest rewards • ends Nov 30</span></button><button data-action="turkey"><i>🦃</i><b>Capture the Turkey</b><span>3v3 CTF • grab the bird, haul it home • first to 3 captures</span></button><button data-action="quests"><i>Q</i><b>Season Quests</b><span>Gobble the ladder for feast rewards</span></button><button data-action="boss"><i>🎃</i><b>Headless Bolznstien Boss Fight</b><span>Still haunting • up to 3 Spooky Boxes • his skin FREE on full clear</span></button><button data-action="corrupted"><i>CS</i><b>Corrupted Showdown</b><span>Season 5 chaos in the feast arena</span></button><button data-action="spooky"><i>🎃</i><b>Spooky Boxes</b><span>${playerData.spookyBoxCount||0} unopened leftovers from Arenaaween</span></button></div><div class="tower-retired-note"><b>SEASON 4 — ARCHIVED</b><span>Arenaaween is over. Your Spooky Boxes, skins and collections are preserved.</span></div><div class="tower-retired-note"><b>PACKETS — REMOVED</b><span>Packets are gone for good — the system has been removed. Your collection (${unlocked}/20 discovered) stays in your save as a souvenir.</span></div><div class="tower-retired-note"><b>TOWER POWERS — TEMPORARILY RETIRED</b><span>Your collection is preserved and will return in a future rework.</span></div>`;
           panel.querySelector('header button').onclick=()=>overlay.remove();
@@ -14038,6 +14200,9 @@ let heistFeverActive = false;
                   if (data.persistent.specialAbilities) playerData.specialAbilities = data.persistent.specialAbilities;
                   if (data.persistent.specialAbilityQuests) playerData.specialAbilityQuests = data.persistent.specialAbilityQuests;
                   if (data.persistent.specialAbilityQuestEvent) playerData.specialAbilityQuestEvent = data.persistent.specialAbilityQuestEvent;
+                  if (typeof data.persistent.corePieces === 'number') playerData.corePieces = data.persistent.corePieces;
+                  if (typeof data.persistent.presentCount === 'number') playerData.presentCount = data.persistent.presentCount;
+                  if (data.persistent.xplodemisDaily) playerData.xplodemisDaily = data.persistent.xplodemisDaily;
                    if (data.persistent.majorUpdateVNext) playerData.majorUpdateVNext = data.persistent.majorUpdateVNext;
                    if (data.persistent.weeklyTrials) playerData.weeklyTrials = data.persistent.weeklyTrials;
                    ensureSeason3State(data.persistent.packets, data.persistent.season3);
@@ -14194,6 +14359,9 @@ let heistFeverActive = false;
                     specialAbilities: playerData.specialAbilities,
                     specialAbilityQuests: playerData.specialAbilityQuests,
                     specialAbilityQuestEvent: playerData.specialAbilityQuestEvent,
+                    corePieces: playerData.corePieces || 0,
+                    presentCount: playerData.presentCount || 0,
+                    xplodemisDaily: playerData.xplodemisDaily || null,
                     majorUpdateVNext: playerData.majorUpdateVNext,
                      packets: playerData.packets,
                      season3: playerData.season3,
@@ -14264,7 +14432,7 @@ let heistFeverActive = false;
         if (homeScreen && playerData.hyperTapperCount && playerData.hyperTapperCount > 0) {
             const hb = document.createElement('div');
             hb.id = 'hyperBadge';
-            hb.textContent = `HYPER TAPPERS: ${playerData.hyperTapperCount}`;
+            hb.textContent = `SURGE TAPPERS: ${playerData.hyperTapperCount}`;
             hb.style.position = 'absolute'; hb.style.right = '18px'; hb.style.top = '58px';
             hb.style.background = '#ff8800'; hb.style.color = '#08101d'; hb.style.padding = '8px 12px';
             hb.style.borderRadius = '10px'; hb.style.fontWeight = '700'; hb.style.zIndex = '40';
@@ -14483,7 +14651,7 @@ let heistFeverActive = false;
           playerData.hyperTapperCount = (playerData.hyperTapperCount || 0) + 1;
           pity.noHyper = 0;
           pity.noPremium = 0;
-          return { text: 'PITY BONUS: +1 Hyper Tapper!', color: '#e000ff' };
+          return { text: 'PITY BONUS: +1 Surge Tapper!', color: '#59f2d6' };
       }
       if (forcePremium) {
           playerData.superTapperCount = (playerData.superTapperCount || 0) + 1;
@@ -14516,7 +14684,7 @@ let heistFeverActive = false;
           playerData.hyperTapperCount = (playerData.hyperTapperCount || 0) + 1;
           pity.noHyper = 0;
           pity.noPremium = 0;
-          bonusText = '+1 Hyper Tapper';
+          bonusText = '+1 Surge Tapper';
           bonusColor = '#e000ff';
       } else if (kind === 'super') {
           playerData.superTapperCount = (playerData.superTapperCount || 0) + 1;
@@ -14548,6 +14716,8 @@ let heistFeverActive = false;
       let totalCoins = 0;
       let totalGems = 0;
       let totalSouls = 0;
+      let totalCorePieces = 0;
+      const unlockedSkins = [];
       const unlockedHypers = [];
       const pityBonusTexts = [];
 
@@ -14573,6 +14743,9 @@ let heistFeverActive = false;
           totalCoins += coins;
           totalGems += gems;
           totalSouls += souls;
+          if (Math.random() < 0.15) totalCorePieces += 2 + Math.floor(Math.random() * 9);
+          const bulkSkin = rollTapperSkinDrop(0.02);
+          if (bulkSkin && !bulkSkin.fallback) unlockedSkins.push(bulkSkin.name);
       }
 
       const superRarities = [
@@ -14603,6 +14776,9 @@ let heistFeverActive = false;
           totalCoins += superCoins;
           totalGems += gems;
           totalSouls += souls;
+          for (let s2 = 0; s2 < splits; s2++) if (Math.random() < 0.15) totalCorePieces += 2 + Math.floor(Math.random() * 4);
+          const bulkSkin2 = rollTapperSkinDrop(0.04);
+          if (bulkSkin2 && !bulkSkin2.fallback) unlockedSkins.push(bulkSkin2.name);
 
           const pity = grantTapperBonusWithPity('super');
           if (pity) pityBonusTexts.push(pity.text);
@@ -14627,10 +14803,10 @@ let heistFeverActive = false;
                   const chosenName = (brawlerData[chosenId] && brawlerData[chosenId].name) || chosenId;
                   unlockedHypers.push(chosenName);
               } else {
-                  totalCoins += 1000;
+                  totalCorePieces += 60;
               }
           } else {
-              totalCoins += 1000;
+              totalCorePieces += 60;
           }
       }
 
@@ -14640,6 +14816,7 @@ let heistFeverActive = false;
       playerData.coins += totalCoins;
       playerData.gems += totalGems;
       addSouls(totalSouls);
+      if (totalCorePieces) addCorePieces(totalCorePieces);
       saveProgress();
 
       if (selectedBrawler && typeof updateHyperButton === 'function') updateHyperButton();
@@ -14661,7 +14838,7 @@ let heistFeverActive = false;
       overlay.appendChild(title);
 
       const subtitle = document.createElement('p');
-      subtitle.textContent = `Opened: ${regCount} Tappers, ${superCount} Supers, ${hyperCount} Hypers`;
+      subtitle.textContent = `Opened: ${regCount} Tappers, ${superCount} Supers, ${hyperCount} Surge Tappers`;
       subtitle.style.color = '#89aed2';
       overlay.appendChild(subtitle);
 
@@ -14690,6 +14867,8 @@ let heistFeverActive = false;
           <div style="color: #ffd166; font-weight: 800;">🪙 +${totalCoins.toLocaleString()} COINS</div>
           <div style="color: #6ee7ff; font-weight: 800;">💎 +${totalGems.toLocaleString()} GEMS</div>
           <div style="color: #b983ff; font-weight: 800;">🧪 +${totalSouls.toLocaleString()} SOULS</div>
+          ${totalCorePieces ? `<div style="color: #59f2d6; font-weight: 800;">💠 +${totalCorePieces.toLocaleString()} CORE PIECES</div>` : ''}
+          ${unlockedSkins.length ? `<div style="color: #ff9ff3; font-weight: 800;">🎁 SKIN DROPS: ${unlockedSkins.join(', ')}</div>` : ''}
           ${hypersText}
           ${pityText}
       `;
@@ -14792,6 +14971,9 @@ let heistFeverActive = false;
               const gemReward = Math.max(1, Math.floor(rewardCoins / 400));
               const soulReward = rollSoulReward(8, 18);
               const pityBonus = grantTapperBonusWithPity('regular');
+              const tapperCorePieces = Math.random() < 0.15 ? (2 + Math.floor(Math.random() * 9)) : 0;
+              if (tapperCorePieces) addCorePieces(tapperCorePieces);
+              const tapperSkinDrop = rollTapperSkinDrop(0.02);
               playerData.coins += rewardCoins;
               playerData.gems += gemReward;
               addSouls(soulReward);
@@ -14819,6 +15001,18 @@ let heistFeverActive = false;
                   bonus.style.fontWeight = '900';
                   bonus.style.marginTop = '8px';
                   splash.appendChild(bonus);
+              }
+              if (tapperCorePieces) {
+                  const cpLine = document.createElement('div');
+                  cpLine.textContent = `+${tapperCorePieces} CORE PIECES!`;
+                  cpLine.style.cssText = 'color:#59f2d6;font-size:24px;font-weight:900;margin-top:8px;text-shadow:0 0 16px #59f2d6';
+                  splash.appendChild(cpLine);
+              }
+              if (tapperSkinDrop) {
+                  const skinLine = document.createElement('div');
+                  skinLine.textContent = tapperSkinDrop.fallback ? tapperSkinDrop.name : `🎁 SKIN DROP: ${tapperSkinDrop.name} (${tapperSkinDrop.brawlerName})!`;
+                  skinLine.style.cssText = 'color:#ff9ff3;font-size:24px;font-weight:900;margin-top:8px;text-shadow:0 0 16px #ff9ff3';
+                  splash.appendChild(skinLine);
               }
               overlay.appendChild(splash);
               instruction.textContent = 'TAP ANYWHERE TO CLOSE'; instruction.style.animation='none';
@@ -14863,8 +15057,9 @@ let heistFeverActive = false;
       const rolls = [];
       for (let k = 0; k < splits; k++) {
           const choice = pickWeighted();
-          rolls.push({ rarity: choice, coin: Math.floor(Math.random() * (choice.coinMax - choice.coinMin + 1)) + choice.coinMin });
+          rolls.push({ rarity: choice, coin: Math.floor(Math.random() * (choice.coinMax - choice.coinMin + 1)) + choice.coinMin, core: Math.random() < 0.15 ? (2 + Math.floor(Math.random() * 4)) : 0 });
       }
+      const superSkinDrop = rollTapperSkinDrop(0.04);
       let orbCount = 1;
       let revealed = false;
 
@@ -14918,10 +15113,12 @@ let heistFeverActive = false;
           });
           const gemReward = Math.max(2, Math.floor(total / 250));
           const soulReward = rollSoulReward(20, 40);
+          const coreTotal = rolls.reduce((sum, roll) => sum + (roll.core || 0), 0);
+          if (coreTotal) addCorePieces(coreTotal);
           const pityBonus = grantTapperBonusWithPity('super');
           setTimeout(() => {
               const totalTxt = document.createElement('h2');
-              totalTxt.textContent = `+${total} COINS! +${gemReward} GEMS! +${soulReward} SOULS!`;
+              totalTxt.textContent = `+${total} COINS! +${gemReward} GEMS! +${soulReward} SOULS!` + (coreTotal ? ` +${coreTotal} CORE PIECES!` : '');
               totalTxt.style.cssText = 'color:#ffd700;text-shadow:0 0 20px #ffd700;margin:12px 0 0;';
               feed.appendChild(totalTxt);
               if (pityBonus) {
@@ -14929,6 +15126,12 @@ let heistFeverActive = false;
                   bonusTxt.textContent = pityBonus.text;
                   bonusTxt.style.cssText = `color:${pityBonus.color};font-size:22px;font-weight:900;margin-top:6px;`;
                   feed.appendChild(bonusTxt);
+              }
+              if (superSkinDrop) {
+                  const skinTxt = document.createElement('div');
+                  skinTxt.textContent = superSkinDrop.fallback ? superSkinDrop.name : `🎁 SKIN DROP: ${superSkinDrop.name} (${superSkinDrop.brawlerName})!`;
+                  skinTxt.style.cssText = 'color:#ff9ff3;font-size:22px;font-weight:900;margin-top:6px;text-shadow:0 0 16px #ff9ff3;';
+                  feed.appendChild(skinTxt);
               }
               instruction.textContent = 'TAP ANYWHERE TO CLOSE';
               instruction.style.animation = 'none';
@@ -14961,20 +15164,20 @@ let heistFeverActive = false;
 
       const overlay = document.createElement('div');
       overlay.style.position = 'fixed'; overlay.style.inset = '0';
-      overlay.style.background = 'rgba(0,0,0,0.98)'; overlay.style.zIndex = '1000';
+      overlay.style.background = 'radial-gradient(circle at 50% 30%, rgba(8,80,90,0.97), rgba(2,10,16,0.99))'; overlay.style.zIndex = '1000';
       overlay.style.display = 'flex'; overlay.style.flexDirection = 'column';
       overlay.style.alignItems = 'center'; overlay.style.justifyContent = 'center';
       overlay.style.color = '#fff'; overlay.style.fontFamily = 'sans-serif'; overlay.style.userSelect = 'none';
       overlay.style.fontWeight = 'bold';
 
       const title = document.createElement('h1');
-      title.textContent = '⚡ HYPERCHARGE TAPPER UPPER ⚡';
-      title.style.fontSize = '52px'; title.style.color = '#e0f'; title.style.textShadow = '0 0 40px #e0f';
+      title.textContent = '⚡ SURGE TAPPER ⚡';
+      title.style.fontSize = '52px'; title.style.color = '#59f2d6'; title.style.textShadow = '0 0 40px #59f2d6';
       title.style.marginBottom = '24px'; title.style.animation = 'pulse 1s infinite';
       overlay.appendChild(title);
 
       const infoText = document.createElement('p');
-    infoText.textContent = 'TAP TO REVEAL YOUR REWARD! (65% Hypercharge / 35% Coins)';
+    infoText.textContent = 'TAP TO REVEAL YOUR CORE SURGE! (65% Core Surge unlock / 35% Core Pieces overflow)';
       infoText.style.fontSize = '24px'; infoText.style.marginBottom = '36px'; infoText.style.color = '#aef';
       overlay.appendChild(infoText);
 
@@ -15010,22 +15213,22 @@ let heistFeverActive = false;
                   playerData.gems += 8;
                   if (selectedBrawler === chosenId) updateHyperButton();
                   const chosenName = (brawlerData[chosenId] && brawlerData[chosenId].name) || chosenId;
-                  resultDiv.innerHTML = `✨ FREE HYPERCHARGE UNLOCKED! ✨<br><span style="font-size: 20px; color: #e0f; margin-top: 12px; display: block;">${chosenName} Hypercharge is now unlocked! +8 GEMS! +${soulReward} SOULS!</span>`;
+                  resultDiv.innerHTML = `✨ CORE SURGE UNLOCKED! ✨<br><span style="font-size: 20px; color: #59f2d6; margin-top: 12px; display: block;">${chosenName}'s Core Surge is now unlocked! +8 GEMS! +${soulReward} SOULS!</span>`;
                   resultDiv.style.color = '#e0f';
                   resultDiv.style.textShadow = '0 0 20px #e0f';
               } else {
-                  // If all hypercharges are already unlocked, convert reward to bonus coins.
-                  playerData.coins += 1000;
+                  // All Core Surges unlocked: the surge overflows into Core Pieces.
+                  addCorePieces(60);
                   playerData.gems += 8;
-                  resultDiv.innerHTML = `✨ ALL HYPERCHARGES ALREADY UNLOCKED! ✨<br><span style="font-size: 20px; color: #ffd700; margin-top: 12px; display: block;">Converted to +1000 COINS and +8 GEMS. +${soulReward} SOULS!</span>`;
+                  resultDiv.innerHTML = `✨ ALL CORE SURGES ALREADY UNLOCKED! ✨<br><span style="font-size: 20px; color: #59f2d6; margin-top: 12px; display: block;">Surge overflow: +60 CORE PIECES and +8 GEMS. +${soulReward} SOULS!</span>`;
                   resultDiv.style.color = '#ffd700';
                   resultDiv.style.textShadow = '0 0 20px #ffd700';
               }
           } else {
-              // Fallback: 1k coins
-              playerData.coins += 1000;
+              // Surge overflow: Core Pieces instead of a surge unlock.
+              addCorePieces(60);
               playerData.gems += 8;
-              resultDiv.innerHTML = `💰 +1000 COINS! 💰<br><span style="font-size: 20px; color: #ffd700; margin-top: 12px; display: block;">Better luck next time! +8 GEMS! +${soulReward} SOULS!</span>`;
+              resultDiv.innerHTML = `💠 SURGE OVERFLOW: +60 CORE PIECES! 💠<br><span style="font-size: 20px; color: #59f2d6; margin-top: 12px; display: block;">The surge had nowhere to go! +8 GEMS! +${soulReward} SOULS!</span>`;
               resultDiv.style.color = '#ffd700';
               resultDiv.style.textShadow = '0 0 20px #ffd700';
           }
@@ -15058,6 +15261,14 @@ let heistFeverActive = false;
 
   // ===== Season 4 Arenaaween: Spooky Boxes =====
   const ARENAAWEEN_SKIN_IDS = ['pumpkin-king', 'count-cursed', 'phantom-copyphase', 'reaper-darkener', 'nightmare-awakenator', 'jack-o-demon'];
+  const XPLODEMIS_SKIN_IDS = ['xploder-rocketeer','krampus-darkener','frostbite-feathers','tinsel-looma','nutcracker-outlit','gingerbread-cheeseburger'];
+  function unownedXplodemisSkins() {
+      if (!playerData.ownedSkins) playerData.ownedSkins = {};
+      return XPLODEMIS_SKIN_IDS.filter(id => {
+          const skin = skinsDatabase[id];
+          return skin && !(playerData.ownedSkins[skin.brawler] || []).includes(id);
+      });
+  }
   function unownedArenaweenSkins() {
       if (!playerData.ownedSkins) playerData.ownedSkins = {};
       return ARENAAWEEN_SKIN_IDS.filter(id => {
@@ -15117,6 +15328,87 @@ let heistFeverActive = false;
           }
           overlay.appendChild(result);
           instruction.textContent = playerData.spookyBoxCount > 0 ? `TAP TO CLOSE • ${playerData.spookyBoxCount} Spooky Box${playerData.spookyBoxCount === 1 ? '' : 'es'} left` : 'TAP ANYWHERE TO CLOSE';
+          saveProgress();
+      };
+      overlay.onpointerdown = (event) => { event.preventDefault(); reveal(); };
+  }
+
+  function openPresent() {
+      if (!playerData.presentCount || playerData.presentCount <= 0) return;
+      playerData.presentCount--;
+      saveProgress();
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;background:radial-gradient(circle at 50% 35%,rgba(20,90,60,0.94),rgba(4,10,6,0.98));z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-family:sans-serif;user-select:none;touch-action:manipulation;';
+      const title = document.createElement('h1');
+      title.textContent = '🎁 PRESENT 🎁';
+      title.style.cssText = 'font-size:44px;color:#ffd76b;text-shadow:0 0 30px #ffd76b;margin:0;';
+      overlay.appendChild(title);
+      const box = document.createElement('div');
+      box.textContent = '🎁';
+      box.style.cssText = 'font-size:120px;margin:26px 0;filter:drop-shadow(0 0 34px rgba(255,215,107,0.8));animation:pulse 1s infinite alternate;';
+      overlay.appendChild(box);
+      const instruction = document.createElement('p');
+      instruction.textContent = 'TAP TO UNWRAP!';
+      instruction.style.cssText = 'font-size:22px;color:#ffe9b8;';
+      overlay.appendChild(instruction);
+      const odds = document.createElement('p');
+      odds.textContent = 'Every Present holds 1-4 rewards: a shot at 6 Xplodemis skins, Coins, Souls, Gems or Core Pieces';
+      odds.style.cssText = 'font-size:15px;color:#bfe8cf;opacity:0.85;text-align:center;padding:0 18px;';
+      overlay.appendChild(odds);
+      document.body.appendChild(overlay);
+      let revealed = false;
+      const reveal = () => {
+          if (revealed) { overlay.remove(); if (typeof refreshBrawlerList === 'function') refreshBrawlerList(); return; }
+          revealed = true;
+          box.style.animation = 'none'; box.style.transform = 'scale(1.25) rotate(5deg)';
+          const result = document.createElement('div');
+          result.style.cssText = 'text-align:center;margin-top:10px;max-width:540px;padding:0 18px;';
+          // Reward count: 1 (45%) / 2 (35%) / 3 (15%) / 4 (5%)
+          const countRoll = Math.random();
+          const rewardCount = countRoll < 0.45 ? 1 : countRoll < 0.80 ? 2 : countRoll < 0.95 ? 3 : 4;
+          const lines = [];
+          const unowned = unownedXplodemisSkins();
+          let skinAwarded = false;
+          if (Math.random() < 0.25) {
+              if (unowned.length > 0) {
+                  const skinId = unowned[Math.floor(Math.random() * unowned.length)];
+                  const skin = skinsDatabase[skinId];
+                  if (!playerData.ownedSkins[skin.brawler]) playerData.ownedSkins[skin.brawler] = [];
+                  playerData.ownedSkins[skin.brawler].push(skin.id);
+                  if (!playerData.selectedSkins) playerData.selectedSkins = {};
+                  playerData.selectedSkins[skin.brawler] = skin.id;
+                  lines.push(`<div style="font-size:64px">${skin.icon || '🎁'}</div><div style="font-size:32px;font-weight:900;color:${skin._displayColor || '#ffd76b'};text-shadow:0 0 22px ${skin._displayColor || '#ffd76b'}">${skin.name}</div><div style="font-size:16px;color:#ffe9b8">NEW SKIN for ${(brawlerData[skin.brawler] && brawlerData[skin.brawler].name) || skin.brawler} — auto-equipped!</div>`);
+                  skinAwarded = true;
+              } else {
+                  playerData.coins = (playerData.coins || 0) + 1200;
+                  lines.push('<div style="font-size:26px;font-weight:900;color:#ffd700">+1,200 COINS — full Xplodemis collection jackpot!</div>');
+                  skinAwarded = true; // jackpot consumes the skin slot
+              }
+          }
+          const fillerCount = rewardCount - (skinAwarded ? 1 : 0);
+          for (let i = 0; i < fillerCount; i++) {
+              const r = Math.random();
+              if (r < 0.40) {
+                  const coins = 300 + Math.floor(Math.random() * 601);
+                  playerData.coins = (playerData.coins || 0) + coins;
+                  lines.push(`<div style="font-size:24px;font-weight:900;color:#ffd700">💰 +${coins.toLocaleString()} COINS</div>`);
+              } else if (r < 0.65) {
+                  const souls = 40 + Math.floor(Math.random() * 81);
+                  if (typeof addSouls === 'function') addSouls(souls); else playerData.souls = (playerData.souls || 0) + souls;
+                  lines.push(`<div style="font-size:24px;font-weight:900;color:#c792ff">👻 +${souls} SOULS</div>`);
+              } else if (r < 0.85) {
+                  const gems = 5 + Math.floor(Math.random() * 11);
+                  playerData.gems = (playerData.gems || 0) + gems;
+                  lines.push(`<div style="font-size:24px;font-weight:900;color:#6ee7ff">💎 +${gems} GEMS</div>`);
+              } else {
+                  const corePieces = 3 + Math.floor(Math.random() * 6);
+                  addCorePieces(corePieces);
+                  lines.push(`<div style="font-size:24px;font-weight:900;color:#59f2d6">💠 +${corePieces} CORE PIECES</div>`);
+              }
+          }
+          result.innerHTML = `<div style="font-size:17px;color:#ffe9b8;margin-bottom:8px">${rewardCount} REWARD${rewardCount > 1 ? 'S' : ''} INSIDE!</div>` + lines.join('');
+          overlay.appendChild(result);
+          instruction.textContent = playerData.presentCount > 0 ? `TAP TO CLOSE • ${playerData.presentCount} Present${playerData.presentCount === 1 ? '' : 's'} left` : 'TAP ANYWHERE TO CLOSE';
           saveProgress();
       };
       overlay.onpointerdown = (event) => { event.preventDefault(); reveal(); };
@@ -15991,6 +16283,8 @@ let heistFeverActive = false;
   });
   const SPECIAL_ABILITY_TYPES = Object.freeze(['mutation', 'signature', 'instinct']);
   const UNLEASH_POTENTIAL_EVENT_ID = 'unleash-potential-2026-08-all-specials-v3';
+  // RETIRED 2026-10-21 (Season 6 Core update): Breakthrough Quests replaced by Core Pieces purchases.
+  const UNLEASH_POTENTIAL_ENABLED = false;
   const UNLEASH_POTENTIAL_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
   const UNLEASH_POTENTIAL_FIGHTERS = Object.freeze(Object.keys(SPECIAL_ABILITY_DEFS));
   const SPECIAL_BREAKTHROUGH_QUESTS = Object.freeze({
@@ -16077,6 +16371,7 @@ let heistFeverActive = false;
   }
 
   function isUnleashPotentialActive() {
+      if (!UNLEASH_POTENTIAL_ENABLED) return false;
       ensureSpecialAbilityQuestState();
       return Date.now() < (playerData.specialAbilityQuestEvent?.endAt || 0);
   }
@@ -16139,6 +16434,57 @@ let heistFeverActive = false;
       if (ability.pieces >= 3) ability.unlocked = true;
       return true;
   }
+  // ===== Core Pieces (Season 6 Core update, LIVE) =====
+  // Player-facing name is always spelled out: "Core Pieces" — never abbreviated.
+  const CORE_PIECE_PRICE = 40;
+  const CORE_FULL_UNLOCK_PRICE = 100;
+  function getCorePieces() { playerData.corePieces = Math.max(0, Math.floor(Number(playerData.corePieces) || 0)); return playerData.corePieces; }
+  function addCorePieces(amount) {
+      const n = Math.max(0, Math.floor(Number(amount) || 0));
+      if (!n) return getCorePieces();
+      playerData.corePieces = getCorePieces() + n;
+      return playerData.corePieces;
+  }
+  function spendCorePieces(amount) {
+      const n = Math.max(0, Math.floor(Number(amount) || 0));
+      if (getCorePieces() < n) return false;
+      playerData.corePieces -= n;
+      return true;
+  }
+  function buySpecialAbilityPiece(fighterId) {
+      const def = getSpecialAbilityDef(fighterId);
+      if (!def) return false;
+      const ability = getSpecialAbilityState(def.type, fighterId);
+      if (ability.unlocked) { alert('That ability is already unlocked!'); return false; }
+      if (!spendCorePieces(CORE_PIECE_PRICE)) { alert(`Not enough Core Pieces — one ${def.pieceName} costs ${CORE_PIECE_PRICE} Core Pieces. Earn Core Pieces from Tapper Uppers, Super Tappers, the Season Pass and Presents!`); return false; }
+      addSpecialAbilityPiece(fighterId);
+      saveProgress();
+      return true;
+  }
+  // Tapper skin drops: low-chance jackpot of a random unowned non-seasonal skin.
+  function rollTapperSkinDrop(chance) {
+      if (Math.random() >= chance) return null;
+      const owned = playerData.ownedSkins || {};
+      const pool = Object.values(skinsDatabase || {}).filter(s => s && !s.visualOnly && !(owned[s.brawler] || []).includes(s.id));
+      if (!pool.length) { playerData.coins = (playerData.coins || 0) + 750; return { fallback: true, name: '+750 Coins (skin vault complete!)' }; }
+      const skin = pool[Math.floor(Math.random() * pool.length)];
+      if (!playerData.ownedSkins[skin.brawler]) playerData.ownedSkins[skin.brawler] = [];
+      playerData.ownedSkins[skin.brawler].push(skin.id);
+      return { name: skin.name, icon: skin.icon || '👕', brawlerName: (brawlerData[skin.brawler] && brawlerData[skin.brawler].name) || skin.brawler };
+  }
+
+  function buySpecialAbilityFullUnlock(fighterId) {
+      const def = getSpecialAbilityDef(fighterId);
+      if (!def) return false;
+      const ability = getSpecialAbilityState(def.type, fighterId);
+      if (ability.unlocked) { alert('That ability is already unlocked!'); return false; }
+      if (!spendCorePieces(CORE_FULL_UNLOCK_PRICE)) { alert(`Not enough Core Pieces — a full unlock costs ${CORE_FULL_UNLOCK_PRICE} Core Pieces. Earn Core Pieces from Tapper Uppers, Super Tappers, the Season Pass and Presents!`); return false; }
+      ability.pieces = 3;
+      ability.unlocked = true;
+      saveProgress();
+      return true;
+  }
+
   function addSpecialQuestProgress(fighterId, kind, amount=1) {
       const quests = SPECIAL_BREAKTHROUGH_QUESTS[fighterId];
       if (!quests || !UNLEASH_POTENTIAL_FIGHTERS.includes(fighterId) || !isUnleashPotentialActive() || isTraining || isTutorialMode) return false;
@@ -16668,7 +17014,7 @@ let heistFeverActive = false;
           grid.appendChild(makeShopCard({
               titleText: '🎁 Tapper Mega Gift',
               accent: '#d970ff',
-              descText: 'Claim 5 Tappers, 3 Super Tappers, and 1 Hyper Tapper for free!',
+              descText: 'Claim 5 Tappers, 3 Super Tappers, and 1 Surge Tapper for free!',
               priceText: 'FREE',
               buttonText: 'CLAIM ALL',
               buttonColor: '#d970ff',
@@ -16688,7 +17034,7 @@ let heistFeverActive = false;
           grid.appendChild(makeShopCard({
               titleText: '☀ Summer Launch Freebie! ☀',
               accent: '#ff8800',
-              descText: 'Celebrate the launch of Summer! Claim 1 FREE Hyper Tapper Upper.',
+              descText: 'Celebrate the launch of Summer! Claim 1 FREE Surge Tapper.',
               priceText: 'FREE',
               buttonText: 'CLAIM',
               buttonColor: '#ff8800',
@@ -17841,6 +18187,44 @@ let heistFeverActive = false;
             }
         }
     }
+    // ===== Christmas Showdown buffs (Season 6: Xplodemis) =====
+    let christmasBuffTimer = 0;
+    function isChristmasShowdownMatch() { return selectedMode === 'showdown' && showdownMode === 'christmas_showdown' && !isTraining; }
+    function updateChristmasShowdown(dt) {
+        if (!isChristmasShowdownMatch()) { christmasBuffTimer = 0; return; }
+        christmasBuffTimer += dt;
+        if (christmasBuffTimer >= 12) {
+            christmasBuffTimer = 0;
+            const live = powerups.filter(p => p.kind && p.kind.indexOf('christmas_') === 0).length;
+            if (live < 3) {
+                const kinds = ['christmas_dmg', 'christmas_speed', 'christmas_hp'];
+                const kind = kinds[Math.floor(Math.random() * kinds.length)];
+                powerups.push({ x: 200 + Math.random() * Math.max(60, WORLD_W - 400), y: 200 + Math.random() * Math.max(60, WORLD_H - 400), kind });
+            }
+        }
+    }
+    function applyChristmasBuff(entity, kind) {
+        if (kind === 'christmas_dmg') {
+            entity.powerCubes = (entity.powerCubes || 0) + 3; // the game's own damage idiom: +10% per cube = +30%
+            spawnFloatingText(entity.x, entity.y - 30, '💥 DAMAGE UP! +30%', '#ff9f43');
+        } else if (kind === 'christmas_speed') {
+            entity.speed = (entity.speed || 260) * 1.2;
+            spawnFloatingText(entity.x, entity.y - 30, '⚡ SPEED UP! +20%', '#ffd76b');
+        } else if (kind === 'christmas_hp') {
+            if (!entity.christmasHpDoubled) {
+                entity.christmasHpDoubled = true;
+                const added = entity.maxHp;
+                entity.maxHp *= 2;
+                entity.hp += added;
+                spawnFloatingText(entity.x, entity.y - 30, '❤️ DOUBLE HP!', '#ff5d8f');
+            } else {
+                entity.hp = Math.min(entity.maxHp, entity.hp + Math.round(entity.maxHp * 0.25));
+                spawnFloatingText(entity.x, entity.y - 30, '❤️ HP FEAST! +25%', '#ff5d8f');
+            }
+        }
+        if (entity === player) progressSeasonPassQuest('christmas_powerups', 1);
+    }
+
     function updateFeathersSystems(dt) {
         const now = performance.now();
         feathersWindZones = feathersWindZones.filter((z) => now < z.expiresAt);
@@ -36664,6 +37048,7 @@ let heistFeverActive = false;
       ['corrupted_showdown', 'CS', 'Corrupted Showdown', 'Season 3 unstable Packet signals'],
       ['headless_boss_s4', '🎃', 'Headless Bolznstien Boss', 'Season 4 co-op ladder • Hard to Impossible XV • Spooky Boxes + free skin'],
       ['capture_turkey', '🦃', 'Capture the Turkey', 'Season 5 Event • 3v3 CTF • grab the turkey, haul it home • first to 3 captures'],
+      ['christmas_showdown', '🎄', 'Christmas Showdown', 'Season 6 Event • Solo Showdown • grab DMG, Speed and Double HP buffs'],
       ['tower_duels_weekend', 'TD', 'Tower Duels Weekend', '5 floors - fresh random P11 trio each floor'],
       ['slop_sushi_plus', '🗼', 'Tower Fusion Lab', 'Legacy seven-power sandbox'],
       ['slop_sushi', '🏰', 'Tower Trouble', '10 floors • random maxed brawler • fuse 4'],
@@ -36711,12 +37096,12 @@ let heistFeverActive = false;
   function isTowerDuelsWeekendActive(now = Date.now()) { return now >= TOWER_DUELS_WEEKEND_START && now < TOWER_DUELS_WEEKEND_END; }
   function isTowerPowerVaultWeekendActive(now = Date.now()) { return now >= TOWER_POWER_VAULT_WEEKEND_START && now < TOWER_POWER_VAULT_WEEKEND_END; }
   function getHomePermanentModeIds(now = Date.now()) {
-      return [...new Set([...HOME_PERMANENT_MODE_IDS, ...(isTurkeyTroubleSeasonActive(now) ? ['capture_turkey'] : []), ...(TOWER_EVENT_MODES_ENABLED&&isTowerDuelsWeekendActive(now) ? ['tower_duels_weekend'] : []), ...(isWeeklyTowerFeatureActive(now) ? WEEKLY_FEATURED_MODE_IDS : []), ...(TOWER_POWER_SYSTEM_ENABLED&&isTowerPowerVaultWeekendActive(now) ? ['brick_vault'] : [])])].filter(id=>!isRetiredTowerMode(id));
+      return [...new Set([...HOME_PERMANENT_MODE_IDS, ...(isTurkeyTroubleSeasonActive(now) ? ['capture_turkey'] : []), ...(isXplodemisSeasonActive(now) ? ['christmas_showdown'] : []), ...(TOWER_EVENT_MODES_ENABLED&&isTowerDuelsWeekendActive(now) ? ['tower_duels_weekend'] : []), ...(isWeeklyTowerFeatureActive(now) ? WEEKLY_FEATURED_MODE_IDS : []), ...(TOWER_POWER_SYSTEM_ENABLED&&isTowerPowerVaultWeekendActive(now) ? ['brick_vault'] : [])])].filter(id=>!isRetiredTowerMode(id));
   }
   const EVENT_CYCLE_BOSS_MODES = ['blink_eye_dodge', 'headless_boss_s4', 'orbo_boss', 'ramage_boss', 'weefee_boss', 'demon_villains_boss'];
   function getHomeEventCyclePool(now = Date.now()) {
       const ids = [...HOME_PERMANENT_MODE_IDS, ...HOME_ROTATING_MODE_IDS, 'slop_sushi_plus',
-          ...(isTurkeyTroubleSeasonActive(now) ? ['capture_turkey'] : []),
+          ...(isTurkeyTroubleSeasonActive(now) ? ['capture_turkey'] : []), ...(isXplodemisSeasonActive(now) ? ['christmas_showdown'] : []),
           ...(TOWER_EVENT_MODES_ENABLED && isTowerDuelsWeekendActive(now) ? ['tower_duels_weekend'] : [])];
       return [...new Set(ids)].filter((id) => HOME_MODE_DATA[id] && !isRetiredTowerMode(id) && !EVENT_CYCLE_BOSS_MODES.includes(id) && (id !== 'slop_sushi_plus' || isSlopSushiLive()));
   }
@@ -36744,6 +37129,7 @@ let heistFeverActive = false;
       arena_forge_minion_surge: { type:'coins', amount:40, label:'+40 Coins' },
       marked_mayhem: { type:'souls', amount:14, label:'+14 Souls' },
       capture_turkey: { type:'coins', amount:60, label:'+60 Coins' },
+      christmas_showdown: { type:'coins', amount:60, label:'+60 Coins' },
       objective: { type:'coins', amount:30, label:'+30 Coins' },
       brick_vault: { type:'souls', amount:12, label:'+12 Souls' },
       mirror: { type:'coins', amount:35, label:'+35 Coins' },
@@ -36758,6 +37144,7 @@ let heistFeverActive = false;
       knock_donate: ['Ring-out 3v3 battles with friendly fire', 'Friendly Fire Active'],
       headless_boss_s4: ['3v1 Co-op vs the Headless Bolznstien!', 'Dodge pumpkin bombs, anvil rain and the Ecto Nova', 'First clears pay coins, souls and up to 3 Spooky Boxes', 'Clear Impossible XV to earn his skin FREE'],
       capture_turkey: ['3v3 Capture the Flag — with a live turkey!', 'Grab the turkey at mid and haul it back to YOUR base', 'Carriers drop the turkey when defeated • it respawns at mid after a capture', 'First team to 3 captures wins • 3:00 match • Season 5: Turkey Trouble event (Nov 1-30)'],
+      christmas_showdown: ['Solo Showdown — with presents under fire!', 'Buff pickups rain down: DMG +30%, Speed +20%, Double HP', 'Buffs last the whole match and stack with Power Cubes', 'First to survive the blizzard wins • Season 6: Xplodemis event (Dec 1-31)'],
       orbo_boss: ['1-Player Boss Battle: 1 vs Mega Boss Orbo!', 'Zero Power Cubes — Pure skill showdown', 'Dodge crisscross orbits, bouncing Horizon Super & gravity vortexes'],
       demon_villains_boss: [
         'Story Boss Battle: Demon has possessed the 6 Villains!',
@@ -38421,6 +38808,7 @@ let heistFeverActive = false;
           duo: '#ff8552',
           trio: '#ffb638',
           capture_turkey: '#ffb347',
+          christmas_showdown: '#ff5d73',
           objective: '#389eff',
           construction: '#f2a25d',
           knock_donate: '#ff7bd1',
@@ -40311,6 +40699,12 @@ let heistFeverActive = false;
       resetPacketRuntime(player);
       if (showdownMode === 'capture_turkey' && !isTurkeyTroubleSeasonActive()) {
           alert('🦃 Capture the Turkey is a Season 5: Turkey Trouble event — it runs November 1-30, 2026!');
+          showdownMode = 'solo';
+          updateShowdownModeUI();
+          return;
+      }
+      if (showdownMode === 'christmas_showdown' && !isXplodemisSeasonActive()) {
+          alert('🎄 Christmas Showdown is a Season 6: Xplodemis event — it runs December 1-31, 2026!');
           showdownMode = 'solo';
           updateShowdownModeUI();
           return;
@@ -42940,7 +43334,7 @@ isBrawlerLabMode = false;
             }
             if (playerData.hyperTapperCount && playerData.hyperTapperCount > 0) {
                 const hyperBtn = document.createElement('button');
-                hyperBtn.textContent = `⚡ Open HYPER TAPPER (${playerData.hyperTapperCount})`;
+                hyperBtn.textContent = `⚡ Open SURGE TAPPER (${playerData.hyperTapperCount})`;
                 hyperBtn.style.background = '#ff8800'; hyperBtn.style.color = '#fff';
                 hyperBtn.style.border = 'none'; hyperBtn.style.padding = '10px 16px';
                 hyperBtn.style.borderRadius = '8px'; hyperBtn.style.cursor = 'pointer'; hyperBtn.style.fontWeight = 'bold';
@@ -42955,6 +43349,15 @@ isBrawlerLabMode = false;
                 spookyBtn.style.borderRadius = '8px'; spookyBtn.style.cursor = 'pointer'; spookyBtn.style.fontWeight = 'bold';
                 spookyBtn.onclick = () => openSpookyBox();
                 statsDiv.appendChild(spookyBtn);
+            }
+            if (playerData.presentCount && playerData.presentCount > 0) {
+                const presentBtn = document.createElement('button');
+                presentBtn.textContent = `🎁 Open PRESENT (${playerData.presentCount})`;
+                presentBtn.style.background = 'linear-gradient(135deg,#14663c,#ffd76b)'; presentBtn.style.color = '#fff';
+                presentBtn.style.border = 'none'; presentBtn.style.padding = '10px 16px';
+                presentBtn.style.borderRadius = '8px'; presentBtn.style.cursor = 'pointer'; presentBtn.style.fontWeight = 'bold';
+                presentBtn.onclick = () => openPresent();
+                statsDiv.appendChild(presentBtn);
             }
             const totalTapperCount = (playerData.starrDrops || 0) + (playerData.superTapperCount || 0) + (playerData.hyperTapperCount || 0);
             if (totalTapperCount > 1) {
@@ -44197,7 +44600,7 @@ isBrawlerLabMode = false;
             const superBtn = document.createElement('button'); superBtn.textContent = `OPEN SUPER TAPPER (${playerData.superTapperCount||0})`;
             superBtn.style.background = '#ff00ff'; superBtn.style.color = '#08101d'; superBtn.style.padding='8px 12px'; superBtn.style.borderRadius='8px';
             superBtn.onclick = ()=>{ openStarrDropUI(true); };
-            const hyperBtn = document.createElement('button'); hyperBtn.textContent = `OPEN HYPER TAPPER (${playerData.hyperTapperCount||0})`;
+            const hyperBtn = document.createElement('button'); hyperBtn.textContent = `OPEN SURGE TAPPER (${playerData.hyperTapperCount||0})`;
             hyperBtn.style.background = '#ff8800'; hyperBtn.style.color = '#08101d'; hyperBtn.style.padding='8px 12px'; hyperBtn.style.borderRadius='8px';
             hyperBtn.disabled = !(playerData.hyperTapperCount > 0);
             hyperBtn.onclick = ()=>{ openHyperStarrDrop(); };
@@ -47434,6 +47837,7 @@ function checkHit(target, b, i){
     const aliveBots = aliveBotsInUpdate;
 
     if (playing && !gameOver) updateFeathersSystems(dt);
+    if (playing && !gameOver) updateChristmasShowdown(dt);
     if (isTurkeyCaptureMode && !isBossFight && !isSoloTrial && !isDuels && !gameOver) {
         updateTurkeyCapture(dt);
     }
@@ -48307,7 +48711,9 @@ function checkHit(target, b, i){
             if(e.hp > 0 && Math.hypot(e.x - p.x, e.y - p.y) < e.radius + 20){ collectedBy = e; break; }
         }
         if(collectedBy){
-            if (p.kind === 'overlord_crystal') {
+            if (p.kind === 'christmas_dmg' || p.kind === 'christmas_speed' || p.kind === 'christmas_hp') {
+                applyChristmasBuff(collectedBy, p.kind);
+            } else if (p.kind === 'overlord_crystal') {
                 triggerOverlordTrialCrystal(collectedBy, 8000);
                 spawnFloatingText(collectedBy.x, collectedBy.y - 30, 'OVERLORD CHARGE!', '#d9a7ff');
                 // Charge both hyper and super for the collector
@@ -68590,6 +68996,27 @@ function checkHit(target, b, i){
             ctx.lineWidth = 2;
             ctx.stroke();
             ctx.restore();
+        } else if (p.kind === 'christmas_dmg' || p.kind === 'christmas_speed' || p.kind === 'christmas_hp') {
+            const buffCfg = p.kind === 'christmas_dmg' ? ['#ff4757', '\uD83D\uDCA5'] : p.kind === 'christmas_speed' ? ['#f5b921', '\u26A1'] : ['#ff5d8f', '\u2764\uFE0F'];
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            const buffPulse = 1 + Math.sin(performance.now() / 200 + p.x * 0.01) * 0.1;
+            ctx.scale(buffPulse, buffPulse);
+            ctx.shadowColor = buffCfg[0];
+            ctx.shadowBlur = 12;
+            ctx.fillStyle = buffCfg[0];
+            ctx.beginPath();
+            ctx.arc(0, 0, 13, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.font = '12px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(buffCfg[1], 0, 1);
+            ctx.restore();
         } else if (p.kind === 'bouncin_balls_crystal') {
             ctx.save();
             ctx.translate(p.x, p.y);
@@ -71854,6 +72281,11 @@ function checkHit(target, b, i){
             if (rankedPromotionGems > 0) playerData.gems = (playerData.gems || 0) + rankedPromotionGems;
             addEventQuestProgress('play_match');
             progressSeasonPassQuest('play_match');
+            markXplodemisDailyPlayed();
+            if (selectedMode === 'showdown' && showdownMode === 'christmas_showdown') {
+                progressSeasonPassQuest('christmas_showdown_matches');
+                if (won) progressSeasonPassQuest('christmas_showdown_wins');
+            }
             if (UNLEASH_POTENTIAL_FIGHTERS.includes(completedMatchFighter)) {
                 addSpecialQuestProgress(completedMatchFighter, 'play_match', 1);
             }
@@ -72668,7 +73100,7 @@ function checkHit(target, b, i){
 
   function describeCircuitReward(reward) {
       if (!reward) return 'Reward';
-      const names = {coins:'Coins',gems:'Gems',souls:'Souls',tapper:'Tapper',superTapper:'Super Tapper',hyperTapper:'Hyper Tapper',towerDrop:'Tower Drop',spookyBox:'Spooky Box'};
+      const names = {coins:'Coins',gems:'Gems',souls:'Souls',tapper:'Tapper',superTapper:'Super Tapper',hyperTapper:'Surge Tapper',towerDrop:'Tower Drop',spookyBox:'Spooky Box',present:'Present',corePieces:'Core Piece'};
       if (names[reward.type]) return `${(reward.amount || 1).toLocaleString()} ${names[reward.type]}${reward.amount > 1 && !['coins','gems','souls'].includes(reward.type) ? 's' : ''}`;
       if (reward.type === 'skin') return skinsDatabase[reward.id]?.name || 'Exclusive Skin';
       const pretty = String(reward.id || reward.group || '').replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());
@@ -72677,6 +73109,9 @@ function checkHit(target, b, i){
   }
 
   function openSeasonPass() {
+      // Season 6 update: the Pass lives ONLY in the Quests tab now.
+      openQuestBoard('season');
+      return;
       if (!ENABLE_SEASON_PASS) { openQuestBoard(); return; }
       ensureSeasonPassState();
       const previousFocus = document.activeElement;
