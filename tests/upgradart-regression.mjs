@@ -5,7 +5,7 @@ const game = fs.readFileSync(new URL('../game.js', import.meta.url), 'utf8');
 
 // 1. Registration
 assert.match(game, /'upgradart': \{[\s\S]{0,400}name: 'Upgradart'[\s\S]{0,200}role: 'Damage Dealer'/, 'Upgradart is properly registered in brawlerData');
-assert.match(game, /upgradart: 'Mythic'/, 'Upgradart rarity is Mythic');
+assert.match(game, /upgradart: 'Rare'/, 'Upgradart rarity is Rare');
 assert.match(game, /upgradart: '🎯'/, 'Upgradart has a portrait icon');
 assert.match(game, /CUSTOM_BRAWLER_PORTRAITS[\s\S]{0,100}'upgradart'/, 'Upgradart has a custom SVG portrait');
 assert.match(game, /playerData\.unlockedBrawlers\.rocketeer = true/, 'Rocketeer is unlocked by default along with Outlit and Fuser');

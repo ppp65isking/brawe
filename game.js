@@ -4964,18 +4964,16 @@ const bolznstienPendingStrikes = [];
             'Super Rare': 70,
             Legendary: 600
         };
-        const brawlerRarities = {
-            // Starter (3) - Unlocked by default only
+                const brawlerRarities = {
+            // Starter (3)
             outlit: 'Starter',
             fuser: 'Starter',
             rocketeer: 'Starter',
 
-            carmela_fudge: 'Anomaly',
-            // Rare (9)
-            rager: 'Mythic',
-    bolznstien: 'Rare',
-            magnatar: 'Mythic',
-            oil_maker: 'Mythic',
+            // Rare (19)
+            rager: 'Rare',
+            bolznstien: 'Rare',
+            oil_maker: 'Rare',
             echo: 'Rare',
             cheseypuff: 'Rare',
             unopcoloco: 'Rare',
@@ -4984,8 +4982,17 @@ const bolznstienPendingStrikes = [];
             chaird: 'Rare',
             forest: 'Rare',
             goonbob: 'Rare',
+            fuel: 'Rare',
+            axeywaxy: 'Rare',
+            sir_cheeseburger: 'Rare',
+            drainbow: 'Rare',
+            weefee: 'Rare',
+            trampaheal: 'Rare',
+            upgradart: 'Rare',
+            dr0ne: 'Rare',
 
-            // Epic (17)
+            // Epic (31)
+            magnatar: 'Epic',
             trapper: 'Epic',
             heater_miser: 'Epic',
             money_and_tax: 'Epic',
@@ -4997,17 +5004,27 @@ const bolznstienPendingStrikes = [];
             hoop: 'Epic',
             beam: 'Epic',
             teether: 'Epic',
-            fuel: 'Epic',
             warrior: 'Epic',
             peter_pickle: 'Epic',
-            axeywaxy: 'Epic',
             ramage: 'Epic',
-            sir_cheeseburger: 'Epic',
             blinkeye: 'Epic',
             badbat: 'Epic',
-            looma: 'Mythic',
+            looma: 'Epic',
+            fastpass: 'Epic',
+            draflygon: 'Epic',
+            homer: 'Epic',
+            predator: 'Epic',
+            ice_cream: 'Epic',
+            swimmer: 'Epic',
+            boomer: 'Epic',
+            blade_vane: 'Epic',
+            daggershard: 'Epic',
+            cluster: 'Epic',
+            witch: 'Epic',
+            duck: 'Epic',
+            unhitabble: 'Epic',
 
-            // Mythic (26)
+            // Mythic (12)
             dashaholic: 'Mythic',
             classy: 'Mythic',
             steamer: 'Mythic',
@@ -5019,24 +5036,9 @@ const bolznstienPendingStrikes = [];
             upiedown: 'Mythic',
             chickpig: 'Mythic',
             jetpack: 'Mythic',
-            fastpass: 'Mythic',
             freestyle: 'Mythic',
-            drainbow: 'Mythic',
-            weefee: 'Mythic',
-            draflygon: 'Mythic',
-            homer: 'Mythic',
-            predator: 'Mythic',
-            ice_cream: 'Mythic',
-            swimmer: 'Mythic',
-            boomer: 'Mythic',
-            blade_vane: 'Mythic',
-            daggershard: 'Mythic',
-            cluster: 'Mythic',
-            witch: 'Mythic',
-            trampaheal: 'Mythic',
-            upgradart: 'Mythic',
 
-            // Exotic (9)
+            // Exotic (10)
             the_deleter: 'Exotic',
             copyphase: 'Exotic',
             snapper: 'Exotic',
@@ -5069,10 +5071,11 @@ const bolznstienPendingStrikes = [];
             adlof: 'Unique',
             king: 'Unique',
 
-            // Anomaly (3)
+            // Anomaly (4)
+            carmela_fudge: 'Anomaly',
             crystila: 'Anomaly',
             darkener: 'Anomaly',
-            awakenator: 'Anomaly'
+            awakenator: 'Anomaly',
         };
         let brawlerSortMode = localStorage.getItem('brawl_arena_brawler_sort') || 'rarity-desc';
 
@@ -15105,7 +15108,7 @@ let heistFeverActive = false;
           glow: 'rgba(93, 242, 194, 0.4)',
           cost: 70,
           milestoneReward: { coins: 300, gems: 30, label: '300 Coins + 30 Gems' },
-          brawlers: ['echo', 'cheseypuff', 'unopcoloco', 'minigunnin', 'bowlin_rida', 'chaird', 'forest', 'goonbob', 'bolznstien']
+          brawlers: ['echo', 'cheseypuff', 'unopcoloco', 'minigunnin', 'bowlin_rida', 'chaird', 'forest', 'goonbob', 'bolznstien', 'drainbow', 'trampaheal', 'upgradart', 'rager', 'fuel', 'axeywaxy', 'sir_cheeseburger']
       },
       {
           id: 'Epic',
@@ -15116,7 +15119,7 @@ let heistFeverActive = false;
           glow: 'rgba(241, 196, 15, 0.4)',
           cost: 170,
           milestoneReward: { coins: 600, gems: 60, label: '600 Coins + 60 Gems' },
-          brawlers: ['trapper', 'heater_miser', 'money_and_tax', 'hunter', 'bouncin_balls', 'fightnfire', 'splitter', 'scuba_diver', 'hoop', 'beam', 'teether', 'fuel', 'warrior', 'peter_pickle', 'axeywaxy', 'ramage', 'sir_cheeseburger']
+          brawlers: ['trapper', 'heater_miser', 'money_and_tax', 'hunter', 'bouncin_balls', 'fightnfire', 'splitter', 'scuba_diver', 'hoop', 'beam', 'teether', 'warrior', 'peter_pickle', 'ramage', 'fastpass', 'draflygon', 'homer', 'predator', 'ice_cream', 'swimmer', 'boomer', 'blade_vane', 'daggershard', 'cluster', 'witch']
       },
       {
           id: 'Mythic',
@@ -15127,7 +15130,7 @@ let heistFeverActive = false;
           glow: 'rgba(255, 123, 209, 0.4)',
           cost: 270,
           milestoneReward: { coins: 1000, gems: 100, label: '1,000 Coins + 100 Gems' },
-          brawlers: ['dashaholic', 'classy', 'steamer', 'tempo_maker', 'amplifier', 'skeleflying', 'evil_doctor', 'boom_arang', 'upiedown', 'chickpig', 'jetpack', 'fastpass', 'freestyle', 'drainbow', 'draflygon', 'homer', 'predator', 'ice_cream', 'swimmer', 'boomer', 'blade_vane', 'daggershard', 'cluster', 'witch', 'trampaheal', 'upgradart', 'rager']
+          brawlers: ['dashaholic', 'classy', 'steamer', 'tempo_maker', 'amplifier', 'skeleflying', 'evil_doctor', 'boom_arang', 'upiedown', 'chickpig', 'jetpack', 'freestyle']
       },
       {
           id: 'Exotic',

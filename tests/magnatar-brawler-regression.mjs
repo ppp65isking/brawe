@@ -5,10 +5,10 @@ const html = fs.readFileSync('index.html', 'utf8');
 
 const checks = [
   // 1. Roster & Metadata Registration
-  ['index.html contains magnatar option', html.includes('<option value="magnatar">Magnatar (Mythic)</option>')],
+  ['index.html contains magnatar option', html.includes('<option value="magnatar">Magnatar (Epic)</option>')],
   ['magnatar registered in brawlerData', /'magnatar':\s*\{[\s\S]*?name:\s*'Magnatar'/.test(game)],
   ['magnatar role registered as Controller', /magnatar:\s*'Controller'/.test(game)],
-  ['magnatar rarity registered as Mythic', /magnatar:\s*'Mythic'/.test(game)],
+  ['magnatar rarity registered as Epic', /magnatar:\s*'Epic'/.test(game)],
   ['magnatar registered in allBrawlers array', /'magnatar'/.test(game) && game.includes("'sir_cheeseburger', 'weefee', 'blinkeye', 'bolznstien', 'magnatar'")],
   ['magnatar registered in getScaledStats', /brawlerId === 'magnatar'[\s\S]*?hp:\s*Math\.round\(6600 \* scale\)[\s\S]*?dmg:\s*Math\.round\(864 \* scale\)/.test(game)],
   ['magnatar registered in reloadMsByBrawler', /magnatar:\s*1450/.test(game)],

@@ -7,7 +7,7 @@ const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const checks = [
   // 1. Registration & Stats
   ['rager registered in brawlerData', /'rager':\s*\{\s*name:\s*'Rager',\s*role:\s*'Controller'/.test(game)],
-  ['rager registered in brawlerRarities as Mythic', /rager:\s*'Mythic'/.test(game)],
+  ['rager registered in brawlerRarities as Rare', /rager:\s*'Rare'/.test(game)],
   ['rager registered in getScaledStats (7600 HP, 2200 DMG)', /if\s*\(brawlerId === 'rager'\)\s*\{\s*const scale = 0\.55 \+ \(level - 1\) \* 0\.045;\s*return \{ hp: Math\.round\(7600 \* scale\),\s*dmg: Math\.round\(2200 \* scale\) \};/.test(game)],
   ['rager registered in reloadMsByBrawler as 1500ms', /reloadMsByBrawler:\s*\{[\s\S]*?rager:\s*1500/.test(game)],
   ['rager registered in fireDelayMsByBrawler as 220ms', /fireDelayMsByBrawler:\s*\{[\s\S]*?rager:\s*220/.test(game)],
@@ -19,11 +19,11 @@ const checks = [
   ['rager in BRAWLER_SUPER_CHARGE_HITS (4 hits)', /rager:4/.test(game)],
   ['rager registered in allBrawlers array', /allBrawlers\s*=\s*\[[\s\S]*?'rager'/.test(game)],
   ['rager in BALANCE_PROFILE damageScalarByBrawler', /damageScalarByBrawler:\s*\{[\s\S]*?rager:\s*1\.0/.test(game)],
-  ['rager in SOUL_CONSTELLATIONS Mythic pool', /id:\s*'Mythic'[\s\S]*?brawlers:\s*\[[\s\S]*?'rager'/.test(game)],
+  ['rager in SOUL_CONSTELLATIONS Rare pool', /id:\s*'Rare'[\s\S]*?brawlers:\s*\[[\s\S]*?'rager'/.test(game)],
   ['rager in brawlerTraitData', /brawlerTraitData\s*=\s*\{[\s\S]*?rager:/.test(game)],
   ['rager in default playerData.unlockedBrawlers', /unlockedBrawlers:\s*\{[\s\S]*?rager:\s*true/.test(game)],
   ['rager unlocked in ensureSoulSummonerData', /playerData\.unlockedBrawlers\.rager = true;/.test(game)],
-  ['rager option in index.html brawlerSelect', /<option value="rager">Rager \(Mythic\)<\/option>/.test(html)],
+  ['rager option in index.html brawlerSelect', /<option value="rager">Rager \(Rare\)<\/option>/.test(html)],
 
   // 2. Abilities & State
   ['ragerWarTotems declared', /const ragerWarTotems = \[\];/.test(game)],
