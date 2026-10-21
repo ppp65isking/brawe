@@ -74,7 +74,7 @@ assert.match(source, /ownedTrinkets:[\s\S]{0,180}equippedTrinkets:/, 'Trinket ow
 assert.match(source, /Math\.min\(2200,\s*player\.maxHp\s*\*\s*\.15\)/, 'Emergency Patch is 15% capped at 2200');
 assert.match(source, /trinketEmergencyPatchCooldownUntil\s*=\s*now\s*\+\s*24000/, 'Emergency Patch cooldown is 24 seconds');
 assert.match(source, /trinketUnshakableCooldownUntil\s*=\s*now\s*\+\s*10000/, 'Unshakable cooldown is 10 seconds');
-assert.match(source, /\(2000\s*\/\s*12\)\s*\*\s*dt/, 'Bush Armor builds 2000 shield over 12 seconds');
+assert.match(source, /\(2500\s*\/\s*8\)\s*\*\s*dt/, 'Bush Armor builds 2500 shield over 8 seconds');
 assert.match(source, /function tickShieldDecay[\s\S]{0,220}shieldDecayTimer\s*=\s*0/, 'Normal shield decay is disabled');
 assert.match(source, /ammo\s*=\s*Math\.min\(maxAmmo,\s*ammo\s*\+\s*1\)/, 'Hyper Reload restores exactly one ammo without exceeding max');
 assert.match(source, /trinketHyperReloadUntil\s*=\s*performance\.now\(\)\s*\+\s*2000/, 'Hyper Reload buff lasts two seconds');

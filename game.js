@@ -646,11 +646,11 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         return `${base} Its Hyper main-attack upgrade activates automatically with Core Surge.`;
     }
     const TRINKET_DEFS = [
-        { id:'last_stand', name:'Last Stand', desc:'Below 50% HP, deal 15% more damage.' },
-        { id:'second_wind', name:'Second Wind', desc:'Natural regeneration ticks 30% faster while moving.' },
+        { id:'last_stand', name:'Last Stand', desc:'Below 30% HP, deal 20% more damage.' },
+        { id:'second_wind', name:'Second Wind', desc:'Natural regeneration ticks 45% faster while moving.' },
         { id:'super_guard', name:'Super Guard', desc:'Activating Super grants 1000 shield.' },
         { id:'unshakable', name:'Unshakable', desc:'Crossing below 1000 HP grants 0.5s crowd-control immunity. 10s cooldown.' },
-        { id:'bush_armor', name:'Bush Armor', desc:'Build up to 2000 persistent shield over 12 seconds while inside bushes.' },
+        { id:'bush_armor', name:'Bush Armor', desc:'Build up to 2500 persistent shield over 8 seconds while inside bushes.' },
         { id:'hyper_reload', name:'Hyper Reload', desc:'Hypercharge restores 1 ammo and grants 10% reload speed for 2 seconds.' },
         { id:'quick_feet', name:'Quick Feet', desc:'After taking damage, gain 10% movement speed for 1.5 seconds. 8s cooldown.' },
         { id:'fresh_magazine', name:'Fresh Magazine', desc:'Defeating an enemy restores 0.75 ammo.' },
@@ -702,11 +702,11 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     function getTrinketHudState(id, now) {
         const calmAt=Math.max(player.lastAttackAt||0,player.lastDamagedAt||0,player.trinketLastCombatAt||0);
         const cooldown=(until,maxMs)=>Math.max(0,Math.min(1,(until-now)/maxMs));
-        if(id==='last_stand') return {active:player.hp<player.maxHp*.5,label:player.hp<player.maxHp*.5?'ACTIVE':'HP > 50%',meter:player.hp<player.maxHp*.5?1:0};
+        if(id==='last_stand') return {active:player.hp<player.maxHp*.3,label:player.hp<player.maxHp*.3?'ACTIVE':'HP > 30%',meter:player.hp<player.maxHp*.3?1:0};
         if(id==='second_wind'){const active=!!player.isMovingNow&&now-calmAt>=1500&&player.hp<player.maxHp;return {active,label:active?'FAST REGEN':'MOVE + REST',meter:active?1:0};}
         if(id==='super_guard') return {active:false,label:'SUPER READY',meter:superCharge/100};
         if(id==='unshakable'){const active=now<(player.trinketCcImmuneUntil||0),cd=cooldown(player.trinketUnshakableCooldownUntil||0,10000);return {active,label:active?'CC IMMUNE':cd>0?`${Math.ceil(cd*10)}s`:'READY',meter:active?1:1-cd};}
-        if(id==='bush_armor'){const value=Math.min(2000,player.trinketBushArmorShield||0);return {active:isEntityInsideBush(player)&&value<2000,label:`${Math.round(value)}/2000`,meter:value/2000};}
+        if(id==='bush_armor'){const value=Math.min(2500,player.trinketBushArmorShield||0);return {active:isEntityInsideBush(player)&&value<2500,label:`${Math.round(value)}/2500`,meter:value/2500};}
         if(id==='hyper_reload'){const active=now<(player.trinketHyperReloadUntil||0);return {active,label:active?'RELOAD +10%':'HYPER READY',meter:active?Math.max(0,(player.trinketHyperReloadUntil-now)/2000):hyperChargeCharge/100};}
         if(id==='quick_feet'){const active=now<(player.trinketQuickFeetUntil||0),cd=cooldown(player.trinketQuickFeetCooldownUntil||0,8000);return {active,label:active?'SPEED +10%':cd>0?`${Math.ceil(cd*8)}s`:'READY',meter:active?1:1-cd};}
         if(id==='fresh_magazine') return {active:false,label:'ON DEFEAT',meter:1};
@@ -796,12 +796,12 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         if (hasTrinket(player, 'first_strike') && now - calmAt >= 4000) player.trinketFirstStrikeReady = true;
         if (hasTrinket(player, 'thick_skin') && now - (player.trinketLastIncomingAt || player.lastDamagedAt || 0) >= 5000) player.trinketThickSkinReady = true;
         if (hasTrinket(player, 'bush_armor') && isEntityInsideBush(player)) {
-            const remaining = Math.max(0, 2000 - (player.trinketBushArmorShield || 0));
-            const wanted = Math.min(remaining, (2000 / 12) * dt);
+            const remaining = Math.max(0, 2500 - (player.trinketBushArmorShield || 0));
+            const wanted = Math.min(remaining, (2500 / 8) * dt);
             if (wanted > 0) {
                 const before = player.shield || 0;
                 grantShield(player, wanted, Math.max(5000, player.shieldMax || 0));
-                player.trinketBushArmorShield = Math.min(2000, (player.trinketBushArmorShield || 0) + Math.max(0, (player.shield || 0) - before));
+                player.trinketBushArmorShield = Math.min(2500, (player.trinketBushArmorShield || 0) + Math.max(0, (player.shield || 0) - before));
             }
         }
     }
@@ -8465,7 +8465,7 @@ const bolznstienPendingStrikes = [];
           sp2: 'Double Hologram (Hologram lasts 2.5s and detonates into 4 + shards on teleport or expiry)'
       },
 
-      'unopcoloco': { name: 'UnoPcoLoco', role: 'Support', desc: 'Leaping scarf attack and healing whacks.', color: '#ff4d4d', attack: 'Scarf & Whack (1-2-3 combo)', attackDesc: 'Fires a locking scarf, followed by 2 short-range glove whacks that heal you.', super: 'Scarf Clonin (Jump & drop clones)', superDesc: 'Jumps with a scarf and drops 3 clones at the landing spot.', hyper: 'Super clones drop faster and deal more damage.', g1: 'Scarf Switch (Next attack is scarf)', g2: 'Stretchy Scarf (+30% range/heal)', sp1: 'Heavy Scarf (Jump does 50% splash)', sp2: 'Extra Clone (Super drops an extra clone at start)' },
+      'unopcoloco': { name: 'UnoPcoLoco', role: 'Support', desc: 'Triple-whack flurries and wall-vaulting scarf leaps.', color: '#ff4d4d', attack: 'Triple Whack', attackDesc: 'Every ammo unloads 3 rapid glove whacks back-to-back. Whacks heal UnoPcoLoco for part of the damage dealt.', super: 'Scarf Vault', superDesc: 'Throws his scarf to latch onto a wall and leaps clean over it, landing with a splash. No wall in the way? He simply leaps to the spot.', hyper: 'Rage Loco: whacks reach 50% farther and every whack throws a bonus scarf at 50% more range. Casting Scarf Vault while Hypercharged sends him into a rage: reload 1.7x faster for 6 seconds.', g1: 'Scarf Switch (Next attack is a latch scarf)', g2: 'Stretchy Scarf (+30% range/heal)', sp1: 'Heavy Landing (Vault landing splash hits harder)', sp2: 'Springy Scarf (Scarf Vault range +30%)' },
       'dashaholic': { name: 'Dashaholic', role: 'Assassin', desc: 'Slashes through enemies with piercing claws and stores two rapid Super dashes.', color: '#00ffcc', attack: 'Claw Slash', attackDesc: 'A wide piercing slash whose real hitbox matches its aiming cone.', super: 'Unleash the Dashaholic', superDesc: 'Stores 2 uses per full charge. Each use dashes forward and slashes enemies in the path.', hyper: 'Super hits 3 times rapidly and stuns. Main attack becomes Afterimage Crosscut: a larger, longer slash returns for a second 55%-damage hit.', g1: 'Phase Dash (Short directional teleport)', g2: 'Adrenaline (Heal 1200 HP & Reload 1 ammo)', sp1: 'Vampiric Claws (Heal 15% from main attack)', sp2: 'Deep Cuts (Super leaves enemies bleeding)' },
       'trapper': { name: 'Trapper', role: 'Controller', desc: 'Drops gates and musical fences to lock down zones.', color: '#5a7bff', attack: 'Slam Gate', attackDesc: 'Shoots a cone gate. Hit: burst damage + knockback. Miss: gate remains as a short wall.', super: 'Sound Fence', superDesc: 'Spawns a rectangular fence that traps enemies for a short duration and deals continuous music damage.', hyper: 'Double Gate: Slam Gate launches two parallel gates and roots struck enemies for 0.7s. Fence becomes larger, speeds allies and amplifies enemy damage taken.', g1: 'Bass Blast (Nearby knockback pulse)', g2: 'Quick Patch (Instant heal)', sp1: 'Encore Set (Super lasts longer)', sp2: 'Rhythm Rush (Gain speed after landing Slam)' },
       'classy': { name: 'Classy', role: 'Marksman', desc: 'Fires a fast burst of notes. Hits fill a Symphony bar. Full Symphony turns attacks gold and homing.', color: '#d4af37', attack: 'Note Burst', attackDesc: 'Fires 7 notes. Hits fill a Symphony bar. When full, next attack is gold and homes.', super: 'Bass Drop', superDesc: 'Drops an 8500 HP speaker. Near it, Classy fires 8 larger notes.', hyper: 'Attacks pierce. Speaker shoots at nearby enemies.', g1: 'Tuning Up (Instantly fills half Symphony)', g2: 'Fanfare (Fires notes in a wide fan)', sp1: 'Crescendo (Damage up per consecutive hit)', sp2: 'The Show Must Go On (Refills Symphony if speaker destroyed)' },
@@ -8993,7 +8993,7 @@ const bolznstienPendingStrikes = [];
       echo: { g1:'Amplify keeps full damage.', g2:'Shielding converts 70% of prevented damage into shield.', slow:'Reverb Heal also grants 30% of the heal as shield.', long:'Double Wave fires 3 extra bigger side rings.' },
             cheseypuff: { g1:'Big Puff also pulls enemies.', g2:'Cheese Trap deals 160 damage per tick.', slow:'Cheese Ball leaves a mini cheese field at the end.', long:'Cheese Ball gains 22% more range.' },
             decayer: { g1:'Homing Shot also slows enemies for 1.1 seconds.', g2:'Sacrifice grants an 80% damage reduction shield until hit.', slow:'Decayer shield max increases by 2500.', long:'Decay Shot stacks 5% damage reduction per hit, up to 25%, for 7 seconds.' },
-            unopcoloco: { g1:'Tangled Scarf pierces one target, then jumps to a second for 60% damage.', g2:'Wrapped Up immediately heals 900 HP.', slow:'Scarf landings leave a 1.25-second patch that slows by 20%.', long:'Whack healing splashes nearby allies for 50%.' },
+            unopcoloco: { g1:'Tangled Scarf pierces one target, then jumps to a second for 60% damage.', g2:'Wrapped Up immediately heals 900 HP.', slow:'Heavy Landing: Scarf Vault landing splash deals 50% more damage.', long:'Springy Scarf stretches Scarf Vault range by 30%.' },
             dashaholic: { g1:'Phase Armor dashes 425 units and grants a 900 shield for 1.5 seconds.', g2:'Second Wind heals 1700 and its restored ammo fires 20% faster.', slow:'The first enemy hit is marked to take 12% more damage for 2 seconds.', long:'After a Super dash, one slash repeats for 45% damage after 0.45 seconds.' },
             trapper: { g1:'Loaded Blast radius grows to 235 and drops a short trap at your feet.', g2:'Field Repair heals 1900 and arms the next gate.', slow:'Caught enemies remain 18% slowed for 1.5 seconds.', long:'An expired or destroyed trap fires a 45% mini gate at the nearest enemy.' },
             classy: { g1:'Perfect Pitch grants 35 Symphony and makes the next note 25% larger.', g2:'Encore Fan notes return once for 35% damage.', slow:'Golden notes burst again for 40% damage after 0.55 seconds.', long:'Taking damage pauses Symphony decay for 3 seconds.' },
@@ -9831,6 +9831,7 @@ const bolznstienPendingStrikes = [];
   let decayerOrbitUntil = 0;
   let decayerHomingArmed = false;
   let unopcolocoCycle = 0;
+  let unopcolocoSuperUntil = 0;
   let unopcolocoG1Armed = false;
   let unopcolocoG2Until = 0;
   let screenShakeUntil = 0;
@@ -22699,6 +22700,7 @@ let heistFeverActive = false;
         else if (brawler === 'angel') base = 1700;
         else if (brawler === 'demon') base = 1800;
         if (brawler === 'warrior' && performance.now() < (player.warriorStandUntil || 0)) base /= 2.50;
+        if (brawler === 'unopcoloco' && performance.now() < (player.unopRageUntil || 0)) base /= 1.7;
         if (brawler === 'sir_cheeseburger' && performance.now() < (player.sirCheddarReloadBuffUntil || 0)) base /= 1.15;
         if (brawler === 'upiedown' && performance.now() < (player.upiedownReloadBuffUntil || 0)) base *= 0.85;
         if (brawler === 'jacktrade' && performance.now() < (player.jackTradeRushUntil || 0)) base /= 3;
@@ -25181,7 +25183,7 @@ let heistFeverActive = false;
             if ((arenaForgeTeamBuffs[entity.team]?.arsenalUntil || 0) > now) mult *= 1.15;
             if (entity.arenaForgeFortressLink && isNearAlliedArenaForgeStructure(entity)) mult *= 1.15;
         }
-      if (hasTrinket(entity, 'last_stand') && entity.hp < entity.maxHp * .50) mult *= 1.15;
+      if (hasTrinket(entity, 'last_stand') && entity.hp < entity.maxHp * .30) mult *= 1.20;
       if (hasTrinket(entity, 'first_strike') && entity.trinketFirstStrikeReady) mult *= 1.10;
       return mult;
   }
@@ -29692,42 +29694,48 @@ let heistFeverActive = false;
           }
     } else if (brawler === 'unopcoloco') {
           const isHyper = !isBot ? isHypercharged : fromEntity.isHypercharged;
-          let cycle = isBot ? fromEntity.unopcolocoCycle : unopcolocoCycle;
           let forceScarf = false;
-          let isSuper = false;
           if (!isBot) {
               if (unopcolocoG1Armed) { forceScarf = true; unopcolocoG1Armed = false; gadgetArmed = false; gadgetCooldownUntil = now + GADGET_COOLDOWN_MS; updateGadgetButton(); }
           } else {
               if (fromEntity.gadgetArmed && fromEntity.selectedGadget === 'g1') { forceScarf = true; fromEntity.gadgetArmed = false; }
           }
-          if (forceScarf) cycle = 0;
-          
           const buffActive = isBot ? (now < (fromEntity.unopcolocoG2Until||0)) : (now < unopcolocoG2Until);
           const rangeMult = buffActive ? 1.3 : 1.0;
-          const maxCycle = 3; // V6: scarf plus two Whacks in both normal and Hyper states.
-
-          if (cycle === 0) {
+          if (forceScarf) {
               bullets.push({
-                  ownerBrawler: 'unopcoloco', isScarf: true, isSuperScarf: isSuper,
+                  ownerBrawler: 'unopcoloco', isScarf: true, isSuperScarf: false,
                   x: fromEntity.x + Math.cos(ang)*(fromEntity.radius+4), y: fromEntity.y + Math.sin(ang)*(fromEntity.radius+4),
                   vx: Math.cos(ang)*900 * 0.6, vy: Math.sin(ang)*900 * 0.6,
-                  life: 0, maxLife: 0.8 * rangeMult, damage: isBot ? 520 : 940, pierce: false,
-                  hyperVisual: isHyper, hitboxMod: isHyper ? 1.5 : 1.0, ownerId: fromEntity.id, maxScarfDist: 450
+                  life: 0, maxLife: 0.8 * rangeMult * (isHyper ? 1.5 : 1), damage: isBot ? 520 : 940, pierce: false,
+                  hyperVisual: isHyper, hitboxMod: isHyper ? 1.5 : 1.0, ownerId: fromEntity.id, maxScarfDist: 450 * (isHyper ? 1.5 : 1)
               });
           } else {
-              const extraRange = (isHyper && cycle === 3) ? 1.5 : 1.0;
-              bullets.push({
-                  ownerBrawler: 'unopcoloco', isWhack: true, hitIds: {},
-                  x: fromEntity.x + Math.cos(ang)*(fromEntity.radius+4), y: fromEntity.y + Math.sin(ang)*(fromEntity.radius+4),
-                  vx: Math.cos(ang)*1000 * 0.6, vy: Math.sin(ang)*1000 * 0.6,
-                  life: 0, maxLife: 0.15 * rangeMult * extraRange, damage: isBot ? 580 : 1050,
-                  hyperVisual: isHyper, pierce: true, ownerId: fromEntity.id
-              });
-          }
-          
-          if (!forceScarf) {
-              if (isBot) fromEntity.unopcolocoCycle = (fromEntity.unopcolocoCycle + 1) % maxCycle;
-              else unopcolocoCycle = (unopcolocoCycle + 1) % maxCycle;
+              // REWORK: Triple Whack - every ammo unloads 3 rapid whacks (Edgar-style).
+              const whackDmg = isBot ? 330 : 600;
+              const spawnWhack = () => {
+                  if (!fromEntity || fromEntity.hp <= 0) return;
+                  bullets.push({
+                      ownerBrawler: 'unopcoloco', isWhack: true, hitIds: {},
+                      x: fromEntity.x + Math.cos(ang)*(fromEntity.radius+4), y: fromEntity.y + Math.sin(ang)*(fromEntity.radius+4),
+                      vx: Math.cos(ang)*1000 * 0.6, vy: Math.sin(ang)*1000 * 0.6,
+                      life: 0, maxLife: 0.15 * rangeMult * (isHyper ? 1.5 : 1), damage: whackDmg,
+                      hyperVisual: isHyper, pierce: true, ownerId: fromEntity.id
+                  });
+                  if (isHyper) {
+                      // Hypercharge: every whack also throws a bonus scarf at +50% range (damage only, no latch-jump).
+                      bullets.push({
+                          ownerBrawler: 'unopcoloco', isScarf: true, isSuperScarf: false, noScarfJump: true,
+                          x: fromEntity.x + Math.cos(ang)*(fromEntity.radius+4), y: fromEntity.y + Math.sin(ang)*(fromEntity.radius+4),
+                          vx: Math.cos(ang)*900 * 0.6, vy: Math.sin(ang)*900 * 0.6,
+                          life: 0, maxLife: 0.8 * rangeMult * 1.5, damage: isBot ? 520 : 940, pierce: false,
+                          hyperVisual: true, hitboxMod: 1.5, ownerId: fromEntity.id, maxScarfDist: 675
+                      });
+                  }
+              };
+              spawnWhack();
+              setTimeout(spawnWhack, 110);
+              setTimeout(spawnWhack, 220);
           }
     } else if (brawler === 'dashaholic') {
         const isHyper = !isBot ? isHypercharged : fromEntity.isHypercharged;
@@ -33785,13 +33793,7 @@ let heistFeverActive = false;
     }
     
     if(selectedBrawler === 'unopcoloco') {
-      const dist = Math.min(Math.hypot(dx, dy), 900);
-      player.isJumping = true;
-      player.jumpStartX = player.x; player.jumpStartY = player.y;
-      player.jumpTargetX = clamp(player.x + Math.cos(ang) * dist, player.radius, WORLD_W - player.radius);
-      player.jumpTargetY = clamp(player.y + Math.sin(ang) * dist, player.radius, WORLD_H - player.radius);
-      player.jumpDuration = 450; player.jumpElapsed = 0;
-      player.isSuperJump = true;
+      castUnopcolocoSuper(player, !!isHypercharged, wm.x, wm.y);
       updateSuperButton();
       return;
     }
@@ -35351,13 +35353,7 @@ let heistFeverActive = false;
     }
 
     if (bot.brawler === 'unopcoloco') {
-      const dist = Math.min(Math.hypot(dx, dy), 900);
-      bot.isJumping = true;
-      bot.jumpStartX = bot.x; bot.jumpStartY = bot.y;
-      bot.jumpTargetX = clamp(bot.x + Math.cos(ang) * dist, bot.radius, WORLD_W - bot.radius);
-      bot.jumpTargetY = clamp(bot.y + Math.sin(ang) * dist, bot.radius, WORLD_H - bot.radius);
-      bot.jumpDuration = 450; bot.jumpElapsed = 0;
-      bot.isSuperJump = true;
+      castUnopcolocoSuper(bot, !!bot.isHypercharged, bot.x + Math.cos(ang) * 9999, bot.y + Math.sin(ang) * 9999);
       return;
     }
     if (bot.brawler === 'unstable') {
@@ -45776,7 +45772,7 @@ function checkHit(target, b, i){
           doHeal(owner, dealtDamage * healPct);
       }
     }
-    if (b.isScarf) {
+    if (b.isScarf && !b.noScarfJump) {
       triggerScarfJump(b, target.x, target.y);
       const owner = (b.ownerId === player.id) ? player : bots.find(bt=>bt.id===b.ownerId);
       if(owner) owner.unopcolocoSpeedUntil = performance.now() + 1500;
@@ -46165,6 +46161,43 @@ function checkHit(target, b, i){
           b.hitIds = {};
           b.bounceLifeLoss = 0;
           b.bounceDmgLoss = 0;
+      }
+  }
+
+  function isUnopWallPoint(x, y) {
+      for (const c of cubes) { if (c && x >= c.x - 6 && x <= c.x + (c.w || 0) + 6 && y >= c.y - 6 && y <= c.y + (c.h || 0) + 6) return true; }
+      for (const w of destructibleWalls) { if (w && (w.hp === undefined || w.hp > 0) && x >= w.x - 6 && x <= w.x + (w.w || 0) + 6 && y >= w.y - 6 && y <= w.y + (w.h || 0) + 6) return true; }
+      return false;
+  }
+  function castUnopcolocoSuper(entity, hyper, tx, ty) {
+      if (!entity || entity.hp <= 0 || entity.isJumping) return;
+      const now = performance.now();
+      const sp2 = (entity.id === player.id ? selectedStar : entity.selectedStar) === 'long';
+      const range = sp2 ? 910 : 700;
+      const ang = Math.atan2(ty - entity.y, tx - entity.x);
+      const aimDist = Math.max(60, Math.min(Math.hypot(tx - entity.x, ty - entity.y), range));
+      let latchDist = -1;
+      for (let d = 30; d <= aimDist; d += 18) {
+          if (isUnopWallPoint(entity.x + Math.cos(ang) * d, entity.y + Math.sin(ang) * d)) { latchDist = d; break; }
+      }
+      let landDist = aimDist;
+      if (latchDist > 0) {
+          landDist = latchDist;
+          while (landDist < range + 240 && isUnopWallPoint(entity.x + Math.cos(ang) * landDist, entity.y + Math.sin(ang) * landDist)) landDist += 18;
+          landDist = Math.min(landDist + 26, range + 260);
+          spawnFloatingText(entity.x + Math.cos(ang) * latchDist, entity.y + Math.sin(ang) * latchDist - 14, '🧣 LATCH!', '#ffb3b3');
+      }
+      entity.isJumping = true;
+      entity.jumpStartX = entity.x; entity.jumpStartY = entity.y;
+      entity.jumpTargetX = clamp(entity.x + Math.cos(ang) * landDist, entity.radius, WORLD_W - entity.radius);
+      entity.jumpTargetY = clamp(entity.y + Math.sin(ang) * landDist, entity.radius, WORLD_H - entity.radius);
+      entity.jumpDuration = 480; entity.jumpElapsed = 0;
+      entity.isSuperJump = true;
+      entity.isUnopWallLeap = true;
+      if (entity.id === player.id) unopcolocoSuperUntil = now + 1200; else entity.unopcolocoSuperUntil = now + 1200;
+      if (hyper) {
+          entity.unopRageUntil = now + 6000;
+          spawnFloatingText(entity.x, entity.y - 42, '😤 RAGE! RELOAD x1.7', '#ff5d5d');
       }
   }
 
@@ -48422,7 +48455,7 @@ function checkHit(target, b, i){
         }
         if (!e.idleRegenNextAt || now >= e.idleRegenNextAt) {
             doHeal(e, 1700, e.id);
-            const regenInterval = e.id === player.id && hasTrinket(e, 'second_wind') && e.isMovingNow ? (1500 / 1.30) : 1500;
+            const regenInterval = e.id === player.id && hasTrinket(e, 'second_wind') && e.isMovingNow ? (1500 / 1.45) : 1500;
             e.idleRegenNextAt = now + regenInterval;
         }
     }
@@ -52691,6 +52724,10 @@ function checkHit(target, b, i){
                             e.tempoSuperHyper = false;
                             e.tempoSuperSlowZone = false;
                         }
+                    } else if (e.isUnopWallLeap) {
+                    e.isUnopWallLeap = false;
+                    AOEDamage(e.x, e.y, 85, baseDmg * (sp1 ? 1.5 : 1), e.id, true);
+                    explosions.push({x: e.x, y: e.y, radius: 85, life: 0, maxLife: 0.25, color: 'rgba(255,120,120,.55)'});
                     } else {
                     AOEDamage(e.x, e.y, 80, baseDmg, e.id, true);
                     explosions.push({x: e.x, y: e.y, radius: 80, life: 0, maxLife: 0.2});
@@ -54562,7 +54599,7 @@ function checkHit(target, b, i){
           return { label: `BATTERY  •  ${Math.round(battery)}%`, value: battery, max: player.screenerMaxBattery || 100, color };
       }
       if (selectedBrawler === 'unopcoloco') {
-          const scarf = unopcolocoCycle === 0 || unopcolocoG1Armed;
+          const scarf = unopcolocoG1Armed;
           return { label: `NEXT ATTACK  •  ${scarf ? 'SCARF' : 'WHACK'}`, value: scarf ? 1 : 2, max: 2, segments: 2, color: scarf ? '#ff5656' : '#ffd166' };
       }
       if (selectedBrawler === 'demon') {
@@ -56976,12 +57013,12 @@ function checkHit(target, b, i){
           mainStr = `${Math.round(700 * mult * levelScale)} DMG`;
           superStr = isHyper ? '6,000 HP Shield + 6 Orbs' : '4,000 HP Decay Shield';
       } else if (brawler === 'unopcoloco') {
-          const cycle = isPlayer ? (typeof unopcolocoCycle !== 'undefined' ? unopcolocoCycle : 0) : (entity?.unopcolocoCycle || 0);
-          mainLabel = cycle === 0 ? 'Scarf Strike' : 'Heavy Whack'; mainIcon = '🧣';
-          superLabel = 'Mirror Clone'; superIcon = '👥'; superColor = '#ff7675';
+          const cycle = isPlayer ? (unopcolocoG1Armed ? 0 : 1) : ((entity?.gadgetArmed && entity?.selectedGadget === 'g1') ? 0 : 1);
+          mainLabel = cycle === 0 ? 'Scarf Strike' : 'Triple Whack'; mainIcon = '🧣';
+          superLabel = 'Scarf Vault'; superIcon = '🧣'; superColor = '#ff7675';
           const cycleD = cycle === 0 ? playerStatMain : Math.round(playerStatMain * 1.15);
-          mainStr = `${Math.round(cycleD * mult * levelScale)} DMG`;
-          superStr = `${Math.round(850 * mult * levelScale)} DMG Clone`;
+          mainStr = cycle === 0 ? `${Math.round(cycleD * mult * levelScale)} DMG` : `3 x ${Math.round(cycleD * mult * levelScale)} DMG`;
+          superStr = `Wall Leap + ${Math.round(850 * mult * levelScale)} Splash`;
       } else if (brawler === 'minigunnin') {
           mainLabel = 'Rapid Fire'; mainIcon = '🔫';
           superLabel = 'Medical Turret'; superIcon = '💚'; superColor = '#5df2c2';
@@ -59518,7 +59555,7 @@ function checkHit(target, b, i){
       } else {
            for(let i=0; i<maxAmmo; i++){
               let ammoColor = '#f4a261';
-              if (selectedBrawler === 'unopcoloco' && (unopcolocoCycle === 0 || unopcolocoG1Armed)) {
+              if (selectedBrawler === 'unopcoloco' && unopcolocoG1Armed) {
                   ammoColor = '#ff4d4d'; // Red for Scarf
               }
               if (selectedBrawler === 'money_and_tax' && (player.moneyAndTaxMode || 'money') === 'tax') ammoColor = '#27ae60'; // Green for Tax
@@ -62671,7 +62708,7 @@ function checkHit(target, b, i){
             ctx.setLineDash([]);
                     } else if (selectedBrawler === 'unopcoloco') {
             const rangeMult = (performance.now() < unopcolocoG2Until) ? 1.3 : 1.0;
-            if (unopcolocoCycle === 0 || unopcolocoG1Armed) {
+            if (unopcolocoG1Armed) {
                 const scarfRange = 900 * 0.6 * 0.8 * rangeMult;
                 ctx.fillStyle = 'rgba(255, 77, 77, 0.15)';
                 ctx.beginPath(); ctx.moveTo(player.x, player.y); ctx.arc(player.x, player.y, scarfRange, ang - 0.08, ang + 0.08); ctx.closePath(); ctx.fill();
