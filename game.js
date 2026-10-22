@@ -14129,6 +14129,12 @@ let heistFeverActive = false;
       panel.appendChild(grid);overlay.appendChild(panel);document.body.appendChild(overlay);
   }
 
+  // Power cap for the whole save system. This MUST be initialized before
+  // loadProgress() runs at boot: that call happens earlier in this file than
+  // the systems section where this constant used to live, and a later
+  // declaration leaves it in the temporal dead zone — the load threw on the
+  // first level clamp and no brawler progress was restored (the P12 bug).
+  const MAX_POWER_LEVEL = 12; // Power 12 update (2026-10-21): cap raised from 11.
   function loadProgress() {
       try {
           let savedSelectedBrawler = null;
@@ -16047,7 +16053,7 @@ let heistFeverActive = false;
       render();
   }
 
-  const MAX_POWER_LEVEL = 12; // Power 12 update (2026-10-21): cap raised from 11.
+  // MAX_POWER_LEVEL is declared above loadProgress(): boot order requires it.
   function getUpgradeCost(level) {
       const costs = [0, 50, 100, 175, 300, 500, 750, 1050, 1400, 2000, 3000, 4200];
       return costs[Math.max(0, Math.floor(level || 0))] || 99999;
@@ -17344,6 +17350,13 @@ let heistFeverActive = false;
               descText: 'A clean daily boost: 180 Coins and 2 Gems.', priceText: 'FREE', buttonText: 'OPEN SUPPLY', buttonColor: '#69f2cd',
               isOwned: !!playerData.shopClaims[supplyKey], footerText: 'One supply per local day.',
               onBuy: () => { if(playerData.shopClaims[supplyKey])return; playerData.coins=(playerData.coins||0)+180; playerData.gems=(playerData.gems||0)+2; playerData.shopClaims[supplyKey]=true; ensureShopButtonRefresh(); renderTabContent(); }
+          }));
+          const p12CompKey = 'p12-fix-compensation';
+          grid.appendChild(makeShopCard({
+              titleText: '🛠️ Power 12 Fix Compensation', accent: '#ff9f6e',
+              descText: 'Our apology for the Power 12 save bug: 100 Core Pieces and 1 Hyper Tapper, on the house.', priceText: 'FREE', buttonText: 'CLAIM', buttonColor: '#ff9f6e',
+              isOwned: !!playerData.shopClaims[p12CompKey], footerText: 'One-time claim per save.',
+              onBuy: () => { if(playerData.shopClaims[p12CompKey])return; addCorePieces(100); playerData.hyperTapperCount=(playerData.hyperTapperCount||0)+1; playerData.shopClaims[p12CompKey]=true; ensureShopButtonRefresh(); renderTabContent(); }
           }));
           const towerKey = getShopClaimKey('daily-tower-cache', dailyCycle.cycleKey);
           grid.appendChild(makeShopCard({
@@ -37285,7 +37298,7 @@ let heistFeverActive = false;
       const card = document.getElementById('homeBrawlerCard');
       if (!card) return;
       const data = brawlerData[selectedBrawler] || brawlerData.outlit || { name: 'Outlit', role: 'Fighter', rarity: 'Common' };
-      const level = Math.max(1, Math.min(11, playerData?.brawlers?.[selectedBrawler]?.level || 1));
+      const level = Math.max(1, Math.min(MAX_POWER_LEVEL, playerData?.brawlers?.[selectedBrawler]?.level || 1));
       const rarity = brawlerRarities[selectedBrawler] || 'Starter';
       const rarityColors = {
           'Starter': '#9fb4c7',
@@ -38732,7 +38745,7 @@ let heistFeverActive = false;
           <div class="home-career-stat"><small>FIGHTERS</small><b>${roster}</b></div>
           <div class="home-career-stat"><small>WIN STREAK</small><b>${Math.max(0, playerData?.winStreak || 0)}</b></div>
           <div class="home-career-stat"><small>SELECTED BRICKS</small><b>${lifetime.toLocaleString()}</b></div>
-          <div class="home-career-stat"><small>POWER</small><b>${Math.max(1, Math.min(11, progress.level || 1))}</b></div>`;
+          <div class="home-career-stat"><small>POWER</small><b>${Math.max(1, Math.min(MAX_POWER_LEVEL, progress.level || 1))}</b></div>`;
       if (season) { const homeSeasonProfile = getActiveSeasonProfile(); season.innerHTML = homeSeasonProfile.key === 'turkey' ? `<b>SEASON 5 · TURKEY TROUBLE × ARENA FORGE</b><br>The turkeys are loose! Capture the Turkey is live all November — grab the bird, haul it home, first to 3 captures wins.` : `<b>SEASON 4 · ARENAAWEEN × ARENA FORGE</b><br>Spooky Boxes are dropping across the arena — crack them for skins, coins, or souls. Packets have been retired.`; }
   }
 
