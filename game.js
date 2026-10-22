@@ -4362,6 +4362,11 @@ const bolznstienPendingStrikes = [];
     const hyperoriginLiftTiles = [];
     const heaterZones = [];
     const relativityZones = [];
+    // ENVIRONMENT SYSTEMS — canonical terrain stores (environment rebuild
+    // Phase 2): cubes = indestructible terrain rects; destructibleWalls =
+    // HP terrain; waterZones = water rects; bushZones = hiding cover and
+    // the ONLY bush store. Phantom arrays (bushes, walls, hazards, pads...)
+    // were never declared — never reference them.
     const bushZones = [];
     const waterZones = [];
     // Environment rebuild Phase 1 (2026-10-22): world render for bushZones.
@@ -4410,6 +4415,11 @@ const bolznstienPendingStrikes = [];
       }
       return nativeBulletPush.apply(this, entries);
   };
+  // ENVIRONMENT SYSTEMS — canonical terrain stores (environment rebuild
+  // Phase 2): cubes = indestructible terrain rects; destructibleWalls =
+  // HP terrain; waterZones = water rects; bushZones = hiding cover and
+  // the ONLY bush store. Phantom arrays (bushes, walls, hazards, pads...)
+  // were never declared — never reference them.
   const destructibleWalls = [];
   const outlitWallChains = [];
   const OUTLIT_SUPER_WALL_CHAIN_MULTIPLIERS = Object.freeze([0.90, 0.80, 0.70, 0.60, 0.50]);
@@ -12283,14 +12293,10 @@ function isPowerPlayModifierActive(entity = player) {
                 if (Math.hypot(gx - centerX, gy - centerY) <= blastRadius) bushZones.splice(i, 1);
             }
         }
-        if (typeof bushes !== 'undefined' && Array.isArray(bushes)) {
-            for (let i = bushes.length - 1; i >= 0; i--) {
-                const b = bushes[i];
-                if (!b) continue;
-                const bx = b.x + (b.w || 0) / 2, by = b.y + (b.h || 0) / 2;
-                if (Math.hypot(bx - centerX, by - centerY) <= blastRadius) bushes.splice(i, 1);
-            }
-        }
+        // Environment rebuild Phase 2 (2026-10-22): removed the dead
+        // `typeof bushes` cleanup branch that used to sit here — `bushes` is
+        // declared nowhere, so its guard was always false and it never ran.
+        // The bushZones loop above is this wave's real bush handling.
     }
 
     let constructionPaths = {
@@ -17645,6 +17651,11 @@ let heistFeverActive = false;
 
   const baseSpread = 0.45; // shared base spread
   const coneRange = 140; // bullets removed after this distance from player
+  // ENVIRONMENT SYSTEMS — canonical terrain stores (environment rebuild
+  // Phase 2): cubes = indestructible terrain rects; destructibleWalls =
+  // HP terrain; waterZones = water rects; bushZones = hiding cover and
+  // the ONLY bush store. Phantom arrays (bushes, walls, hazards, pads...)
+  // were never declared — never reference them.
   const cubes = [];
   function rectCircleCollides(rx,ry,rw,rh, cx,cy,cr){
     const closestX = Math.max(rx, Math.min(cx, rx+rw));
@@ -17895,12 +17906,16 @@ let heistFeverActive = false;
                 best = { x: coverX, y: coverY, id: 'center' };
             }
         }
-        if (!best && Array.isArray(bushes)) {
-            for (const b of bushes) {
+        if (!best) {
+            // Environment rebuild Phase 2 (2026-10-22): fallback repointed at
+            // bushZones, the only bush store (was the never-declared `bushes`,
+            // which threw ReferenceError whenever no wall cover was in range).
+            for (const b of bushZones) {
                 if (!b) continue;
-                const dBot = Math.hypot(b.x - bot.x, b.y - bot.y);
-                if (dBot < 400 && canBotMoveToPosition(bot, b.x, b.y)) {
-                    return { x: b.x, y: b.y, id: 'center' };
+                const bx = b.x + (b.w || 0) / 2, by = b.y + (b.h || 0) / 2;
+                const dBot = Math.hypot(bx - bot.x, by - bot.y);
+                if (dBot < 400 && canBotMoveToPosition(bot, bx, by)) {
+                    return { x: bx, y: by, id: 'center' };
                 }
             }
         }
@@ -21868,6 +21883,7 @@ let heistFeverActive = false;
         buildNextShowdownMap(mapIndex);
         return;
         /* Previous rotation retained below for future events. */
+        // VAULTED (environment rebuild Phase 2): uncalled; references phantom environment arrays that were never declared. Migrate to canonical stores (cubes/destructibleWalls/waterZones/bushZones) before wiring up.
         cubes.length = 0;
         bushZones.length = 0;
         waterZones.length = 0;
@@ -74429,6 +74445,7 @@ function renderBlinkEyeDodgeHUD(ctx) {
 // BOSS BATTLE: 1 vs MEGA WEEFEE (BOT WIFI WITH UNLIMITED SIGNAL POLES)
 // ============================================================================
 
+// VAULTED (environment rebuild Phase 2): uncalled; references phantom environment arrays that were never declared. Migrate to canonical stores (cubes/destructibleWalls/waterZones/bushZones) before wiring up.
 function buildWeeFeeBossMap() {
     WORLD_W = 2000;
     WORLD_H = 2000;
@@ -76207,6 +76224,7 @@ function renderRankedModifierHUD(ctx) {
 // 🪐 MEGA BOSS ORBO (COSMIC HORIZON) ENGINE
 // ==========================================
 
+// VAULTED (environment rebuild Phase 2): uncalled; references phantom environment arrays that were never declared. Migrate to canonical stores (cubes/destructibleWalls/waterZones/bushZones) before wiring up.
 function buildOrboBossMap() {
     destructibleWalls.length = 0;
     bushes.length = 0;
@@ -77431,6 +77449,7 @@ function renderOrboBossHUD(ctx) {
 // 🥊 MEGA BOSS RAMAGE ENGINE (AUTHENTIC 5-STAGE BOSS BATTLE) 🥊
 // ==========================================
 
+// VAULTED (environment rebuild Phase 2): uncalled; references phantom environment arrays that were never declared. Migrate to canonical stores (cubes/destructibleWalls/waterZones/bushZones) before wiring up.
 function buildRamageBossMap() {
     cubes.length = 0;
     powerups.length = 0;
@@ -78464,6 +78483,7 @@ function renderRamageBossHUD(ctx) {
 // 😈 DEMONIC RETRIBUTION: POSSESSED VILLAINS ENGINE 😈
 // ==========================================
 
+// VAULTED (environment rebuild Phase 2): uncalled; references phantom environment arrays that were never declared. Migrate to canonical stores (cubes/destructibleWalls/waterZones/bushZones) before wiring up.
 function buildDemonVillainsBossMap() {
     cubes.length = 0;
     powerups.length = 0;
