@@ -14204,6 +14204,8 @@ let heistFeverActive = false;
                               starPowerUnlocked: !!progress.starPowerUnlocked,
                               hyperchargeUnlocked: !!progress.hyperchargeUnlocked,
                               hyperchargeDiscountPct: normalizeHyperchargeDiscountPct(progress.hyperchargeDiscountPct),
+                              corePerkUnlocked: !!progress.corePerkUnlocked,
+                              corePerk: progress.corePerk || null,
                               selectedStar: progress.selectedStar || 'slow',
                               selectedGadget: progress.selectedGadget || 'g1',
                               ownedTrinkets: Array.isArray(progress.ownedTrinkets) ? [...new Set(progress.ownedTrinkets)] : [],
@@ -14237,6 +14239,8 @@ let heistFeverActive = false;
                   starPowerUnlocked: (bid === 'bolznstien' || bid === 'magnatar' || bid === 'badbat') ? true : !!existing.starPowerUnlocked,
                   hyperchargeUnlocked: (bid === 'bolznstien' || bid === 'magnatar' || bid === 'badbat') ? true : !!existing.hyperchargeUnlocked,
                   hyperchargeDiscountPct: normalizeHyperchargeDiscountPct(existing.hyperchargeDiscountPct),
+                  corePerkUnlocked: !!existing.corePerkUnlocked,
+                  corePerk: existing.corePerk || null,
                   selectedStar: existing.selectedStar || 'slow',
                   selectedGadget: existing.selectedGadget || 'g1',
                   ownedTrinkets: Array.isArray(existing.ownedTrinkets) ? [...new Set(existing.ownedTrinkets)] : [],
@@ -14362,6 +14366,8 @@ let heistFeverActive = false;
                   starPowerUnlocked: progress.starPowerUnlocked,
                   hyperchargeUnlocked: progress.hyperchargeUnlocked,
                   hyperchargeDiscountPct: normalizeHyperchargeDiscountPct(progress.hyperchargeDiscountPct),
+                  corePerkUnlocked: !!progress.corePerkUnlocked,
+                  corePerk: progress.corePerk || null,
                   selectedStar: progress.selectedStar || 'slow',
                   selectedGadget: progress.selectedGadget || 'g1',
                   ownedTrinkets: [...ensureProgressTrinkets(progress).ownedTrinkets],
@@ -44213,7 +44219,13 @@ isBrawlerLabMode = false;
             const cost = getUpgradeCost(pData.level);
             const cpCost = getCorePieceUpgradeCost(pData.level);
             const canAffordUpgrade = playerData.coins >= cost && getCorePieces() >= cpCost;
-            if (pData.level < MAX_POWER_LEVEL) {
+            if (isWeeklyTrialBrawler(id)) {
+                upgBtn.textContent = 'WEEKLY TRIAL — TEMPORARY LOADOUT';
+                upgBtn.style.padding = '12px 24px'; upgBtn.style.background = '#555';
+                upgBtn.style.color = '#fff'; upgBtn.style.fontWeight = 'bold';
+                upgBtn.style.border = 'none'; upgBtn.style.borderRadius = '8px';
+                upgBtn.disabled = true;
+            } else if (pData.level < MAX_POWER_LEVEL) {
                 upgBtn.textContent = cpCost > 0 ? `Upgrade (🪙 ${cost} + 💠 ${cpCost})` : `Upgrade (🪙 ${cost})`;
                 upgBtn.style.padding = '12px 24px';
                 upgBtn.style.background = canAffordUpgrade ? '#5df2c2' : '#555';
