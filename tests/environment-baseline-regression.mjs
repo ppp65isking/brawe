@@ -107,11 +107,12 @@ for (let i = 0; i < P.SHOWDOWN_MAP_THEMES.length; i++) {
   const name = P.SHOWDOWN_MAP_THEMES[i].name;
   assert.ok(P.bushZones.length > 0, `theme ${i} (${name}) must build bush zones (got ${P.bushZones.length})`);
   if (i === 7) {
-    // Gearfall Foundry: its four canal rects sit exactly inside the 240px
-    // center cross that carveWaterNavigationLanes() cuts after every build,
-    // so today the carve removes ALL of its water. Pinned as-is for Phase 0;
-    // the Phase 4 map pass owns whether that is the intended layout.
-    assert.equal(P.waterZones.length, 0, 'theme 7 (Gearfall Foundry) water is fully carved away today (pinned)');
+    // Gearfall Foundry: its four canal rects originally sat exactly inside
+    // the 240px center cross that carveWaterNavigationLanes() cuts after
+    // every build, so the carve removed ALL of its water (Phase 0 pin).
+    // Phase 4 rotated the canals into a pinwheel whose arms end at the
+    // carve cross boundary, so all four canals now survive the carve.
+    assert.equal(P.waterZones.length, 4, 'theme 7 (Gearfall Foundry) keeps its 4 pinwheel canals after the carve (Phase 4 fix)');
   } else {
     assert.ok(P.waterZones.length > 0, `theme ${i} (${name}) must build water zones (got ${P.waterZones.length})`);
   }

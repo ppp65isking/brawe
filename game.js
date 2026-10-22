@@ -19034,6 +19034,23 @@ let heistFeverActive = false;
         };
     }
 
+    // Environment Phase 4 (map-pass checklist (a)): a spawn point is only
+    // valid with >=120px of clearance from walls, water and bushes. The
+    // randomized spawn samplers below skip candidates that fail this.
+    function isSpawnPointClearOfTerrain(x, y) {
+        const CLEAR_SQ = 120 * 120;
+        const nearRect = (r) => {
+            const dx = Math.max(r.x - x, 0, x - (r.x + r.w));
+            const dy = Math.max(r.y - y, 0, y - (r.y + r.h));
+            return dx * dx + dy * dy < CLEAR_SQ;
+        };
+        for (const c of cubes) if (nearRect(c)) return false;
+        for (const w of destructibleWalls) if (nearRect(w)) return false;
+        for (const z of waterZones) if (nearRect(z)) return false;
+        for (const b of bushZones) if (nearRect(b)) return false;
+        return true;
+    }
+
     function getDamageFillerSpawnPoint(team, slot = 0, teamSize = 2) {
         const spread = Math.max(1, teamSize - 1);
         const laneOffset = (slot - spread * 0.5) * 24;
@@ -19048,6 +19065,7 @@ let heistFeverActive = false;
             const rawX = WORLD_W * (xRange[0] + Math.random() * (xRange[1] - xRange[0]));
             const rawY = WORLD_H * yBand + (Math.random() * 140 - 70) + laneOffset;
             const spot = findNearestDrySpot(clamp(rawX, 60, WORLD_W - 60), clamp(rawY, 60, WORLD_H - 60), 16);
+            if (!isSpawnPointClearOfTerrain(spot.x, spot.y)) continue;
 
             let nearestEnemy = Infinity;
             let closeEnemyCount = 0;
@@ -19209,6 +19227,7 @@ let heistFeverActive = false;
             const rawX = WORLD_W * (xRange[0] + Math.random() * (xRange[1] - xRange[0]));
             const rawY = WORLD_H * yBand + (Math.random() * 120 - 60) + laneOffset;
             const spot = findNearestDrySpot(clamp(rawX, 60, WORLD_W - 60), clamp(rawY, 60, WORLD_H - 60), 16);
+            if (!isSpawnPointClearOfTerrain(spot.x, spot.y)) continue;
             let nearestEnemy = Infinity;
             let closeEnemyCount = 0;
 
@@ -22074,7 +22093,9 @@ let heistFeverActive = false;
         if(idx===0){
             // Crown Collapse: a valuable open throne surrounded by six broken crown walls.
             water(1550,1550,900,150); water(1550,2300,900,150); water(1550,1700,150,600); water(2300,1700,150,600);
-            wall(1740,1320,520,120); wall(1740,2560,520,120); wall(1320,1740,120,520); wall(2560,1740,120,520);
+            // Phase 4: crown walls are split at the center navigation lanes so the
+            // carved moat gaps actually connect the throne room to the outer map.
+            wall(1740,1320,140,120); wall(2120,1320,140,120); wall(1740,2560,140,120); wall(2120,2560,140,120); wall(1320,1740,120,140); wall(1320,2120,120,140); wall(2560,1740,120,140); wall(2560,2120,120,140);
             wall(820,1040,560,120); wall(2620,2840,560,120); wall(1040,2620,120,560); wall(2840,820,120,560);
             bush(1720,1720,560,180); bush(1720,2100,560,180); bush(1720,1900,180,200); bush(2100,1900,180,200);
             bush(520,1520,300,220); bush(3180,2260,300,220); bush(1520,520,220,300); bush(2260,3180,220,300);
@@ -22088,13 +22109,13 @@ let heistFeverActive = false;
             bush(1700,1740,600,160); bush(1700,2120,600,160);
         }else if(idx===2){
             // Four Corners: protected outer bunkers feeding into a dangerous open center.
-            [[900,900],[3100,900],[900,3100],[3100,3100]].forEach(([x,y])=>{
-                wall(x-260,y-260,520,100); wall(x-260,y+160,520,100); wall(x-260,y-160,100,320); wall(x+160,y-160,100,320);
+            [[915,915],[3085,915],[915,3085],[3085,3085]].forEach(([x,y])=>{
+                wall(x-260,y-260,520,100); wall(x-260,y+160,180,100); wall(x+80,y+160,180,100); wall(x-260,y-160,100,320); wall(x+160,y-160,100,320);
                 bush(x-145,y-145,290,290);
             });
             wall(1640,1640,260,100); wall(2100,1640,260,100); wall(1640,2260,260,100); wall(2100,2260,260,100);
             water(1840,1840,320,320);
-            bush(500,1840,300,320); bush(3200,1840,300,320); bush(1840,500,320,300); bush(1840,3200,320,300);
+            bush(640,1840,300,320); bush(3060,1840,300,320); bush(1840,640,320,300); bush(1840,3060,320,300);
         }else if(idx===3){
             // Neon Labyrinth: readable zig-zag lanes, quick flank links, and no sealed pockets.
             wall(740,900,900,110); wall(1940,900,1320,110);
@@ -22106,36 +22127,36 @@ let heistFeverActive = false;
             bush(1560,1740,880,180); bush(1560,2080,880,180); bush(420,1180,260,360); bush(3320,2460,260,360);
         }else if(idx===4){
             // Frost Circuit: four frozen loops with warm open crossing points.
-            water(620,620,720,220);water(2660,620,720,220);water(620,3160,720,220);water(2660,3160,720,220);
+            water(660,660,680,180);water(2660,660,680,180);water(660,3160,680,180);water(2660,3160,680,180);
             water(620,840,220,720);water(3160,840,220,720);water(620,2440,220,720);water(3160,2440,220,720);
-            wall(1440,720,1120,110);wall(1440,3170,1120,110);wall(720,1440,110,1120);wall(3170,1440,110,1120);
+            wall(1560,720,880,110);wall(1560,3170,880,110);wall(720,1700,110,600);wall(3170,1700,110,600);
             wall(1660,1660,260,100);wall(2080,1660,260,100);wall(1660,2240,260,100);wall(2080,2240,260,100);
-            bush(1740,1840,520,140);bush(1740,2020,520,140);bush(1840,1740,140,520);bush(2020,1740,140,520);
+            bush(1740,1840,520,140);bush(1740,2020,520,140);bush(1840,1780,140,440);bush(2020,1780,140,440);
         }else if(idx===5){
             // Sunset Quarry: stepped excavation terraces and exposed ramps.
             wall(520,760,1120,120);wall(2360,760,1120,120);wall(820,1380,920,120);wall(2260,1380,920,120);
             wall(820,2500,920,120);wall(2260,2500,920,120);wall(520,3120,1120,120);wall(2360,3120,1120,120);
             water(1820,1180,360,620);water(1820,2200,360,620);
-            bush(1660,1840,680,140);bush(1660,2020,680,140);bush(360,1760,420,480);bush(3220,1760,420,480);
+            bush(1660,1840,680,140);bush(1660,2020,680,140);bush(620,1760,420,480);bush(2960,1760,420,480);
         }else if(idx===6){
             // Crownspire Keep: a broken royal ring with four assault gates.
             wall(1180,1050,680,110);wall(2140,1050,680,110);wall(1180,2840,680,110);wall(2140,2840,680,110);
             wall(1050,1180,110,680);wall(1050,2140,110,680);wall(2840,1180,110,680);wall(2840,2140,110,680);
             water(1760,1760,480,480);
             bush(1420,1420,360,180);bush(2220,1420,360,180);bush(1420,2400,360,180);bush(2220,2400,360,180);
-            wall(420,1945,500,110);wall(3080,1945,500,110);wall(1945,420,110,500);wall(1945,3080,110,500);
+            wall(200,1945,120,110);wall(600,1945,320,110);wall(3080,1945,320,110);wall(3680,1945,120,110);wall(1945,200,110,120);wall(1945,600,110,320);wall(1945,3080,110,320);wall(1945,3680,110,120);
         }else if(idx===7){
             // Gearfall Foundry: rotating-looking cog lanes and furnace canals.
-            water(760,1880,760,240);water(2480,1880,760,240);water(1880,760,240,760);water(1880,2480,240,760);
+            water(760,1700,760,180);water(2480,2120,760,180);water(1700,760,180,760);water(2120,2480,180,760);
             [[1300,1300],[2700,1300],[1300,2700],[2700,2700]].forEach(([x,y])=>{wall(x-260,y-60,520,120);wall(x-60,y-260,120,520);});
             wall(1660,1660,680,100);wall(1660,2240,680,100);
-            bush(1760,1780,480,180);bush(1760,2040,480,180);bush(420,620,320,320);bush(3260,3060,320,320);
+            bush(1760,1780,480,180);bush(1760,2040,480,180);bush(420,700,320,320);bush(3260,2980,320,320);
         }else if(idx===8){
             // Stormglass Heights: diagonal lightning lanes with glass islands.
             wall(520,720,760,110);wall(1120,1320,760,110);wall(2120,2320,760,110);wall(2720,2920,760,110);
             wall(2720,720,760,110);wall(2120,1320,760,110);wall(1120,2320,760,110);wall(520,2920,760,110);
             water(1780,520,440,700);water(1780,2780,440,700);water(520,1780,700,440);water(2780,1780,700,440);
-            bush(1540,1540,360,220);bush(2100,1540,360,220);bush(1540,2240,360,220);bush(2100,2240,360,220);
+            bush(1540,1540,360,220);bush(2100,1540,360,220);bush(1540,2060,360,220);bush(2100,2060,360,220);
         }else{
             // Voidtower Ruins: three shattered rings with safe radial exits.
             wall(940,940,700,110);wall(2360,940,700,110);wall(940,2950,700,110);wall(2360,2950,700,110);
@@ -22410,10 +22431,10 @@ let heistFeverActive = false;
         addWall(WORLD_W * 0.28 - 90, WORLD_H * 0.5 - 45, 180, 90, 8000);
         addWall(WORLD_W * 0.72 - 90, WORLD_H * 0.5 - 45, 180, 90, 8000);
 
-        addBush(WORLD_W * 0.2 - 70, WORLD_H * 0.26 - 60, 140, 120);
-        addBush(WORLD_W * 0.2 - 70, WORLD_H * 0.74 - 60, 140, 120);
-        addBush(WORLD_W * 0.8 - 70, WORLD_H * 0.26 - 60, 140, 120);
-        addBush(WORLD_W * 0.8 - 70, WORLD_H * 0.74 - 60, 140, 120);
+        addBush(WORLD_W * 0.365 - 70, WORLD_H * 0.26 - 60, 140, 120);
+        addBush(WORLD_W * 0.365 - 70, WORLD_H * 0.74 - 60, 140, 120);
+        addBush(WORLD_W * 0.635 - 70, WORLD_H * 0.26 - 60, 140, 120);
+        addBush(WORLD_W * 0.635 - 70, WORLD_H * 0.74 - 60, 140, 120);
 
         addWater(WORLD_W * 0.42 - 80, WORLD_H * 0.18 - 35, 160, 70);
         addWater(WORLD_W * 0.42 - 80, WORLD_H * 0.82 - 35, 160, 70);
@@ -22441,10 +22462,10 @@ let heistFeverActive = false;
             addWall(1220, 2200, 380, 120);
             addWall(2400, 1660, 380, 120);
 
-            addBush(720, 760, 280, 220);
-            addBush(2940, 3020, 280, 220);
-            addBush(1700, 980, 260, 220);
-            addBush(2060, 2560, 260, 220);
+            addBush(690, 760, 280, 220);
+            addBush(2940, 2990, 280, 220);
+            addBush(1830, 980, 260, 220);
+            addBush(1900, 2560, 260, 220);
         } else {
             addWater(760, 1940, 620, 240);
             addWater(2620, 920, 620, 240);
@@ -22528,8 +22549,8 @@ let heistFeverActive = false;
     bushZones.length = 0;
     waterZones.length = 0;
     const mirrorWalls = [
-      { x: 260, y: 330, w: 300, h: 70 },
-      { x: 260, y: 1070, w: 300, h: 70 },
+      { x: 380, y: 330, w: 300, h: 70 },
+      { x: 380, y: 1070, w: 300, h: 70 },
       { x: 650, y: 610, w: 120, h: 270 },
       { x: 910, y: 705, w: 300, h: 80 },
     ];
@@ -22537,13 +22558,68 @@ let heistFeverActive = false;
       addArenaWallStrip(item.x, item.y, item.w, item.h, { wallType: 'marked_mayhem', hp: 7600 });
       addArenaWallStrip(WORLD_W - item.x - item.w, WORLD_H - item.y - item.h, item.w, item.h, { wallType: 'marked_mayhem', hp: 7600 });
     }
-    bushZones.push({ x: 120, y: WORLD_H * 0.5 - 150, w: 260, h: 300 });
-    bushZones.push({ x: WORLD_W - 380, y: WORLD_H * 0.5 - 150, w: 260, h: 300 });
+    bushZones.push({ x: 380, y: WORLD_H * 0.5 - 150, w: 260, h: 300 });
+    bushZones.push({ x: WORLD_W - 640, y: WORLD_H * 0.5 - 150, w: 260, h: 300 });
     bushZones.push({ x: WORLD_W * 0.5 - 150, y: 120, w: 300, h: 190 });
     bushZones.push({ x: WORLD_W * 0.5 - 150, y: WORLD_H - 310, w: 300, h: 190 });
   }
 
+
+  // Environment Phase 4 (map-pass checklist (c)): shared post-build water
+  // validation. On the bot nav grid — the passability bots actually
+  // experience — check that a fighter who cannot traverse water can still
+  // cross the map east-west and north-south. If a crossing fails on the
+  // water-blocked grid but succeeds when water is ignored, water is the
+  // blocker: carve the standard center navigation lanes and rebuild.
+  function ensureWaterNavigationLanes(){
+    if (!waterZones.length) return;
+    buildBotNavGrid();
+    if (!botNavGrid) return;
+    const cols = botNavGrid.cols, rows = botNavGrid.rows;
+    const passable = (idx, waterOpen) => !botNavGrid.blocked[idx] && (waterOpen || !botNavGrid.water[idx]);
+    const traverses = (waterOpen) => {
+      const comp = new Int32Array(cols * rows).fill(-1);
+      let nc = 0;
+      for (let s = 0; s < cols * rows; s++) {
+        if (comp[s] !== -1 || !passable(s, waterOpen)) continue;
+        const stack = [s];
+        comp[s] = nc;
+        while (stack.length) {
+          const cur = stack.pop();
+          const cx = cur % cols, cy = (cur / cols) | 0;
+          if (cx > 0 && comp[cur - 1] === -1 && passable(cur - 1, waterOpen)) { comp[cur - 1] = nc; stack.push(cur - 1); }
+          if (cx < cols - 1 && comp[cur + 1] === -1 && passable(cur + 1, waterOpen)) { comp[cur + 1] = nc; stack.push(cur + 1); }
+          if (cy > 0 && comp[cur - cols] === -1 && passable(cur - cols, waterOpen)) { comp[cur - cols] = nc; stack.push(cur - cols); }
+          if (cy < rows - 1 && comp[cur + cols] === -1 && passable(cur + cols, waterOpen)) { comp[cur + cols] = nc; stack.push(cur + cols); }
+        }
+        nc++;
+      }
+      const west = new Set(), east = new Set(), north = new Set(), south = new Set();
+      for (let y = 0; y < rows; y++) {
+        if (passable(y * cols, waterOpen)) west.add(comp[y * cols]);
+        if (passable(y * cols + cols - 1, waterOpen)) east.add(comp[y * cols + cols - 1]);
+      }
+      for (let x = 0; x < cols; x++) {
+        if (passable(x, waterOpen)) north.add(comp[x]);
+        if (passable((rows - 1) * cols + x, waterOpen)) south.add(comp[(rows - 1) * cols + x]);
+      }
+      return { ew: [...west].some((c) => east.has(c)), ns: [...north].some((c) => south.has(c)) };
+    };
+    const blockedRun = traverses(false);
+    if (blockedRun.ew && blockedRun.ns) return;
+    const openRun = traverses(true);
+    if ((!blockedRun.ew && openRun.ew) || (!blockedRun.ns && openRun.ns)) {
+      carveWaterNavigationLanes();
+      buildBotNavGrid();
+    }
+  }
+
   function generateCubes(){
+    generateCubesLayout();
+    ensureWaterNavigationLanes();
+  }
+
+  function generateCubesLayout(){
     cubes.length = 0;
     destructibleWalls.length = 0;
     bushZones.length = 0;
@@ -22610,21 +22686,30 @@ let heistFeverActive = false;
         return;
     }
     const count = 40; // more cubes in large map
+    // Environment Phase 4 (map-pass checklist (e)): the scatter keeps the map
+    // center and every spawn point this fall-through serves clear of strips.
+    const scatterProtectedPoints = [{ x: WORLD_W * 0.5, y: WORLD_H * 0.5, r: 300 }];
+    if (isBossFight) scatterProtectedPoints.push({ x: 1200, y: 800, r: 250 }, { x: 1200, y: 2000, r: 250 });
+    if (isDuels) scatterProtectedPoints.push({ x: 200, y: 750, r: 150 }, { x: 1400, y: 750, r: 150 });
+    if (isTraining || isSoloTrial) {
+      scatterProtectedPoints.push(
+        { x: 560, y: 560, r: 150 }, { x: WORLD_W - 560, y: 560, r: 150 },
+        { x: WORLD_W - 560, y: WORLD_H - 560, r: 150 }, { x: 560, y: WORLD_H - 560, r: 150 },
+        { x: WORLD_W * 0.5, y: 460, r: 150 }, { x: WORLD_W * 0.5, y: WORLD_H - 460, r: 150 },
+        { x: 460, y: WORLD_H * 0.5, r: 150 }, { x: WORLD_W - 460, y: WORLD_H * 0.5, r: 150 }
+      );
+    }
     for(let i=0;i<count;i++){
       const w = 64 + Math.floor(Math.random()*128);
       const h = 64 + Math.floor(Math.random()*128);
-      let x,y,tries=0;
+      let x,y,tries=0,spotClear=false;
       do{
         x = 100 + Math.random()*(WORLD_W-200-w);
         y = 100 + Math.random()*(WORLD_H-200-h);
         tries++;
-      } while(
-          (
-              (isBossFight && (rectCircleCollides(x,y,w,h, 1200,800, 250) || rectCircleCollides(x,y,w,h, 1200,2000, 250))) ||
-              (isDuels && (rectCircleCollides(x,y,w,h, 200,750, 150) || rectCircleCollides(x,y,w,h, 1400,750, 150))) ||
-              (!isBossFight && !isDuels && rectCircleCollides(x,y,w,h, 2000,2000, 300))
-          ) && tries < 50
-      );
+        spotClear = !scatterProtectedPoints.some((p) => rectCircleCollides(x,y,w,h, p.x, p.y, p.r));
+      } while(!spotClear && tries < 50);
+      if (!spotClear) continue; // no clear spot in 50 tries: skip the strip rather than crowd a spawn
       addArenaWallStrip(x,y,w,h,{wallType:(isBossFight?'boss':'arena')});
     }
   }
@@ -75578,10 +75663,10 @@ function buildBraweBallMap() {
     addArenaWallStrip(WORLD_W * 0.5 + 90, WORLD_H * 0.5 - 40, 110, 80, { hp: 4500, wallType: 'ball_barrier' });
 
     // Top goal defense barricade
-    addArenaWallStrip(WORLD_W * 0.5 - 140, 420, 280, 60, { hp: 4500, wallType: 'goal_barrier' });
+    addArenaWallStrip(WORLD_W * 0.5 - 140, 450, 280, 60, { hp: 4500, wallType: 'goal_barrier' });
 
     // Bottom goal defense barricade
-    addArenaWallStrip(WORLD_W * 0.5 - 140, WORLD_H - 480, 280, 60, { hp: 4500, wallType: 'goal_barrier' });
+    addArenaWallStrip(WORLD_W * 0.5 - 140, WORLD_H - 510, 280, 60, { hp: 4500, wallType: 'goal_barrier' });
 
     // Sideline stealth bushes
     if (typeof bushZones !== 'undefined') {
