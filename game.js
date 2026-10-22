@@ -2985,6 +2985,9 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         player.outlitMutationReadyAt = 0;
         player.crystilaMutationShotCounter = 0;
         player.crystilaMutationCharges = 0;
+        player.homerMutationShotCounter = 0;
+        player.homerMutationCharges = 0;
+        player.homerMutationReadyAt = 0;
         player.crystilaGlassInvulnUntil = 0;
         player.echoInstinctStartedAt = performance.now();
         player.echoInstinctReady = false;
@@ -16230,6 +16233,14 @@ let heistFeverActive = false;
           pieceName: 'Splitter Instinct Piece',
           shortDesc: 'Every 4 seconds, each of Fivecracker’s 5 fragments divides into a clean two-shot forward cone.'
       },
+      homer: {
+          type: 'mutation',
+          name: 'Wormhole Rounds',
+          icon: 'WR',
+          color: '#ff4b55',
+          pieceName: 'Homer Mutation Piece',
+          shortDesc: 'Every 6 attacks, the next 3 shots open portals: they phase through walls, gain +150% range, and home at full strength.'
+      },
       money_and_tax: {
           type: 'mutation',
           name: 'Hostile Takeover',
@@ -23240,6 +23251,26 @@ let heistFeverActive = false;
       }
       return true;
   }
+  function hasHomerMutation(entity) { return isSpecialAbilityAvailableForEntity(entity, 'homer'); }
+  function recordHomerMutationShot(entity, now = performance.now()) {
+      if (!hasHomerMutation(entity) || (entity.homerMutationCharges || 0) > 0) return;
+      entity.homerMutationShotCounter = Math.max(0, Math.floor(entity.homerMutationShotCounter || 0) + 1);
+      if (entity.homerMutationShotCounter >= 6) {
+          entity.homerMutationShotCounter = 0;
+          entity.homerMutationCharges = 3;
+          entity.homerMutationReadyAt = now;
+          explosions.push({ x: entity.x, y: entity.y, radius: 52, life: 0, maxLife: .3, color: 'rgba(170,110,255,.82)', fxKind: 'homerMutationReady' });
+          if (entity.id === player.id) spawnFloatingText(entity.x, entity.y - 36, 'WORMHOLE ROUNDS READY! (3 SHOTS)', '#c9a0ff');
+      }
+  }
+  function consumeHomerMutationCharge(entity) {
+      if (!hasHomerMutation(entity) || (entity.homerMutationCharges || 0) <= 0) return false;
+      entity.homerMutationCharges = Math.max(0, Math.floor(entity.homerMutationCharges || 0) - 1);
+      if (entity.homerMutationCharges === 0 && entity.id === player.id) {
+          spawnFloatingText(entity.x, entity.y - 36, 'WORMHOLES SPENT', '#c9a0ff');
+      }
+      return true;
+  }
   function updateCurrencies() {
       updateHomeCurrencyBar();
       document.querySelectorAll('#homeCurrencyBar .home-currency-pill').forEach((el,i)=>el.dataset.homeCurrency=['coins','gems','souls'][i]);
@@ -29075,16 +29106,18 @@ let heistFeverActive = false;
         }
         return;
     } else if (brawler === 'homer') {
+        const portalCharged = consumeHomerMutationCharge(fromEntity);
         const hyperMain = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
         const hardLock=!!fromEntity.homerPerfectShotArmed;
         const learned=clamp(fromEntity.homerHomingPct||.15,.15,.70),calibration=now<(fromEntity.homerCalibrationUntil||0) ? .20 : 0;
         const tuned=clamp(learned+calibration,.15,1);
-        const homing=hardLock?1:(hyperMain ? Math.max(.95,tuned) : tuned);
+        const homing=portalCharged?1:(hardLock?1:(hyperMain ? Math.max(.95,tuned) : tuned));
         const star=getOwnerStarChoice(fromEntity),damage=Math.round((isBot?1260:1800)*(star==='slow'&&learned>=.70?1.12:1));
         const homerSkinId = getActiveSkinForBrawler(fromEntity.brawler || (fromEntity.id === player.id ? selectedBrawler : 'homer'))?.id;
-        bullets.push({ownerBrawler:'homer',isHomerProjectile:true,homerHomingPct:homing,
+        bullets.push({ownerBrawler:'homer',isHomerProjectile:true,homerHomingPct:homing,homerPortalShot:portalCharged,
             x:fromEntity.x+Math.cos(ang)*(fromEntity.radius+8),y:fromEntity.y+Math.sin(ang)*(fromEntity.radius+8),
-            vx:Math.cos(ang)*900,vy:Math.sin(ang)*900,life:0,maxLife:1.05,damage,pierce:false,ownerId:fromEntity.id,hitIds:{},hitboxMod:1.15,hyperVisual:hyperMain,skinId:homerSkinId});
+            vx:Math.cos(ang)*900,vy:Math.sin(ang)*900,life:0,maxLife:portalCharged?2.625:1.05,damage,pierce:false,ownerId:fromEntity.id,hitIds:{},hitboxMod:1.15,hyperVisual:hyperMain,skinId:homerSkinId});
+        if (!portalCharged) recordHomerMutationShot(fromEntity, now);
         if(hardLock){fromEntity.homerPerfectShotArmed=false;if(!isBot){gadgetArmed=false;gadgetCooldownUntil=now+GADGET_COOLDOWN_MS;updateGadgetButton();}}
     } else if (brawler === 'snapper') {
         const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
@@ -51937,10 +51970,18 @@ function checkHit(target, b, i){
       let heaterBoxConsumed = false;
       const canPierceWall = b.pierce && b.pierceWalls !== false;
       const wallBreakHitRadius = b.super ? (b.ownerBrawler === 'outlit' ? 6.6 : 6) : 3;
-      for(const c of cubes){ if(rectCircleCollides(c.x,c.y,c.w,c.h, b.x,b.y, wallBreakHitRadius)){ hitCube = true; hitRect = c; break; } }
+      const portalPhased = !!b.homerPortalShot;
+      if (portalPhased) {
+          const inWall = cubes.some(c => rectCircleCollides(c.x, c.y, c.w, c.h, b.x, b.y, wallBreakHitRadius)) || destructibleWalls.some(dw => rectCircleCollides(dw.x, dw.y, dw.w, dw.h, b.x, b.y, wallBreakHitRadius));
+          if (inWall !== !!b.homerPortalInside) {
+              b.homerPortalInside = inWall;
+              explosions.push({ x: b.x, y: b.y, radius: 30, life: 0, maxLife: .3, color: 'rgba(170,110,255,.75)', fxKind: 'homerPortal' });
+          }
+      }
+      for(const c of cubes){ if(!portalPhased && rectCircleCollides(c.x,c.y,c.w,c.h, b.x,b.y, wallBreakHitRadius)){ hitCube = true; hitRect = c; break; } }
       for(let wIdx = destructibleWalls.length - 1; wIdx >= 0; wIdx--){
           const dw = destructibleWalls[wIdx];
-          if(rectCircleCollides(dw.x, dw.y, dw.w, dw.h, b.x, b.y, wallBreakHitRadius)){
+          if(!portalPhased && rectCircleCollides(dw.x, dw.y, dw.w, dw.h, b.x, b.y, wallBreakHitRadius)){
               if (b.isTrapperGateProj) {
                   // Gate projectile hits wall; deploy gate at impact location
                   spawnTrapperGateWall(b.x, b.y, b.gateAngle, 2000);
@@ -54992,6 +55033,10 @@ function checkHit(target, b, i){
         ctx.beginPath();ctx.arc(entity.x,entity.y,entity.radius+17-pulse*3,0,Math.PI*2);ctx.stroke();ctx.restore();
       }
     }
+    if(fighterId==='homer'&&isSpecialAbilityAvailableForEntity(entity,'homer')&&(entity.homerMutationCharges||0)>0){
+      ctx.save();const pulse=.5+Math.sin(now/105)*.5;ctx.strokeStyle=`rgba(170,110,255,${.65+pulse*.28})`;ctx.lineWidth=4;
+      ctx.beginPath();ctx.arc(entity.x,entity.y,entity.radius+19+pulse*4,0,Math.PI*2);ctx.stroke();ctx.restore();
+    }
     if(fighterId==='outlit'&&isSpecialAbilityAvailableForEntity(entity,'outlit')&&(entity.outlitMutationCharges||0)>0){
       ctx.save();const pulse=.5+Math.sin(now/105)*.5;ctx.strokeStyle=`rgba(255,55,75,${.65+pulse*.28})`;ctx.lineWidth=4;
       ctx.beginPath();ctx.arc(entity.x,entity.y,entity.radius+19+pulse*4,0,Math.PI*2);ctx.stroke();ctx.restore();
@@ -55035,6 +55080,11 @@ function checkHit(target, b, i){
               const charges = Math.max(0, Math.floor(player.outlitMutationCharges || 0));
               const count = Math.max(0, Math.min(8, Math.floor(player.outlitMutationShotCounter || 0)));
               return { label: charges > 0 ? `MUTATION - ${charges} OVERCHARGED` : `MUTATION - ${count}/8`, value: charges > 0 ? 8 : count, max: 8, color: '#ff4b55' };
+          }
+          if (selectedBrawler === 'homer') {
+              const charges = Math.max(0, Math.floor(player.homerMutationCharges || 0));
+              const count = Math.max(0, Math.min(6, Math.floor(player.homerMutationShotCounter || 0)));
+              return { label: charges > 0 ? `MUTATION - ${charges} WORMHOLE` : `MUTATION - ${count}/6`, value: charges > 0 ? 6 : count, max: 6, color: '#ff4b55' };
           }
           if (selectedBrawler === 'echo') {
               ensureEchoInstinctState(player, now);
