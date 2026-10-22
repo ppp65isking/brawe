@@ -10938,6 +10938,7 @@ function isPowerPlayModifierActive(entity = player) {
             g1Active: isG1,
             baseRadius: baseRadius,
             radius: baseRadius,
+            hitboxMod: baseRadius / 4,
             ang: ang
         });
 
@@ -50279,6 +50280,15 @@ function checkHit(target, b, i){
       if (b.towerTravelGrowthPct > 0 && b.maxLife > 0) {
           const travelProgress = clamp((b.life || 0) / b.maxLife, 0, 1);
           b.hitboxMod = (b.towerTravelBaseHitbox || 1) * (1 + b.towerTravelGrowthPct * travelProgress);
+      }
+      if (b.isBadBatWave && b.maxLife > 0) {
+          // BadBat shockwave: the hitbox IS the visible wave radius. It widens
+          // as it travels in Hypercharge (mirrors the render expansion), so
+          // sync hitboxMod every frame — the wave previously kept the default
+          // 1x thread and the Hyper wave whiffed everything off dead-center.
+          const waveProgress = clamp((b.life || 0) / b.maxLife, 0, 1);
+          const waveRadius = (b.baseRadius || 42) * (b.isHyper ? (1 + waveProgress * 1.4) : (b.g1Active ? 1.15 : 1));
+          b.hitboxMod = waveRadius / 4;
       }
       if (b.towerTrailDamagePct > 0 && now >= (b.towerTrailNextAt || 0)) {
           b.towerTrailNextAt = now + (b.towerTrailEveryMs || 400);
