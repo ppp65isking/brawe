@@ -44161,12 +44161,14 @@ isBrawlerLabMode = false;
             }
             
             const title = document.createElement('h1');
-            title.textContent = data.name; 
+            title.textContent = data.name;
+            title.className = 'brawler-detail__title'; 
             title.style.color = data.color;
             title.style.marginBottom = '10px';
             overlay.appendChild(title);
 
             const role = document.createElement('div');
+            role.className = 'brawler-detail__role';
             role.textContent = data.role + ` | Level ${pData.level}`; 
             role.style.fontSize = '16px'; role.style.fontWeight = 'bold';
             role.style.color = '#5df2c2'; role.style.marginBottom = '30px';
@@ -44183,6 +44185,7 @@ isBrawlerLabMode = false;
                 </div>
                 <div style="min-width:190px;text-align:right;color:#93a7da;font-weight:700">${getNextBrickRankInfo(pData).current}/${getNextBrickRankInfo(pData).threshold}<br><span style="font-size:11px;color:#ffd66b">P${getBrickMinimumPlayerPower(pData)} CURRENT • P${getNextBrickMinimumPlayerPower(pData)} NEXT</span></div>
             `;
+            rankBar.className = 'brawler-detail__rankbar';
             overlay.appendChild(rankBar);
             if (!canPlayBrickMatch(pData, pData.level || 1)) {
                 const powerLock = document.createElement('div');
@@ -44209,6 +44212,7 @@ isBrawlerLabMode = false;
             
             const charIcon = document.createElement('div');
             charIcon.innerHTML = getBrawlerPortraitMarkup(id);
+            charIcon.classList.add('brawler-detail__portrait');
             charIcon.classList.toggle('has-custom-portrait', hasCustomBrawlerPortrait(id));
             charIcon.style.width = '120px'; charIcon.style.height = '120px';
             charIcon.style.background = data.color; charIcon.style.color = '#000';
@@ -44217,6 +44221,7 @@ isBrawlerLabMode = false;
             charIcon.style.marginBottom = '20px';
             
             const upgBtn = document.createElement('button');
+            upgBtn.className = 'kit-upgrade-btn';
             const cost = getUpgradeCost(pData.level);
             const cpCost = getCorePieceUpgradeCost(pData.level);
             const canAffordUpgrade = playerData.coins >= cost && getCorePieces() >= cpCost;
@@ -44262,6 +44267,7 @@ isBrawlerLabMode = false;
 
             // Skin Selection Button
             const skinBtn = document.createElement('button');
+            skinBtn.className = 'kit-skin-btn';
             const hasOwnedSkins = playerData.ownedSkins[id] && playerData.ownedSkins[id].length > 0;
             skinBtn.textContent = hasOwnedSkins ? 'Select Skin' : 'No Skins';
             skinBtn.style.padding = '12px 24px';
@@ -44349,6 +44355,7 @@ isBrawlerLabMode = false;
             
             // Details Box
             const detailsContainer = document.createElement('div');
+            detailsContainer.className = 'brawler-detail__kit';
             detailsContainer.style.flex = '2'; detailsContainer.style.background = 'linear-gradient(180deg,#122346,#0d1730)';
             detailsContainer.style.border = `3px solid ${data.color}`;
             detailsContainer.style.borderRadius = '16px'; detailsContainer.style.padding = '22px';
@@ -44452,6 +44459,7 @@ isBrawlerLabMode = false;
             controlRow.appendChild(abilityTitle);
 
             const gadgetPanel = document.createElement('div');
+            gadgetPanel.className = 'kit-panel kit-panel--gadget';
             gadgetPanel.style.background = '#0a1327';
             gadgetPanel.style.border = `1px solid ${gadUnlocked ? '#5df2c2' : '#304876'}`;
             gadgetPanel.style.borderRadius = '12px';
@@ -44500,6 +44508,7 @@ isBrawlerLabMode = false;
             controlRow.appendChild(gadgetPanel);
 
             const starPanel = document.createElement('div');
+            starPanel.className = 'kit-panel kit-panel--star';
             starPanel.style.background = '#0a1327';
             starPanel.style.border = `1px solid ${spUnlocked ? '#ffd27a' : '#304876'}`;
             starPanel.style.borderRadius = '12px';
@@ -44543,6 +44552,7 @@ isBrawlerLabMode = false;
             controlRow.appendChild(starPanel);
 
             const hyperPanel = document.createElement('div');
+            hyperPanel.className = 'kit-panel kit-panel--hyper';
             hyperPanel.style.background = '#0a1327';
             hyperPanel.style.border = `1px solid ${hcUnlocked ? '#ff9bff' : '#304876'}`;
             hyperPanel.style.borderRadius = '12px';
@@ -44577,6 +44587,7 @@ isBrawlerLabMode = false;
 
             // CORE PERK panel (Power 12 slot)
             const perkPanel = document.createElement('div');
+            perkPanel.className = 'kit-panel kit-panel--perk';
             perkPanel.style.cssText = 'flex:1;min-width:220px;background:#081426;border:1px solid #2b5ea7;border-radius:12px;padding:12px;';
             const perkHead = document.createElement('div');
             const perkOwned = !!pData.corePerkUnlocked;
@@ -44657,6 +44668,7 @@ isBrawlerLabMode = false;
             const trinketProgress = ensureProgressTrinkets(isWeeklyTrial ? ensureWeeklyTrialState().loadouts[id] : pData);
             const trinketSlots = getTrinketSlotCount(pData.level || 1);
             const trinketPanel = document.createElement('section');
+            trinketPanel.className = 'kit-panel kit-panel--trinket';
             trinketPanel.className = 'trinket-loadout';
             const slotLabels = [6,8,10].map((required,index) => {
                 const equippedId = trinketProgress.equippedTrinkets[index];
