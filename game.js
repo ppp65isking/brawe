@@ -37018,7 +37018,7 @@ let heistFeverActive = false;
       ['power_play_showdown', '⚡', 'Power Play Showdown', '3-Powers LTM with 5 curated hypercharged fighters'],
       ['corrupted_showdown', 'CS', 'Corrupted Showdown', 'Season 3 unstable Packet signals'],
       ['headless_boss_s4', '🎃', 'Headless Bolznstien Boss', 'Season 4 co-op ladder • Hard to Impossible XV • Spooky Boxes + free skin'],
-      ['capture_turkey', '🦃', 'Capture the Turkey', 'Season 5 Event • 3v3 CTF • grab the turkey, haul it home • first to 3 captures'],
+      ['capture_turkey', '🦃', 'Capture the Turkey', '3v3 CTF • grab the turkey, haul it home • first to 3 captures • LIVE EARLY'],
       ['christmas_showdown', '🎄', 'Christmas Showdown', 'Season 6 Event • Solo Showdown • grab DMG, Speed and Double HP buffs'],
       ['tower_duels_weekend', 'TD', 'Tower Duels Weekend', '5 floors - fresh random P11 trio each floor'],
       ['slop_sushi_plus', '🗼', 'Tower Fusion Lab', 'Legacy seven-power sandbox'],
@@ -37053,7 +37053,7 @@ let heistFeverActive = false;
   ];
   const HOME_MODE_DATA = Object.fromEntries(HOME_MODE_CARDS.map((entry) => [entry[0], entry]));
   const POWER_PLAY_BRAWLERS = new Set(['blinkeye', 'fuser', 'rocketeer', 'bouncin_balls', 'echo', 'orbo', 'decayer', 'money_and_tax', 'ramage']);
-  const HOME_PERMANENT_MODE_IDS = ['blink_eye_dodge', 'headless_boss_s4', 'orbo_boss', 'ramage_boss', 'weefee_boss', 'demon_villains_boss', 'custom_clash', 'brawe_ball', 'knockout_3v3', 'duels', 'power_play_showdown', 'corrupted_showdown', 'slop_sushi', 'slop_sushi_gauntlet', 'chaos_crown', 'arena_forge', 'arena_forge_overclocked', 'tug_zone', 'construction', 'knock_donate', 'damage_filler'];
+  const HOME_PERMANENT_MODE_IDS = ['blink_eye_dodge', 'headless_boss_s4', 'orbo_boss', 'ramage_boss', 'weefee_boss', 'demon_villains_boss', 'custom_clash', 'brawe_ball', 'knockout_3v3', 'duels', 'power_play_showdown', 'corrupted_showdown', 'slop_sushi', 'slop_sushi_gauntlet', 'chaos_crown', 'arena_forge', 'arena_forge_overclocked', 'tug_zone', 'construction', 'knock_donate', 'damage_filler', 'capture_turkey'];
   HOME_PERMANENT_MODE_IDS.push('arena_forge_minion_surge');
   const HOME_ROTATING_MODE_IDS = ['marked_mayhem', 'objective', 'brick_vault', 'mirror', 'power_gods', 'solo_td', 'impossible'];
   const WEEKLY_FEATURED_MODE_IDS = ['brick_vault', 'power_gods'];
@@ -37114,7 +37114,7 @@ let heistFeverActive = false;
       blink_eye_dodge: ['1-Player Boss Battle: 1 vs Mega Boss BlinkEye!', 'Zero Power Cubes — Pure skill showdown', 'Dodge bouncing Ricochet Gaze lasers, Retinal Flash & All-Seeing Eyes', 'Defeat Mega Boss BlinkEye & his Sentinels to claim Victory!'],
       knock_donate: ['Ring-out 3v3 battles with friendly fire', 'Friendly Fire Active'],
       headless_boss_s4: ['3v1 Co-op vs the Headless Bolznstien!', 'Dodge pumpkin bombs, anvil rain and the Ecto Nova', 'First clears pay coins, souls and up to 3 Spooky Boxes', 'Clear Impossible XV to earn his skin FREE'],
-      capture_turkey: ['3v3 Capture the Flag — with a live turkey!', 'Grab the turkey at mid and haul it back to YOUR base', 'Carriers drop the turkey when defeated • it respawns at mid after a capture', 'First team to 3 captures wins • 3:00 match • Season 5: Turkey Trouble event (Nov 1-30)'],
+      capture_turkey: ['3v3 Capture the Flag — with a live turkey!', 'Grab the turkey at mid and haul it back to YOUR base', 'Carriers drop the turkey when defeated • it respawns at mid after a capture', 'First team to 3 captures wins • 3:00 match • Released early! Turkey Trouble season quests start Nov 1'],
       christmas_showdown: ['Solo Showdown — with presents under fire!', 'Buff pickups rain down: DMG +30%, Speed +20%, Double HP', 'Buffs last the whole match and stack with Power Cubes', 'First to survive the blizzard wins • Season 6: Xplodemis event (Dec 1-31)'],
       orbo_boss: ['1-Player Boss Battle: 1 vs Mega Boss Orbo!', 'Zero Power Cubes — Pure skill showdown', 'Dodge crisscross orbits, bouncing Horizon Super & gravity vortexes'],
       demon_villains_boss: [
@@ -38948,7 +38948,14 @@ let heistFeverActive = false;
           }
       });
 
-      const availableIds = new Set(['solo', 'duo', 'trio', ...activeEventIds]);
+      const allEventIds = [...new Set(HOME_MODE_CARDS.map((entry) => entry[0]))].filter((id) => HOME_MODE_DATA[id] && !isRetiredTowerMode(id) && (id !== 'slop_sushi_plus' || isSlopSushiLive()) && (id !== 'brick_vault' || TOWER_POWER_SYSTEM_ENABLED) && (id !== 'tower_duels_weekend' || TOWER_EVENT_MODES_ENABLED));
+      const allEvents = createSection('ALL EVENTS', 'EVERY EVENT - ALWAYS AVAILABLE. NO WAITING ON THE ROTATION.', 'all-events-section');
+      allEventIds.forEach((id) => {
+          const card = createModeCard(id, false);
+          if (card) allEvents.grid.appendChild(card);
+      });
+
+      const availableIds = new Set(['solo', 'duo', 'trio', ...activeEventIds, ...allEventIds]);
       if (!availableIds.has(showdownMode)) {
           let remembered = 'solo';
           try { remembered = localStorage.getItem(HOME_SHOWDOWN_CHOICE_KEY) || 'solo'; } catch (_) {}
@@ -40668,12 +40675,6 @@ let heistFeverActive = false;
           updateShowdownModeUI();
       }
       resetPacketRuntime(player);
-      if (showdownMode === 'capture_turkey' && !isTurkeyTroubleSeasonActive()) {
-          alert('🦃 Capture the Turkey is a Season 5: Turkey Trouble event — it runs November 1-30, 2026!');
-          showdownMode = 'solo';
-          updateShowdownModeUI();
-          return;
-      }
       if (showdownMode === 'christmas_showdown' && !isXplodemisSeasonActive()) {
           alert('🎄 Christmas Showdown is a Season 6: Xplodemis event — it runs December 1-31, 2026!');
           showdownMode = 'solo';
