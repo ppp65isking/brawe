@@ -275,6 +275,10 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             const scale = 0.55 + (level - 1) * 0.045;
             return { hp: Math.round(5600 * scale), dmg: Math.round(1000 * scale), speed: 268 };
         }
+        if (brawlerId === 'spikey') {
+            const scale = 0.55 + (level - 1) * 0.045;
+            return { hp: Math.round(7000 * scale), dmg: Math.round(950 * scale), recallDmg: Math.round(1425 * scale), superDmg: Math.round(1750 * scale), speed: 270 };
+        }
         if (brawlerId === 'magnatar') {
             const scale = 0.55 + (level - 1) * 0.045;
             return { hp: Math.round(6600 * scale), dmg: Math.round(864 * scale), speed: 270 };
@@ -4700,11 +4704,13 @@ const bolznstienPendingStrikes = [];
             magnatar: 1.0,
             oil_maker: 1.0,
             badbat: 1.0,
-            feathers: 1.0
+            feathers: 1.0,
+            spikey: 1.0
         },
         reloadMsByBrawler: {
             badbat: 1300,
             feathers: 1400,
+            spikey: 1350,
             carmela_fudge: 1400,
             oil_maker: 90,
             magnatar: 1450,
@@ -4763,6 +4769,7 @@ const bolznstienPendingStrikes = [];
         fireDelayMsByBrawler: {
             badbat: 200,
             feathers: 240,
+            spikey: 240,
             carmela_fudge: 180,
             oil_maker: 56,
             magnatar: 200,
@@ -4849,6 +4856,7 @@ const bolznstienPendingStrikes = [];
             : 1.0;
         if ((entity.awakenatorSleepUntil || 0) > now) baseSlow = Math.min(baseSlow, 0.60);
         if (now < (entity.magenyResidualSlowUntil || 0)) baseSlow = Math.min(baseSlow, 0.70);
+        if (now < (entity.spikeySlowUntil || 0)) baseSlow = Math.min(baseSlow, 0.70);
         if (now < (entity.beamSlowUntil || 0)) baseSlow = Math.min(baseSlow, 0.50);
         if (now < (entity.ridaSuperArmorUntil || 0)) {
             return 1 - (1 - baseSlow) * 0.65;
@@ -4994,7 +5002,7 @@ const bolznstienPendingStrikes = [];
         'boom_arang', 'teether', 'fuel', 'xray', 'angel', 'demon', 'warrior', 'relay',
         'upiedown', 'chickpig', 'jetpack', 'snapper', 'robber', 'rocketeer',
         'carmela_fudge', 'peter_pickle', 'unstable', 'homer', 'orbo', 'predator', 'fastpass', 'freestyle', 'portalo', 'ghoul', 'jacktrade', 'darkener', 'awakenator', 'adlof', 'cluster', 'witch', 'boomer', 'blade_vane', 'daggershard', 'ice_cream', 'swimmer', 'kage', 'drainbow', 'draflygon', 'axeywaxy', 'trampaheal', 'mageny', 'ramage', 'upgradart', 'cinderion', 'cursed', 'king', 'anti_royal', 'sir_cheeseburger', 'weefee', 'blinkeye', 'bolznstien', 'magnatar', 'oil_maker', 'rager', 'badbat', 'looma',
-        'feathers'
+        'feathers', 'spikey'
     ];
     const registeredBrawlerModules = window.ArenaForgeModules?.brawlers || Object.create(null);
     for (const moduleId of Object.keys(registeredBrawlerModules)) {
@@ -5095,6 +5103,7 @@ const bolznstienPendingStrikes = [];
             chickpig: 'Mythic',
             jetpack: 'Mythic',
             feathers: 'Mythic',
+            spikey: 'Mythic',
             freestyle: 'Mythic',
 
             // Exotic (10)
@@ -8707,6 +8716,7 @@ const bolznstienPendingStrikes = [];
             'screener': { name: 'Screener', role: 'Controller', desc: 'Battery-based projector brawler. Starts at 100% battery that drains over time; recharge by landing screen hits.', color: '#7ec8ff', attack: 'Projected Sweep', attackDesc: 'Fires a 360-degree radial burst of screen projectors around you. Each hit recharges battery.', super: 'Projected Charge', superDesc: 'Activates a static projector field for 4s. Incoming shots that touch the field are converted into projector blasts fired out at that angle.', hyper: 'Main attack spins with multiple rotating sweeps. Super gains an extra projector layer and stronger conversions.', g1: 'Power Cell (Instant battery refill + heal)', g2: 'Overclock Grid (Temporarily boost projector output and battery gain)', sp1: 'Efficient Panel (Battery decays slower)', sp2: 'Capacitor Bank (Larger battery capacity and stronger low-battery safety)' },
             'malakor': { name: 'Malakor', role: 'Controller', desc: 'The fallen red-staff child who commands infernal terrain and demon hands.', color: '#ff4a4a', attack: 'Putting You Down', attackDesc: 'Slams his staff and corrupts the ground into Hell around him. Enemies standing in Hell take constant damage. Hell zones last 9 seconds, spreading wider as they burn before decaying near the end. Malakor can sustain up to 5 Hell zones at once.', super: 'Hell Is Forever!', superDesc: 'Slam to create a huge Hell zone that lasts 12.5 seconds and summon demon hands that punish enemies standing in Hell.', hyper: 'UPSIDE DOWN!: Super corrupts the whole map into Hell and summons many more demon hands. Main attack corrupts a larger area.', g1: 'Crimson Surge (Create a bonus Hell pulse and heal)', g2: 'Damnation Mark (Next main attack also summons a demon hand)', sp1: 'Infernal Dominion (Hell terrain deals more damage)', sp2: 'Abyssal Grip (Demon hands strike wider and stun longer)' },
             'feathers': { name: 'Feathers', role: 'Controller', desc: 'A breezy storm-dancer whose feathers ride the wind - and leave it behind to trip up everyone else.', color: '#7fe7ff', attack: 'Feather Shot', attackDesc: 'Flicks a sharp feather that deals damage on hit. When it reaches max range it bursts into a gust of wind: anyone standing in the wind slides around like the floor is ice.', super: 'Windstorm', superDesc: 'Calls down a huge storm at the target spot. Thick fog fills the storm so everyone inside is harder to see - even Feathers - and the ground inside turns slippery.', hyper: 'Cyclone Heart: Feather Shots vacuum nearby enemies inward when their wind bursts. Windstorm crackles with Bolznstien-style lightning that strikes enemies inside for reduced damage.', g1: 'Tailwind Rush (Dash forward, gain speed, and leave slippery wind behind you)', g2: 'Gust Burst (Blast nearby enemies away and shake off slows)', sp1: 'Wide Skies (Wind zones are bigger and last longer)', sp2: 'Slipstream Rider (Move faster inside your own wind and storms)' },
+      'spikey': { name: 'Spikey', role: 'Damage Dealer', desc: 'A prickly hedgehog rocker who parks spikeballs all over the arena, then calls every last one home through whoever is standing in the way.', color: '#a6e34d', attack: 'Triple Thorn Toss', attackDesc: 'Throws a spikeball that damages enemies it passes through and parks where it lands (950 damage). Up to 3 can be deployed; attacking with 3 out recalls them all at once, piercing, for 1,425 damage.', super: 'Mega Spike Ball', superDesc: 'Launches a giant spikeball that bounces 3 times. Each bounce is a large explosion dealing 1,750 damage.', hyper: 'Spike Overdrive: Mega Spike Ball bounces travel further and burst a ring of 8 spikes (500 damage each) on every bounce. Main attack gains +50% projectile speed and +50% unload speed, and its hits root enemies for 0.8s.', g1: 'Burst Barbs (Every deployed spikeball explodes in place for 650 damage, then returns to Spikey)', g2: 'Quill Roll (Roll 230 units toward your aim and deploy a spikeball where you land, if a slot is free)', sp1: 'Deep Roots (Recall hits also slow enemies by 30% for 1s)', sp2: 'Sharper Thorns (Parked spikeballs prick enemies standing close for 150 damage twice a second)' },
             'boom_arang': {
                 name: 'Boom-Arang',
                 role: 'Marksman',
@@ -8946,7 +8956,7 @@ const bolznstienPendingStrikes = [];
 
     // V4 standardized primary-role organization: exactly one gameplay role per brawler.
     const PRIMARY_ROLE_BY_BRAWLER = {
-        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank', rager:'Controller', looma:'Controller', feathers:'Controller',
+        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank', rager:'Controller', looma:'Controller', feathers:'Controller', spikey:'Damage Dealer',
     carmela_fudge:'Damage Dealer', bolznstien:'Damage Dealer', badbat:'Damage Dealer', magnatar:'Controller', oil_maker:'Controller', sir_cheeseburger:'Tank',
         blade_vane:'Assassin', kage:'Assassin', drainbow:'Controller', bowlin_rida:'Assassin', dashaholic:'Assassin', demon:'Assassin', jetpack:'Assassin', malakor:'Assassin', predator:'Assassin', swimmer:'Assassin', teether:'Assassin',
         boom_arang:'Marksman', cheseypuff:'Marksman', crystila:'Marksman', homer:'Marksman', hunter:'Marksman', orbo:'Marksman', snapper:'Marksman', xray:'Marksman',
@@ -8967,6 +8977,7 @@ const bolznstienPendingStrikes = [];
     bolznstien: '⚡🧟',
     badbat: '🦇🏏',
     feathers: '🪶',
+            spikey: '🦔',
     looma: '🪡🧵',
         sir_cheeseburger: '🛡️',
         anti_royal: '🏴‍☠️',
@@ -9174,6 +9185,7 @@ const bolznstienPendingStrikes = [];
             classy: { g1:'Perfect Pitch grants 35 Symphony and makes the next note 25% larger.', g2:'Encore Fan notes return once for 35% damage.', slow:'Golden notes burst again for 40% damage after 0.55 seconds.', long:'Taking damage pauses Symphony decay for 3 seconds.' },
             hyperorigin: { g1:'Core Overflow grants 4 Energy; excess Energy becomes a 500 shield each.', g2:'Fault Line dashes 260 units and grants an 1800 shield.', slow:'Heavy Singularity pulls enemies 70 units before suspending them.', long:'Stable Origin raises the 5+ Energy damage reduction from 18% to 24%.' },
             feathers: { g1:'Tailwind Rush dashes 210 units toward your aim, grants brief bonus speed, and drops slippery wind at both ends of the dash.', g2:'Gust Burst blasts enemies within 185 units away for 350 damage and clears slows from Feathers.', slow:'Wide Skies: wind zones are 20% bigger and last 40% longer; Windstorm is bigger and lasts longer too.', long:'Slipstream Rider: Feathers moves 18% faster inside his own wind zones and storms.' },
+            spikey: { g1:'Burst Barbs detonates every deployed spikeball for 650 damage where it sits, then the balls fly back to Spikey.', g2:'Quill Roll dashes 230 units toward your aim and plants a spikeball at the landing spot if a slot is free.', slow:'Deep Roots: recalled spikeballs also slow enemies by 30% for 1 second on hit.', long:'Sharper Thorns: parked spikeballs prick enemies standing close for 150 damage twice a second.' },
             heater_miser: { g1:'Pressure Spike burns for 100 damage every 0.5 seconds for 2 seconds.', g2:'Three-Way Flux chains to 2 extra targets at 70% power.', slow:'Stored Heat loses only one ramp stage when the tether disconnects.', long:'Closed Circuit lets the Super zone retether through walls at 75% power.' },
             minigunnin: { g1:'Full Overclock fires 8 radial bullets and grants a 600 shield for 2 seconds.', g2:'Efficient Fortify costs 750 max HP and heals 3500.', slow:'Every 10th bullet pierces once and deals 130% damage.', long:'Walls and forts gain 25% HP and resist their first wall-breaking hit.' },
             steamer: { g1:'Boiler Burst grows 30%; enemies in the inner ring are stunned for 0.45 seconds.', g2:'Express Service lasts 6.5 seconds and grants 15% reload speed.', slow:'Pressure trails burn enemies for 240 damage over 2 seconds.', long:'Last Stop ends with a knockback ring and heals Steamer for 900.' },
@@ -9790,6 +9802,7 @@ const bolznstienPendingStrikes = [];
       rager: { g1: 15000, g2: 18000 },
       badbat: { g1: 14000, g2: 15000 },
       feathers: { g1: 12000, g2: 14000 },
+      spikey: { g1: 14000, g2: 12000 },
       carmela_fudge: { g1: 8000, g2: 8000 },
       bolznstien: { g1: 14000, g2: 15000 },
       sir_cheeseburger: { g1: 13000, g2: 14000 },
@@ -18455,6 +18468,8 @@ let heistFeverActive = false;
     const FEATHERS_PULL_RADIUS = 210;
     let feathersWindZones = [];
     let feathersStorms = [];
+    let spikeyParkedBalls = [];
+    let spikeyMegaBalls = [];
     function feathersStarChoice(entity) { try { return getEntityStarChoice(entity); } catch (_) { return entity ? entity.selectedStar : null; } }
     function feathersHasSP(entity, slot) { const c = feathersStarChoice(entity); return slot === 'sp1' ? (c === 'sp1' || c === 'slow') : (c === 'sp2' || c === 'long' || c === 'fast'); }
     function findFeathersOwner(ownerId) { if (player && player.id === ownerId) return player; return bots.find((b) => b && b.id === ownerId) || null; }
@@ -18491,6 +18506,174 @@ let heistFeverActive = false;
                 if (d > FEATHERS_PULL_RADIUS || d < 1) continue;
                 applyKnockback(e, e.x + (e.x - b.x), e.y + (e.y - b.y), Math.min(110, d * 0.6));
             }
+        }
+    }
+    // ===== Spikey systems (throw / park / recall spikeballs + Mega Spike Ball) =====
+    const SPIKEY_MAX_DEPLOYED = 3;
+    const SPIKEY_THROW_RANGE = 660;
+    const SPIKEY_THROW_SPEED = 880;
+    const SPIKEY_RECALL_SPEED = 1080;
+    const SPIKEY_SUPER_SPEED = 780;
+    const SPIKEY_SUPER_LEG = 260;
+    const SPIKEY_SUPER_LEG_HYPER = 340;
+    const SPIKEY_SUPER_RADIUS = 130;
+    const SPIKEY_RING_COUNT = 8;
+    const SPIKEY_RING_DMG = 500;
+    const SPIKEY_THORN_RADIUS = 46;
+    const SPIKEY_THORN_DMG = 150;
+    const SPIKEY_THORN_TICK_MS = 500;
+    function findSpikeyOwner(ownerId) { if (player && player.id === ownerId) return player; return bots.find((b) => b && b.id === ownerId) || null; }
+    function spikeyStarChoice(entity) { try { return getEntityStarChoice(entity); } catch (_) { return entity ? entity.selectedStar : null; } }
+    function spikeyHasSP(entity, slot) { const c = spikeyStarChoice(entity); return slot === 'sp1' ? (c === 'sp1' || c === 'slow') : (c === 'sp2' || c === 'long'); }
+    function countSpikeyDeployed(entity) {
+        if (!entity) return 0;
+        let n = 0;
+        for (const b of spikeyParkedBalls) if (b.ownerId === entity.id) n++;
+        for (const b of bullets) if (b.isSpikeyThrow && b.ownerId === entity.id) n++;
+        return n;
+    }
+    function parkSpikeyBall(b) {
+        const mine = spikeyParkedBalls.filter((p) => p.ownerId === b.ownerId);
+        if (mine.length >= SPIKEY_MAX_DEPLOYED) spikeyParkedBalls.splice(spikeyParkedBalls.indexOf(mine[0]), 1);
+        spikeyParkedBalls.push({ x: clamp(b.x, 24, WORLD_W - 24), y: clamp(b.y, 24, WORLD_H - 24), ownerId: b.ownerId, nextThornAt: 0, seed: Math.random() * 10 });
+    }
+    function recallSpikeyBalls(entity, harmless = false) {
+        if (!entity) return;
+        const mine = spikeyParkedBalls.filter((b) => b.ownerId === entity.id);
+        if (!mine.length) return;
+        const level = entity.id === player.id ? getSelectedBrawlerLevel() : (entity.level || 11);
+        const stats = getScaledStats('spikey', level);
+        const hyper = entity.id === player.id ? !!isHypercharged : !!entity.isHypercharged;
+        const sp1 = spikeyHasSP(entity, 'sp1');
+        for (const ball of mine) {
+            const ang = Math.atan2(entity.y - ball.y, entity.x - ball.x);
+            bullets.push({ ownerBrawler: 'spikey', isSpikeyRecall: true, x: ball.x, y: ball.y, vx: Math.cos(ang) * SPIKEY_RECALL_SPEED, vy: Math.sin(ang) * SPIKEY_RECALL_SPEED, life: 0, maxLife: 3, damage: harmless ? 0 : stats.recallDmg, pierce: true, pierceWalls: true, ownerId: entity.id, hitIds: {}, hitboxMod: 1.6, hyperVisual: hyper, spikeyRootMs: (!harmless && hyper) ? 800 : 0, spikeySlowMs: (!harmless && sp1) ? 1000 : 0 });
+        }
+        spikeyParkedBalls = spikeyParkedBalls.filter((b) => b.ownerId !== entity.id);
+    }
+    function castSpikeySuper(entity, hyper, tx, ty) {
+        if (!entity) return;
+        const ang = Math.atan2(ty - entity.y, tx - entity.x);
+        spikeyMegaBalls.push({ x: entity.x + Math.cos(ang) * (entity.radius + 20), y: entity.y + Math.sin(ang) * (entity.radius + 20), vx: Math.cos(ang) * SPIKEY_SUPER_SPEED, vy: Math.sin(ang) * SPIKEY_SUPER_SPEED, ownerId: entity.id, hyper: !!hyper, legTravelled: 0, bouncesLeft: 3, seed: Math.random() * 10 });
+        spawnFloatingText(entity.x, entity.y - 40, '🦔 MEGA SPIKE BALL!', hyper ? '#e056fd' : '#a6e34d');
+    }
+    function spikeySuperBounce(mega) {
+        const owner = findSpikeyOwner(mega.ownerId);
+        const level = owner ? (owner.id === player.id ? getSelectedBrawlerLevel() : (owner.level || 11)) : 11;
+        const stats = getScaledStats('spikey', level);
+        AOEDamage(mega.x, mega.y, SPIKEY_SUPER_RADIUS, stats.superDmg, mega.ownerId, false);
+        explosions.push({ x: mega.x, y: mega.y, radius: SPIKEY_SUPER_RADIUS, life: 0, maxLife: .3, color: mega.hyper ? 'rgba(224,86,253,.5)' : 'rgba(166,227,77,.5)', fxKind: 'spikeyBounce' });
+        if (mega.hyper) {
+            for (let k = 0; k < SPIKEY_RING_COUNT; k++) {
+                const a = (Math.PI * 2 / SPIKEY_RING_COUNT) * k + mega.seed;
+                bullets.push({ ownerBrawler: 'spikey', isSpikeyRingSpike: true, x: mega.x + Math.cos(a) * 20, y: mega.y + Math.sin(a) * 20, vx: Math.cos(a) * 620, vy: Math.sin(a) * 620, life: 0, maxLife: .38, damage: SPIKEY_RING_DMG, pierce: false, ownerId: mega.ownerId, hitIds: {}, hitboxMod: 1.3, hyperVisual: true });
+            }
+        }
+    }
+    function executeSpikeyG1(entity) {
+        if (!entity || entity.hp <= 0) return;
+        const mine = spikeyParkedBalls.filter((b) => b.ownerId === entity.id);
+        for (const ball of mine) {
+            AOEDamage(ball.x, ball.y, 115, 650, entity.id, false);
+            explosions.push({ x: ball.x, y: ball.y, radius: 115, life: 0, maxLife: .26, color: 'rgba(166,227,77,.55)', fxKind: 'spikeyBurst' });
+        }
+        if (mine.length) recallSpikeyBalls(entity, true);
+        spawnFloatingText(entity.x, entity.y - 32, '💥 BURST BARBS', '#a6e34d');
+    }
+    function executeSpikeyG2(entity) {
+        if (!entity || entity.hp <= 0) return;
+        let ang;
+        if (entity.id === player.id) { const wm = getMouseWorld(); ang = Math.atan2(wm.y - entity.y, wm.x - entity.x); }
+        else { const t = [player, ...bots].find((e) => e && e.id === entity.lastTargetId) || player; ang = Math.atan2((t ? t.y : entity.y) - entity.y, (t ? t.x : entity.x) - entity.x); }
+        entity.x = clamp(entity.x + Math.cos(ang) * 230, entity.radius, WORLD_W - entity.radius);
+        entity.y = clamp(entity.y + Math.sin(ang) * 230, entity.radius, WORLD_H - entity.radius);
+        if (countSpikeyDeployed(entity) < SPIKEY_MAX_DEPLOYED) {
+            spikeyParkedBalls.push({ x: entity.x, y: entity.y, ownerId: entity.id, nextThornAt: 0, seed: Math.random() * 10 });
+        }
+        explosions.push({ x: entity.x, y: entity.y, radius: 55, life: 0, maxLife: .2, color: 'rgba(166,227,77,.5)' });
+        spawnFloatingText(entity.x, entity.y - 32, '🦔 QUILL ROLL', '#a6e34d');
+    }
+    function updateSpikeySystems(dt) {
+        const now = performance.now();
+        // Owner defeated: parked balls fly home harmlessly. Owner gone: balls vanish.
+        for (const ownerId of [...new Set(spikeyParkedBalls.map((b) => b.ownerId))]) {
+            const owner = findSpikeyOwner(ownerId);
+            if (!owner) { spikeyParkedBalls = spikeyParkedBalls.filter((b) => b.ownerId !== ownerId); continue; }
+            if (owner.hp <= 0) recallSpikeyBalls(owner, true);
+        }
+        // Sharper Thorns (SP2): parked balls prick nearby enemies twice a second.
+        for (const ball of spikeyParkedBalls) {
+            const owner = findSpikeyOwner(ball.ownerId);
+            if (!owner || owner.hp <= 0 || !spikeyHasSP(owner, 'sp2')) continue;
+            if (now < (ball.nextThornAt || 0)) continue;
+            let pricked = false;
+            for (const t of [player, ...bots]) {
+                if (!t || t.hp <= 0 || t.id === ball.ownerId || areAlliedEntities(owner, t)) continue;
+                if (Math.hypot(t.x - ball.x, t.y - ball.y) <= SPIKEY_THORN_RADIUS + (t.radius || 14)) {
+                    checkHit(t, { ownerBrawler: 'spikey', ownerId: ball.ownerId, damage: SPIKEY_THORN_DMG, pierce: true, hitIds: {} }, -1);
+                    pricked = true;
+                }
+            }
+            if (pricked) ball.nextThornAt = now + SPIKEY_THORN_TICK_MS;
+        }
+        // Mega Spike Balls: travel a leg, explode, repeat — exactly 3 bounces.
+        for (let i = spikeyMegaBalls.length - 1; i >= 0; i--) {
+            const mega = spikeyMegaBalls[i];
+            const step = Math.hypot(mega.vx * dt, mega.vy * dt);
+            mega.x += mega.vx * dt;
+            mega.y += mega.vy * dt;
+            mega.legTravelled += step;
+            const leg = mega.hyper ? SPIKEY_SUPER_LEG_HYPER : SPIKEY_SUPER_LEG;
+            if (mega.legTravelled >= leg) {
+                mega.legTravelled = 0;
+                spikeySuperBounce(mega);
+                mega.bouncesLeft--;
+                if (mega.bouncesLeft <= 0) spikeyMegaBalls.splice(i, 1);
+            }
+        }
+    }
+    function renderSpikeyEffects() {
+        const now = performance.now();
+        for (const ball of spikeyParkedBalls) {
+            ctx.save();
+            ctx.translate(ball.x, ball.y);
+            ctx.shadowColor = '#a6e34d';
+            ctx.shadowBlur = 8;
+            ctx.strokeStyle = '#d9f99d';
+            ctx.lineWidth = 2.4;
+            for (let k = 0; k < 8; k++) {
+                const a = (Math.PI * 2 / 8) * k + ball.seed;
+                ctx.beginPath();
+                ctx.moveTo(Math.cos(a) * 7, Math.sin(a) * 7);
+                ctx.lineTo(Math.cos(a) * 14, Math.sin(a) * 14);
+                ctx.stroke();
+            }
+            ctx.fillStyle = '#3f6212';
+            ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#a6e34d';
+            ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+        }
+        for (const mega of spikeyMegaBalls) {
+            ctx.save();
+            ctx.translate(mega.x, mega.y);
+            const rot = now / 160 + mega.seed;
+            ctx.shadowColor = mega.hyper ? '#e056fd' : '#a6e34d';
+            ctx.shadowBlur = 16;
+            ctx.strokeStyle = mega.hyper ? '#f5c2ff' : '#d9f99d';
+            ctx.lineWidth = 4;
+            for (let k = 0; k < 12; k++) {
+                const a = (Math.PI * 2 / 12) * k + rot;
+                ctx.beginPath();
+                ctx.moveTo(Math.cos(a) * 22, Math.sin(a) * 22);
+                ctx.lineTo(Math.cos(a) * 36, Math.sin(a) * 36);
+                ctx.stroke();
+            }
+            ctx.fillStyle = mega.hyper ? '#7b2d8b' : '#3f6212';
+            ctx.beginPath(); ctx.arc(0, 0, 23, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = mega.hyper ? '#e056fd' : '#a6e34d';
+            ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
         }
     }
     // ===== Christmas Showdown buffs (Season 6: Xplodemis) =====
@@ -19034,6 +19217,23 @@ let heistFeverActive = false;
         };
     }
 
+    // Environment Phase 4 (map-pass checklist (a)): a spawn point is only
+    // valid with >=120px of clearance from walls, water and bushes. The
+    // randomized spawn samplers below skip candidates that fail this.
+    function isSpawnPointClearOfTerrain(x, y) {
+        const CLEAR_SQ = 120 * 120;
+        const nearRect = (r) => {
+            const dx = Math.max(r.x - x, 0, x - (r.x + r.w));
+            const dy = Math.max(r.y - y, 0, y - (r.y + r.h));
+            return dx * dx + dy * dy < CLEAR_SQ;
+        };
+        for (const c of cubes) if (nearRect(c)) return false;
+        for (const w of destructibleWalls) if (nearRect(w)) return false;
+        for (const z of waterZones) if (nearRect(z)) return false;
+        for (const b of bushZones) if (nearRect(b)) return false;
+        return true;
+    }
+
     function getDamageFillerSpawnPoint(team, slot = 0, teamSize = 2) {
         const spread = Math.max(1, teamSize - 1);
         const laneOffset = (slot - spread * 0.5) * 24;
@@ -19048,6 +19248,7 @@ let heistFeverActive = false;
             const rawX = WORLD_W * (xRange[0] + Math.random() * (xRange[1] - xRange[0]));
             const rawY = WORLD_H * yBand + (Math.random() * 140 - 70) + laneOffset;
             const spot = findNearestDrySpot(clamp(rawX, 60, WORLD_W - 60), clamp(rawY, 60, WORLD_H - 60), 16);
+            if (!isSpawnPointClearOfTerrain(spot.x, spot.y)) continue;
 
             let nearestEnemy = Infinity;
             let closeEnemyCount = 0;
@@ -19209,6 +19410,7 @@ let heistFeverActive = false;
             const rawX = WORLD_W * (xRange[0] + Math.random() * (xRange[1] - xRange[0]));
             const rawY = WORLD_H * yBand + (Math.random() * 120 - 60) + laneOffset;
             const spot = findNearestDrySpot(clamp(rawX, 60, WORLD_W - 60), clamp(rawY, 60, WORLD_H - 60), 16);
+            if (!isSpawnPointClearOfTerrain(spot.x, spot.y)) continue;
             let nearestEnemy = Infinity;
             let closeEnemyCount = 0;
 
@@ -22074,7 +22276,9 @@ let heistFeverActive = false;
         if(idx===0){
             // Crown Collapse: a valuable open throne surrounded by six broken crown walls.
             water(1550,1550,900,150); water(1550,2300,900,150); water(1550,1700,150,600); water(2300,1700,150,600);
-            wall(1740,1320,520,120); wall(1740,2560,520,120); wall(1320,1740,120,520); wall(2560,1740,120,520);
+            // Phase 4: crown walls are split at the center navigation lanes so the
+            // carved moat gaps actually connect the throne room to the outer map.
+            wall(1740,1320,140,120); wall(2120,1320,140,120); wall(1740,2560,140,120); wall(2120,2560,140,120); wall(1320,1740,120,140); wall(1320,2120,120,140); wall(2560,1740,120,140); wall(2560,2120,120,140);
             wall(820,1040,560,120); wall(2620,2840,560,120); wall(1040,2620,120,560); wall(2840,820,120,560);
             bush(1720,1720,560,180); bush(1720,2100,560,180); bush(1720,1900,180,200); bush(2100,1900,180,200);
             bush(520,1520,300,220); bush(3180,2260,300,220); bush(1520,520,220,300); bush(2260,3180,220,300);
@@ -22088,13 +22292,13 @@ let heistFeverActive = false;
             bush(1700,1740,600,160); bush(1700,2120,600,160);
         }else if(idx===2){
             // Four Corners: protected outer bunkers feeding into a dangerous open center.
-            [[900,900],[3100,900],[900,3100],[3100,3100]].forEach(([x,y])=>{
-                wall(x-260,y-260,520,100); wall(x-260,y+160,520,100); wall(x-260,y-160,100,320); wall(x+160,y-160,100,320);
+            [[915,915],[3085,915],[915,3085],[3085,3085]].forEach(([x,y])=>{
+                wall(x-260,y-260,520,100); wall(x-260,y+160,180,100); wall(x+80,y+160,180,100); wall(x-260,y-160,100,320); wall(x+160,y-160,100,320);
                 bush(x-145,y-145,290,290);
             });
             wall(1640,1640,260,100); wall(2100,1640,260,100); wall(1640,2260,260,100); wall(2100,2260,260,100);
             water(1840,1840,320,320);
-            bush(500,1840,300,320); bush(3200,1840,300,320); bush(1840,500,320,300); bush(1840,3200,320,300);
+            bush(640,1840,300,320); bush(3060,1840,300,320); bush(1840,640,320,300); bush(1840,3060,320,300);
         }else if(idx===3){
             // Neon Labyrinth: readable zig-zag lanes, quick flank links, and no sealed pockets.
             wall(740,900,900,110); wall(1940,900,1320,110);
@@ -22106,36 +22310,36 @@ let heistFeverActive = false;
             bush(1560,1740,880,180); bush(1560,2080,880,180); bush(420,1180,260,360); bush(3320,2460,260,360);
         }else if(idx===4){
             // Frost Circuit: four frozen loops with warm open crossing points.
-            water(620,620,720,220);water(2660,620,720,220);water(620,3160,720,220);water(2660,3160,720,220);
+            water(660,660,680,180);water(2660,660,680,180);water(660,3160,680,180);water(2660,3160,680,180);
             water(620,840,220,720);water(3160,840,220,720);water(620,2440,220,720);water(3160,2440,220,720);
-            wall(1440,720,1120,110);wall(1440,3170,1120,110);wall(720,1440,110,1120);wall(3170,1440,110,1120);
+            wall(1560,720,880,110);wall(1560,3170,880,110);wall(720,1700,110,600);wall(3170,1700,110,600);
             wall(1660,1660,260,100);wall(2080,1660,260,100);wall(1660,2240,260,100);wall(2080,2240,260,100);
-            bush(1740,1840,520,140);bush(1740,2020,520,140);bush(1840,1740,140,520);bush(2020,1740,140,520);
+            bush(1740,1840,520,140);bush(1740,2020,520,140);bush(1840,1780,140,440);bush(2020,1780,140,440);
         }else if(idx===5){
             // Sunset Quarry: stepped excavation terraces and exposed ramps.
             wall(520,760,1120,120);wall(2360,760,1120,120);wall(820,1380,920,120);wall(2260,1380,920,120);
             wall(820,2500,920,120);wall(2260,2500,920,120);wall(520,3120,1120,120);wall(2360,3120,1120,120);
             water(1820,1180,360,620);water(1820,2200,360,620);
-            bush(1660,1840,680,140);bush(1660,2020,680,140);bush(360,1760,420,480);bush(3220,1760,420,480);
+            bush(1660,1840,680,140);bush(1660,2020,680,140);bush(620,1760,420,480);bush(2960,1760,420,480);
         }else if(idx===6){
             // Crownspire Keep: a broken royal ring with four assault gates.
             wall(1180,1050,680,110);wall(2140,1050,680,110);wall(1180,2840,680,110);wall(2140,2840,680,110);
             wall(1050,1180,110,680);wall(1050,2140,110,680);wall(2840,1180,110,680);wall(2840,2140,110,680);
             water(1760,1760,480,480);
             bush(1420,1420,360,180);bush(2220,1420,360,180);bush(1420,2400,360,180);bush(2220,2400,360,180);
-            wall(420,1945,500,110);wall(3080,1945,500,110);wall(1945,420,110,500);wall(1945,3080,110,500);
+            wall(200,1945,120,110);wall(600,1945,320,110);wall(3080,1945,320,110);wall(3680,1945,120,110);wall(1945,200,110,120);wall(1945,600,110,320);wall(1945,3080,110,320);wall(1945,3680,110,120);
         }else if(idx===7){
             // Gearfall Foundry: rotating-looking cog lanes and furnace canals.
-            water(760,1880,760,240);water(2480,1880,760,240);water(1880,760,240,760);water(1880,2480,240,760);
+            water(760,1700,760,180);water(2480,2120,760,180);water(1700,760,180,760);water(2120,2480,180,760);
             [[1300,1300],[2700,1300],[1300,2700],[2700,2700]].forEach(([x,y])=>{wall(x-260,y-60,520,120);wall(x-60,y-260,120,520);});
             wall(1660,1660,680,100);wall(1660,2240,680,100);
-            bush(1760,1780,480,180);bush(1760,2040,480,180);bush(420,620,320,320);bush(3260,3060,320,320);
+            bush(1760,1780,480,180);bush(1760,2040,480,180);bush(420,700,320,320);bush(3260,2980,320,320);
         }else if(idx===8){
             // Stormglass Heights: diagonal lightning lanes with glass islands.
             wall(520,720,760,110);wall(1120,1320,760,110);wall(2120,2320,760,110);wall(2720,2920,760,110);
             wall(2720,720,760,110);wall(2120,1320,760,110);wall(1120,2320,760,110);wall(520,2920,760,110);
             water(1780,520,440,700);water(1780,2780,440,700);water(520,1780,700,440);water(2780,1780,700,440);
-            bush(1540,1540,360,220);bush(2100,1540,360,220);bush(1540,2240,360,220);bush(2100,2240,360,220);
+            bush(1540,1540,360,220);bush(2100,1540,360,220);bush(1540,2060,360,220);bush(2100,2060,360,220);
         }else{
             // Voidtower Ruins: three shattered rings with safe radial exits.
             wall(940,940,700,110);wall(2360,940,700,110);wall(940,2950,700,110);wall(2360,2950,700,110);
@@ -22410,10 +22614,10 @@ let heistFeverActive = false;
         addWall(WORLD_W * 0.28 - 90, WORLD_H * 0.5 - 45, 180, 90, 8000);
         addWall(WORLD_W * 0.72 - 90, WORLD_H * 0.5 - 45, 180, 90, 8000);
 
-        addBush(WORLD_W * 0.2 - 70, WORLD_H * 0.26 - 60, 140, 120);
-        addBush(WORLD_W * 0.2 - 70, WORLD_H * 0.74 - 60, 140, 120);
-        addBush(WORLD_W * 0.8 - 70, WORLD_H * 0.26 - 60, 140, 120);
-        addBush(WORLD_W * 0.8 - 70, WORLD_H * 0.74 - 60, 140, 120);
+        addBush(WORLD_W * 0.365 - 70, WORLD_H * 0.26 - 60, 140, 120);
+        addBush(WORLD_W * 0.365 - 70, WORLD_H * 0.74 - 60, 140, 120);
+        addBush(WORLD_W * 0.635 - 70, WORLD_H * 0.26 - 60, 140, 120);
+        addBush(WORLD_W * 0.635 - 70, WORLD_H * 0.74 - 60, 140, 120);
 
         addWater(WORLD_W * 0.42 - 80, WORLD_H * 0.18 - 35, 160, 70);
         addWater(WORLD_W * 0.42 - 80, WORLD_H * 0.82 - 35, 160, 70);
@@ -22441,10 +22645,10 @@ let heistFeverActive = false;
             addWall(1220, 2200, 380, 120);
             addWall(2400, 1660, 380, 120);
 
-            addBush(720, 760, 280, 220);
-            addBush(2940, 3020, 280, 220);
-            addBush(1700, 980, 260, 220);
-            addBush(2060, 2560, 260, 220);
+            addBush(690, 760, 280, 220);
+            addBush(2940, 2990, 280, 220);
+            addBush(1830, 980, 260, 220);
+            addBush(1900, 2560, 260, 220);
         } else {
             addWater(760, 1940, 620, 240);
             addWater(2620, 920, 620, 240);
@@ -22528,8 +22732,8 @@ let heistFeverActive = false;
     bushZones.length = 0;
     waterZones.length = 0;
     const mirrorWalls = [
-      { x: 260, y: 330, w: 300, h: 70 },
-      { x: 260, y: 1070, w: 300, h: 70 },
+      { x: 380, y: 330, w: 300, h: 70 },
+      { x: 380, y: 1070, w: 300, h: 70 },
       { x: 650, y: 610, w: 120, h: 270 },
       { x: 910, y: 705, w: 300, h: 80 },
     ];
@@ -22537,13 +22741,68 @@ let heistFeverActive = false;
       addArenaWallStrip(item.x, item.y, item.w, item.h, { wallType: 'marked_mayhem', hp: 7600 });
       addArenaWallStrip(WORLD_W - item.x - item.w, WORLD_H - item.y - item.h, item.w, item.h, { wallType: 'marked_mayhem', hp: 7600 });
     }
-    bushZones.push({ x: 120, y: WORLD_H * 0.5 - 150, w: 260, h: 300 });
-    bushZones.push({ x: WORLD_W - 380, y: WORLD_H * 0.5 - 150, w: 260, h: 300 });
+    bushZones.push({ x: 380, y: WORLD_H * 0.5 - 150, w: 260, h: 300 });
+    bushZones.push({ x: WORLD_W - 640, y: WORLD_H * 0.5 - 150, w: 260, h: 300 });
     bushZones.push({ x: WORLD_W * 0.5 - 150, y: 120, w: 300, h: 190 });
     bushZones.push({ x: WORLD_W * 0.5 - 150, y: WORLD_H - 310, w: 300, h: 190 });
   }
 
+
+  // Environment Phase 4 (map-pass checklist (c)): shared post-build water
+  // validation. On the bot nav grid — the passability bots actually
+  // experience — check that a fighter who cannot traverse water can still
+  // cross the map east-west and north-south. If a crossing fails on the
+  // water-blocked grid but succeeds when water is ignored, water is the
+  // blocker: carve the standard center navigation lanes and rebuild.
+  function ensureWaterNavigationLanes(){
+    if (!waterZones.length) return;
+    buildBotNavGrid();
+    if (!botNavGrid) return;
+    const cols = botNavGrid.cols, rows = botNavGrid.rows;
+    const passable = (idx, waterOpen) => !botNavGrid.blocked[idx] && (waterOpen || !botNavGrid.water[idx]);
+    const traverses = (waterOpen) => {
+      const comp = new Int32Array(cols * rows).fill(-1);
+      let nc = 0;
+      for (let s = 0; s < cols * rows; s++) {
+        if (comp[s] !== -1 || !passable(s, waterOpen)) continue;
+        const stack = [s];
+        comp[s] = nc;
+        while (stack.length) {
+          const cur = stack.pop();
+          const cx = cur % cols, cy = (cur / cols) | 0;
+          if (cx > 0 && comp[cur - 1] === -1 && passable(cur - 1, waterOpen)) { comp[cur - 1] = nc; stack.push(cur - 1); }
+          if (cx < cols - 1 && comp[cur + 1] === -1 && passable(cur + 1, waterOpen)) { comp[cur + 1] = nc; stack.push(cur + 1); }
+          if (cy > 0 && comp[cur - cols] === -1 && passable(cur - cols, waterOpen)) { comp[cur - cols] = nc; stack.push(cur - cols); }
+          if (cy < rows - 1 && comp[cur + cols] === -1 && passable(cur + cols, waterOpen)) { comp[cur + cols] = nc; stack.push(cur + cols); }
+        }
+        nc++;
+      }
+      const west = new Set(), east = new Set(), north = new Set(), south = new Set();
+      for (let y = 0; y < rows; y++) {
+        if (passable(y * cols, waterOpen)) west.add(comp[y * cols]);
+        if (passable(y * cols + cols - 1, waterOpen)) east.add(comp[y * cols + cols - 1]);
+      }
+      for (let x = 0; x < cols; x++) {
+        if (passable(x, waterOpen)) north.add(comp[x]);
+        if (passable((rows - 1) * cols + x, waterOpen)) south.add(comp[(rows - 1) * cols + x]);
+      }
+      return { ew: [...west].some((c) => east.has(c)), ns: [...north].some((c) => south.has(c)) };
+    };
+    const blockedRun = traverses(false);
+    if (blockedRun.ew && blockedRun.ns) return;
+    const openRun = traverses(true);
+    if ((!blockedRun.ew && openRun.ew) || (!blockedRun.ns && openRun.ns)) {
+      carveWaterNavigationLanes();
+      buildBotNavGrid();
+    }
+  }
+
   function generateCubes(){
+    generateCubesLayout();
+    ensureWaterNavigationLanes();
+  }
+
+  function generateCubesLayout(){
     cubes.length = 0;
     destructibleWalls.length = 0;
     bushZones.length = 0;
@@ -22610,21 +22869,30 @@ let heistFeverActive = false;
         return;
     }
     const count = 40; // more cubes in large map
+    // Environment Phase 4 (map-pass checklist (e)): the scatter keeps the map
+    // center and every spawn point this fall-through serves clear of strips.
+    const scatterProtectedPoints = [{ x: WORLD_W * 0.5, y: WORLD_H * 0.5, r: 300 }];
+    if (isBossFight) scatterProtectedPoints.push({ x: 1200, y: 800, r: 250 }, { x: 1200, y: 2000, r: 250 });
+    if (isDuels) scatterProtectedPoints.push({ x: 200, y: 750, r: 150 }, { x: 1400, y: 750, r: 150 });
+    if (isTraining || isSoloTrial) {
+      scatterProtectedPoints.push(
+        { x: 560, y: 560, r: 150 }, { x: WORLD_W - 560, y: 560, r: 150 },
+        { x: WORLD_W - 560, y: WORLD_H - 560, r: 150 }, { x: 560, y: WORLD_H - 560, r: 150 },
+        { x: WORLD_W * 0.5, y: 460, r: 150 }, { x: WORLD_W * 0.5, y: WORLD_H - 460, r: 150 },
+        { x: 460, y: WORLD_H * 0.5, r: 150 }, { x: WORLD_W - 460, y: WORLD_H * 0.5, r: 150 }
+      );
+    }
     for(let i=0;i<count;i++){
       const w = 64 + Math.floor(Math.random()*128);
       const h = 64 + Math.floor(Math.random()*128);
-      let x,y,tries=0;
+      let x,y,tries=0,spotClear=false;
       do{
         x = 100 + Math.random()*(WORLD_W-200-w);
         y = 100 + Math.random()*(WORLD_H-200-h);
         tries++;
-      } while(
-          (
-              (isBossFight && (rectCircleCollides(x,y,w,h, 1200,800, 250) || rectCircleCollides(x,y,w,h, 1200,2000, 250))) ||
-              (isDuels && (rectCircleCollides(x,y,w,h, 200,750, 150) || rectCircleCollides(x,y,w,h, 1400,750, 150))) ||
-              (!isBossFight && !isDuels && rectCircleCollides(x,y,w,h, 2000,2000, 300))
-          ) && tries < 50
-      );
+        spotClear = !scatterProtectedPoints.some((p) => rectCircleCollides(x,y,w,h, p.x, p.y, p.r));
+      } while(!spotClear && tries < 50);
+      if (!spotClear) continue; // no clear spot in 50 tries: skip the strip rather than crowd a spawn
       addArenaWallStrip(x,y,w,h,{wallType:(isBossFight?'boss':'arena')});
     }
   }
@@ -23423,7 +23691,7 @@ let heistFeverActive = false;
       beam:8, fuser:24, heater_miser:20, minigunnin:72, money_and_tax:24, outlit:30, steamer:8,
       bouncin_balls:6, chickpig:12, classy:6, copyphase:6, goonbob:6, hoop:5, hyperorigin:5, robber:42,
       portalo:7, ghoul:6, jacktrade:18, darkener:6, awakenator:8, trampaheal:6, axeywaxy:6, mageny:6, draflygon:6, ramage:6, upgradart:10, cinderion:10, cursed:7, king:6, anti_royal:6, weefee:6, rager:4,
-    carmela_fudge:5, bolznstien:5, sir_cheeseburger:4, blinkeye:4, magnatar:6, oil_maker:16, badbat:5, looma:7, feathers:5
+    carmela_fudge:5, bolznstien:5, sir_cheeseburger:4, blinkeye:4, magnatar:6, oil_maker:16, badbat:5, looma:7, feathers:5, spikey:6
   });
   let nextMainAttackActivationId = 1;
   function getSuperChargeHitsForBrawler(brawler) {
@@ -23793,7 +24061,7 @@ let heistFeverActive = false;
   function startDuelsRound() {
     outlitWallChains.length = 0;
     bullets.length = 0; ragerWarTotems.length = 0;
-    bolznstienPendingStrikes.length = 0; bolznstienShockTrails.length = 0; bolznstienChainArcs.length = 0; chocolatePuddles.length = 0; magnatarVortices.length = 0; oilMakerPuddles.length = 0; oilMakerBarrels.length = 0; oilMakerPendingPuddles.length = 0; steamerPoles.length = 0; weefeePoles.length = 0; chickpigEggZones.length = 0; rings.length = 0; cheeseFields.length = 0; healingPods.length = 0; explosions.length = 0; pendingClones.length = 0; destructibleWalls.length = 0; floatingTexts.length = 0; stickyNotes.length = 0; amplifierToolboxes.length = 0; amplifierScrewZones.length = 0; skeleParachutes.length = 0; skelePortals.length = 0; malakorHellZones.length = 0; malakorHands.length = 0; relativityZones.length = 0; packetTimeFields.length = 0; packetTelegraphs.length = 0; fastpassCheckpoints.length = 0; freestyleMicrophones.length = 0; portaloPortalPairs.length = 0; portaloPrisons.length = 0; portaloShockTimers.length = 0; ghoulHaunts.length = 0; darkenerClouds.length = 0; darkagons.length = 0; cursedStorms.length = 0; cursedHyperClouds.length = 0; antiRoyalMortarShells.length = 0; antiRoyalMortarZones.length = 0; jackTradeVolleys.length = 0; jackTradeThrownEffects.length = 0; jackTradeZones.length = 0; jackTradeEndpointShots.length = 0; badbatSwarm.length = 0; badbatShieldOrbs.length = 0; loomaThreads.length = 0; loomaWeaves.length = 0; feathersWindZones.length = 0; feathersStorms.length = 0;
+    bolznstienPendingStrikes.length = 0; bolznstienShockTrails.length = 0; bolznstienChainArcs.length = 0; chocolatePuddles.length = 0; magnatarVortices.length = 0; oilMakerPuddles.length = 0; oilMakerBarrels.length = 0; oilMakerPendingPuddles.length = 0; steamerPoles.length = 0; weefeePoles.length = 0; chickpigEggZones.length = 0; rings.length = 0; cheeseFields.length = 0; healingPods.length = 0; explosions.length = 0; pendingClones.length = 0; destructibleWalls.length = 0; floatingTexts.length = 0; stickyNotes.length = 0; amplifierToolboxes.length = 0; amplifierScrewZones.length = 0; skeleParachutes.length = 0; skelePortals.length = 0; malakorHellZones.length = 0; malakorHands.length = 0; relativityZones.length = 0; packetTimeFields.length = 0; packetTelegraphs.length = 0; fastpassCheckpoints.length = 0; freestyleMicrophones.length = 0; portaloPortalPairs.length = 0; portaloPrisons.length = 0; portaloShockTimers.length = 0; ghoulHaunts.length = 0; darkenerClouds.length = 0; darkagons.length = 0; cursedStorms.length = 0; cursedHyperClouds.length = 0; antiRoyalMortarShells.length = 0; antiRoyalMortarZones.length = 0; jackTradeVolleys.length = 0; jackTradeThrownEffects.length = 0; jackTradeZones.length = 0; jackTradeEndpointShots.length = 0; badbatSwarm.length = 0; badbatShieldOrbs.length = 0; loomaThreads.length = 0; loomaWeaves.length = 0; feathersWindZones.length = 0; feathersStorms.length = 0; spikeyParkedBalls.length = 0; spikeyMegaBalls.length = 0;
     snapperWaves.length = 0;
     rocketeerFireZones.length = 0;
     minigunninMutationFireZones.length = 0;
@@ -28676,6 +28944,14 @@ let heistFeverActive = false;
             }
             if (bullets.some(p => p.ownerId === fromEntity.id && p.isDemonBlade && !p.isDemonSpectral)) return;
         }
+        if (brawler === 'spikey') {
+            // Triple Thorn Toss: attacking with a full set deployed recalls the
+            // parked balls instead of throwing (no ammo cost, like Demon's blade).
+            if (countSpikeyDeployed(fromEntity) >= 3 && spikeyParkedBalls.some(b => b.ownerId === fromEntity.id)) {
+                recallSpikeyBalls(fromEntity);
+                return;
+            }
+        }
         if (brawler === 'boom_arang') {
             const hasActive = bullets.some(b => b.ownerId === fromEntity.id && b.isBoomArang && !b.super);
             if (hasActive) return;
@@ -28692,6 +28968,7 @@ let heistFeverActive = false;
     if(isBot&&brawler==='fastpass'&&fromEntity.selectedStar==='long'&&(fromEntity.fastpassMomentum||0)>=.64)fireDelay/=1.15;
     if(isBot&&brawler==='freestyle'&&now<(fromEntity.freestyleRemixUntil||0))fireDelay/=1.18;
     if(brawler==='outlit'&&hasOutlitMutation(fromEntity)&&(fromEntity.outlitMutationCharges||0)>0)fireDelay*=.5;
+    if(brawler==='spikey'&&(isBot?!!fromEntity.isHypercharged:!!isHypercharged))fireDelay/=1.5;
         if (isBot && fromEntity.isImpossibleAI) fireDelay *= 0.72;
     if (!isBot && isSlopSushiMode) fireDelay *= Math.max(0.45, 1 - getSlopEffectTotal('fireDelayPct'));
     if (isBot && isSlopSushiMode) fireDelay *= Math.max(0.45, 1 - getEntitySlopEffectTotal(fromEntity, 'fireDelayPct'));
@@ -29341,6 +29618,14 @@ let heistFeverActive = false;
     } else if (brawler === 'feathers') {
         const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
         bullets.push({ownerBrawler:'feathers',isFeatherShot:true,featherHyper:hyper,x:fromEntity.x+Math.cos(ang)*(fromEntity.radius+7),y:fromEntity.y+Math.sin(ang)*(fromEntity.radius+7),vx:Math.cos(ang)*840,vy:Math.sin(ang)*840,life:0,maxLife:.76,damage:isBot?720:1000,pierce:false,ownerId:fromEntity.id,hitIds:{},hitboxMod:1.3,hyperVisual:hyper});
+        return;
+    } else if (brawler === 'spikey') {
+        const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
+        if (countSpikeyDeployed(fromEntity) >= SPIKEY_MAX_DEPLOYED) return;
+        const level = fromEntity.id === player.id ? getSelectedBrawlerLevel() : (fromEntity.level || 11);
+        const stats = getScaledStats('spikey', level);
+        const spd = SPIKEY_THROW_SPEED * (hyper ? 1.5 : 1);
+        bullets.push({ownerBrawler:'spikey',isSpikeyThrow:true,x:fromEntity.x+Math.cos(ang)*(fromEntity.radius+7),y:fromEntity.y+Math.sin(ang)*(fromEntity.radius+7),vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd,life:0,maxLife:SPIKEY_THROW_RANGE/spd,damage:stats.dmg,pierce:true,pierceWalls:false,ownerId:fromEntity.id,hitIds:{},hitboxMod:1.6,hyperVisual:hyper,spikeyRootMs:hyper?800:0});
         return;
     } else if (brawler === 'duck') {
         castDuckMain(fromEntity,targetX,targetY,isBot,isBot?!!fromEntity.isHypercharged:!!isHypercharged);
@@ -33984,6 +34269,7 @@ let heistFeverActive = false;
     if (combatBrawler === 'trampaheal') { castTrampahealSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'looma') { castLoomaSuper(player, wm.x, wm.y, !!isHypercharged); updateSuperButton(); return; }
     if (combatBrawler === 'feathers') { castFeathersSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
+    if (combatBrawler === 'spikey') { castSpikeySuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'ramage') { castRamageSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
         if (combatBrawler === 'upgradart') { castUpgradartSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'axeywaxy') { castAxeyWaxySuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
@@ -35232,6 +35518,10 @@ let heistFeverActive = false;
       executeFeathersG1(bot);
     } else if (bot.brawler === 'feathers' && g === 'g2') {
       executeFeathersG2(bot);
+    } else if (bot.brawler === 'spikey' && g === 'g1') {
+      executeSpikeyG1(bot);
+    } else if (bot.brawler === 'spikey' && g === 'g2') {
+      executeSpikeyG2(bot);
     } else if (bot.brawler === 'rager' && g === 'g1') {
       executeRagerG1(bot);
     } else if (bot.brawler === 'rager' && g === 'g2') {
@@ -35760,6 +36050,7 @@ let heistFeverActive = false;
     if (botCombatBrawler === 'mageny') { castMagenySuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'trampaheal') { castTrampahealSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'feathers') { castFeathersSuper(bot, isHyper, targetX, targetY); return; }
+    if (botCombatBrawler === 'spikey') { castSpikeySuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'ramage') { castRamageSuper(bot, isHyper, targetX, targetY); return; }
             if (botCombatBrawler === 'upgradart') { castUpgradartSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'axeywaxy') { castAxeyWaxySuper(bot, isHyper, targetX, targetY); return; }
@@ -37299,6 +37590,16 @@ let heistFeverActive = false;
         return;
     } else if (curBrawler === 'feathers' && curGadget === 'g2') {
         executeFeathersG2(player);
+        gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
+        updateGadgetButton();
+        return;
+    } else if (curBrawler === 'spikey' && curGadget === 'g1') {
+        executeSpikeyG1(player);
+        gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
+        updateGadgetButton();
+        return;
+    } else if (curBrawler === 'spikey' && curGadget === 'g2') {
+        executeSpikeyG2(player);
         gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
         updateGadgetButton();
         return;
@@ -41053,7 +41354,7 @@ let heistFeverActive = false;
       isHeadlessBossEvent = showdownMode === 'headless_boss_s4';
       isBossFight = isLavaBossEvent || isBouncinBossEvent || isHeadlessBossEvent;
       activeSkinTrial = null; // real matches never use trial skins
-      feathersWindZones = []; feathersStorms = [];
+      feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = [];
       if (isBouncinBossEvent) {
           initBouncinBossMatch();
       }
@@ -41448,7 +41749,7 @@ let heistFeverActive = false;
       isMirrorMode = false;
       isImpossibleMode = false;
       isObjectiveMode = false;
-      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = [];
+      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = [];
       isTraining = false;
       isDuels = true;
       isTowerDuelEvent = true;
@@ -42536,7 +42837,7 @@ isBrawlerLabMode = false;
       isTowerDuelEvent = false;
       isWarperEvent = false;
       isObjectiveMode = false;
-      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = [];
+      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = [];
       soloTrialWave = 0;
       soloTrialPending = false;
       playing = true;
@@ -42670,7 +42971,7 @@ isBrawlerLabMode = false;
       isDuels = false;
       isWarperEvent = false;
       isObjectiveMode = false;
-      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = [];
+      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = [];
     isConstructionMode = false;
       if (document.getElementById('topbar')) document.getElementById('topbar').textContent = 'Arena Forge - Rookie Course';
       playing = true;
@@ -45595,6 +45896,8 @@ function checkHit(target, b, i){
         if (owner && owner.id === player.id && selectedStar === 'slow') target.slowUntil = Math.max(target.slowUntil || 0, performance.now() + 1200);
         explosions.push({x:target.x,y:target.y,radius:46,life:0,maxLife:0.28,color:b.hyperVisual?'#d66cff':'#79f7ff'});
     }
+    if (b.spikeyRootMs && target && owner && !areAlliedEntities(owner, target)) applyStatusEffect(target, 'root', b.spikeyRootMs, owner);
+    if (b.spikeySlowMs && target && owner && !areAlliedEntities(owner, target)) target.spikeySlowUntil = Math.max(target.spikeySlowUntil || 0, performance.now() + b.spikeySlowMs);
     if (b.isDrainbowSuperRoller && target && owner && !areAlliedEntities(owner, target)) {
         const hitNow = performance.now();
         target.isAirborneUntil = Math.max(target.isAirborneUntil || 0, hitNow + 750);
@@ -48250,6 +48553,7 @@ function checkHit(target, b, i){
     const aliveBots = aliveBotsInUpdate;
 
     if (playing && !gameOver) updateFeathersSystems(dt);
+    if (playing && !gameOver) updateSpikeySystems(dt);
     if (playing && !gameOver) updateChristmasShowdown(dt);
     // (Kinetic heal removed — see Kinetic Magazine rework, 2026-10-22.)
     if (isTurkeyCaptureMode && !isBossFight && !isSoloTrial && !isDuels && !gameOver) {
@@ -51529,6 +51833,15 @@ function checkHit(target, b, i){
               }
           }
       }
+      if (b.isSpikeyRecall) {
+          const owner = getEntityById(b.ownerId);
+          if (!owner) { bullets.splice(i, 1); i--; continue; }
+          const dxo = owner.x - b.x, dyo = owner.y - b.y;
+          const disto = Math.hypot(dxo, dyo);
+          if (disto <= (owner.radius || 14) + 20) { bullets.splice(i, 1); i--; continue; }
+          b.vx = (dxo / (disto || 1)) * SPIKEY_RECALL_SPEED;
+          b.vy = (dyo / (disto || 1)) * SPIKEY_RECALL_SPEED;
+      }
       if (b.xrayHoming || b.isHomerProjectile) {
           const homingPct=b.isHomerProjectile?clamp(b.homerHomingPct||.10,.10,1):clamp(b.homingStrength||.70,.1,1);
           let target=null, best=b.isHomerProjectile?720:330;
@@ -51832,6 +52145,9 @@ function checkHit(target, b, i){
       }
       if (b.isFeatherShot && b.life >= b.maxLife) {
           feathersWindBurst(b);
+      }
+      if (b.isSpikeyThrow && b.life >= b.maxLife) {
+          parkSpikeyBall(b);
       }
       if (b.isWeeFeeToss && b.life >= b.maxLife) {
           const landX = clamp(b.targetX !== undefined ? b.targetX : b.x, 30, WORLD_W - 30);
@@ -52448,6 +52764,11 @@ function checkHit(target, b, i){
            if (b.isMagnatarBeacon) {
                const owner = getEntityById(b.ownerId);
                deployMagnatarBeacon(owner, b.x, b.y, null, !!b.isHyper, false);
+               bullets.splice(i, 1);
+               continue;
+           }
+           if (b.isSpikeyThrow) {
+               parkSpikeyBall(b);
                bullets.splice(i, 1);
                continue;
            }
@@ -55432,6 +55753,10 @@ function checkHit(target, b, i){
               return {label:state?.ready?'INSTINCT - 1 > 5 > 2 READY':`INSTINCT - ${(Math.max(0,state?.remaining||0)/1000).toFixed(1)}s`,value:charged,max:SPLITTER_INSTINCT_COOLDOWN_MS,color:'#62ef88'};
           }
       }
+      if (selectedBrawler === 'spikey') {
+          const deployed = countSpikeyDeployed(player);
+          return { label: deployed >= 3 ? 'SPIKEBALLS 3/3 \u2022 ATTACK TO RECALL' : `SPIKEBALLS ${deployed}/3 DEPLOYED`, value: deployed, max: 3, segments: 3, color: '#a6e34d' };
+      }
       if (selectedBrawler === 'jetpack') {
           const flight=player.jetpackFlight;
           if(flight)return {label:flight.superFlight?'BOMBING RUN  •  FLIGHT LOCKED':'CRASH LANDING  •  AIRBORNE',value:Math.max(0,flight.duration-(now-flight.startAt)),max:flight.duration,color:flight.hyper?'#d96cff':'#5fd9ff'};
@@ -57720,6 +58045,21 @@ function checkHit(target, b, i){
                 }
                 ctx.restore();
             }
+            if (brawlerId === 'spikey') {
+                ctx.save();
+                ctx.strokeStyle = '#a6e34d';
+                ctx.lineWidth = 2.6;
+                ctx.shadowColor = '#a6e34d';
+                ctx.shadowBlur = 6;
+                for (let k = -2; k <= 2; k++) {
+                    const qa = -Math.PI / 2 + k * 0.42 + Math.sin(performance.now() / 350 + k) * 0.05;
+                    ctx.beginPath();
+                    ctx.moveTo(entity.x + Math.cos(qa) * size * 0.3, drawY + Math.sin(qa) * size * 0.3);
+                    ctx.lineTo(entity.x + Math.cos(qa) * size * 0.62, drawY + Math.sin(qa) * size * 0.62);
+                    ctx.stroke();
+                }
+                ctx.restore();
+            }
             if (brawlerId === 'feathers') {
                 const t = performance.now();
                 const hyperE = !!entity.isHypercharged || (isPlayer && !!isHypercharged);
@@ -58029,6 +58369,7 @@ function checkHit(target, b, i){
     renderHeadlessBossEvent();
     renderTurkeyCaptureEvent();
     renderFeathersEffects();
+    renderSpikeyEffects();
     if (typeof renderBouncinBossEvent === 'function') renderBouncinBossEvent('ground');
     if (isBraweBallMode) renderBraweBallWorld(ctx);
     if (isKnockoutMode) renderKnockoutWorld(ctx);
@@ -68364,6 +68705,38 @@ function checkHit(target, b, i){
           ctx.restore();
           continue;
       }
+      else if (b.ownerBrawler === 'spikey' && (b.isSpikeyThrow || b.isSpikeyRecall)) {
+          ctx.save();
+          ctx.translate(b.x, b.y);
+          ctx.rotate(b.life * 9);
+          ctx.shadowColor = b.hyperVisual ? '#e056fd' : '#a6e34d';
+          ctx.shadowBlur = 10;
+          ctx.strokeStyle = b.hyperVisual ? '#f5c2ff' : '#d9f99d';
+          ctx.lineWidth = 2.4;
+          for (let k = 0; k < 8; k++) {
+              const a = (Math.PI * 2 / 8) * k;
+              ctx.beginPath();
+              ctx.moveTo(Math.cos(a) * 6, Math.sin(a) * 6);
+              ctx.lineTo(Math.cos(a) * 12, Math.sin(a) * 12);
+              ctx.stroke();
+          }
+          ctx.fillStyle = '#3f6212';
+          ctx.beginPath(); ctx.arc(0, 0, 7, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = b.hyperVisual ? '#e056fd' : '#a6e34d';
+          ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.fill();
+          ctx.restore();
+          continue;
+      }
+      else if (b.ownerBrawler === 'spikey' && b.isSpikeyRingSpike) {
+          ctx.save();
+          ctx.translate(b.x, b.y);
+          ctx.rotate(Math.atan2(b.vy, b.vx));
+          ctx.fillStyle = b.hyperVisual ? '#f5c2ff' : '#d9f99d';
+          ctx.beginPath();
+          ctx.moveTo(9, 0); ctx.lineTo(-6, -4); ctx.lineTo(-6, 4); ctx.closePath(); ctx.fill();
+          ctx.restore();
+          continue;
+      }
       else if (b.ownerBrawler === 'feathers' && b.isFeatherShot) {
           ctx.save();
           ctx.translate(b.x, b.y);
@@ -75578,10 +75951,10 @@ function buildBraweBallMap() {
     addArenaWallStrip(WORLD_W * 0.5 + 90, WORLD_H * 0.5 - 40, 110, 80, { hp: 4500, wallType: 'ball_barrier' });
 
     // Top goal defense barricade
-    addArenaWallStrip(WORLD_W * 0.5 - 140, 420, 280, 60, { hp: 4500, wallType: 'goal_barrier' });
+    addArenaWallStrip(WORLD_W * 0.5 - 140, 450, 280, 60, { hp: 4500, wallType: 'goal_barrier' });
 
     // Bottom goal defense barricade
-    addArenaWallStrip(WORLD_W * 0.5 - 140, WORLD_H - 480, 280, 60, { hp: 4500, wallType: 'goal_barrier' });
+    addArenaWallStrip(WORLD_W * 0.5 - 140, WORLD_H - 510, 280, 60, { hp: 4500, wallType: 'goal_barrier' });
 
     // Sideline stealth bushes
     if (typeof bushZones !== 'undefined') {
@@ -80323,6 +80696,14 @@ function renderBouncinBossEvent(phase) {
     get deployMagnatarBeacon() { return deployMagnatarBeacon; },
     get executeMagnatarG1() { return executeMagnatarG1; },
     get executeMagnatarG2() { return executeMagnatarG2; },
+    get spikeyParkedBalls() { return spikeyParkedBalls; },
+    get spikeyMegaBalls() { return spikeyMegaBalls; },
+    get castSpikeySuper() { return castSpikeySuper; },
+    get executeSpikeyG1() { return executeSpikeyG1; },
+    get executeSpikeyG2() { return executeSpikeyG2; },
+    get countSpikeyDeployed() { return countSpikeyDeployed; },
+    get recallSpikeyBalls() { return recallSpikeyBalls; },
+    get fire() { return fire; },
     get oilMakerBarrels() { return oilMakerBarrels; },
     get oilMakerPuddles() { return oilMakerPuddles; },
     get castOilMakerSuper() { return castOilMakerSuper; },
