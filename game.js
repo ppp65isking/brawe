@@ -3071,6 +3071,12 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           updateSuperButton();
           return;
       }
+      // Bolznstien Signature: pressing Power Move during Electric Eyes activates
+      // OVERCHARGE instantly — it must bypass the charge gate below, because the
+      // Super charge is already spent while the Super is live.
+      if (selectedBrawler === 'bolznstien' && player && (player.bolznstienSuperUntil || 0) > performance.now()) {
+          if (tryActivateBolznstienOvercharge(player)) { updateSuperButton(); return; }
+      }
       if (superCharge < 100 || player.hp <= 0) return;
       if (selectedBrawler === 'hyperorigin' && getHyperoriginEnergy(player) < 1) return;
       if (selectedBrawler === 'copyphase') {
