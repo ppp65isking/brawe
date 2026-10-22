@@ -743,10 +743,6 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         // Continuous-ammo brawlers should never return unable to act.
         if (selectedBrawler === 'steamer') ammo = Math.max(20, ammo);
         if (hasTrinket(player, 'comeback')) player.trinketComebackUntil = now + 4000;
-        if (getCorePerk(selectedBrawler) === 'guardian') {
-            grantShield(player, Math.round((player.maxHp || 0) * 0.30));
-            spawnFloatingText(player.x, player.y - 38, '🛡️ GUARDIAN REVIVAL', '#7fd4ff');
-        }
         player.trinketBushArmorShield = 0;
         player.trinketLastHp = player.hp;
         player.trinketFirstStrikeReady = false;
@@ -2881,7 +2877,6 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
   function resetPlayerAmmoForBrawler(brawlerId,includeTowerBonus=false){
       maxAmmo=getNativeAmmoCapacity(brawlerId);
       if(includeTowerBonus&&isSlopSushiMode)maxAmmo+=Math.round(getSlopEffectTotal('ammoBonus'));
-      if(getCorePerk(brawlerId)==='kinetic')maxAmmo+=1;
       ammo=maxAmmo;
   }
 
@@ -3440,6 +3435,11 @@ function updateGadgetInfo() {
           return;
       }
       updateSuperUseIndicator(player);
+      if (selectedBrawler === 'bolznstien' && player && (player.bolznstienSuperUntil || 0) > performance.now() && (player.bolznstienOverchargeUntil || 0) <= performance.now() && performance.now() >= (player.bolznstienOverchargeReadyAt || 0) && isSpecialAbilityAvailableForEntity(player, 'bolznstien')) {
+          superBtn.textContent = 'Power Move: ⚡ OVERCHARGE!';
+          superBtn.disabled = false;
+          return;
+      }
       superBtn.textContent = superCharge >= 100 ? 'Power Move: Ready' : `Power Move: ${Math.floor(superCharge)}%`;
       superBtn.disabled = superCharge < 100;
   }
@@ -10799,6 +10799,23 @@ function isPowerPlayModifierActive(entity = player) {
         }
     }
 
+    function tryActivateBolznstienOvercharge(entity) {
+        if (!entity) return false;
+        const now = performance.now();
+        if ((entity.bolznstienSuperUntil || 0) <= now) return false; // only during his Super
+        if ((entity.bolznstienOverchargeUntil || 0) > now) return false; // already overcharged
+        if (now < (entity.bolznstienOverchargeReadyAt || 0)) return false; // 14s cooldown
+        if (!isSpecialAbilityAvailableForEntity(entity, 'bolznstien')) return false;
+        const hpCost = Math.min(1500, Math.max(0, Math.floor(entity.hp) - 1)); // HP spend can never kill him
+        entity.hp -= hpCost;
+        entity.bolznstienOverchargeUntil = now + 2000;
+        entity.bolznstienOverchargeReadyAt = now + 14000;
+        entity.bolznstienHandsNextAt = 0;
+        spawnFloatingText(entity.x, entity.y - 44, '⚡ OVERCHARGE! ⚡', '#ffd21f');
+        spawnFloatingText(entity.x, entity.y - 62, '-1,500 HP', '#ff6b6b');
+        return true;
+    }
+
     function castBolznstienSuper(entity, isHyper) {
         if (!entity) return;
         const now = performance.now();
@@ -16074,7 +16091,7 @@ let heistFeverActive = false;
   const CORE_PERK_DEFS = [
       { id: 'surge', name: 'Surge Endurance', icon: '⚡', desc: 'Core Surge lasts 40% longer.' },
       { id: 'guardian', name: 'Guardian Revival', icon: '🛡️', desc: 'Respawn with a shield worth 30% of max HP.' },
-      { id: 'kinetic', name: 'Kinetic Magazine', icon: '🏃', desc: '+1 bonus ammo slot. The bonus slot only reloads while you move.' }
+      { id: 'kinetic', name: 'Kinetic Regen', icon: '💚', desc: 'Heal 50 HP/s while moving and not taking damage.' }
   ];
   function getCorePerk(fighterId) {
       const prog = playerData.brawlers && playerData.brawlers[fighterId];
@@ -16127,6 +16144,14 @@ let heistFeverActive = false;
           color: '#ffd34f',
           pieceName: "Bouncin' Balls Signature Piece",
           shortDesc: 'Spend up to 1000 HP: Elasticity keeps its +50% range, and every collector-ball wall bounce adds another +20% base range. Or spend 900 turret HP to command 2 stronger radial waves (10s cooldown).'
+      },
+      bolznstien: {
+          type: 'signature',
+          name: 'Overcharge',
+          icon: 'OC',
+          color: '#ffd34f',
+          pieceName: 'Bolznstien Signature Piece',
+          shortDesc: 'While Electric Eyes is active, press Power Move again to Overcharge for 2s (costs 1,500 HP, 14s cooldown): the Super ticks twice as fast and two voltaic hands stun the 2 nearest enemies every 0.9s for 0.1s.'
       },
       fightnfire: {
           type: 'instinct',
@@ -16516,9 +16541,6 @@ let heistFeverActive = false;
   function isPermanentlyMaxedBrawler(brawlerId) {
       const progress=getOrCreateProgress(brawlerId);
       return progress.level >= 11 && progress.gadgetUnlocked && progress.starPowerUnlocked && progress.hyperchargeUnlocked; // Weekly-trial exclusion stays on the classic cap: trials grant temporary Power 11.
-  }
-  function isProgressFullyMaxed(progress) {
-      return !!progress && (progress.level || 1) >= MAX_POWER_LEVEL && !!progress.gadgetUnlocked && !!progress.starPowerUnlocked && !!progress.hyperchargeUnlocked;
   }
   function pickWeeklyTrialFighters(pool,count,seed) {
       const picks=[...pool];
@@ -18163,7 +18185,25 @@ let heistFeverActive = false;
     // ===== Christmas Showdown buffs (Season 6: Xplodemis) =====
     let christmasBuffTimer = 0;
     function isChristmasShowdownMatch() { return showdownMode === 'christmas_showdown' && !isTraining; }
-    // Kinetic Regen heal retired 2026-10-22: the perk is now Kinetic Magazine (bonus ammo slot).
+    let kineticLastHp = -1;
+    let kineticLastHurtAt = 0;
+    let kineticPrevX = 0;
+    let kineticPrevY = 0;
+    function updateCorePerkKinetic(dt) {
+        if (!player || player.isDead) { kineticLastHp = -1; return; }
+        if (kineticLastHp >= 0 && player.hp < kineticLastHp) kineticLastHurtAt = performance.now();
+        kineticLastHp = player.hp;
+        const moved = Math.abs(player.x - kineticPrevX) > 0.5 || Math.abs(player.y - kineticPrevY) > 0.5;
+        kineticPrevX = player.x;
+        kineticPrevY = player.y;
+        if (getCorePerk(selectedBrawler) !== 'kinetic') return;
+        if (!moved) return;
+        if (performance.now() - kineticLastHurtAt < 1500) return;
+        if (player.hp > 0 && player.hp < player.maxHp) {
+            player.hp = Math.min(player.maxHp, player.hp + 50 * dt);
+            kineticLastHp = player.hp;
+        }
+    }
     function updateChristmasShowdown(dt) {
         if (!isChristmasShowdownMatch()) { christmasBuffTimer = 0; return; }
         christmasBuffTimer += dt;
@@ -33566,6 +33606,9 @@ let heistFeverActive = false;
 
     function fireSuper(isAimDrag = false){
         normalizeSelectedBrawler();
+        if (selectedBrawler === 'bolznstien' && player && (player.bolznstienSuperUntil || 0) > performance.now()) {
+            if (tryActivateBolznstienOvercharge(player)) { updateSuperButton(); return; }
+        }
     if(superCharge < 100 || player.hp <= 0) return;
         if (isBrawlerLabMode) maybeStartBrawlerLabRangeCapture('super', player);
         if (selectedBrawler === 'beast' && isBeastyBeastActive(player)) {
@@ -43660,14 +43703,6 @@ isBrawlerLabMode = false;
                 card.className = 'brawler-card';
                 card.classList.toggle('brawler-card--weekly-trial',weeklyTrial);
                 card.classList.toggle('brawler-card--prestige', prestige > 0);
-                const fullyMaxedCard = isProgressFullyMaxed(progress);
-                card.classList.toggle('brawler-card--maxed', fullyMaxedCard);
-                if (fullyMaxedCard) {
-                    const maxedRibbon = document.createElement('span');
-                    maxedRibbon.className = 'brawler-card__maxed-ribbon';
-                    maxedRibbon.textContent = '★ MAXED';
-                    card.appendChild(maxedRibbon);
-                }
                 card.style.setProperty('--card-rarity', rarityColor);
                 card.style.setProperty('--portrait-color', data.color || rarityColor);
                 card.style.setProperty('--brick-color', rankAccent);
@@ -44267,13 +44302,6 @@ isBrawlerLabMode = false;
                 upgBtn.disabled = true;
             }
 
-            if (isProgressFullyMaxed(pData)) {
-                charBox.classList.add('brawler-upgrade-card--maxed');
-                const maxedBanner = document.createElement('div');
-                maxedBanner.className = 'brawler-maxed-banner';
-                maxedBanner.textContent = '★ FULLY MAXED ★';
-                charBox.appendChild(maxedBanner);
-            }
             charBox.appendChild(charIcon);
             const upgradeSummary = document.createElement('div');
             upgradeSummary.className = 'brawler-upgrade-summary';
@@ -47893,7 +47921,7 @@ function checkHit(target, b, i){
 
     if (playing && !gameOver) updateFeathersSystems(dt);
     if (playing && !gameOver) updateChristmasShowdown(dt);
-    // (Kinetic heal removed — see Kinetic Magazine rework, 2026-10-22.)
+    if (playing && !gameOver) updateCorePerkKinetic(dt);
     if (isTurkeyCaptureMode && !isBossFight && !isSoloTrial && !isDuels && !gameOver) {
         updateTurkeyCapture(dt);
     }
@@ -52844,7 +52872,8 @@ function checkHit(target, b, i){
         }
         // Super Electric Eyes: Channeling 4 electric chains in cone + CHAIN LIGHTNING BUFF (-40% damage)
         if ((ent.bolznstienSuperUntil || 0) > now) {
-            if (!ent.bolznstienLastSuperTick || now - ent.bolznstienLastSuperTick >= 140) {
+            const bolzTickInterval = (ent.bolznstienOverchargeUntil || 0) > now ? 70 : 140;
+            if (!ent.bolznstienLastSuperTick || now - ent.bolznstienLastSuperTick >= bolzTickInterval) {
                 ent.bolznstienLastSuperTick = now;
                 const isHyper = !!ent.bolznstienSuperIsHyper;
                 const baseRange = isHyper ? 480 : 240;
@@ -52923,13 +52952,13 @@ function checkHit(target, b, i){
                     });
                 }
 
-                // --- RELAYING CHAIN LIGHTNING (40% LESS DAMAGE) ---
+                // --- RELAYING CHAIN LIGHTNING (10% of tick — Anthony's -50% lightning nerf, 2026-10-22) ---
                 // Primary cone victims are deliberately not pre-marked as chained.
                 // This lets lightning from one struck enemy arc into another struck
                 // enemy, then lets that recipient relay the chain onward. A global
                 // visited set still allows each enemy to receive chain damage only
                 // once per Super tick, preventing loops and runaway recursion.
-                const chainDmg = Math.round(tickDmg * 0.20);
+                const chainDmg = Math.round(tickDmg * 0.10);
                 // Each hop searches a full circle around its current victim, so
                 // the chain may turn, branch, or travel behind Bolznstien rather
                 // than being constrained to the original Super aim line.
@@ -52961,7 +52990,7 @@ function checkHit(target, b, i){
                                 spawnFloatingText(candidate.x, candidate.y - 15, `-${chainDmg}`, isHyper ? '#e056fd' : '#00f5d4');
                                 if (!candidate._lastChainFloatAt || now - candidate._lastChainFloatAt > 600) {
                                     candidate._lastChainFloatAt = now;
-                                    spawnFloatingText(candidate.x, candidate.y - 32, '⚡ CHAIN -80%', isHyper ? '#e056fd' : '#00f5d4');
+                                    spawnFloatingText(candidate.x, candidate.y - 32, '⚡ CHAIN -90%', isHyper ? '#e056fd' : '#00f5d4');
                                 }
                                 nextChainHop.push(candidate);
                             }
@@ -52970,6 +52999,22 @@ function checkHit(target, b, i){
                     currentChainHop = nextChainHop;
                 }
 
+            }
+            // Signature OVERCHARGE: two voltaic hands swat the 2 nearest enemies
+            // every 0.9s, stunning them for 0.1s (CC-immunity still applies).
+            if ((ent.bolznstienOverchargeUntil || 0) > now && now >= (ent.bolznstienHandsNextAt || 0)) {
+                ent.bolznstienHandsNextAt = now + 900;
+                const handRange = Math.round((ent.bolznstienSuperIsHyper ? 480 : 240) * 1.40);
+                const handTargets = [player, ...bots]
+                    .filter(t => t && t.hp > 0 && t.id !== ent.id && !areAlliedEntities(ent, t))
+                    .map(t => ({ t, d: Math.hypot(t.x - ent.x, t.y - ent.y) }))
+                    .filter(e => e.d <= handRange + (e.t.radius || 14))
+                    .sort((a, b) => a.d - b.d)
+                    .slice(0, 2);
+                for (const { t } of handTargets) {
+                    applyStatusEffect(t, 'stun', 100, ent);
+                    spawnFloatingText(t.x, t.y - 34, '🖐️', '#ffd21f');
+                }
             }
         }
     }
@@ -53418,13 +53463,7 @@ function checkHit(target, b, i){
            currentReloadTime = 9999999;
        }
        // Jetpack's reload clock is completely paused during flight.
-       // Kinetic Magazine (Core Perk): the bonus slot — the segment above the
-       // fighter's native capacity — only reloads while the player is moving.
-       const kineticBonusSegment = getCorePerk(selectedBrawler) === 'kinetic' && ammo >= maxAmmo - 1;
-       const kineticMovingNow = Math.abs(player.x - (player.kineticMagPrevX ?? player.x)) > 0.5 || Math.abs(player.y - (player.kineticMagPrevY ?? player.y)) > 0.5;
-       player.kineticMagPrevX = player.x;
-       player.kineticMagPrevY = player.y;
-       if (!(selectedBrawler === 'jetpack' && player.jetpackFlight) && !(kineticBonusSegment && !kineticMovingNow)) ammoReloadTimer += dt * 1000;
+       if (!(selectedBrawler === 'jetpack' && player.jetpackFlight)) ammoReloadTimer += dt * 1000;
        if(ammoReloadTimer >= currentReloadTime){
            ammo = (selectedBrawler === 'minigunnin' || selectedBrawler === 'oil_maker') ? Math.min(maxAmmo, ammo + 1) : ammo + 1;
            ammoReloadTimer -= currentReloadTime;
