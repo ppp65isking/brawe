@@ -16890,92 +16890,6 @@ let heistFeverActive = false;
               }
           }));
 
-          const splitterInstinctDailyKey = 'splitterInstinctFreeShardsV1';
-          const splitterInstinctDailyClaimed = !!(playerData.shopClaims && playerData.shopClaims[splitterInstinctDailyKey]);
-          grid.appendChild(makeShopCard({
-              titleText: '⚡ 3 Free Splitter Instinct Shards',
-              accent: '#62ef88',
-              descText: "Claim 3 Shards of The Splitter's Instinct for FREE! Instantly unlocks Fractal Reflex.",
-              priceText: 'FREE',
-              buttonText: splitterInstinctDailyClaimed ? 'CLAIMED' : 'CLAIM 3 SHARDS',
-              buttonColor: '#62ef88',
-              isOwned: splitterInstinctDailyClaimed,
-              footerText: 'Free gift in the shop for all players.',
-              onBuy: () => {
-                  if (playerData.shopClaims && playerData.shopClaims[splitterInstinctDailyKey]) return;
-                  playerData.shopClaims = playerData.shopClaims || {};
-                  addSpecialAbilityPiece('splitter');
-                  addSpecialAbilityPiece('splitter');
-                  addSpecialAbilityPiece('splitter');
-                  playerData.shopClaims[splitterInstinctDailyKey] = true;
-                  saveProgress();
-                  ensureShopButtonRefresh();
-                  renderTabContent();
-                  spawnFloatingText(innerWidth / 2, innerHeight / 2, '+3 SPLITTER SHARDS · INSTINCT UNLOCKED!', '#62ef88');
-              }
-          }));
-
-          const sushiBugCompKey = 'slopSushiBugComp3V1';
-          const sushiBugCompClaimed = !!playerData.shopClaims[sushiBugCompKey];
-          grid.appendChild(makeShopCard({
-              titleText: '🍣 Sushi Bug Compensation',
-              accent: '#ff5ba7',
-              descText: 'Thanks for your patience! Claim 3 Sushi Tappers for the deck-unlock issue.',
-              priceText: 'FREE',
-              buttonText: 'CLAIM 3',
-              buttonColor: '#ff5ba7',
-              isOwned: sushiBugCompClaimed,
-              footerText: 'One-time compensation.',
-              onBuy: () => {
-                  if (playerData.shopClaims[sushiBugCompKey]) return;
-                  ensureSlopSushiState();
-                  playerData.slopSushi.tappers += 3;
-                  playerData.shopClaims[sushiBugCompKey] = true;
-                  ensureShopButtonRefresh();
-                  renderTabContent();
-              }
-          }));
-
-          const tapperMegaCompKey = 'tapperMegaCompJuly2026';
-          const tapperMegaCompClaimed = !!playerData.shopClaims[tapperMegaCompKey];
-          grid.appendChild(makeShopCard({
-              titleText: '🎁 Tapper Mega Gift',
-              accent: '#d970ff',
-              descText: 'Claim 5 Tappers, 3 Super Tappers, and 1 Surge Tapper for free!',
-              priceText: 'FREE',
-              buttonText: 'CLAIM ALL',
-              buttonColor: '#d970ff',
-              isOwned: tapperMegaCompClaimed,
-              footerText: 'One-time free gift.',
-              onBuy: () => {
-                  if (playerData.shopClaims[tapperMegaCompKey]) return;
-                  playerData.starrDrops = (playerData.starrDrops || 0) + 5;
-                  playerData.superTapperCount = (playerData.superTapperCount || 0) + 3;
-                  playerData.hyperTapperCount = (playerData.hyperTapperCount || 0) + 1;
-                  playerData.shopClaims[tapperMegaCompKey] = true;
-                  ensureShopButtonRefresh();
-                  renderTabContent();
-              }
-          }));
-
-          grid.appendChild(makeShopCard({
-              titleText: '☀ Summer Launch Freebie! ☀',
-              accent: '#ff8800',
-              descText: 'Celebrate the launch of Summer! Claim 1 FREE Surge Tapper.',
-              priceText: 'FREE',
-              buttonText: 'CLAIM',
-              buttonColor: '#ff8800',
-              isOwned: !!(playerData.shopClaims && playerData.shopClaims.summerHyperTapper),
-              footerText: 'Summer event exclusive offer.',
-              onBuy: () => {
-                  playerData.shopClaims = playerData.shopClaims || {};
-                  playerData.shopClaims.summerHyperTapper = true;
-                  playerData.hyperTapperCount = (playerData.hyperTapperCount || 0) + 1;
-                  ensureShopButtonRefresh();
-                  renderTabContent();
-              }
-          }));
-
           grid.appendChild(makeShopCard({
               titleText: 'Tapper Mega Bundle',
               accent: '#ffd166',
@@ -17021,22 +16935,6 @@ let heistFeverActive = false;
                   }
               }));
           }
-
-          grid.appendChild(makeShopCard({
-              titleText: 'Brick Jackpot',
-              accent: '#5df2c2',
-              descText: 'Convert your Bricks into instant coins! Great for clearing clutter.',
-              priceText: '1000 BRICKS → 2000 COINS',
-              buttonText: 'CONVERT',
-              buttonColor: '#5df2c2',
-              isLocked: getTotalBrickBonBricks() < 1000,
-              lockedText: '1000 BRICKS NEEDED',
-              onBuy: () => {
-                  playerData.coins += 2000;
-                  ensureShopButtonRefresh();
-                  renderTabContent();
-              }
-          }));
 
           return grid;
       };
@@ -17434,30 +17332,6 @@ let heistFeverActive = false;
       const renderDailyDealsTab = () => {
           const grid = cardGrid();
           addSection(grid, 'Fresh every day');
-          const splitterInstinctFreeKey = 'splitterInstinctFreeShardsV1';
-          const splitterInstinctClaimed = !!(playerData.shopClaims && playerData.shopClaims[splitterInstinctFreeKey]);
-          grid.appendChild(makeShopCard({
-              titleText: '⚡ 3 Free Splitter Instinct Shards',
-              accent: '#62ef88',
-              descText: "Claim 3 Shards of The Splitter's Instinct for FREE! Instantly unlocks Fractal Reflex.",
-              priceText: 'FREE',
-              buttonText: splitterInstinctClaimed ? 'CLAIMED' : 'CLAIM 3 SHARDS',
-              buttonColor: '#62ef88',
-              isOwned: splitterInstinctClaimed,
-              footerText: 'Free gift in the shop for all players.',
-              onBuy: () => {
-                  if (playerData.shopClaims && playerData.shopClaims[splitterInstinctFreeKey]) return;
-                  playerData.shopClaims = playerData.shopClaims || {};
-                  addSpecialAbilityPiece('splitter');
-                  addSpecialAbilityPiece('splitter');
-                  addSpecialAbilityPiece('splitter');
-                  playerData.shopClaims[splitterInstinctFreeKey] = true;
-                  saveProgress();
-                  ensureShopButtonRefresh();
-                  renderTabContent();
-                  spawnFloatingText(innerWidth / 2, innerHeight / 2, '+3 SPLITTER SHARDS · INSTINCT UNLOCKED!', '#62ef88');
-              }
-          }));
           const supplyKey = getShopClaimKey('forge-supply', dailyCycle.cycleKey);
           grid.appendChild(makeShopCard({
               titleText: '📦 Daily Forge Supply', accent: '#69f2cd',
@@ -17479,6 +17353,126 @@ let heistFeverActive = false;
               isOwned: !!playerData.shopClaims[coinKey], isLocked:(playerData.gems||0)<8, lockedText:'8 GEMS REQUIRED', footerText:'One crate each day.',
               onBuy:()=>{if(playerData.shopClaims[coinKey]||(playerData.gems||0)<8)return;playerData.gems-=8;playerData.coins=(playerData.coins||0)+600;playerData.shopClaims[coinKey]=true;ensureShopButtonRefresh();renderTabContent();}
           }));
+          const corePackKey = getShopClaimKey('daily-core-pack', dailyCycle.cycleKey);
+          grid.appendChild(makeShopCard({
+              titleText: '💠 Core Piece Pack', accent: '#7dfcd9',
+              descText: '25 Core Pieces toward Power 9+ upgrades and ability Pieces.', priceText: '10 GEMS → 25 CORE PIECES', buttonText: 'BUY PACK', buttonColor: '#7dfcd9',
+              isOwned: !!playerData.shopClaims[corePackKey], isLocked: (playerData.gems||0)<10, lockedText:'10 GEMS REQUIRED', footerText:'One pack each day.',
+              onBuy: () => { if(playerData.shopClaims[corePackKey]||(playerData.gems||0)<10)return; playerData.gems-=10; addCorePieces(25); playerData.shopClaims[corePackKey]=true; ensureShopButtonRefresh(); renderTabContent(); }
+          }));
+
+          addSection(grid, 'Picked for your mains');
+          const brickCount = id => (playerData.brawlers && playerData.brawlers[id] && playerData.brawlers[id].bricks) || 0;
+          const mainPool = Object.keys(brawlerData).filter(id => (playerData.unlockedBrawlers || {})[id] && !disabledBrawlers.has(id));
+          mainPool.sort((a, b) => brickCount(b) - brickCount(a));
+          const mainPicks = pickWeeklyTrialFighters(mainPool.slice(0, 6), 2, `shop-mains:${dailyCycle.cycleKey}`);
+          const mainCards = [];
+          for (const fid of mainPicks) {
+              const fdata = brawlerData[fid] || {};
+              const fprog = getOrCreateProgress(fid);
+              const flevel = Math.max(1, Math.min(MAX_POWER_LEVEL, fprog.level || 1));
+              const fname = fdata.name || fid;
+              const accent = fdata.color || '#ffd166';
+              if (!fprog.gadgetUnlocked && flevel >= 7) {
+                  const cost = Math.floor(GADGET_COST * 0.75);
+                  const key = getShopClaimKey(`main-piece-${fid}`, dailyCycle.cycleKey);
+                  mainCards.push(makeShopCard({
+                      titleText: `⭐ ${fname} — Tool Deal`, accent,
+                      descText: `One of your most-played fighters is missing its Tool. 25% off today, picked for ${fname}.`,
+                      priceText: `${cost.toLocaleString()} COINS (was ${GADGET_COST.toLocaleString()})`, buttonText: 'BUY TOOL', buttonColor: accent,
+                      isOwned: !!playerData.shopClaims[key], isLocked: (playerData.coins||0)<cost, lockedText: `${cost.toLocaleString()} COINS REQUIRED`, footerText: 'Personalized pick · rotates daily.',
+                      onBuy: () => { if(playerData.shopClaims[key]||fprog.gadgetUnlocked||(playerData.coins||0)<cost)return; playerData.coins-=cost; fprog.gadgetUnlocked=true; if(!fprog.selectedGadget)fprog.selectedGadget='g1'; playerData.shopClaims[key]=true; ensureShopButtonRefresh(); renderTabContent(); }
+                  }));
+              } else if (!fprog.starPowerUnlocked && flevel >= 9) {
+                  const cost = Math.floor(STAR_POWER_COST * 0.75);
+                  const key = getShopClaimKey(`main-piece-${fid}`, dailyCycle.cycleKey);
+                  mainCards.push(makeShopCard({
+                      titleText: `⭐ ${fname} — Talent Deal`, accent,
+                      descText: `One of your most-played fighters is missing its Talent. 25% off today, picked for ${fname}.`,
+                      priceText: `${cost.toLocaleString()} COINS (was ${STAR_POWER_COST.toLocaleString()})`, buttonText: 'BUY TALENT', buttonColor: accent,
+                      isOwned: !!playerData.shopClaims[key], isLocked: (playerData.coins||0)<cost, lockedText: `${cost.toLocaleString()} COINS REQUIRED`, footerText: 'Personalized pick · rotates daily.',
+                      onBuy: () => { if(playerData.shopClaims[key]||fprog.starPowerUnlocked||(playerData.coins||0)<cost)return; playerData.coins-=cost; fprog.starPowerUnlocked=true; if(!fprog.selectedStar)fprog.selectedStar='slow'; playerData.shopClaims[key]=true; ensureShopButtonRefresh(); renderTabContent(); }
+                  }));
+              } else if (!fprog.hyperchargeUnlocked && flevel >= 11) {
+                  const full = getHyperchargePrice(fprog);
+                  const cost = Math.max(1, Math.floor(full * 0.75));
+                  const key = getShopClaimKey(`main-piece-${fid}`, dailyCycle.cycleKey);
+                  mainCards.push(makeShopCard({
+                      titleText: `⭐ ${fname} — Core Surge Deal`, accent,
+                      descText: `One of your most-played fighters is missing its Core Surge. 25% off its rolled price today, picked for ${fname}.`,
+                      priceText: `${cost.toLocaleString()} COINS (was ${full.toLocaleString()})`, buttonText: 'BUY CORE SURGE', buttonColor: accent,
+                      isOwned: !!playerData.shopClaims[key], isLocked: (playerData.coins||0)<cost, lockedText: `${cost.toLocaleString()} COINS REQUIRED`, footerText: 'Personalized pick · rotates daily.',
+                      onBuy: () => { if(playerData.shopClaims[key]||fprog.hyperchargeUnlocked||(playerData.coins||0)<cost)return; playerData.coins-=cost; fprog.hyperchargeUnlocked=true; playerData.shopClaims[key]=true; ensureShopButtonRefresh(); renderTabContent(); }
+                  }));
+              } else if (flevel < MAX_POWER_LEVEL) {
+                  const full = getUpgradeCost(flevel);
+                  const cost = Math.max(1, Math.floor(full * 0.75));
+                  const cp = getCorePieceUpgradeCost(flevel);
+                  const key = getShopClaimKey(`main-upgrade-${fid}`, dailyCycle.cycleKey);
+                  mainCards.push(makeShopCard({
+                      titleText: `⭐ ${fname} — Upgrade Deal`, accent,
+                      descText: `One of your most-played fighters. Today only: Power ${flevel} → ${flevel + 1} for 25% fewer Coins.${cp>0?` Core Pieces still apply (${cp}).`:''}`,
+                      priceText: `${cost.toLocaleString()} COINS${cp>0?` + ${cp} CORE PIECES`:''} (was ${full.toLocaleString()})`, buttonText: 'UPGRADE', buttonColor: accent,
+                      isOwned: !!playerData.shopClaims[key], isLocked: (playerData.coins||0)<cost || getCorePieces()<cp, lockedText: 'NOT ENOUGH CURRENCY', footerText: 'Personalized pick · rotates daily.',
+                      onBuy: () => { if(playerData.shopClaims[key]||(playerData.coins||0)<cost||getCorePieces()<cp)return; playerData.coins-=cost; if(cp>0)spendCorePieces(cp); applyLevelUnlocks(fprog, flevel+1); playerData.shopClaims[key]=true; ensureShopButtonRefresh(); renderTabContent(); }
+                  }));
+              } else if (!fprog.corePerkUnlocked) {
+                  const cost = Math.floor(CORE_PERK_COST * 0.75);
+                  const key = getShopClaimKey(`main-perk-${fid}`, dailyCycle.cycleKey);
+                  mainCards.push(makeShopCard({
+                      titleText: `⭐ ${fname} — Core Perk Deal`, accent,
+                      descText: `${fname} is Power 12 with no Core Perk slot yet. 25% off today, picked for your main. Swap the perk free any time after.`,
+                      priceText: `${cost.toLocaleString()} COINS (was ${CORE_PERK_COST.toLocaleString()})`, buttonText: 'UNLOCK PERK SLOT', buttonColor: accent,
+                      isOwned: !!playerData.shopClaims[key], isLocked: (playerData.coins||0)<cost, lockedText: `${cost.toLocaleString()} COINS REQUIRED`, footerText: 'Personalized pick · rotates daily.',
+                      onBuy: () => { if(playerData.shopClaims[key]||fprog.corePerkUnlocked||(playerData.coins||0)<cost)return; playerData.coins-=cost; fprog.corePerkUnlocked=true; if(!fprog.corePerk)fprog.corePerk='surge'; playerData.shopClaims[key]=true; ensureShopButtonRefresh(); renderTabContent(); }
+                  }));
+              }
+          }
+          if (!mainCards.length) {
+              const stipendKey = getShopClaimKey('forge-stipend', dailyCycle.cycleKey);
+              mainCards.push(makeShopCard({
+                  titleText: '🔰 Forge Stipend', accent: '#69f2cd',
+                  descText: 'Your mains are fully built — take 250 Coins on the house today.', priceText: 'FREE', buttonText: 'CLAIM', buttonColor: '#69f2cd',
+                  isOwned: !!playerData.shopClaims[stipendKey], footerText: 'One stipend per local day.',
+                  onBuy: () => { if(playerData.shopClaims[stipendKey])return; playerData.coins=(playerData.coins||0)+250; playerData.shopClaims[stipendKey]=true; ensureShopButtonRefresh(); renderTabContent(); }
+              }));
+          }
+          mainCards.forEach(card => grid.appendChild(card));
+
+          const finishCandidates = [];
+          for (const [fid, def] of Object.entries(SPECIAL_ABILITY_DEFS)) {
+              if (!(playerData.unlockedBrawlers || {})[fid]) continue;
+              const st = getSpecialAbilityState(def.type, fid);
+              if (!st.unlocked && st.pieces > 0) finishCandidates.push(fid);
+          }
+          if (finishCandidates.length) {
+              addSection(grid, 'Finish the set');
+              const fid = pickTimedEntry(finishCandidates, `shop-finish:${dailyCycle.cycleKey}`);
+              const def = getSpecialAbilityDef(fid);
+              const st = getSpecialAbilityState(def.type, fid);
+              const key = getShopClaimKey(`finish-set-${fid}`, dailyCycle.cycleKey);
+              grid.appendChild(makeShopCard({
+                  titleText: `🧩 ${def.name} — Next Piece`, accent: def.color,
+                  descText: `${(brawlerData[fid]||{}).name || fid} is at ${st.pieces}/3 ${def.type} pieces. Today's piece is discounted — finish the triangle.`,
+                  priceText: '30 CORE PIECES (was 40)', buttonText: 'BUY PIECE', buttonColor: def.color,
+                  isOwned: !!playerData.shopClaims[key], isLocked: getCorePieces()<30, lockedText: '30 CORE PIECES REQUIRED', footerText: 'Personalized pick · rotates daily.',
+                  onBuy: () => { if(playerData.shopClaims[key])return; if(!spendCorePieces(30))return alert('Not enough Core Pieces!'); addSpecialAbilityPiece(fid); playerData.shopClaims[key]=true; ensureShopButtonRefresh(); renderTabContent(); }
+              }));
+          }
+
+          const skinPool = Object.values(skinsDatabase || {}).filter(s => s && !s.visualOnly && (s.price||0) > 0 && (playerData.unlockedBrawlers||{})[s.brawler] && !(((playerData.ownedSkins||{})[s.brawler])||[]).includes(s.id));
+          if (skinPool.length) {
+              addSection(grid, 'Skin of the day');
+              const skin = pickTimedEntry(skinPool, `shop-skin:${dailyCycle.cycleKey}`);
+              const dealPrice = Math.max(1, Math.floor((skin.price||0) * 0.75));
+              grid.appendChild(makeShopCard({
+                  titleText: `🎭 ${skin.name}`, accent: '#ff9de2',
+                  descText: `${skin.description || 'A fresh look.'} For ${(brawlerData[skin.brawler]||{}).name || skin.brawler} — 25% off today only.`,
+                  priceText: `${dealPrice} GEMS (was ${skin.price})`, buttonText: 'BUY SKIN', buttonColor: '#ff9de2',
+                  isLocked: (playerData.gems||0)<dealPrice, lockedText: `${dealPrice} GEMS REQUIRED`, footerText: 'Personalized pick · only for fighters you own · rotates daily.',
+                  onBuy: () => { if((playerData.gems||0)<dealPrice)return alert('Not enough Gems!'); playerData.gems-=dealPrice; playerData.ownedSkins = playerData.ownedSkins || {}; playerData.ownedSkins[skin.brawler] = playerData.ownedSkins[skin.brawler] || []; if(!playerData.ownedSkins[skin.brawler].includes(skin.id)) playerData.ownedSkins[skin.brawler].push(skin.id); playerData.selectedSkins = playerData.selectedSkins || {}; playerData.selectedSkins[skin.brawler] = skin.id; ensureShopButtonRefresh(); renderTabContent(); }
+              }));
+          }
           return grid;
       };
 
@@ -17505,6 +17499,30 @@ let heistFeverActive = false;
               priceText:'7 GEMS → 500 COINS',buttonText:'CLAIM FUND',buttonColor:'#ff9c5b',isOwned:!!playerData.shopClaims[loadoutKey],isLocked:(playerData.gems||0)<7,lockedText:'7 GEMS REQUIRED',footerText:'One personalized fund each day.',
               onBuy:()=>{if(playerData.shopClaims[loadoutKey]||(playerData.gems||0)<7)return;playerData.gems-=7;playerData.coins=(playerData.coins||0)+500;playerData.shopClaims[loadoutKey]=true;ensureShopButtonRefresh();renderTabContent();}
           }));
+          if (level >= MAX_POWER_LEVEL && !progress.corePerkUnlocked) {
+              const perkKey = getShopClaimKey(`fighter-perk-${selectedBrawler}`, dailyCycle.cycleKey);
+              grid.appendChild(makeShopCard({
+                  titleText: '🌟 Core Perk Slot', accent: '#59f2d6',
+                  descText: `${data.name||selectedBrawler} is Power 12 — unlock the Core Perk slot at a shop discount today. Pick or swap the perk free any time after.`,
+                  priceText: '1,150 COINS (was 1,500)', buttonText: 'UNLOCK PERK SLOT', buttonColor: '#59f2d6',
+                  isOwned: !!playerData.shopClaims[perkKey], isLocked: (playerData.coins||0)<1150, lockedText: '1,150 COINS REQUIRED', footerText: 'Personalized to your selected fighter.',
+                  onBuy: () => { if(playerData.shopClaims[perkKey]||progress.corePerkUnlocked||(playerData.coins||0)<1150)return; playerData.coins-=1150; progress.corePerkUnlocked=true; if(!progress.corePerk)progress.corePerk='surge'; playerData.shopClaims[perkKey]=true; ensureShopButtonRefresh(); renderTabContent(); }
+              }));
+          }
+          const selAbilityDef = getSpecialAbilityDef(selectedBrawler);
+          if (selAbilityDef) {
+              const selAbilityState = getSpecialAbilityState(selAbilityDef.type, selectedBrawler);
+              if (!selAbilityState.unlocked) {
+                  const pieceKey = getShopClaimKey(`fighter-piece-${selectedBrawler}`, dailyCycle.cycleKey);
+                  grid.appendChild(makeShopCard({
+                      titleText: `🧩 ${selAbilityDef.pieceName}`, accent: selAbilityDef.color,
+                      descText: `${data.name||selectedBrawler} has ${selAbilityState.pieces}/3 pieces toward ${selAbilityDef.name}. Shop price today: 30 Core Pieces (normally 40).`,
+                      priceText: '30 CORE PIECES (was 40)', buttonText: 'BUY PIECE', buttonColor: selAbilityDef.color,
+                      isOwned: !!playerData.shopClaims[pieceKey], isLocked: getCorePieces()<30, lockedText: '30 CORE PIECES REQUIRED', footerText: 'One discounted piece per fighter each day.',
+                      onBuy: () => { if(playerData.shopClaims[pieceKey])return; if(!spendCorePieces(30))return alert('Not enough Core Pieces!'); addSpecialAbilityPiece(selectedBrawler); playerData.shopClaims[pieceKey]=true; ensureShopButtonRefresh(); renderTabContent(); }
+                  }));
+              }
+          }
           return grid;
       };
 
