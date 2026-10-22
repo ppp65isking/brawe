@@ -31,6 +31,13 @@ assert.match(css, /\.brawler-card--maxed \{/, 'maxed card CSS missing');
 assert.match(css, /\.brawler-card__maxed-ribbon \{/, 'ribbon CSS missing');
 assert.match(css, /\.brawler-upgrade-card--maxed \{/, 'detail maxed CSS missing');
 assert.match(css, /\.brawler-maxed-banner \{/, 'banner CSS missing');
+// Ribbon is a top-center pill (the old rotated corner band collided with the
+// PIN chip and rendered as a clipped slash).
+const ribbon = css.match(/\.brawler-card__maxed-ribbon \{([\s\S]*?)\}/);
+assert.ok(ribbon, 'ribbon CSS block missing');
+assert.match(ribbon[1], /left: 50%/, 'ribbon must be centered');
+assert.doesNotMatch(ribbon[1], /rotate\(/, 'ribbon must not be rotated');
+
 const shine = css.match(/@keyframes kr-maxed-shine \{([\s\S]*?)\n\}/);
 assert.ok(shine, 'shine keyframes missing');
 assert.match(shine[1], /transform/, 'shine must move via transform');

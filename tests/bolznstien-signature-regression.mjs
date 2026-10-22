@@ -33,6 +33,15 @@ assert.ok(hookIdx > fireSuperStart && gateIdx > hookIdx, 'overcharge hook must p
 // --- Super button advertises OVERCHARGE ---
 assert.match(game, /Power Move: ⚡ OVERCHARGE!/, 'super button overcharge state missing');
 
+// --- Activation must ALSO bypass the startAimingSuper charge gate ---
+// (Regression, found live 2026-10-22: every super input funnels through
+// startAimingSuper, whose charge gate killed the press before fireSuper ever
+// ran, so the unlocked Signature could never be activated.)
+const aimStart = game.indexOf('function startAimingSuper(source');
+const aimHook = game.indexOf('tryActivateBolznstienOvercharge(player)', aimStart);
+const aimGate = game.indexOf('if (superCharge < 100 || player.hp <= 0) return;', aimStart);
+assert.ok(aimStart > -1 && aimHook > aimStart && aimGate > aimHook, 'startAimingSuper must try Overcharge before its super-charge gate');
+
 // --- Tick haste + hands in the Super tick loop ---
 assert.match(game, /bolzTickInterval = \(ent\.bolznstienOverchargeUntil \|\| 0\) > now \? 70 : 140/, 'tick interval must halve while overcharged');
 assert.match(game, /bolznstienHandsNextAt = now \+ 900/, 'hands must pulse every 0.9s');
