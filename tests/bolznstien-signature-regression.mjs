@@ -1,10 +1,14 @@
 // Bolznstien Signature — OVERCHARGE (2026-10-22, Anthony's spec):
-// 3-Piece Signature. Pressing Power Move again during Electric Eyes activates
-// it for 2s: costs 1,500 HP (clamped, cannot kill), 14s cooldown, Super ticks
-// twice as fast (140ms -> 70ms), and two voltaic hands stun the 2 nearest
+// 3-Piece Signature wired into the UNIVERSAL signature framework (the
+// #signature button / SIG touch button / R key all call
+// activateSignatureAbility). Only activatable during Electric Eyes: costs
+// 1,500 HP (clamped, cannot kill), 14s cooldown, 2s of double-speed Super
+// ticks (140ms -> 70ms) with two voltaic hands stunning the 2 nearest
 // enemies every 0.9s for 0.1s. Shipped balance: chain lightning -50%
 // (20% -> 10% of tick). The -30% Super tick nerf was ALREADY in the code —
 // this test pins it at x0.70 so it is never applied twice.
+// (An earlier build wrongly wired activation through the Power Move button;
+// Anthony caught it — the universal bar/button is the only surface now.)
 import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 
@@ -15,32 +19,33 @@ const def = game.match(/bolznstien: \{\s*type: 'signature',\s*name: 'Overcharge'
 assert.ok(def, 'bolznstien signature def (Overcharge) missing');
 assert.match(def[0], /Signature Piece/, 'piece name missing');
 
-// --- Activation gates and numbers ---
-const act = game.match(/function tryActivateBolznstienOvercharge\(entity\) \{[\s\S]*?\n    \}/);
-assert.ok(act, 'activation function missing');
-assert.match(act[0], /bolznstienSuperUntil/, 'must require the Super to be active');
-assert.match(act[0], /isSpecialAbilityAvailableForEntity\(entity, 'bolznstien'\)/, 'must require the unlocked Signature');
-assert.match(act[0], /Math\.min\(1500, Math\.max\(0, Math\.floor\(entity\.hp\) - 1\)\)/, 'HP cost must be 1500, clamped so it cannot kill');
-assert.match(act[0], /bolznstienOverchargeUntil = now \+ 2000/, 'overcharge must last 2s');
-assert.match(act[0], /bolznstienOverchargeReadyAt = now \+ 14000/, 'cooldown must be 14s');
+// --- Universal state function ---
+const state = game.match(/function getBolznstienSignatureState\(entity = player, now = performance\.now\(\)\) \{[\s\S]*?\n  \}/);
+assert.ok(state, 'getBolznstienSignatureState missing');
+assert.match(state[0], /isSpecialAbilityAvailableForEntity\(entity, 'bolznstien'\)/, 'state must gate on the unlocked Signature');
+assert.match(state[0], /NEEDS ELECTRIC EYES/, 'state must require the Super to be active');
+assert.match(state[0], /COOLDOWN/, 'state must surface the cooldown');
+assert.match(state[0], /label: 'OVERCHARGE'/, 'ready label must be OVERCHARGE');
+assert.match(game, /const BOLZNSTIEN_SIGNATURE_COOLDOWN_MS = 14000;/, 'cooldown const must be 14s');
 
-// --- fireSuper hook fires BEFORE the charge gate ---
-const fireSuperStart = game.indexOf('function fireSuper(isAimDrag = false)');
-const hookIdx = game.indexOf('tryActivateBolznstienOvercharge(player)', fireSuperStart);
-const gateIdx = game.indexOf('if(superCharge < 100 || player.hp <= 0) return;', fireSuperStart);
-assert.ok(hookIdx > fireSuperStart && gateIdx > hookIdx, 'overcharge hook must precede the super-charge gate inside fireSuper');
+// --- Universal dispatch branch ---
+const dispatch = game.match(/if \(fighterId === 'bolznstien'\) \{[\s\S]*?\n      \}/);
+assert.ok(dispatch, 'activateSignatureAbility bolznstien branch missing');
+assert.match(dispatch[0], /getBolznstienSignatureState\(entity\)/, 'branch must consult the state function');
+assert.match(dispatch[0], /Math\.min\(1500, Math\.max\(0, entity\.hp - 1\)\)/, 'HP cost must be 1500, clamped so it cannot kill');
+assert.match(dispatch[0], /bolznstienOverchargeUntil = now \+ 2000/, 'overcharge must last 2s');
+assert.match(dispatch[0], /bolznstienOverchargeReadyAt = now \+ BOLZNSTIEN_SIGNATURE_COOLDOWN_MS/, 'branch must set the 14s cooldown');
+assert.match(dispatch[0], /updateSignatureButton\(\)/, 'branch must refresh the signature button');
 
-// --- Super button advertises OVERCHARGE ---
-assert.match(game, /Power Move: ⚡ OVERCHARGE!/, 'super button overcharge state missing');
+// --- Universal button registration ---
+assert.match(game, /selectedBrawler === 'dashaholic' \|\| selectedBrawler === 'bolznstien'/, 'updateSignatureButton must list bolznstien as a signature fighter');
+assert.match(game, /selectedBrawler === 'bolznstien' \? getBolznstienSignatureState\(player\)/, 'button state chain must include bolznstien');
+assert.match(game, /selectedBrawler === 'bolznstien' \? ' · 1500 HP'/, 'button label must show the 1500 HP cost');
+assert.match(game, /if \(entity === player\) updateSignatureButton\(\);/, 'casting Electric Eyes must refresh the signature button');
 
-// --- Activation must ALSO bypass the startAimingSuper charge gate ---
-// (Regression, found live 2026-10-22: every super input funnels through
-// startAimingSuper, whose charge gate killed the press before fireSuper ever
-// ran, so the unlocked Signature could never be activated.)
-const aimStart = game.indexOf('function startAimingSuper(source');
-const aimHook = game.indexOf('tryActivateBolznstienOvercharge(player)', aimStart);
-const aimGate = game.indexOf('if (superCharge < 100 || player.hp <= 0) return;', aimStart);
-assert.ok(aimStart > -1 && aimHook > aimStart && aimGate > aimHook, 'startAimingSuper must try Overcharge before its super-charge gate');
+// --- The old Power Move hacks must stay GONE ---
+assert.doesNotMatch(game, /tryActivateBolznstienOvercharge/, 'old standalone activation must be removed');
+assert.doesNotMatch(game, /Power Move: ⚡ OVERCHARGE!/, 'super-button hack must be removed');
 
 // --- Tick haste + hands in the Super tick loop ---
 assert.match(game, /bolzTickInterval = \(ent\.bolznstienOverchargeUntil \|\| 0\) > now \? 70 : 140/, 'tick interval must halve while overcharged');
