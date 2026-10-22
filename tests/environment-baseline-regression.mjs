@@ -7,7 +7,8 @@ import assert from 'node:assert/strict';
 //   - every Showdown theme builds bush zones (the terrain the hiding system uses)
 //   - water zones per theme, exactly as today's center-lane carve leaves them
 //   - isEntityInsideBush round-trips a point inside a placed bush
-//   - findBotCoverPoint behavior, INCLUDING its known no-cover landmine
+//   - findBotCoverPoint behavior, including the no-cover fallback (Phase 2
+//     repointed it at bushZones; pinned below as no-throw)
 // Behavioral: boots the real game.js in a vm (browser shims, same pattern as
 // power12-load-order-regression.mjs) and probes in-scope internals at the
 // test-export block. No game code is modified by this test.
@@ -140,15 +141,17 @@ assert.equal(P.isEntityInsideBush(null), false, 'null entity must read as outsid
 assert.equal(P.findBotCoverPoint({ x: 2000, y: 2000, radius: 14 }, null), null, 'null threat must return null');
 const cover = P.findBotCoverPoint({ x: 2000, y: 2000, radius: 14 }, { x: 2000, y: 500 });
 assert.ok(cover && Number.isFinite(cover.x) && Number.isFinite(cover.y), 'bot near walls must get a cover point');
-// KNOWN BUG, pinned 2026-10-22 (Phase 2 fix target): when NO wall/cube cover
-// is within 480px, findBotCoverPoint falls into its dead fallback, which reads
-// the never-declared `bushes` array (game.js ~17895) and throws ReferenceError.
-// Phase 2 repoints the fallback at bushZones; when it lands, flip this pin to
-// assert a no-throw null/point return.
-assert.throws(
-  () => P.findBotCoverPoint({ x: 120, y: 120, radius: 14 }, { x: 2000, y: 2000 }),
-  { name: 'ReferenceError', message: /bushes is not defined/ },
-  'pinned: no-cover findBotCoverPoint throws ReferenceError today (dead `bushes` fallback)'
+// FIXED by Phase 2 (2026-10-22): the no-cover fallback used to read the
+// never-declared `bushes` array and throw ReferenceError. It now iterates
+// bushZones, so the no-cover case must NOT throw — it returns a bush point
+// when a bush center is within 400px and movable, otherwise null.
+let noCoverResult;
+assert.doesNotThrow(() => {
+  noCoverResult = P.findBotCoverPoint({ x: 120, y: 120, radius: 14 }, { x: 2000, y: 2000 });
+}, 'no-cover findBotCoverPoint must not throw after the Phase 2 repoint');
+assert.ok(
+  noCoverResult === null || (Number.isFinite(noCoverResult.x) && Number.isFinite(noCoverResult.y)),
+  'no-cover findBotCoverPoint returns null or a finite bush point'
 );
 
 console.log('environment baseline regression: all checks passed');
