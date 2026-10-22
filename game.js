@@ -3071,12 +3071,6 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
           updateSuperButton();
           return;
       }
-      // Bolznstien Signature: pressing Power Move during Electric Eyes activates
-      // OVERCHARGE instantly — it must bypass the charge gate below, because the
-      // Super charge is already spent while the Super is live.
-      if (selectedBrawler === 'bolznstien' && player && (player.bolznstienSuperUntil || 0) > performance.now()) {
-          if (tryActivateBolznstienOvercharge(player)) { updateSuperButton(); return; }
-      }
       if (superCharge < 100 || player.hp <= 0) return;
       if (selectedBrawler === 'hyperorigin' && getHyperoriginEnergy(player) < 1) return;
       if (selectedBrawler === 'copyphase') {
@@ -3261,6 +3255,18 @@ function updateGadgetInfo() {
       return { ready:true, gadget, label:gadget === 'g1' ? 'PHASE ECHO' : 'ADRENALINE FIELD' };
   }
 
+  const BOLZNSTIEN_SIGNATURE_COOLDOWN_MS = 14000;
+  function getBolznstienSignatureState(entity = player, now = performance.now()) {
+      if (!entity) return { ready: false, label: 'UNAVAILABLE' };
+      if (!isSpecialAbilityAvailableForEntity(entity, 'bolznstien')) return { ready: false, label: 'LOCKED' };
+      if ((entity.bolznstienOverchargeUntil || 0) > now) return { ready: false, label: 'OVERCHARGED!' };
+      const cooldownLeft = Math.max(0, (entity.bolznstienOverchargeReadyAt || 0) - now);
+      if (cooldownLeft > 0) return { ready: false, label: `COOLDOWN ${(cooldownLeft / 1000).toFixed(1)}s`, cooldownLeft };
+      if ((entity.bolznstienSuperUntil || 0) <= now) return { ready: false, label: 'NEEDS ELECTRIC EYES' };
+      if (entity.hp <= 1) return { ready: false, label: 'NEED HP' };
+      return { ready: true, label: 'OVERCHARGE' };
+  }
+
   function activateSignatureAbility(entity = player) {
       const fighterId = entity.id === player.id ? selectedBrawler : entity.brawler;
       if (fighterId === 'dashaholic') {
@@ -3375,6 +3381,23 @@ function updateGadgetInfo() {
           updateSignatureButton();
           return true;
       }
+      if (fighterId === 'bolznstien') {
+          const state = getBolznstienSignatureState(entity);
+          if (!state.ready) { spawnFloatingText(entity.x, entity.y - 34, state.label, '#8aa0b9'); return false; }
+          const now = performance.now();
+          const cost = Math.min(1500, Math.max(0, entity.hp - 1));
+          entity.hp = Math.max(1, entity.hp - cost);
+          entity.lastDamagedAt = now;
+          entity.trinketLastCombatAt = now;
+          entity.idleRegenNextAt = 0;
+          entity.bolznstienOverchargeUntil = now + 2000;
+          entity.bolznstienOverchargeReadyAt = now + BOLZNSTIEN_SIGNATURE_COOLDOWN_MS;
+          entity.bolznstienHandsNextAt = 0;
+          explosions.push({ x: entity.x, y: entity.y, radius: 84, life: 0, maxLife: .34, color: 'rgba(255,210,31,.72)', fxKind: 'signature' });
+          spawnFloatingText(entity.x, entity.y - 48, `-${cost} HP · OVERCHARGE!`, '#ffd21f');
+          updateSignatureButton();
+          return true;
+      }
       if (fighterId !== 'bouncin_balls') return false;
       const state = getBouncinSignatureState(entity);
       if (!state.ready) {
@@ -3399,20 +3422,20 @@ function updateGadgetInfo() {
   }
 
   function updateSignatureButton() {
-      const signatureFighter = selectedBrawler === 'bouncin_balls' || selectedBrawler === 'classy' || selectedBrawler === 'beast' || selectedBrawler === 'mageny' || selectedBrawler === 'beam' || selectedBrawler === 'dashaholic';
+      const signatureFighter = selectedBrawler === 'bouncin_balls' || selectedBrawler === 'classy' || selectedBrawler === 'beast' || selectedBrawler === 'mageny' || selectedBrawler === 'beam' || selectedBrawler === 'dashaholic' || selectedBrawler === 'bolznstien';
       const shouldShow = playing && signatureFighter && isSpecialAbilityAvailableForEntity(player, selectedBrawler);
       if (signatureTouchBtn) signatureTouchBtn.style.display = shouldShow ? 'flex' : 'none';
       if (signatureBtn) signatureBtn.style.display = shouldShow ? '' : 'none';
       if (!shouldShow) return;
-      const state = selectedBrawler === 'dashaholic' ? getDashaholicSignatureState(player) : (selectedBrawler === 'beam' ? getBeamSignatureState(player) : (selectedBrawler === 'classy' ? getClassySignatureState(player) : (selectedBrawler === 'beast' ? getBeastSignatureState(player) : (selectedBrawler === 'mageny' ? getMagenySignatureState(player) : getBouncinSignatureState(player)))));
-      const costText = selectedBrawler === 'dashaholic' ? ' - costs up to 1200 HP; empowers selected Gadget; 15s cooldown' : (selectedBrawler === 'beam' ? ' - costs 2300 HP; requires Super ammo bar' : (selectedBrawler === 'classy' ? ' - costs up to 1000 HP' : (selectedBrawler === 'beast' ? ' - consumes full ammo; regular form only' : (selectedBrawler === 'mageny' ? ' - costs 2000 HP; press again to detonate' : ' - costs up to 1000 HP; turret command also costs up to 750 turret HP'))));
+      const state = selectedBrawler === 'dashaholic' ? getDashaholicSignatureState(player) : (selectedBrawler === 'beam' ? getBeamSignatureState(player) : (selectedBrawler === 'classy' ? getClassySignatureState(player) : (selectedBrawler === 'beast' ? getBeastSignatureState(player) : (selectedBrawler === 'mageny' ? getMagenySignatureState(player) : (selectedBrawler === 'bolznstien' ? getBolznstienSignatureState(player) : getBouncinSignatureState(player))))));
+      const costText = selectedBrawler === 'dashaholic' ? ' - costs up to 1200 HP; empowers selected Gadget; 15s cooldown' : (selectedBrawler === 'beam' ? ' - costs 2300 HP; requires Super ammo bar' : (selectedBrawler === 'classy' ? ' - costs up to 1000 HP' : (selectedBrawler === 'beast' ? ' - consumes full ammo; regular form only' : (selectedBrawler === 'mageny' ? ' - costs 2000 HP; press again to detonate' : (selectedBrawler === 'bolznstien' ? ' - costs 1500 HP; only during Electric Eyes; 14s cooldown' : ' - costs up to 1000 HP; turret command also costs up to 750 turret HP')))));
       if (signatureTouchBtn) {
           signatureTouchBtn.textContent = state.ready ? 'SIG' : '×';
           signatureTouchBtn.title = `Signature: ${state.label}${costText}`;
           signatureTouchBtn.classList.toggle('signature-ready', !!state.ready);
       }
       if (signatureBtn) {
-          signatureBtn.textContent = `Signature: ${state.label}${selectedBrawler === 'dashaholic' ? ' · up to 1200 HP' : (selectedBrawler === 'beam' ? ' · 2300 HP' : (selectedBrawler === 'classy' ? ' · up to 1000 HP' : (selectedBrawler === 'beast' ? ' · FULL AMMO' : (selectedBrawler === 'mageny' ? ' · 2000 HP' : ' · up to 1000 HP + 750 turret HP'))))} (R)`;
+          signatureBtn.textContent = `Signature: ${state.label}${selectedBrawler === 'dashaholic' ? ' · up to 1200 HP' : (selectedBrawler === 'beam' ? ' · 2300 HP' : (selectedBrawler === 'classy' ? ' · up to 1000 HP' : (selectedBrawler === 'beast' ? ' · FULL AMMO' : (selectedBrawler === 'mageny' ? ' · 2000 HP' : (selectedBrawler === 'bolznstien' ? ' · 1500 HP' : ' · up to 1000 HP + 750 turret HP')))))} (R)`;
           signatureBtn.disabled = !state.ready;
           signatureBtn.classList.toggle('signature-ready', !!state.ready);
       }
@@ -3446,11 +3469,6 @@ function updateGadgetInfo() {
           return;
       }
       updateSuperUseIndicator(player);
-      if (selectedBrawler === 'bolznstien' && player && (player.bolznstienSuperUntil || 0) > performance.now() && (player.bolznstienOverchargeUntil || 0) <= performance.now() && performance.now() >= (player.bolznstienOverchargeReadyAt || 0) && isSpecialAbilityAvailableForEntity(player, 'bolznstien')) {
-          superBtn.textContent = 'Power Move: ⚡ OVERCHARGE!';
-          superBtn.disabled = false;
-          return;
-      }
       superBtn.textContent = superCharge >= 100 ? 'Power Move: Ready' : `Power Move: ${Math.floor(superCharge)}%`;
       superBtn.disabled = superCharge < 100;
   }
@@ -10810,23 +10828,6 @@ function isPowerPlayModifierActive(entity = player) {
         }
     }
 
-    function tryActivateBolznstienOvercharge(entity) {
-        if (!entity) return false;
-        const now = performance.now();
-        if ((entity.bolznstienSuperUntil || 0) <= now) return false; // only during his Super
-        if ((entity.bolznstienOverchargeUntil || 0) > now) return false; // already overcharged
-        if (now < (entity.bolznstienOverchargeReadyAt || 0)) return false; // 14s cooldown
-        if (!isSpecialAbilityAvailableForEntity(entity, 'bolznstien')) return false;
-        const hpCost = Math.min(1500, Math.max(0, Math.floor(entity.hp) - 1)); // HP spend can never kill him
-        entity.hp -= hpCost;
-        entity.bolznstienOverchargeUntil = now + 2000;
-        entity.bolznstienOverchargeReadyAt = now + 14000;
-        entity.bolznstienHandsNextAt = 0;
-        spawnFloatingText(entity.x, entity.y - 44, '⚡ OVERCHARGE! ⚡', '#ffd21f');
-        spawnFloatingText(entity.x, entity.y - 62, '-1,500 HP', '#ff6b6b');
-        return true;
-    }
-
     function castBolznstienSuper(entity, isHyper) {
         if (!entity) return;
         const now = performance.now();
@@ -10841,6 +10842,7 @@ function isPowerPlayModifierActive(entity = player) {
         } else {
             spawnFloatingText(entity.x, entity.y - 40, isHyper ? '⚡ FRANKEN-OVERLOAD! 🧟' : '⚡ ELECTRIC EYES! ⚡', isHyper ? '#e056fd' : '#00f5d4');
         }
+        if (entity === player) updateSignatureButton();
     }
 
     function executeBolznstienG1(entity) {
@@ -33602,9 +33604,6 @@ let heistFeverActive = false;
 
     function fireSuper(isAimDrag = false){
         normalizeSelectedBrawler();
-        if (selectedBrawler === 'bolznstien' && player && (player.bolznstienSuperUntil || 0) > performance.now()) {
-            if (tryActivateBolznstienOvercharge(player)) { updateSuperButton(); return; }
-        }
     if(superCharge < 100 || player.hp <= 0) return;
         if (isBrawlerLabMode) maybeStartBrawlerLabRangeCapture('super', player);
         if (selectedBrawler === 'beast' && isBeastyBeastActive(player)) {
