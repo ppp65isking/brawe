@@ -16517,6 +16517,9 @@ let heistFeverActive = false;
       const progress=getOrCreateProgress(brawlerId);
       return progress.level >= 11 && progress.gadgetUnlocked && progress.starPowerUnlocked && progress.hyperchargeUnlocked; // Weekly-trial exclusion stays on the classic cap: trials grant temporary Power 11.
   }
+  function isProgressFullyMaxed(progress) {
+      return !!progress && (progress.level || 1) >= MAX_POWER_LEVEL && !!progress.gadgetUnlocked && !!progress.starPowerUnlocked && !!progress.hyperchargeUnlocked;
+  }
   function pickWeeklyTrialFighters(pool,count,seed) {
       const picks=[...pool];
       for(let i=picks.length-1;i>0;i--){const j=hashShopKey(`${seed}:${i}`)%(i+1);[picks[i],picks[j]]=[picks[j],picks[i]];}
@@ -43657,6 +43660,14 @@ isBrawlerLabMode = false;
                 card.className = 'brawler-card';
                 card.classList.toggle('brawler-card--weekly-trial',weeklyTrial);
                 card.classList.toggle('brawler-card--prestige', prestige > 0);
+                const fullyMaxedCard = isProgressFullyMaxed(progress);
+                card.classList.toggle('brawler-card--maxed', fullyMaxedCard);
+                if (fullyMaxedCard) {
+                    const maxedRibbon = document.createElement('span');
+                    maxedRibbon.className = 'brawler-card__maxed-ribbon';
+                    maxedRibbon.textContent = '★ MAXED';
+                    card.appendChild(maxedRibbon);
+                }
                 card.style.setProperty('--card-rarity', rarityColor);
                 card.style.setProperty('--portrait-color', data.color || rarityColor);
                 card.style.setProperty('--brick-color', rankAccent);
@@ -44256,6 +44267,13 @@ isBrawlerLabMode = false;
                 upgBtn.disabled = true;
             }
 
+            if (isProgressFullyMaxed(pData)) {
+                charBox.classList.add('brawler-upgrade-card--maxed');
+                const maxedBanner = document.createElement('div');
+                maxedBanner.className = 'brawler-maxed-banner';
+                maxedBanner.textContent = '★ FULLY MAXED ★';
+                charBox.appendChild(maxedBanner);
+            }
             charBox.appendChild(charIcon);
             const upgradeSummary = document.createElement('div');
             upgradeSummary.className = 'brawler-upgrade-summary';
