@@ -4364,6 +4364,9 @@ const bolznstienPendingStrikes = [];
     const relativityZones = [];
     const bushZones = [];
     const waterZones = [];
+    // Environment rebuild Phase 1 (2026-10-22): world render for bushZones.
+    // Kill switch per house retirement rules; hiding logic is unaffected.
+    const BUSH_WORLD_RENDER_ENABLED = true;
   const pendingClones = [];
   const explosions = [];
   const nativeExplosionPush = Array.prototype.push;
@@ -4551,7 +4554,7 @@ const bolznstienPendingStrikes = [];
         {
             name: 'Verdant Delta',
             bgOuter: '#07150f',
-            bgInner: '#0d261b',
+            bgInner: '#0d261b', bushFill: '#2f8f4e', bushDeep: '#17572e',
             grid: 'rgba(140, 214, 180, 0.05)',
             wallBorder: '#2d5f4e',
             cubeFill: '#305245',
@@ -4562,7 +4565,7 @@ const bolznstienPendingStrikes = [];
         {
             name: 'Rust Harbor',
             bgOuter: '#14120a',
-            bgInner: '#231d11',
+            bgInner: '#231d11', bushFill: '#5d8a3c', bushDeep: '#3a5c24',
             grid: 'rgba(255, 196, 120, 0.05)',
             wallBorder: '#6a4a2f',
             cubeFill: '#5a3d2a',
@@ -4573,7 +4576,7 @@ const bolznstienPendingStrikes = [];
         {
             name: 'Ember Mire',
             bgOuter: '#1a0d0d',
-            bgInner: '#2a1212',
+            bgInner: '#2a1212', bushFill: '#557f35', bushDeep: '#38591f',
             grid: 'rgba(255, 120, 120, 0.05)',
             wallBorder: '#7a3131',
             cubeFill: '#5a2424',
@@ -4584,7 +4587,7 @@ const bolznstienPendingStrikes = [];
         {
             name: 'Lotus Canal',
             bgOuter: '#091225',
-            bgInner: '#0f1f3a',
+            bgInner: '#0f1f3a', bushFill: '#2e8a6e', bushDeep: '#185c46',
             grid: 'rgba(140, 190, 255, 0.06)',
             wallBorder: '#2d4d78',
             cubeFill: '#2c3f5f',
@@ -4595,7 +4598,7 @@ const bolznstienPendingStrikes = [];
         {
             name: 'Frost Circuit',
             bgOuter: '#09161f',
-            bgInner: '#112838',
+            bgInner: '#112838', bushFill: '#4c9a72', bushDeep: '#2c6647',
             grid: 'rgba(140, 230, 255, 0.06)',
             wallBorder: '#36657f',
             cubeFill: '#2f4f60',
@@ -4606,7 +4609,7 @@ const bolznstienPendingStrikes = [];
         {
             name: 'Sunset Quarry',
             bgOuter: '#1a1208',
-            bgInner: '#2f1d0f',
+            bgInner: '#2f1d0f', bushFill: '#6b8f3d', bushDeep: '#47632a',
             grid: 'rgba(255, 172, 112, 0.06)',
             wallBorder: '#845235',
             cubeFill: '#6e442b',
@@ -4616,25 +4619,25 @@ const bolznstienPendingStrikes = [];
         },
         {
             name: 'Crownspire Keep',
-            bgOuter: '#090b20', bgInner: '#17143b', grid: 'rgba(190,160,255,.07)',
+            bgOuter: '#090b20', bgInner: '#17143b', bushFill: '#4a7d5c', bushDeep: '#2e4f3a', grid: 'rgba(190,160,255,.07)',
             wallBorder: '#6751a8', cubeFill: '#3d356c', cubeStroke: '#8f7ed3',
             wallBoxFill: '#55458b', wallBoxStroke: '#b5a1ff'
         },
         {
             name: 'Gearfall Foundry',
-            bgOuter: '#171009', bgInner: '#31200e', grid: 'rgba(255,191,93,.07)',
+            bgOuter: '#171009', bgInner: '#31200e', bushFill: '#5f8a3e', bushDeep: '#3d5c26', grid: 'rgba(255,191,93,.07)',
             wallBorder: '#925b25', cubeFill: '#66431f', cubeStroke: '#bd7c36',
             wallBoxFill: '#805125', wallBoxStroke: '#e3a35c'
         },
         {
             name: 'Stormglass Heights',
-            bgOuter: '#07131d', bgInner: '#0e3040', grid: 'rgba(90,230,255,.08)',
+            bgOuter: '#07131d', bgInner: '#0e3040', bushFill: '#2f9a7a', bushDeep: '#1c6650', grid: 'rgba(90,230,255,.08)',
             wallBorder: '#287b91', cubeFill: '#285364', cubeStroke: '#4fa6bb',
             wallBoxFill: '#326d82', wallBoxStroke: '#75d7eb'
         },
         {
             name: 'Voidtower Ruins',
-            bgOuter: '#12071a', bgInner: '#281037', grid: 'rgba(235,104,255,.08)',
+            bgOuter: '#12071a', bgInner: '#281037', bushFill: '#35926e', bushDeep: '#1f6b4f', grid: 'rgba(235,104,255,.08)',
             wallBorder: '#77318a', cubeFill: '#51265e', cubeStroke: '#9f4db4',
             wallBoxFill: '#673276', wallBoxStroke: '#d070e4'
         }
@@ -57867,6 +57870,57 @@ function checkHit(target, b, i){
         ctx.strokeStyle = 'rgba(174, 233, 255, 0.4)';
         ctx.lineWidth = 2;
         ctx.strokeRect(zone.x, zone.y, zone.w, zone.h);
+    }
+
+    // Bush Zones — Environment Phase 1 (2026-10-22): bushes finally render in
+    // the world. Art only: isEntityInsideBush / canDetectThroughBush hiding
+    // logic and the minimap draw are untouched. Draw order stays
+    // ground -> water -> bushes -> entities, so telegraphs and fighters always
+    // draw above foliage.
+    if (BUSH_WORLD_RENDER_ENABLED) {
+        const bushFillCol = envColors.bushFill || '#2f8f4e';
+        const bushDeepCol = envColors.bushDeep || '#17572e';
+        for (const zone of bushZones) {
+            if (!isWorldVisualVisible(zone.x + zone.w / 2, zone.y + zone.h / 2, Math.max(zone.w, zone.h) / 2 + 40)) continue;
+            const playerInPatch = !!player && rectCircleCollides(zone.x, zone.y, zone.w, zone.h, player.x, player.y, player.radius || 14);
+            ctx.save();
+            // Standing in a patch lightens it so you can still see yourself;
+            // the entity fade at the entity draw stays as-is for everyone.
+            if (playerInPatch) ctx.globalAlpha = 0.45;
+            const rr = Math.min(16, zone.w / 2, zone.h / 2);
+            const innerR = Math.max(4, rr - 4);
+            // Dark rim/base so the patch reads as cover, not floor.
+            ctx.fillStyle = bushDeepCol;
+            ctx.beginPath();
+            ctx.roundRect(zone.x, zone.y, zone.w, zone.h, rr);
+            ctx.fill();
+            // Main foliage body, inset so the rim stays visible.
+            ctx.fillStyle = bushFillCol;
+            ctx.beginPath();
+            ctx.roundRect(zone.x + 5, zone.y + 5, zone.w - 10, zone.h - 10, innerR);
+            ctx.fill();
+            // Leaf clumps: positions are a pure function of the zone rect, so
+            // they are identical every frame (no per-frame randomness or
+            // allocation beyond the path itself).
+            const clumps = Math.max(3, Math.min(7, Math.round((zone.w * zone.h) / 90000)));
+            const bushSeed = zone.x * 0.37 + zone.y * 0.73;
+            ctx.fillStyle = bushDeepCol;
+            for (let i = 0; i < clumps; i++) {
+                const fx = zone.x + zone.w * (0.18 + 0.64 * (((bushSeed + i * 0.618) % 1 + 1) % 1));
+                const fy = zone.y + zone.h * (0.22 + 0.56 * (((bushSeed * 1.7 + i * 0.381) % 1 + 1) % 1));
+                const fr = Math.min(zone.w, zone.h) * 0.13;
+                ctx.beginPath();
+                ctx.arc(fx, fy, fr, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            // Subtle inner highlight so the foliage edge catches the light.
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.13)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(zone.x + 5, zone.y + 5, zone.w - 10, zone.h - 10, innerR);
+            ctx.stroke();
+            ctx.restore();
+        }
     }
 
     // Draw Jump Pads for Heist mode
