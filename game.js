@@ -743,6 +743,10 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         // Continuous-ammo brawlers should never return unable to act.
         if (selectedBrawler === 'steamer') ammo = Math.max(20, ammo);
         if (hasTrinket(player, 'comeback')) player.trinketComebackUntil = now + 4000;
+        if (getCorePerk(selectedBrawler) === 'guardian') {
+            grantShield(player, Math.round((player.maxHp || 0) * 0.30));
+            spawnFloatingText(player.x, player.y - 38, '🛡️ GUARDIAN REVIVAL', '#7fd4ff');
+        }
         player.trinketBushArmorShield = 0;
         player.trinketLastHp = player.hp;
         player.trinketFirstStrikeReady = false;
@@ -2877,6 +2881,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
   function resetPlayerAmmoForBrawler(brawlerId,includeTowerBonus=false){
       maxAmmo=getNativeAmmoCapacity(brawlerId);
       if(includeTowerBonus&&isSlopSushiMode)maxAmmo+=Math.round(getSlopEffectTotal('ammoBonus'));
+      if(getCorePerk(brawlerId)==='kinetic')maxAmmo+=1;
       ammo=maxAmmo;
   }
 
@@ -16069,7 +16074,7 @@ let heistFeverActive = false;
   const CORE_PERK_DEFS = [
       { id: 'surge', name: 'Surge Endurance', icon: '⚡', desc: 'Core Surge lasts 40% longer.' },
       { id: 'guardian', name: 'Guardian Revival', icon: '🛡️', desc: 'Respawn with a shield worth 30% of max HP.' },
-      { id: 'kinetic', name: 'Kinetic Regen', icon: '💚', desc: 'Heal 50 HP/s while moving and not taking damage.' }
+      { id: 'kinetic', name: 'Kinetic Magazine', icon: '🏃', desc: '+1 bonus ammo slot. The bonus slot only reloads while you move.' }
   ];
   function getCorePerk(fighterId) {
       const prog = playerData.brawlers && playerData.brawlers[fighterId];
@@ -18155,25 +18160,7 @@ let heistFeverActive = false;
     // ===== Christmas Showdown buffs (Season 6: Xplodemis) =====
     let christmasBuffTimer = 0;
     function isChristmasShowdownMatch() { return showdownMode === 'christmas_showdown' && !isTraining; }
-    let kineticLastHp = -1;
-    let kineticLastHurtAt = 0;
-    let kineticPrevX = 0;
-    let kineticPrevY = 0;
-    function updateCorePerkKinetic(dt) {
-        if (!player || player.isDead) { kineticLastHp = -1; return; }
-        if (kineticLastHp >= 0 && player.hp < kineticLastHp) kineticLastHurtAt = performance.now();
-        kineticLastHp = player.hp;
-        const moved = Math.abs(player.x - kineticPrevX) > 0.5 || Math.abs(player.y - kineticPrevY) > 0.5;
-        kineticPrevX = player.x;
-        kineticPrevY = player.y;
-        if (getCorePerk(selectedBrawler) !== 'kinetic') return;
-        if (!moved) return;
-        if (performance.now() - kineticLastHurtAt < 1500) return;
-        if (player.hp > 0 && player.hp < player.maxHp) {
-            player.hp = Math.min(player.maxHp, player.hp + 50 * dt);
-            kineticLastHp = player.hp;
-        }
-    }
+    // Kinetic Regen heal retired 2026-10-22: the perk is now Kinetic Magazine (bonus ammo slot).
     function updateChristmasShowdown(dt) {
         if (!isChristmasShowdownMatch()) { christmasBuffTimer = 0; return; }
         christmasBuffTimer += dt;
@@ -47888,7 +47875,7 @@ function checkHit(target, b, i){
 
     if (playing && !gameOver) updateFeathersSystems(dt);
     if (playing && !gameOver) updateChristmasShowdown(dt);
-    if (playing && !gameOver) updateCorePerkKinetic(dt);
+    // (Kinetic heal removed — see Kinetic Magazine rework, 2026-10-22.)
     if (isTurkeyCaptureMode && !isBossFight && !isSoloTrial && !isDuels && !gameOver) {
         updateTurkeyCapture(dt);
     }
@@ -53413,7 +53400,13 @@ function checkHit(target, b, i){
            currentReloadTime = 9999999;
        }
        // Jetpack's reload clock is completely paused during flight.
-       if (!(selectedBrawler === 'jetpack' && player.jetpackFlight)) ammoReloadTimer += dt * 1000;
+       // Kinetic Magazine (Core Perk): the bonus slot — the segment above the
+       // fighter's native capacity — only reloads while the player is moving.
+       const kineticBonusSegment = getCorePerk(selectedBrawler) === 'kinetic' && ammo >= maxAmmo - 1;
+       const kineticMovingNow = Math.abs(player.x - (player.kineticMagPrevX ?? player.x)) > 0.5 || Math.abs(player.y - (player.kineticMagPrevY ?? player.y)) > 0.5;
+       player.kineticMagPrevX = player.x;
+       player.kineticMagPrevY = player.y;
+       if (!(selectedBrawler === 'jetpack' && player.jetpackFlight) && !(kineticBonusSegment && !kineticMovingNow)) ammoReloadTimer += dt * 1000;
        if(ammoReloadTimer >= currentReloadTime){
            ammo = (selectedBrawler === 'minigunnin' || selectedBrawler === 'oil_maker') ? Math.min(maxAmmo, ammo + 1) : ammo + 1;
            ammoReloadTimer -= currentReloadTime;
