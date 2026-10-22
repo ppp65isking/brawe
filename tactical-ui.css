@@ -378,3 +378,13 @@ button,select,input{font:inherit}
 .gold-event-lifetime{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border:1px solid #3f6080;border-radius:12px;background:linear-gradient(90deg,#0a1d35,#091424)}
 .gold-event-lifetime span{font-weight:900;color:#85c7f2;font-size:13px}
 .gold-event-lifetime b{font-size:22px;color:#ffd700}
+
+/* Events tab scroll fix (2026-10-22): the events list outgrew the fixed home
+   frame and was clipped by #homeScreen's overflow:hidden. The events pane is
+   now a bounded column whose mode list scrolls at every viewport size. */
+#homeMain{min-height:0!important}
+#homeEventsView{min-height:0!important;height:100%}
+#homeEventsView.is-active{display:flex!important;flex-direction:column}
+#homeModesSection{flex:1 1 auto;min-height:0;overflow-y:auto!important;overflow-x:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+#homeModesSection::-webkit-scrollbar{width:8px}
+#homeModesSection::-webkit-scrollbar-thumb{background:rgba(110,180,255,.35);border-radius:99px}
