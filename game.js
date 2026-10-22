@@ -12278,7 +12278,7 @@ function isPowerPlayModifierActive(entity = player) {
             const w = destructibleWalls[i];
             if (!w) continue;
             const wx = w.x + (w.w || 0) / 2, wy = w.y + (w.h || 0) / 2;
-            if (Math.hypot(wx - centerX, wy - centerY) <= blastRadius) destructibleWalls.splice(i, 1);
+            if (Math.hypot(wx - centerX, wy - centerY) <= blastRadius) { markBotNavGridDirty(w); destructibleWalls.splice(i, 1); }
         }
         for (let i = cubes.length - 1; i >= 0; i--) {
             const c = cubes[i];
@@ -17885,6 +17885,249 @@ let heistFeverActive = false;
         return best;
     }
 
+    // ============================================================
+    // ENVIRONMENT SYSTEMS - Phase 3 bot navigation grid (2026-10-22).
+    // A coarse 100px grid over the world. It is built lazily on the first
+    // steering request after a map build (botNavEnsureGrid watches the
+    // terrain signature, so every generateCubes() path is covered without
+    // hooking its many early returns) and refreshed in dirty regions when
+    // destructible walls die - the wall-death sites call
+    // markBotNavGridDirty(wall), and a wall-count safety net catches any
+    // site that forgets. Bots ask the grid for a waypoint path (BFS
+    // flow-field from the goal cell); getBotSteeredStep's reactive stack
+    // still owns the actual step, wall sliding and anti-stuck behavior
+    // BETWEEN waypoints. Everything is gated behind BOT_NAV_GRID_ENABLED:
+    // with the flag off, steering is byte-for-byte the pre-Phase-3
+    // reactive behavior.
+    // Design notes:
+    //  - One blocked layer (cubes + navigation-eligible destructibleWalls)
+    //    plus a separate water layer; water blocks only entities that
+    //    cannot traverse it, decided per path request.
+    //  - A cell counts as blocked when terrain touches its center point
+    //    (radius 18): lanes a bot can physically walk stay open on the
+    //    grid, and the reactive stack remains the authority on the exact
+    //    step, so a coarse miss can never put a bot inside a wall.
+    //  - BFS (not A*): the grid is uniform-cost, so breadth-first search
+    //    from the goal yields shortest cell paths in O(cells) with no
+    //    heap, and the parent field doubles as a reachability check.
+    // ============================================================
+    let BOT_NAV_GRID_ENABLED = true;
+    const BOT_NAV_CELL_SIZE = 100;
+    const BOT_NAV_REPATH_MS = 500;        // per-bot repath budget
+    const BOT_NAV_REPATH_WINDOW_MS = 100; // global repath budget window
+    const BOT_NAV_REPATHS_PER_WINDOW = 6; // global repaths per window
+    const BOT_NAV_REFRESH_MS = 120;       // dirty-region refresh throttle
+    let botNavGrid = null; // { cols, rows, blocked, water, wallCount, cubeCount, waterCount, worldW, worldH }
+    let botNavDirtyRects = [];
+    let botNavLastRefreshAt = 0;
+    let botNavRepathWindowStart = 0;
+    let botNavRepathsThisWindow = 0;
+
+    function botNavCellOf(x, y) {
+        if (!botNavGrid) return -1;
+        const cx = Math.floor(x / BOT_NAV_CELL_SIZE), cy = Math.floor(y / BOT_NAV_CELL_SIZE);
+        if (cx < 0 || cy < 0 || cx >= botNavGrid.cols || cy >= botNavGrid.rows) return -1;
+        return cy * botNavGrid.cols + cx;
+    }
+
+    function botNavCellCenter(idx) {
+        const cx = idx % botNavGrid.cols, cy = Math.floor(idx / botNavGrid.cols);
+        return { x: cx * BOT_NAV_CELL_SIZE + BOT_NAV_CELL_SIZE / 2, y: cy * BOT_NAV_CELL_SIZE + BOT_NAV_CELL_SIZE / 2 };
+    }
+
+    function botNavComputeCell(idx) {
+        const c = botNavCellCenter(idx);
+        let blocked = 0;
+        for (const cube of cubes) {
+            if (rectCircleCollides(cube.x, cube.y, cube.w, cube.h, c.x, c.y, 18)) { blocked = 1; break; }
+        }
+        if (!blocked) {
+            for (const w of destructibleWalls) {
+                if (!isNavigationWall(w)) continue;
+                if (rectCircleCollides(w.x, w.y, w.w, w.h, c.x, c.y, 18)) { blocked = 1; break; }
+            }
+        }
+        botNavGrid.blocked[idx] = blocked;
+        let water = 0;
+        for (const z of waterZones) {
+            if (rectCircleCollides(z.x, z.y, z.w, z.h, c.x, c.y, 18)) { water = 1; break; }
+        }
+        botNavGrid.water[idx] = water;
+    }
+
+    function buildBotNavGrid() {
+        const cols = Math.max(1, Math.ceil(WORLD_W / BOT_NAV_CELL_SIZE));
+        const rows = Math.max(1, Math.ceil(WORLD_H / BOT_NAV_CELL_SIZE));
+        botNavGrid = {
+            cols, rows,
+            blocked: new Uint8Array(cols * rows),
+            water: new Uint8Array(cols * rows),
+            wallCount: destructibleWalls.length,
+            cubeCount: cubes.length,
+            waterCount: waterZones.length,
+            worldW: WORLD_W, worldH: WORLD_H
+        };
+        for (let i = 0; i < cols * rows; i++) botNavComputeCell(i);
+        botNavDirtyRects = [];
+        return botNavGrid;
+    }
+
+    function botNavEnsureGrid() {
+        if (!botNavGrid || botNavGrid.worldW !== WORLD_W || botNavGrid.worldH !== WORLD_H ||
+            botNavGrid.wallCount !== destructibleWalls.length ||
+            botNavGrid.cubeCount !== cubes.length ||
+            botNavGrid.waterCount !== waterZones.length) {
+            buildBotNavGrid();
+        }
+    }
+
+    function markBotNavGridDirty(rect) {
+        if (!rect) return;
+        botNavDirtyRects.push({ x: rect.x, y: rect.y, w: rect.w || 0, h: rect.h || 0 });
+    }
+
+    function refreshBotNavGridDirty(now) {
+        if (!botNavGrid) return;
+        if (now - botNavLastRefreshAt < BOT_NAV_REFRESH_MS) return;
+        if (botNavDirtyRects.length) {
+            botNavLastRefreshAt = now;
+            const rects = botNavDirtyRects;
+            botNavDirtyRects = [];
+            const touched = new Set();
+            for (const r of rects) {
+                const x0 = Math.max(0, Math.floor((r.x - BOT_NAV_CELL_SIZE) / BOT_NAV_CELL_SIZE));
+                const y0 = Math.max(0, Math.floor((r.y - BOT_NAV_CELL_SIZE) / BOT_NAV_CELL_SIZE));
+                const x1 = Math.min(botNavGrid.cols - 1, Math.floor((r.x + r.w + BOT_NAV_CELL_SIZE) / BOT_NAV_CELL_SIZE));
+                const y1 = Math.min(botNavGrid.rows - 1, Math.floor((r.y + r.h + BOT_NAV_CELL_SIZE) / BOT_NAV_CELL_SIZE));
+                for (let cy = y0; cy <= y1; cy++) for (let cx = x0; cx <= x1; cx++) touched.add(cy * botNavGrid.cols + cx);
+            }
+            for (const idx of touched) botNavComputeCell(idx);
+            botNavGrid.wallCount = destructibleWalls.length;
+            return;
+        }
+        // Safety net: terrain changed size without a dirty hook (a missed
+        // splice/push site) - rebuild rather than navigate a stale grid.
+        if (botNavGrid.wallCount !== destructibleWalls.length ||
+            botNavGrid.cubeCount !== cubes.length ||
+            botNavGrid.waterCount !== waterZones.length) {
+            buildBotNavGrid();
+            botNavLastRefreshAt = now;
+        }
+    }
+
+    function botNavIsCellPassable(idx, canTraverseWater) {
+        if (botNavGrid.blocked[idx]) return false;
+        if (!canTraverseWater && botNavGrid.water[idx]) return false;
+        return true;
+    }
+
+    // BFS flow-field from the goal cell. Returns world-space waypoints from
+    // the bot toward the goal (last waypoint is the exact goal point), or
+    // null when no route exists and the reactive stack should take over.
+    function findBotNavPath(entity, goalX, goalY) {
+        if (!botNavGrid || !entity) return null;
+        const start = botNavCellOf(entity.x, entity.y);
+        const goal = botNavCellOf(goalX, goalY);
+        if (start < 0 || goal < 0) return null;
+        const canTraverseWater = canEntityTraverseWater(entity);
+        if (!botNavIsCellPassable(goal, canTraverseWater)) return null;
+        if (start === goal) return [{ x: goalX, y: goalY }];
+        const cols = botNavGrid.cols, rows = botNavGrid.rows;
+        const parent = new Int32Array(cols * rows).fill(-2); // -2 unvisited, -1 root
+        parent[goal] = -1;
+        const queue = [goal];
+        let head = 0;
+        while (head < queue.length) {
+            const cur = queue[head++];
+            if (cur === start) break;
+            const cx = cur % cols, cy = Math.floor(cur / cols);
+            const neighbors = [
+                cx > 0 ? cur - 1 : -1,
+                cx < cols - 1 ? cur + 1 : -1,
+                cy > 0 ? cur - cols : -1,
+                cy < rows - 1 ? cur + cols : -1
+            ];
+            for (const nb of neighbors) {
+                if (nb < 0 || parent[nb] !== -2) continue;
+                // The bot's own cell is always a valid destination for the
+                // search even if terrain clips it - the bot is standing
+                // there, and the reactive stack walks it out.
+                if (nb !== start && !botNavIsCellPassable(nb, canTraverseWater)) continue;
+                parent[nb] = cur;
+                queue.push(nb);
+            }
+        }
+        if (parent[start] === -2) return null;
+        const cells = [];
+        let cur = start;
+        while (cur !== -1) { cells.push(cur); cur = parent[cur]; }
+        const points = cells.map((idx) => botNavCellCenter(idx));
+        points[points.length - 1] = { x: goalX, y: goalY };
+        // Greedy line-of-sight skipping: keep only the waypoints the
+        // reactive stack cannot already walk in a straight line.
+        const waypoints = [];
+        let anchor = { x: entity.x, y: entity.y };
+        let i = 0;
+        while (i < points.length) {
+            let furthest = i;
+            for (let j = i + 1; j < points.length; j++) {
+                // Legs are capped at 800px: isBotRouteClear only verifies
+                // the first 900px of a segment, so a longer leg reported
+                // "clear" would be a lie past its horizon.
+                if (Math.hypot(points[j].x - anchor.x, points[j].y - anchor.y) > 800) break;
+                if (isBotRouteClear(entity, anchor.x, anchor.y, points[j].x, points[j].y)) furthest = j;
+                else break;
+            }
+            waypoints.push(points[furthest]);
+            anchor = points[furthest];
+            i = furthest + 1;
+        }
+        return waypoints;
+    }
+
+    // Returns the bot's current nav waypoint, repathing under a strict
+    // budget (per-bot 500ms, plus a global per-window cap). Returns null
+    // whenever the reactive stack should steer unaided this call.
+    function getBotNavWaypoint(entity, goalX, goalY, now) {
+        botNavEnsureGrid();
+        refreshBotNavGridDirty(now);
+        if (!botNavGrid) return null;
+        const goalCell = botNavCellOf(goalX, goalY);
+        if (goalCell < 0) return null;
+        const path = entity.botNavPath;
+        if (path && path.goalCell === goalCell && path.index < path.waypoints.length) {
+            const wp = path.waypoints[path.index];
+            const wpCell = botNavCellOf(wp.x, wp.y);
+            if (wpCell >= 0 && !botNavGrid.blocked[wpCell]) {
+                if (Math.hypot(entity.x - wp.x, entity.y - wp.y) < 42) {
+                    path.index++;
+                    if (path.index >= path.waypoints.length) {
+                        entity.botNavPath = null;
+                        return null;
+                    }
+                    return path.waypoints[path.index];
+                }
+                return wp;
+            }
+            entity.botNavPath = null; // waypoint cell got walled off; repath below
+        }
+        if (entity.botNavLastRepathAt && now - entity.botNavLastRepathAt < BOT_NAV_REPATH_MS) return null;
+        if (now - botNavRepathWindowStart >= BOT_NAV_REPATH_WINDOW_MS) {
+            botNavRepathWindowStart = now;
+            botNavRepathsThisWindow = 0;
+        }
+        if (botNavRepathsThisWindow >= BOT_NAV_REPATHS_PER_WINDOW) return null;
+        botNavRepathsThisWindow++;
+        entity.botNavLastRepathAt = now;
+        const waypoints = findBotNavPath(entity, goalX, goalY);
+        if (!waypoints || !waypoints.length) {
+            entity.botNavPath = null;
+            return null;
+        }
+        entity.botNavPath = { goalCell, waypoints, index: 0 };
+        return waypoints[0];
+    }
+
     function findBotCoverPoint(bot, threatPos) {
         if (!threatPos) return null;
         let best = null;
@@ -17907,17 +18150,27 @@ let heistFeverActive = false;
                 best = { x: coverX, y: coverY, id: 'center' };
             }
         }
-        if (!best) {
-            // Environment rebuild Phase 2 (2026-10-22): fallback repointed at
-            // bushZones, the only bush store (was the never-declared `bushes`,
-            // which threw ReferenceError whenever no wall cover was in range).
-            for (const b of bushZones) {
-                if (!b) continue;
-                const bx = b.x + (b.w || 0) / 2, by = b.y + (b.h || 0) / 2;
-                const dBot = Math.hypot(bx - bot.x, by - bot.y);
-                if (dBot < 400 && canBotMoveToPosition(bot, bx, by)) {
-                    return { x: bx, y: by, id: 'center' };
-                }
+        // Phase 3 (2026-10-22): bush patches score as cover alongside
+        // walls, upgrading Phase 2's first-patch fallback. A patch whose
+        // center hides the bot from the threat (canDetectThroughBush
+        // semantics: in-bush and outside the 240px reveal range) competes
+        // with wall cover at a small bonus, because hidden also breaks
+        // the threat's targeting. The low-HP flee in the bot loop routes
+        // through this same function, so fleeing bots can now dive into
+        // a bush, not just behind a wall.
+        for (const z of bushZones) {
+            if (!z) continue;
+            const cx = z.x + z.w / 2, cy = z.y + z.h / 2;
+            const dBot = Math.hypot(cx - bot.x, cy - bot.y);
+            if (dBot > 480) continue;
+            if (!canBotMoveToPosition(bot, cx, cy)) continue;
+            const probe = { x: cx, y: cy, radius: bot.radius || 14 };
+            if (!isEntityInsideBush(probe)) continue;
+            if (canDetectThroughBush({ x: threatPos.x, y: threatPos.y, radius: 14 }, probe)) continue;
+            const score = dBot - 60;
+            if (score < bestScore) {
+                bestScore = score;
+                best = { x: cx, y: cy, id: 'center' };
             }
         }
         return best;
@@ -17925,7 +18178,7 @@ let heistFeverActive = false;
 
     function getBotSteeredStep(entity, dx, dy, speed, dt) {
         const now = performance.now();
-        const goalX = entity.x + dx, goalY = entity.y + dy;
+        let goalX = entity.x + dx, goalY = entity.y + dy;
 
         // Anti-stuck watchdog: detect if bot has been trapped against a wall edge/corner
         entity.botStuckWatchdog = entity.botStuckWatchdog || {
@@ -17947,6 +18200,18 @@ let heistFeverActive = false;
             dog.lastX = entity.x;
             dog.lastY = entity.y;
             dog.lastCheck = now;
+        }
+
+        // Phase 3: when the nav grid has a route, aim the reactive stack
+        // at its next waypoint; wall-waypoint planning, the radial sweep
+        // and wall sliding below still own the local step between
+        // waypoints. Flag off = this block never runs.
+        if (BOT_NAV_GRID_ENABLED) {
+            const navWaypoint = getBotNavWaypoint(entity, goalX, goalY, now);
+            if (navWaypoint) {
+                goalX = navWaypoint.x;
+                goalY = navWaypoint.y;
+            }
         }
 
         let waypoint = entity.botWallWaypoint;
@@ -21747,6 +22012,7 @@ let heistFeverActive = false;
             explosions.push({ x: cx, y: cy, radius: 25 + step * 2, life: 0, maxLife: 0.2, color: projectile.hyperVisual ? 'rgba(220,90,255,.66)' : (projectile.skinId === 'nightmare-outlit' ? 'rgba(255,0,127,.66)' : 'rgba(70,235,255,.62)'), fxKind: 'outlitWallArc', skinId: projectile.skinId });
             if (current.hp <= 0) {
                 const index = destructibleWalls.indexOf(current);
+                if (index >= 0) markBotNavGridDirty(current);
                 if (index >= 0) destructibleWalls.splice(index, 1);
                 if (owner?.id === player.id) {
                     addEventQuestProgress('destroy_walls');
@@ -26800,6 +27066,7 @@ let heistFeverActive = false;
           progressSeasonPassQuest('destroy_walls');
       }
       const idx = destructibleWalls.indexOf(wall);
+      if (idx >= 0) markBotNavGridDirty(wall);
       if (idx >= 0) destructibleWalls.splice(idx, 1);
       if (isWarperEvent && wall.isGreenBox) {
           if (!owner.isBoss) {
@@ -37868,7 +38135,7 @@ let heistFeverActive = false;
           const wallDamage=Math.max(damage,wall.isArenaWall?wall.hp:0);
           recordFullOnDamageToTarget(wall,wallDamage);
           wall.hp-=wallDamage;
-          if(wall.hp<=0){if(wall.isPowerBox)spawnShowdownPowerBoxReward(wall);destructibleWalls.splice(index,1);if(owner.id===player.id){addEventQuestProgress('destroy_walls');progressSeasonPassQuest('destroy_walls');}}
+          if(wall.hp<=0){if(wall.isPowerBox)spawnShowdownPowerBoxReward(wall);markBotNavGridDirty(wall);destructibleWalls.splice(index,1);if(owner.id===player.id){addEventQuestProgress('destroy_walls');progressSeasonPassQuest('destroy_walls');}}
       }
   }
 
@@ -48994,7 +49261,7 @@ function checkHit(target, b, i){
 
     for (let i = destructibleWalls.length - 1; i >= 0; i--) {
         const wall = destructibleWalls[i];
-        if (wall && wall.expiresAt && now >= wall.expiresAt) destructibleWalls.splice(i, 1);
+        if (wall && wall.expiresAt && now >= wall.expiresAt) { markBotNavGridDirty(wall); destructibleWalls.splice(i, 1); }
     }
 
     // aliveBots already defined at top of update(dt)
@@ -52055,6 +52322,7 @@ function checkHit(target, b, i){
                       dw.hp -= wallDmg;
                       registerBrickVaultWallDamage(b.ownerId, dw, wallDmg);
                       if (dw.hp <= 0) {
+                          markBotNavGridDirty(dw);
                           destructibleWalls.splice(wIdx, 1);
                       }
                   }
@@ -52095,6 +52363,7 @@ function checkHit(target, b, i){
                                   }
                               } else spawnShowdownPowerBoxReward(dw);
                       }
+                      markBotNavGridDirty(dw);
                       destructibleWalls.splice(wIdx, 1);
                   }
               } else {
@@ -80078,7 +80347,9 @@ function renderBouncinBossEvent(phase) {
     chooseBotWallWaypoint,
     isBotShotObstructed,
     findBotCoverPoint,
-    canBotMoveToPosition
+    canBotMoveToPosition,
+    buildBotNavGrid,
+    findBotNavPath
   }));
 })();
 
