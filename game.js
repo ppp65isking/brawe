@@ -12529,6 +12529,7 @@ function isPowerPlayModifierActive(entity = player) {
     let arenaForgeSoulBank = { player: 0, enemy: 0 };
     let arenaForgeSouls = [];
     let arenaForgeFlamePuddles = [];
+    let arenaForgeMines = [];
     let arenaForgeNextSoulAt = 0;
     let arenaForgeWaveIndex = 0;
     let arenaForgePanel = null;
@@ -20252,6 +20253,14 @@ let heistFeverActive = false;
         { id: 'emergency_repair', name: 'Emergency Repair', icon: '🔧', desc: 'Immediately restore 25% max HP and gain a 2500 shield.' },
         { id: 'soul_capacitor', name: 'Soul Capacitor', icon: '🔮', desc: 'Every Energy pickup grants 12% Super charge and 5% Hypercharge.' },
         { id: 'fortress_link', name: 'Fortress Link', icon: '🏰', desc: 'Near an allied Tower or Core: +15% damage and 15% faster reload.' },
+        { id: 'glass_cannon', name: 'Glass Cannon', icon: '💠', desc: 'Deal +30% damage, but your max HP is reduced by 15%.' },
+        { id: 'thornmail', name: 'Thornmail', icon: '🌵', desc: 'Reflect 15% of the damage you take back at the attacker.' },
+        { id: 'adrenal_surge', name: 'Adrenal Surge', icon: '💨', desc: 'Takedowns grant +25% speed and 30% faster reload for 4 seconds.' },
+        { id: 'energy_vampire', name: 'Energy Vampire', icon: '🦇', desc: 'Every Energy pickup also grants a 600 shield.' },
+        { id: 'mine_layer', name: 'Mine Layer', icon: '🧨', desc: 'Every 6 seconds, drop a proximity mine where you stand (max 4). Mines arm after 0.8s and explode for 900 damage.' },
+        { id: 'second_wind', name: 'Second Wind', icon: '🌬️', desc: 'Respawn 40% faster and return with a 2000 shield.' },
+        { id: 'siege_plating', name: 'Siege Plating', icon: '🧱', desc: 'Take 25% less damage while near an allied Tower or Core.' },
+        { id: 'bounty_boots', name: 'Bounty Boots', icon: '👢', desc: 'Every 5 Energy you collect grants +30% speed for 3 seconds and 25% Super charge.' },
     ];
 
     function getArenaForgeCombatants(team = null, livingOnly = false) {
@@ -20334,6 +20343,17 @@ let heistFeverActive = false;
         entity.arenaForgeQuantumRounds = false;
         entity.arenaForgeSoulCapacitor = false;
         entity.arenaForgeFortressLink = false;
+        entity.arenaForgeThornmail = false;
+        entity.arenaForgeAdrenalSurge = false;
+        entity.arenaForgeAdrenalUntil = 0;
+        entity.arenaForgeEnergyVampire = false;
+        entity.arenaForgeMineLayer = false;
+        entity.arenaForgeLastMineAt = 0;
+        entity.arenaForgeSecondWind = false;
+        entity.arenaForgeSiegePlating = false;
+        entity.arenaForgeBountyBoots = false;
+        entity.arenaForgeBountyEnergyCount = 0;
+        entity.arenaForgeBountySpeedUntil = 0;
         entity.arenaForgeLastVoltaicAt = 0;
         entity.arenaForgeLastBlastAt = 0;
         entity.arenaForgeLastStaticShockAt = 0;
@@ -20405,6 +20425,25 @@ let heistFeverActive = false;
             entity.arenaForgeSoulCapacitor = true;
         } else if (blueprintId === 'fortress_link') {
             entity.arenaForgeFortressLink = true;
+        } else if (blueprintId === 'glass_cannon') {
+            entity.arenaForgeBlueprintDamageMult *= 1.30;
+            entity.arenaForgeBlueprintHpMult *= 0.85;
+            refreshArenaForgeLevelStats(entity, false);
+        } else if (blueprintId === 'thornmail') {
+            entity.arenaForgeThornmail = true;
+        } else if (blueprintId === 'adrenal_surge') {
+            entity.arenaForgeAdrenalSurge = true;
+        } else if (blueprintId === 'energy_vampire') {
+            entity.arenaForgeEnergyVampire = true;
+        } else if (blueprintId === 'mine_layer') {
+            entity.arenaForgeMineLayer = true;
+            entity.arenaForgeLastMineAt = performance.now();
+        } else if (blueprintId === 'second_wind') {
+            entity.arenaForgeSecondWind = true;
+        } else if (blueprintId === 'siege_plating') {
+            entity.arenaForgeSiegePlating = true;
+        } else if (blueprintId === 'bounty_boots') {
+            entity.arenaForgeBountyBoots = true;
         }
         spawnFloatingText(entity.x, entity.y - 46, blueprint.name.toUpperCase(), entity.team === 'player' ? '#7fffd4' : '#ff9b9b');
         return true;
@@ -20479,6 +20518,20 @@ let heistFeverActive = false;
                     explosions.push({ x: st.x, y: st.y, radius: 45, life: 0, maxLife: 0.25, color: '#6ee7ff' });
                     if (st.hp <= 0) handleArenaForgeDeath(st);
                 }
+            }
+        }
+        // Thornmail: reflect 15% of damage taken back at the attacker
+        // (direct HP, same pattern as Static Armor; structures never reflect
+        // and never receive reflect damage).
+        if (target?.arenaForgeThornmail && dealtDamage > 0 && owner && owner !== target && owner.hp > 0 && !owner.isStructure && owner.team !== target.team) {
+            const reflected = Math.round(dealtDamage * 0.15);
+            if (reflected > 0) {
+                owner.hp -= reflected;
+                owner.lastDamagerId = target.id;
+                owner.lastDamagerTeam = target.team;
+                showDamageNumber(owner.x, owner.y - 15, reflected, '#b6ff5e');
+                spawnFloatingText(owner.x, owner.y - 34, 'THORNMAIL!', '#b6ff5e');
+                if (owner.hp <= 0) handleArenaForgeDeath(owner);
             }
         }
         if (target?.arenaForgeBlastChassis && target.hp > 0 && target.hp <= target.maxHp * 0.35) {
@@ -20636,6 +20689,40 @@ let heistFeverActive = false;
                         if (closest.hp <= 0) handleArenaForgeDeath(closest);
                     }
                 }
+            }
+        }
+
+        // 7. Mine Layer (mine_layer): owners drop a proximity mine every 6s
+        // (max 4 live mines each). Mines arm after 0.8s, then detonate for
+        // 900 damage when an enemy fighter or minion steps close. Structures
+        // never trigger or take mine damage.
+        for (const entity of combatants) {
+            if (!entity.arenaForgeMineLayer || entity.hp <= 0) continue;
+            if (now - (entity.arenaForgeLastMineAt || 0) < 6000) continue;
+            const liveMines = arenaForgeMines.reduce((count, mine) => count + (mine.ownerId === entity.id ? 1 : 0), 0);
+            if (liveMines >= 4) continue;
+            entity.arenaForgeLastMineAt = now;
+            arenaForgeMines.push({ x: entity.x, y: entity.y, team: entity.team, ownerId: entity.id, armedAt: now + 800, radius: 75, damage: 900 });
+        }
+        for (let i = arenaForgeMines.length - 1; i >= 0; i--) {
+            const mine = arenaForgeMines[i];
+            if (now < mine.armedAt) continue;
+            let triggered = false;
+            for (const e of [player, ...bots]) {
+                if (e && e.hp > 0 && !e.isStructure && e.team !== mine.team && Math.hypot(e.x - mine.x, e.y - mine.y) <= mine.radius + (e.radius || 14)) { triggered = true; break; }
+            }
+            if (!triggered) continue;
+            arenaForgeMines.splice(i, 1);
+            explosions.push({ x: mine.x, y: mine.y, radius: 100, life: 0, maxLife: 0.35, color: '#ffb020' });
+            spawnFloatingText(mine.x, mine.y - 40, 'MINE DETONATED!', '#ffb020');
+            for (const e of [player, ...bots]) {
+                if (!e || e.hp <= 0 || e.isStructure || e.team === mine.team) continue;
+                if (Math.hypot(e.x - mine.x, e.y - mine.y) > 100 + (e.radius || 14)) continue;
+                e.hp -= mine.damage;
+                e.lastDamagerId = mine.ownerId;
+                e.lastDamagerTeam = mine.team;
+                showDamageNumber(e.x, e.y - 15, mine.damage, '#ffb020');
+                if (e.hp <= 0) handleArenaForgeDeath(e);
             }
         }
     }
@@ -20806,6 +20893,9 @@ let heistFeverActive = false;
             upgrades[type] = (upgrades[type] || 0) + 1;
             if (type === 'fortify') {
                 for (const structure of getArenaForgeStructures(team)) {
+                    // Towers never gain HP or max HP (2026-10-23): Fortify now
+                    // strengthens the Core only.
+                    if (structure.isArenaForgeTower) continue;
                     const bonus = Math.round((structure.forgeBaseMaxHp || structure.maxHp) * 0.10);
                     structure.maxHp += bonus;
                     structure.hp += bonus;
@@ -20824,6 +20914,9 @@ let heistFeverActive = false;
         upgrades[type] = (upgrades[type] || 0) + 1;
         if (type === 'fortify') {
             for (const structure of getArenaForgeStructures(team)) {
+                // Towers never gain HP or max HP (2026-10-23): Fortify now
+                // strengthens the Core only.
+                if (structure.isArenaForgeTower) continue;
                 const bonus = Math.round((structure.forgeBaseMaxHp || structure.maxHp) * 0.10);
                 structure.maxHp += bonus;
                 structure.hp += bonus;
@@ -20966,6 +21059,7 @@ let heistFeverActive = false;
         arenaForgeSoulBank = { player: 0, enemy: 0 };
         arenaForgeSouls = [];
         arenaForgeFlamePuddles = [];
+        arenaForgeMines = [];
         arenaForgeUpgrades = {
             player: { fortify: 0, minions: 0, respawn: 0, damage: 0, project_left: 0, project_center: 0, project_right: 0 },
             enemy: { fortify: 0, minions: 0, respawn: 0, damage: 0, project_left: 0, project_center: 0, project_right: 0 },
@@ -21221,6 +21315,10 @@ let heistFeverActive = false;
                         if (extraMinion) {
                             spawnFloatingText(extraMinion.x, extraMinion.y - 36, 'SWARM MINION DEPLOYED!', killer.team === 'player' ? '#7fffd4' : '#ff9b9b');
                         }
+                    }
+                    if (killer.arenaForgeAdrenalSurge) {
+                        killer.arenaForgeAdrenalUntil = performance.now() + 4000;
+                        spawnFloatingText(killer.x, killer.y - 64, 'ADRENAL SURGE!', '#ff9d5c');
                     }
                     killer.arenaForgeStreak = (killer.arenaForgeStreak || 0) + 1;
                     const streak = killer.arenaForgeStreak;
@@ -21661,6 +21759,21 @@ let heistFeverActive = false;
             grantArenaForgeXp(collector, pickup.value * 6);
             if (collector.arenaForgeBountyMagnet) {
                 collector.hp = Math.min(collector.maxHp, collector.hp + 500 * pickup.value);
+            }
+            if (collector.arenaForgeEnergyVampire) grantShield(collector, 600 * pickup.value, 5000);
+            if (collector.arenaForgeBountyBoots) {
+                collector.arenaForgeBountyEnergyCount = (collector.arenaForgeBountyEnergyCount || 0) + pickup.value;
+                if (collector.arenaForgeBountyEnergyCount >= 5) {
+                    collector.arenaForgeBountyEnergyCount -= 5;
+                    collector.arenaForgeBountySpeedUntil = performance.now() + 3000;
+                    if (collector.id === player.id) {
+                        superCharge = clamp(superCharge + 25, 0, 100);
+                        updateSuperButton();
+                    } else {
+                        collector.superCharge = clamp((collector.superCharge || 0) + 25, 0, 100);
+                    }
+                    spawnFloatingText(collector.x, collector.y - 52, 'BOUNTY BURST! +25% SUPER', '#ffe66d');
+                }
             }
             if ((collector.arenaForgeBlueprints || []).includes('battery_pack')) grantShield(collector, 1200, 5000);
             if (collector.arenaForgeSoulCapacitor) {
@@ -22441,6 +22554,7 @@ let heistFeverActive = false;
         if(bot.brawler==='jacktrade')cadence=getFireDelay('jacktrade',bot);
         if (isArenaForgeMode) {
             cadence *= bot.arenaForgeReloadMult || 1;
+            if ((bot.arenaForgeAdrenalUntil || 0) > context.now) cadence *= 0.70;
             if (bot.arenaForgeSupercharger && (bot.superCharge || 0) >= 100) cadence *= 0.8;
             if (bot.arenaForgeFortressLink && isNearAlliedArenaForgeStructure(bot)) cadence *= 0.85;
             if ((bot.arenaForgeFrostfireUntil || 0) > performance.now()) cadence *= 1.25;
@@ -25430,6 +25544,10 @@ let heistFeverActive = false;
 
   function doHeal(entity, amount) {
       if(!entity || !Number.isFinite(amount) || amount <= 0 || entity.hp <= 0 || entity.hp >= entity.maxHp) return;
+      // Arena Forge (2026-10-23): towers can never gain HP from ANY heal source
+      // (auras, zones, healer kits, blueprint ticks). The deliberate structure
+      // repair paths write hp directly and already skip towers.
+      if(entity.isArenaForgeTower) return;
       if(entity.isPeterPickleJar || entity.isPeterPickleMinion || entity.isUnstableContainer || entity.isUnstableDNA || entity.brawler === 'skeletrooper') return;
       if(entity.inStorm) amount *= 0.1;
       if(entity.healingReducedUntil && performance.now() < entity.healingReducedUntil) amount *= 0.5;
@@ -47573,6 +47691,7 @@ function checkHit(target, b, i){
     }
     if (b.isClassyNote && b.hyperVisual && b.pierce && Object.keys(b.hitIds || {}).length > 1) dealtDamage *= 0.80;
     if (isArenaForgeMode && arenaForgeOvertime && target?.isArenaForgeStructure) dealtDamage *= 1.35;
+    if (isArenaForgeMode && target?.arenaForgeSiegePlating && isNearAlliedArenaForgeStructure(target)) dealtDamage *= 0.75;
     dealtDamage *= getPacketOutgoingDamageMultiplier(owner);
 
     dealtDamage = normalizeDamageBreakpoint(dealtDamage);
@@ -50124,9 +50243,10 @@ function checkHit(target, b, i){
             : (isTugZoneMode ? getTugZoneSpawnPoint(team, slot) : getMarkedMayhemSpawnPoint(team, slot, teamSize));
         if (player.hp <= 0 && !gameOver) {
             player.respawnTimer = (player.respawnTimer || 0) + dt;
-            if (player.respawnTimer >= getRespawnDelay('player')) {
+            if (player.respawnTimer >= getRespawnDelay('player') * (player.arenaForgeSecondWind ? 0.6 : 1)) {
                 const spawn = getSpawn('player', 1);
                 restoreRespawningEntity(player, spawn, true, 1200);
+                if (player.arenaForgeSecondWind) grantShield(player, 2000, 2000);
             }
         } else {
             player.respawnTimer = 0;
@@ -50144,10 +50264,11 @@ function checkHit(target, b, i){
                 continue;
             }
             b.respawnTimer = (b.respawnTimer || 0) + dt;
-            if (b.respawnTimer < getRespawnDelay(team)) continue;
+            if (b.respawnTimer < getRespawnDelay(team) * (b.arenaForgeSecondWind ? 0.6 : 1)) continue;
             const slot = team === 'player' ? playerSlot++ : enemySlot++;
             const spawn = getSpawn(team, slot);
             restoreRespawningEntity(b, spawn, false, 1200);
+            if (b.arenaForgeSecondWind) grantShield(b, 2000, 2000);
         }
     } else if (isBrickVaultMode) {
         if (player.hp <= 0 && !gameOver) {
@@ -50622,6 +50743,10 @@ function checkHit(target, b, i){
 
     for (const e of [player, ...(typeof bots !== "undefined" ? bots : [])]) {
         if (!e || e.hp <= 0 || e.hp >= e.maxHp) continue;
+        // Arena Forge (2026-10-23): structures never idle-regen. Tower HP and
+        // max HP can only go down; the Core may only gain HP through the
+        // deliberate repair/fortify paths, never from passive regen.
+        if (e.isArenaForgeStructure) continue;
         const calmSince = Math.max(e.lastAttackAt || 0, e.lastDamagedAt || 0);
         if ((now - calmSince) < 3000) {
             e.idleRegenNextAt = 0;
@@ -51453,6 +51578,8 @@ function checkHit(target, b, i){
     if(now<(player.packetDragonUntil||0))activeSpeed*=1.12;
     if(now<(player.packetSpicySpeedUntil||0))activeSpeed*=1.08;
     if (isArenaForgeMode) activeSpeed *= player.arenaForgeBlueprintSpeedMult || 1;
+    if (isArenaForgeMode && (player.arenaForgeAdrenalUntil || 0) > now) activeSpeed *= 1.25;
+    if (isArenaForgeMode && (player.arenaForgeBountySpeedUntil || 0) > now) activeSpeed *= 1.30;
     if (now < (player.relaySignalSpeedUntil || 0)) activeSpeed *= 1.10;
     if (isSlopSushiMode) {
         activeSpeed *= 1 + getSlopEffectTotal('speedPct');
@@ -55170,6 +55297,7 @@ function checkHit(target, b, i){
        let currentReloadTime = getReloadTime(selectedBrawler) * ((selectedBrawler === 'decayer' && now < player.reloadBuffUntil) ? 0.5 : 1);
        if (isArenaForgeMode) {
            currentReloadTime *= player.arenaForgeReloadMult || 1;
+           if ((player.arenaForgeAdrenalUntil || 0) > now) currentReloadTime *= 0.70;
            if (player.arenaForgeSupercharger && superCharge >= 100) currentReloadTime *= 0.8;
            if (player.arenaForgeFortressLink && isNearAlliedArenaForgeStructure(player)) currentReloadTime *= 0.85;
            if ((player.arenaForgeFrostfireUntil || 0) > performance.now()) currentReloadTime *= 1.25;
@@ -56180,6 +56308,8 @@ function checkHit(target, b, i){
           if (t.brawler === 'cursed' && t.selectedStar === 'long' && nowTarget < (t.cursedStormUntil || 0)) activeBotSpeed *= 1.15;
           if (t.brawler === 'ramage' && (t.selectedStar === 'slow' || t.selectedStar === 'fast' || t.selectedStar === 'sp1') && (t.ramageMultiplier || 1) >= 10) activeBotSpeed *= 1.20;
           if (isArenaForgeMode) activeBotSpeed *= t.arenaForgeBlueprintSpeedMult || 1;
+          if (isArenaForgeMode && (t.arenaForgeAdrenalUntil || 0) > nowTarget) activeBotSpeed *= 1.25;
+          if (isArenaForgeMode && (t.arenaForgeBountySpeedUntil || 0) > nowTarget) activeBotSpeed *= 1.30;
           if (nowTarget < (t.relaySignalSpeedUntil || 0)) activeBotSpeed *= 1.10;
           if (isSlopSushiMode) {
               activeBotSpeed *= 1 + getEntitySlopEffectTotal(t, 'speedPct');
@@ -60235,6 +60365,23 @@ function checkHit(target, b, i){
             ctx.beginPath();
             ctx.arc(puddle.x, puddle.y, puddle.radius, 0, Math.PI * 2);
             ctx.fill();
+            ctx.restore();
+        }
+    }
+
+    // Arena Forge Mines (mine_layer blueprint): team-ringed disc with a
+    // blinking light once armed.
+    if (typeof arenaForgeMines !== 'undefined' && arenaForgeMines.length > 0) {
+        const mineNow = performance.now();
+        for (const mine of arenaForgeMines) {
+            ctx.save();
+            ctx.fillStyle = '#20242c';
+            ctx.beginPath(); ctx.arc(mine.x, mine.y, 13, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = mine.team === 'player' ? '#5df2c2' : '#ff5f6b';
+            ctx.lineWidth = 3; ctx.stroke();
+            const armed = mineNow >= mine.armedAt;
+            ctx.fillStyle = armed ? (Math.floor(mineNow / 300) % 2 ? '#ff4040' : '#ffb020') : '#8a93a3';
+            ctx.beginPath(); ctx.arc(mine.x, mine.y, 4, 0, Math.PI * 2); ctx.fill();
             ctx.restore();
         }
     }
@@ -82321,7 +82468,28 @@ function renderBouncinBossEvent(phase) {
     findBotCoverPoint,
     canBotMoveToPosition,
     buildBotNavGrid,
-    findBotNavPath
+    findBotNavPath,
+    get ARENA_FORGE_BLUEPRINTS() { return ARENA_FORGE_BLUEPRINTS; },
+    get applyArenaForgeBlueprint() { return applyArenaForgeBlueprint; },
+    get purchaseArenaForgeUpgrade() { return purchaseArenaForgeUpgrade; },
+    get applyArenaForgeFreeUpgrade() { return applyArenaForgeFreeUpgrade; },
+    get getArenaForgeStructures() { return getArenaForgeStructures; },
+    get getArenaForgeCore() { return getArenaForgeCore; },
+    get getArenaForgeCombatants() { return getArenaForgeCombatants; },
+    get activateArenaForgeCampReward() { return activateArenaForgeCampReward; },
+    get arenaForgeSoulBank() { return arenaForgeSoulBank; },
+    get arenaForgeUpgrades() { return arenaForgeUpgrades; },
+    get arenaForgeCamps() { return arenaForgeCamps; },
+    get arenaForgeMines() { return arenaForgeMines; },
+    get arenaForgeSouls() { return arenaForgeSouls; },
+    get spawnArenaForgeEnergy() { return spawnArenaForgeEnergy; },
+    get updateArenaForgeBlueprintCombatantEffects() { return updateArenaForgeBlueprintCombatantEffects; },
+    get handleArenaForgeCombatHit() { return handleArenaForgeCombatHit; },
+    get getArenaForgeRespawnSeconds() { return getArenaForgeRespawnSeconds; },
+    get isArenaForgeMode() { return isArenaForgeMode; },
+    get checkHit() { return checkHit; },
+    get doHeal() { return doHeal; },
+    get grantShield() { return grantShield; }
   }));
 })();
 
