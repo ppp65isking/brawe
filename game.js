@@ -4536,6 +4536,9 @@ const bolznstienPendingStrikes = [];
         const ARENA_FORGE_TOWER_REPEAT_DAMAGE = 3000;
         const ARENA_FORGE_TOWER_HOMING_PCT = 0.30;
         const ARENA_FORGE_TOWER_SPLASH_RADIUS = 115;
+        // Anthony's order: Arena Forge towers never heal (repair camp or repair
+        // upgrade). The Core still heals; tower damage/targeting/HP untouched.
+        const ARENA_FORGE_TOWERS_HEAL_ENABLED = false;
         const ARENA_FORGE_CORE_HP = 120000;
         const ARENA_FORGE_CORE_RANGE = 650;
         const ARENA_FORGE_CORE_FIRE_MS = 135;
@@ -4909,6 +4912,12 @@ const bolznstienPendingStrikes = [];
     }
     function isEntityStunned(entity, now) {
         return !!(entity && !isEntityCcImmune(entity, now) && entity.stunUntil && now < entity.stunUntil);
+    }
+    // Predator's Hyper Super latch keeps its stun and claw damage, but the
+    // owner may keep jumping (main attack) while it plays out. Base
+    // (non-Hyper) Super latches still lock the owner out completely.
+    function predatorHyperLatchCanAct(entity) {
+        return !!entity?.predatorLatch?.hyper;
     }
     function isEntityRooted(entity, now) {
         return !!(entity && !isEntityCcImmune(entity, now) && entity.rootUntil && now < entity.rootUntil);
@@ -20401,6 +20410,7 @@ let heistFeverActive = false;
 
         if (type === 'repair') {
             for (const structure of getArenaForgeStructures(team)) {
+                if (!ARENA_FORGE_TOWERS_HEAL_ENABLED && structure.isArenaForgeTower) continue;
                 const amount = Math.max(1800, Math.round(structure.maxHp * 0.18));
                 structure.hp = Math.min(structure.maxHp, structure.hp + amount);
             }
@@ -20905,6 +20915,7 @@ let heistFeverActive = false;
         arenaForgeSoulBank[team] = (arenaForgeSoulBank[team] || 0) + 4;
         if (camp.arenaForgeCampType === 'repair') {
             for (const structure of getArenaForgeStructures(team)) {
+                if (!ARENA_FORGE_TOWERS_HEAL_ENABLED && structure.isArenaForgeTower) continue;
                 structure.hp = Math.min(structure.maxHp, structure.hp + Math.round(structure.maxHp * 0.16));
             }
             for (const ally of getArenaForgeCombatants(team, true)) {
@@ -50709,7 +50720,7 @@ function checkHit(target, b, i){
               startJetpackFlight(player,player.jetpackAimX??player.x,player.jetpackAimY??player.y,{charge,hyper:getPlayerHyperMainActive('jetpack')});
               player.jetpackChargeStartedAt=0;player.jetpackChargePct=0;
           }
-      } else if((mouse.down || mobileInput.attackActive) && !playerIsStunned) {
+      } else if((mouse.down || mobileInput.attackActive) && (!playerIsStunned || predatorHyperLatchCanAct(player))) {
           const wm = mobileInput.attackActive
               ? { x: player.x + mobileInput.aimX * 1200, y: player.y + mobileInput.aimY * 1200 }
               : getMouseWorld();
@@ -55364,7 +55375,7 @@ function checkHit(target, b, i){
                          fire(t, target.x, target.y, true, false);
                      }
                  }
-             } else if(!isStunned && distToTarget < 980 && wantToShoot && !target.isPowerup){
+             } else if((!isStunned || predatorHyperLatchCanAct(t)) && distToTarget < 980 && wantToShoot && !target.isPowerup){
                 let obstructed = isBotShotObstructed(t, target, botAi);
                 if (t.brawler === 'heater_miser' && target.isBox) {
                     obstructed = false;
