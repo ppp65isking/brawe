@@ -4647,7 +4647,7 @@ const bolznstienPendingStrikes = [];
             bgInner: '#0d261b', bushFill: '#2f8f4e', bushDeep: '#17572e', fallBushFill: '#cf701f', fallBushDeep: '#7c3f10',
             grid: 'rgba(140, 214, 180, 0.05)',
             wallBorder: '#2d5f4e',
-            cubeFill: '#305245',
+            cubeFill: '#305245', wallMaterial: 'stone',
             cubeStroke: '#4f806d',
             wallBoxFill: '#3d6a58',
             wallBoxStroke: '#76a98f'
@@ -4658,7 +4658,7 @@ const bolznstienPendingStrikes = [];
             bgInner: '#231d11', bushFill: '#5d8a3c', bushDeep: '#3a5c24', fallBushFill: '#bb8a2c', fallBushDeep: '#6f4c14',
             grid: 'rgba(255, 196, 120, 0.05)',
             wallBorder: '#6a4a2f',
-            cubeFill: '#5a3d2a',
+            cubeFill: '#5a3d2a', wallMaterial: 'wood',
             cubeStroke: '#916649',
             wallBoxFill: '#6b4a30',
             wallBoxStroke: '#ab7d58'
@@ -4669,7 +4669,7 @@ const bolznstienPendingStrikes = [];
             bgInner: '#2a1212', bushFill: '#557f35', bushDeep: '#38591f', fallBushFill: '#a83240', fallBushDeep: '#5e1c25',
             grid: 'rgba(255, 120, 120, 0.05)',
             wallBorder: '#7a3131',
-            cubeFill: '#5a2424',
+            cubeFill: '#5a2424', wallMaterial: 'stone',
             cubeStroke: '#a84848',
             wallBoxFill: '#6b2c2c',
             wallBoxStroke: '#b45858'
@@ -4680,7 +4680,7 @@ const bolznstienPendingStrikes = [];
             bgInner: '#0f1f3a', bushFill: '#2e8a6e', bushDeep: '#185c46', fallBushFill: '#c05f1d', fallBushDeep: '#713511',
             grid: 'rgba(140, 190, 255, 0.06)',
             wallBorder: '#2d4d78',
-            cubeFill: '#2c3f5f',
+            cubeFill: '#2c3f5f', wallMaterial: 'stone',
             cubeStroke: '#4f6f9f',
             wallBoxFill: '#36507a',
             wallBoxStroke: '#5f86bf'
@@ -4691,7 +4691,7 @@ const bolznstienPendingStrikes = [];
             bgInner: '#112838', bushFill: '#4c9a72', bushDeep: '#2c6647', fallBushFill: '#9c3548', fallBushDeep: '#5a1e2c',
             grid: 'rgba(140, 230, 255, 0.06)',
             wallBorder: '#36657f',
-            cubeFill: '#2f4f60',
+            cubeFill: '#2f4f60', wallMaterial: 'metal',
             cubeStroke: '#5c93ab',
             wallBoxFill: '#3d6780',
             wallBoxStroke: '#77b9d8'
@@ -4702,7 +4702,7 @@ const bolznstienPendingStrikes = [];
             bgInner: '#2f1d0f', bushFill: '#6b8f3d', bushDeep: '#47632a', fallBushFill: '#c2571b', fallBushDeep: '#73320e',
             grid: 'rgba(255, 172, 112, 0.06)',
             wallBorder: '#845235',
-            cubeFill: '#6e442b',
+            cubeFill: '#6e442b', wallMaterial: 'stone',
             cubeStroke: '#b5774f',
             wallBoxFill: '#7a4f34',
             wallBoxStroke: '#d39465'
@@ -4710,25 +4710,25 @@ const bolznstienPendingStrikes = [];
         {
             name: 'Crownspire Keep',
             bgOuter: '#090b20', bgInner: '#17143b', bushFill: '#4a7d5c', bushDeep: '#2e4f3a', fallBushFill: '#93343f', fallBushDeep: '#561e27', grid: 'rgba(190,160,255,.07)',
-            wallBorder: '#6751a8', cubeFill: '#3d356c', cubeStroke: '#8f7ed3',
+            wallBorder: '#6751a8', cubeFill: '#3d356c', wallMaterial: 'ruin', cubeStroke: '#8f7ed3',
             wallBoxFill: '#55458b', wallBoxStroke: '#b5a1ff'
         },
         {
             name: 'Gearfall Foundry',
             bgOuter: '#171009', bgInner: '#31200e', bushFill: '#5f8a3e', bushDeep: '#3d5c26', fallBushFill: '#bd7d20', fallBushDeep: '#6d4410', grid: 'rgba(255,191,93,.07)',
-            wallBorder: '#925b25', cubeFill: '#66431f', cubeStroke: '#bd7c36',
+            wallBorder: '#925b25', cubeFill: '#66431f', wallMaterial: 'wood', cubeStroke: '#bd7c36',
             wallBoxFill: '#805125', wallBoxStroke: '#e3a35c'
         },
         {
             name: 'Stormglass Heights',
             bgOuter: '#07131d', bgInner: '#0e3040', bushFill: '#2f9a7a', bushDeep: '#1c6650', fallBushFill: '#bf5f1c', fallBushDeep: '#6e3410', grid: 'rgba(90,230,255,.08)',
-            wallBorder: '#287b91', cubeFill: '#285364', cubeStroke: '#4fa6bb',
+            wallBorder: '#287b91', cubeFill: '#285364', wallMaterial: 'metal', cubeStroke: '#4fa6bb',
             wallBoxFill: '#326d82', wallBoxStroke: '#75d7eb'
         },
         {
             name: 'Voidtower Ruins',
             bgOuter: '#12071a', bgInner: '#281037', bushFill: '#35926e', bushDeep: '#1f6b4f', fallBushFill: '#8e3a52', fallBushDeep: '#512130', grid: 'rgba(235,104,255,.08)',
-            wallBorder: '#77318a', cubeFill: '#51265e', cubeStroke: '#9f4db4',
+            wallBorder: '#77318a', cubeFill: '#51265e', wallMaterial: 'ruin', cubeStroke: '#9f4db4',
             wallBoxFill: '#673276', wallBoxStroke: '#d070e4'
         }
     ];
@@ -10213,6 +10213,12 @@ function isPowerPlayModifierActive(entity = player) {
     const CORE_BALL_MAX_HP = 135000;
     let coreBreachState = null;
     let corruptedShowdownState = null;
+    // core_instability (Phase 4): state for the implemented Corrupted
+    // Packet Storm modifier — see initCoreInstability/updateCoreInstability.
+    let coreInstabilityState = null;
+    const CORE_INSTABILITY_SURGE_INTERVAL_MS = 20000;
+    const CORE_INSTABILITY_TELEGRAPH_MS = 850;
+    const CORE_INSTABILITY_BOXES_PER_SURGE = 3;
     function shouldStartCoreBreachIntro(){const {season}=ensureSeason3State();return !isCorruptedShowdownMode&&['solo','duo','trio'].includes(showdownMode)&&(!season.coreBreachCompleted||season.coreBreachReplayDebug);}
     function initCoreBreachIntro(){
         isCoreBreachIntroMode=shouldStartCoreBreachIntro();coreBreachState=isCoreBreachIntroMode?{phase:'pvp',damage:0,progress:0,startedAt:performance.now(),boss:null,nextAttackAt:0,telegraphs:[],pools:[],finished:false}:null;
@@ -10356,6 +10362,51 @@ function isPowerPlayModifierActive(entity = player) {
     function renderCorruptedShowdown(){
         const state=corruptedShowdownState;if(!isCorruptedShowdownMode||!state)return;ctx.save();for(const t of state.telegraphs){ctx.fillStyle='rgba(218,68,255,.15)';ctx.strokeStyle='#ec8cff';ctx.lineWidth=3;ctx.beginPath();ctx.arc(t.x,t.y,t.radius,0,Math.PI*2);ctx.fill();ctx.stroke();}if(performance.now()<state.surgeUntil){ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='#f09aff';ctx.font='900 15px sans-serif';ctx.textAlign='center';ctx.fillText(`CORRUPTED SIGNAL • ${state.label}`,innerWidth/2,82);ctx.textAlign='left';}ctx.restore();
     }
+    // core_instability (Thanksgiving big update Phase 4): the Corrupted
+    // Showdown modifier, implemented for real — until now the ID existed
+    // only as a pool entry + label with zero effect code (a placebo).
+    // While it is the active modifier, every
+    // CORE_INSTABILITY_SURGE_INTERVAL_MS a corrupted surge telegraphs up
+    // to CORE_INSTABILITY_BOXES_PER_SURGE random live Power Boxes and
+    // converts them into Charged boxes (HP refilled to the charged spec),
+    // reusing POWER_BOX_TYPES and the explosion renderer for feedback.
+    function initCoreInstability(){
+        if(activeShowdownModifier!=='core_instability'){coreInstabilityState=null;return;}
+        coreInstabilityState={nextSurgeAt:performance.now()+CORE_INSTABILITY_SURGE_INTERVAL_MS,surges:0,telegraphs:[]};
+    }
+    function convertPowerBoxToCharged(box){
+        const spec=POWER_BOX_TYPES.charged;if(!box||!spec)return;
+        box.powerBoxType='charged';box.powerBoxReward=spec.reward;box.isPurpleBox=true;box.isNovaBox=false;
+        box.hp=spec.hp;box.maxHp=spec.hp;box.spawnedAt=performance.now();
+        delete box.coreInstabilityTelegraphed;
+    }
+    function updateCoreInstability(now=performance.now()){
+        const state=coreInstabilityState;if(activeShowdownModifier!=='core_instability'||!state||gameOver)return;
+        if(now>=state.nextSurgeAt){
+            state.nextSurgeAt=now+CORE_INSTABILITY_SURGE_INTERVAL_MS;state.surges++;
+            const liveBoxes=destructibleWalls.filter(w=>w&&w.isPowerBox&&w.powerBoxType&&w.hp>0&&!w.coreInstabilityTelegraphed);
+            for(let i=liveBoxes.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));const tmp=liveBoxes[i];liveBoxes[i]=liveBoxes[j];liveBoxes[j]=tmp;}
+            let telegraphed=0;
+            for(const box of liveBoxes){
+                if(telegraphed>=CORE_INSTABILITY_BOXES_PER_SURGE)break;
+                box.coreInstabilityTelegraphed=true;
+                state.telegraphs.push({box,x:box.x+box.w/2,y:box.y+box.h/2,explodeAt:now+CORE_INSTABILITY_TELEGRAPH_MS});
+                telegraphed++;
+            }
+            if(telegraphed>0)spawnFloatingText(player.x,player.y-65,'CORRUPTED PACKET SURGE','#e976ff');
+        }
+        for(let i=state.telegraphs.length-1;i>=0;i--){
+            const t=state.telegraphs[i];if(now<t.explodeAt)continue;state.telegraphs.splice(i,1);
+            const box=t.box;if(!box||!destructibleWalls.includes(box)||box.hp<=0)continue;
+            convertPowerBoxToCharged(box);
+            explosions.push({x:t.x,y:t.y,radius:46,life:0,maxLife:.28,color:'rgba(125,69,232,.68)',fxKind:'coreInstability'});
+        }
+    }
+    function renderCoreInstability(){
+        const state=coreInstabilityState;if(activeShowdownModifier!=='core_instability'||!state)return;
+        ctx.save();for(const t of state.telegraphs){ctx.fillStyle='rgba(125,69,232,.16)';ctx.strokeStyle='#d9b6ff';ctx.lineWidth=3;ctx.beginPath();ctx.arc(t.x,t.y,34,0,Math.PI*2);ctx.fill();ctx.stroke();}ctx.restore();
+    }
+
     isSplitterPoweredMode = false;
     let isMirrorMode = false;
     let isBraweBallMode = false;
@@ -12093,15 +12144,28 @@ function isPowerPlayModifierActive(entity = player) {
             splitter_powered: ['none'],
             mirror: ['none']
     };
-    const SHOWDOWN_MODE_MODIFIER_META = {
-            none: { label: 'No Modifier' },
-            heavy_storm: { label: 'Heavy Storm' },
-            power_surge: { label: 'Power Surge' },
-            no_free_cubes: { label: 'No Free Cubes' },
-            core_instability: { label: 'Corrupted Packet Storm' }
+    // Rotating Showdown modifier registry (Thanksgiving big update Phase 4):
+    // ONE source of truth — the topbar and the in-match HUD read label and
+    // description from here, so what the player is told is what the code
+    // does. Behaviour lives in the getters/effects keyed by these IDs, and
+    // every entry is pinned by tests/showdown-modifiers-regression.mjs.
+    const SHOWDOWN_MODIFIER_DEFS = {
+            none: { label: 'No Modifier', icon: '—', description: '' },
+            heavy_storm: { label: 'Heavy Storm', icon: '⛈️', description: 'The storm closes in 90s and storm damage is ×1.35.' },
+            power_surge: { label: 'Power Surge', icon: '⚡', description: 'Attack hits charge Super ×1.2 and Core Surge ×1.2.' },
+            // ID kept for pool/save stability. The retired behaviour thinned
+            // structural wall cubes (cover, not collectibles); the live
+            // effect is Box Scarcity — fewer Power Boxes spawn instead.
+            no_free_cubes: { label: 'Box Scarcity', icon: '📦', description: '35% fewer Power Boxes spawn. Map cover is untouched.' },
+            core_instability: { label: 'Corrupted Packet Storm', icon: '🌀', description: 'Every 20s a corrupted surge converts 3 Power Boxes into Charged boxes.' }
     };
+    const SHOWDOWN_MODE_MODIFIER_META = Object.fromEntries(Object.entries(SHOWDOWN_MODIFIER_DEFS).map(([modifierId, modifierDef]) => [modifierId, { label: modifierDef.label }]));
     let activeShowdownModifier = 'none';
     let activeShowdownModifierLabel = 'No Modifier';
+    // Debug/test hook (same precedent as currentMapOverride): when set,
+    // pickShowdownModifierForMode returns it instead of the 20-minute
+    // rotation pick. Nothing in production sets it.
+    let showdownModifierOverride = null;
       let showdownMapIndex = 0;
     let constructionMapIndex = 0;
             let objectiveControl = 0;
@@ -12802,6 +12866,7 @@ let heistFeverActive = false;
   }
 
   function pickShowdownModifierForMode(mode) {
+      if (showdownModifierOverride) return showdownModifierOverride;
       const pool = SHOWDOWN_MODE_MODIFIER_POOLS[mode] || ['none'];
       if (!pool.length) return 'none';
       const slot = Math.floor(Date.now() / MODE_MODIFIER_ROTATE_MS);
@@ -12816,21 +12881,18 @@ let heistFeverActive = false;
   function clearShowdownModifier() {
       activeShowdownModifier = 'none';
       activeShowdownModifierLabel = SHOWDOWN_MODE_MODIFIER_META.none.label;
+      coreInstabilityState = null;
   }
 
   function applyShowdownModifierMapRules() {
-      if (activeShowdownModifier !== 'no_free_cubes') return;
-      if (!Array.isArray(cubes) || cubes.length <= 10) return;
-      const kept = [];
-      for (const c of cubes) {
-          if (Math.random() < 0.35) kept.push(c);
-      }
-      if (kept.length < 10) {
-          cubes.sort(() => Math.random() - 0.5);
-          while (kept.length < 10 && cubes.length > 0) kept.push(cubes.pop());
-      }
-      cubes.length = 0;
-      cubes.push(...kept);
+      // VAULTED (Phase 4): the retired no_free_cubes behaviour randomly
+      // deleted ~65% of `cubes` — but cubes are structural WALL blocks
+      // (collision + cover), not collectible power cubes, so the "modifier"
+      // was silently deleting map cover and changing layouts/nav. It must
+      // never run again. The live no_free_cubes effect is Box Scarcity,
+      // consumed inside generatePowerBoxes. This hook stays as a no-op so
+      // the launch sequence keeps its shape.
+      return;
   }
 
   function getModeStormDurationSeconds() {
@@ -12843,6 +12905,21 @@ let heistFeverActive = false;
 
   function getModeSuperGainMultiplier() {
       return activeShowdownModifier === 'power_surge' ? 1.2 : 1.0;
+  }
+
+  // Phase 4 power_surge widening: Core Surge (Hypercharge) gain has its own
+  // mode multiplier instead of only inheriting the Super multiplier through
+  // the shared gain derivation in grantMainAttackCharge.
+  function getModeHyperGainMultiplier() {
+      return activeShowdownModifier === 'power_surge' ? 1.2 : 1.0;
+  }
+
+  // Box Scarcity (modifier ID no_free_cubes): fraction of the normal Power
+  // Box count that still spawns. Read inside generatePowerBoxes at call
+  // time and recomputed from the base count on every call, so repeat calls
+  // in one launch can never compound the reduction.
+  function getShowdownBoxScarcityMultiplier() {
+      return activeShowdownModifier === 'no_free_cubes' ? 0.65 : 1;
   }
 
   // Progression System
@@ -24039,7 +24116,7 @@ let heistFeverActive = false;
     }
     if(isBlinkEyeDodgeMode || isDuels || isTraining || isBraweBallMode || isKnockoutMode || isImpossibleMode || isDamageFillerMode || isMirrorMode || isKnockDonateMode || isBrickVaultMode || isArenaForgeMode || isMarkedMayhemMode || isTugZoneMode || isTurkeyCaptureMode || isOrboBossMode || isRamageBossMode || isDemonVillainsBossMode || isWeeFeeBossMode || isPropHuntMode) return;
       const towerBoxMult=isTowerTroubleMode&&towerTroubleVariant!=='gauntlet'?(towerTroubleVariant==='chaos'?(getChaosCrownRule(playerData.slopSushi?.chaosRun?.floor||1).boxMult||1):(TOWER_FLOOR_CHALLENGES[Math.max(0,(playerData.slopSushi?.run?.floor||1)-1)]?.boxMult||1)):1;
-      const showdownBoxCount = Math.round(((isDuoShowdown || isTrioShowdownMode) ? 90 : 75)*towerBoxMult);
+      const showdownBoxCount = Math.round(((isDuoShowdown || isTrioShowdownMode) ? 90 : 75)*towerBoxMult*getShowdownBoxScarcityMultiplier());
       for(let i=0; i<showdownBoxCount; i++){
         let bx, by, tries=0;
         do {
@@ -24807,6 +24884,13 @@ let heistFeverActive = false;
       // Classy's seven-note volleys each count as real projectile hits. Keep
       // normal Super charge intact, but stop one full ammo bar from filling HC.
       const hyperGain = gain * .5 * (brawler === 'jacktrade' ? .7 : (brawler === 'classy' ? .4 : 1));
+      // Phase 4 power_surge widening: Core Surge gain flows through its
+      // own mode multiplier — the Super mode multiplier is divided back
+      // out of the base derivation, then getModeHyperGainMultiplier
+      // applies, so Super and Core Surge surge independently at exactly
+      // their registry values (x1.2 each under power_surge; both x1.0
+      // otherwise, identical to before).
+      const modeHyperGain = (hyperGain / getModeSuperGainMultiplier()) * getModeHyperGainMultiplier();
       if (hasMultiSuper(brawler) || (owner && hasMultiSuper(owner.brawler)) || (owner.id === player.id && hasMultiSuper(selectedBrawler))) {
           const activeBrawler = (owner.id === player.id) ? selectedBrawler : (owner.brawler || brawler);
           if (activeBrawler === 'steamer') {
@@ -24817,19 +24901,19 @@ let heistFeverActive = false;
               addDashaholicSuperCharge(owner, gain);
           }
           if (owner.id === player.id) {
-              if (!isHypercharged) hyperChargeCharge = clamp(hyperChargeCharge + hyperGain, 0, 100);
+              if (!isHypercharged) hyperChargeCharge = clamp(hyperChargeCharge + modeHyperGain, 0, 100);
               updateHyperButton();
           } else {
-              if (!owner.isHypercharged) owner.hyperChargeCharge = clamp((owner.hyperChargeCharge || 0) + hyperGain, 0, 100);
+              if (!owner.isHypercharged) owner.hyperChargeCharge = clamp((owner.hyperChargeCharge || 0) + modeHyperGain, 0, 100);
           }
       } else if (owner.id === player.id) {
           superCharge = clamp(superCharge + gain, 0, 100);
-          if (!isHypercharged) hyperChargeCharge = clamp(hyperChargeCharge + hyperGain, 0, 100);
+          if (!isHypercharged) hyperChargeCharge = clamp(hyperChargeCharge + modeHyperGain, 0, 100);
           updateSuperButton();
           updateHyperButton();
       } else {
           owner.superCharge = clamp((owner.superCharge || 0) + gain, 0, 100);
-          if (!owner.isHypercharged) owner.hyperChargeCharge = clamp((owner.hyperChargeCharge || 0) + hyperGain, 0, 100);
+          if (!owner.isHypercharged) owner.hyperChargeCharge = clamp((owner.hyperChargeCharge || 0) + modeHyperGain, 0, 100);
       }
       return true;
   }
@@ -42621,6 +42705,7 @@ let heistFeverActive = false;
       }
       initCoreBreachIntro();
       initCorruptedShowdown();
+      initCoreInstability();
       if (isPowerPlayShowdownMode) {
           setTimeout(() => {
               spawnFloatingText(player.x, player.y - 70, '⚡ POWER PLAY SHOWDOWN ⚡', '#ffd34f');
@@ -49290,6 +49375,7 @@ function checkHit(target, b, i){
     }
     updateCoreBreachIntro(dt);
     updateCorruptedShowdown(now);
+    updateCoreInstability(now);
     updateLavaBossEvent(now,dt);
     updateHeadlessBossEvent(now,dt);
 
@@ -59306,6 +59392,179 @@ function checkHit(target, b, i){
       };
   }
 
+  // Thanksgiving big update Phase 6: walls & bushes Brawl-style render
+  // overhaul. RENDER ONLY — collision rects, bushZones geometry, nav-grid
+  // inputs and hiding predicates are untouched. Walls draw from
+  // pre-rendered 48px tile sprites (one per material/colour/damage-state);
+  // bushes from pre-rendered tuft sprites tiled on a hash-jittered grid.
+  // Neither painter uses per-frame gradients, shadowBlur or Math.random.
+  let WALL_BUSH_OVERHAUL_ENABLED = true;
+
+  const WALL_TILE_PX = 48;
+  const wallTileSpriteCache = new Map();
+  const bushTuftSpriteCache = new Map();
+
+  function terrainHash2(a, b) {
+      const s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
+      return s - Math.floor(s);
+  }
+
+  function makeTerrainSprite(w, h, paint) {
+      try {
+          const cv = document.createElement('canvas');
+          cv.width = w; cv.height = h;
+          const c2 = cv.getContext('2d');
+          if (!c2) return null;
+          paint(c2, w, h);
+          return cv;
+      } catch (e) { return null; }
+  }
+
+  // Wall tile sprite. crack: 0 = intact, 1 = hairline (<=72% HP),
+  // 2 = heavy + darkened front face (<=45% HP).
+  function getWallTileSprite(style, crack) {
+      const key = [style.material, style.face, style.top, style.edge, crack].join('|');
+      let sprite = wallTileSpriteCache.get(key);
+      if (sprite) return sprite;
+      sprite = makeTerrainSprite(WALL_TILE_PX, WALL_TILE_PX, (g) => {
+          const face = crack === 2 ? mixHexColors(style.face, '#000000', 0.18) : style.face;
+          g.fillStyle = face; g.fillRect(0, 0, 48, 48);
+          // Raised top face + 1px highlight — the Brawl "height" read.
+          g.fillStyle = style.top; g.fillRect(0, 0, 48, 8);
+          g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(0, 0, 48, 1);
+          // Bottom shade (the side face catching no light).
+          g.fillStyle = mixHexColors(face, '#000000', 0.30); g.fillRect(0, 41, 48, 7);
+          // Material flavour, baked once into the sprite.
+          g.strokeStyle = 'rgba(0,0,0,0.22)'; g.lineWidth = 1;
+          if (style.material === 'wood') {
+              g.beginPath(); g.moveTo(0, 20); g.lineTo(48, 20); g.moveTo(0, 34); g.lineTo(48, 34); g.stroke();
+              g.strokeStyle = 'rgba(255,255,255,0.10)';
+              g.beginPath(); g.moveTo(4, 14); g.lineTo(30, 14); g.moveTo(16, 27); g.lineTo(44, 27); g.stroke();
+          } else if (style.material === 'metal') {
+              g.strokeStyle = 'rgba(255,255,255,0.16)';
+              g.beginPath(); g.moveTo(2, 46); g.lineTo(46, 2); g.stroke();
+              g.fillStyle = 'rgba(10,16,26,0.55)';
+              for (const rivet of [[6, 13], [42, 13], [6, 36], [42, 36]]) { g.beginPath(); g.arc(rivet[0], rivet[1], 2, 0, Math.PI * 2); g.fill(); }
+          } else if (style.material === 'ruin') {
+              g.strokeStyle = 'rgba(0,0,0,0.30)';
+              g.beginPath(); g.moveTo(10, 8); g.lineTo(14, 20); g.lineTo(9, 30); g.moveTo(36, 12); g.lineTo(33, 24); g.stroke();
+              g.fillStyle = 'rgba(30,60,30,0.35)';
+              g.beginPath(); g.arc(40, 40, 4, 0, Math.PI * 2); g.arc(6, 42, 3, 0, Math.PI * 2); g.fill();
+          } else { // stone — ashlar block joints
+              g.beginPath(); g.moveTo(0, 24); g.lineTo(48, 24); g.moveTo(24, 8); g.lineTo(24, 24); g.moveTo(12, 41); g.lineTo(12, 24); g.moveTo(36, 41); g.lineTo(36, 24); g.stroke();
+              g.fillStyle = 'rgba(255,255,255,0.07)';
+              g.beginPath(); g.arc(14, 16, 2.5, 0, Math.PI * 2); g.arc(34, 32, 2, 0, Math.PI * 2); g.fill();
+          }
+          if (crack === 1) {
+              g.strokeStyle = 'rgba(10,10,16,0.55)'; g.lineWidth = 1.4;
+              g.beginPath(); g.moveTo(26, 9); g.lineTo(22, 22); g.lineTo(28, 33); g.stroke();
+          } else if (crack === 2) {
+              g.strokeStyle = 'rgba(8,8,14,0.75)'; g.lineWidth = 1.8;
+              g.beginPath(); g.moveTo(24, 8); g.lineTo(20, 20); g.lineTo(27, 30); g.lineTo(21, 44); g.moveTo(27, 30); g.lineTo(38, 38); g.moveTo(8, 14); g.lineTo(15, 24); g.stroke();
+          }
+      });
+      if (wallTileSpriteCache.size > 96) wallTileSpriteCache.clear();
+      wallTileSpriteCache.set(key, sprite);
+      return sprite;
+  }
+
+  function getWallPaintStyle(envColors, faceKey, strokeKey) {
+      const face = envColors[faceKey] || '#52677e';
+      return {
+          material: envColors.wallMaterial || 'stone',
+          face,
+          top: mixHexColors(face, '#ffffff', 0.30),
+          edge: envColors[strokeKey] || '#8fa8c4'
+      };
+  }
+
+  // Shared chunky-tile wall painter (Phase 6): segments the rect visually
+  // into 48px tiles WITHOUT splitting the underlying wall object. hpPct
+  // drives the unified damage language (cracks at <=72% / <=45%, HP
+  // micro-bar only below 100%).
+  function drawChunkyWallRect(ctx, x, y, w, h, style, hpPct) {
+      if (!(w > 0) || !(h > 0)) return;
+      const crack = hpPct <= 0.45 ? 2 : (hpPct <= 0.72 ? 1 : 0);
+      const sprite = getWallTileSprite(style, crack);
+      if (sprite) {
+          for (let ty = y; ty < y + h; ty += WALL_TILE_PX) {
+              const th = Math.min(WALL_TILE_PX, y + h - ty);
+              for (let tx = x; tx < x + w; tx += WALL_TILE_PX) {
+                  const tw = Math.min(WALL_TILE_PX, x + w - tx);
+                  ctx.drawImage(sprite, 0, 0, tw, th, tx, ty, tw, th);
+              }
+          }
+      } else {
+          ctx.fillStyle = style.face; ctx.fillRect(x, y, w, h);
+          ctx.fillStyle = style.top; ctx.fillRect(x, y, w, Math.min(8, h));
+      }
+      // One outline weight shared by cubes and walls so the world reads
+      // as a single game next to props and Power Boxes.
+      ctx.strokeStyle = 'rgba(10, 14, 22, 0.85)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
+      ctx.strokeStyle = style.edge;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x + 2.5, y + 2.5, w - 5, h - 5);
+      if (hpPct < 1) {
+          ctx.fillStyle = 'rgba(7,12,22,.7)'; ctx.fillRect(x + 5, y + h - 8, w - 10, 4);
+          ctx.fillStyle = '#ffb36b'; ctx.fillRect(x + 5, y + h - 8, (w - 10) * Math.max(0, hpPct), 4);
+      }
+  }
+
+  // Bush tuft sprites. variant 0 = interior, 1 = rim (denser/darker so a
+  // patch reads as cover with a boundary), 2 = highlight (foreground pass).
+  function getBushTuftSprite(variant, fill, deep) {
+      const key = [variant, fill, deep].join('|');
+      let sprite = bushTuftSpriteCache.get(key);
+      if (sprite) return sprite;
+      sprite = makeTerrainSprite(36, 36, (g) => {
+          let seed = 1237 + variant * 7919;
+          const rand = () => { seed = (Math.imul(seed, 1103515245) + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+          const blades = variant === 1 ? 15 : 11;
+          for (let i = 0; i < blades; i++) {
+              const bx = 5 + rand() * 26, by = 12 + rand() * 22, bh = 10 + rand() * 13, bw = 3.5 + rand() * 3;
+              g.fillStyle = i % 3 === 0 ? deep : fill;
+              g.beginPath();
+              g.moveTo(bx - bw, by);
+              g.quadraticCurveTo(bx - bw * 0.3, by - bh, bx + (rand() - 0.5) * 4, by - bh - 3);
+              g.quadraticCurveTo(bx + bw * 0.3, by - bh * 0.6, bx + bw, by);
+              g.closePath(); g.fill();
+          }
+          const blobs = variant === 1 ? 7 : 5;
+          for (let i = 0; i < blobs; i++) {
+              const bx = 7 + rand() * 22, by = 12 + rand() * 16, br = 4 + rand() * 4.5;
+              g.fillStyle = i % 2 ? fill : mixHexColors(fill, '#ffffff', 0.13);
+              g.beginPath(); g.arc(bx, by, br, 0, Math.PI * 2); g.fill();
+          }
+          if (variant === 2) {
+              g.fillStyle = 'rgba(255,255,255,0.20)';
+              for (let i = 0; i < 5; i++) { const bx = 8 + rand() * 20, by = 10 + rand() * 12; g.beginPath(); g.arc(bx, by, 3, 0, Math.PI * 2); g.fill(); }
+          }
+      });
+      if (bushTuftSpriteCache.size > 96) bushTuftSpriteCache.clear();
+      bushTuftSpriteCache.set(key, sprite);
+      return sprite;
+  }
+
+  const BUSH_TUFT_STEP = 28;
+  function drawBushTuftField(ctx, zone, fill, deep, foreground) {
+      const step = BUSH_TUFT_STEP;
+      const x0 = Math.floor(zone.x / step) * step, y0 = Math.floor(zone.y / step) * step;
+      for (let gy = y0; gy < zone.y + zone.h; gy += step) {
+          for (let gx = x0; gx < zone.x + zone.w; gx += step) {
+              const cx = gx + step / 2, cy = gy + step / 2;
+              if (cx < zone.x - 6 || cx > zone.x + zone.w + 6 || cy < zone.y - 6 || cy > zone.y + zone.h + 6) continue;
+              if (foreground && terrainHash2(gx * 1.7, gy * 1.7) > 0.55) continue;
+              const jx = (terrainHash2(gx, gy) - 0.5) * 9;
+              const jy = (terrainHash2(gy, gx) - 0.5) * 9;
+              const rim = cx < zone.x + step * 0.75 || cx > zone.x + zone.w - step * 0.75 || cy < zone.y + step * 0.75 || cy > zone.y + zone.h - step * 0.75;
+              const sprite = getBushTuftSprite(foreground ? 2 : (rim ? 1 : 0), fill, deep);
+              if (sprite) ctx.drawImage(sprite, cx + jx - 18, cy + jy - 18);
+          }
+      }
+  }
+
   // Thanksgiving big update Phase 3: one unified chunky-cube painter for
   // all typed Showdown Power Boxes (replaces the flat rounded-rect art).
   // Same rect/HP data — render only. Reads: darker side face offset
@@ -59417,6 +59676,7 @@ function checkHit(target, b, i){
     ctx.fillRect(0,0,WORLD_W,WORLD_H); // arena
     renderCoreBreachIntro();
     renderCorruptedShowdown();
+    renderCoreInstability();
     renderLavaBossEvent();
     renderHeadlessBossEvent();
     renderTurkeyCaptureEvent();
@@ -59572,6 +59832,20 @@ function checkHit(target, b, i){
             if (!isWorldVisualVisible(zone.x + zone.w / 2, zone.y + zone.h / 2, Math.max(zone.w, zone.h) / 2 + 40)) continue;
             const playerInPatch = !!player && rectCircleCollides(zone.x, zone.y, zone.w, zone.h, player.x, player.y, player.radius || 14);
             ctx.save();
+            if (WALL_BUSH_OVERHAUL_ENABLED) {
+                // Phase 6 tuft field: pre-rendered sprites on a
+                // hash-jittered grid over a deep base, clipped to the
+                // patch. Same zones, same draw order, same occupied alpha —
+                // hiding logic is untouched.
+                if (playerInPatch) ctx.globalAlpha = 0.45;
+                const bushRr = Math.min(16, zone.w / 2, zone.h / 2);
+                ctx.fillStyle = bushDeepCol;
+                ctx.beginPath(); ctx.roundRect(zone.x, zone.y, zone.w, zone.h, bushRr); ctx.fill();
+                ctx.beginPath(); ctx.roundRect(zone.x + 2, zone.y + 2, Math.max(1, zone.w - 4), Math.max(1, zone.h - 4), Math.max(3, bushRr - 2)); ctx.clip();
+                drawBushTuftField(ctx, zone, bushFillCol, bushDeepCol, false);
+                ctx.restore();
+                continue;
+            }
             // Standing in a patch lightens it so you can still see yourself;
             // the entity fade at the entity draw stays as-is for everyone.
             if (playerInPatch) ctx.globalAlpha = 0.45;
@@ -70847,6 +71121,7 @@ function checkHit(target, b, i){
 
     // Modern structural walls. These replace the old flat OG rectangles visually.
     for(const c of cubes){
+        if (WALL_BUSH_OVERHAUL_ENABLED) { drawChunkyWallRect(ctx, c.x + 2, c.y + 2, Math.max(4, c.w - 4), Math.max(4, c.h - 4), getWallPaintStyle(envColors, 'cubeFill', 'cubeStroke'), 1); continue; }
         const inset=2, x=c.x+inset, y=c.y+inset, w=Math.max(4,c.w-inset*2), h=Math.max(4,c.h-inset*2);
         const grad=ctx.createLinearGradient(x,y,x,y+h);
         grad.addColorStop(0,envColors.cubeStroke||'#8fa8c4');grad.addColorStop(.28,envColors.cubeFill||'#52677e');grad.addColorStop(1,'#26394f');
@@ -70915,6 +71190,8 @@ function checkHit(target, b, i){
             ctx.strokeStyle = '#9c640c'; ctx.lineWidth = 2; ctx.strokeRect(dw.x, dw.y, dw.w, dw.h);
         } else if (dw.isArenaWall) {
             const hpPct=Math.max(0,Math.min(1,dw.hp/Math.max(1,dw.maxHp||dw.hp)));
+            if (WALL_BUSH_OVERHAUL_ENABLED) { drawChunkyWallRect(ctx, dw.x + 2, dw.y + 2, Math.max(4, dw.w - 4), Math.max(4, dw.h - 4), getWallPaintStyle(envColors, 'wallBoxFill', 'wallBoxStroke'), hpPct); }
+            else {
             const pad=2,rx=dw.x+pad,ry=dw.y+pad,rw=Math.max(4,dw.w-pad*2),rh=Math.max(4,dw.h-pad*2);
             ctx.fillStyle=hpPct<.5?'#665565':(((Math.floor(dw.x/ARENA_WALL_TILE)+Math.floor(dw.y/ARENA_WALL_TILE))&1)?'#53657c':'#5d7088');
             ctx.strokeStyle=hpPct<.5?'#f08a79':'#91a8c2';ctx.lineWidth=2;
@@ -70925,6 +71202,7 @@ function checkHit(target, b, i){
                 ctx.moveTo(rx+rw*.5,ry+rh*.08);ctx.lineTo(rx+rw*.43,ry+rh*.38);ctx.lineTo(rx+rw*.62,ry+rh*.58);ctx.lineTo(rx+rw*.49,ry+rh*.91);ctx.stroke();
             }
             if(hpPct<1){ctx.fillStyle='rgba(7,12,22,.7)';ctx.fillRect(rx+5,ry+rh-8,rw-10,4);ctx.fillStyle='#ffb36b';ctx.fillRect(rx+5,ry+rh-8,(rw-10)*hpPct,4);}
+            }
         } else if (dw.isProp) {
             // Phase 5 prop art: one painter per propType, in the wall loop.
             const hpPct=Math.max(0,Math.min(1,(dw.hp||1)/Math.max(1,dw.maxHp||dw.hp||1)));
@@ -70960,11 +71238,14 @@ function checkHit(target, b, i){
             ctx.restore();
         } else {
             const hpPct=Math.max(0,Math.min(1,(dw.hp||1)/Math.max(1,dw.maxHp||dw.hp||1)));
+            if (WALL_BUSH_OVERHAUL_ENABLED) { drawChunkyWallRect(ctx, dw.x + 2, dw.y + 2, Math.max(4, dw.w - 4), Math.max(4, dw.h - 4), getWallPaintStyle(envColors, 'wallBoxFill', 'wallBoxStroke'), hpPct); }
+            else {
             const wallGrad=ctx.createLinearGradient(dw.x,dw.y,dw.x,dw.y+dw.h);
             wallGrad.addColorStop(0,hpPct<.45?'#8b5660':'#7890aa');wallGrad.addColorStop(1,hpPct<.45?'#462d39':'#35495f');
             ctx.fillStyle=wallGrad;ctx.strokeStyle=hpPct<.45?'#ff9a86':'#a9c7e6';ctx.lineWidth=2;
             ctx.beginPath();ctx.roundRect(dw.x+2,dw.y+2,dw.w-4,dw.h-4,8);ctx.fill();ctx.stroke();
             ctx.fillStyle='rgba(255,255,255,.1)';ctx.fillRect(dw.x+7,dw.y+7,Math.max(3,dw.w-14),Math.max(3,dw.h*.14));
+            }
         }
         if(dw.isPowerBox || dw.isPurpleBox || dw.isGreenBox || dw.isNovaBox){
             // Phase 3: typed Showdown boxes dropped the always-on numeric HP
@@ -72932,6 +73213,24 @@ function checkHit(target, b, i){
     }
     ctx.textAlign = 'left';
 
+    // Phase 6 foreground foliage: only for the patch the player is standing
+    // in — a light highlight-tuft pass OVER entities at the patch's own 0.45
+    // occupied alpha, so you read as moving "inside" the foliage. Detection
+    // and hiding mechanics are unchanged (art only).
+    if (BUSH_WORLD_RENDER_ENABLED && WALL_BUSH_OVERHAUL_ENABLED && player && player.hp > 0) {
+        const fgFill = envColors.bushFill || '#2f8f4e';
+        const fgDeep = envColors.bushDeep || '#17572e';
+        for (const zone of bushZones) {
+            if (!rectCircleCollides(zone.x, zone.y, zone.w, zone.h, player.x, player.y, player.radius || 14)) continue;
+            ctx.save();
+            ctx.globalAlpha = 0.45;
+            const fgRr = Math.min(16, zone.w / 2, zone.h / 2);
+            ctx.beginPath(); ctx.roundRect(zone.x, zone.y, zone.w, zone.h, fgRr); ctx.clip();
+            drawBushTuftField(ctx, zone, fgFill, fgDeep, true);
+            ctx.restore();
+        }
+    }
+
     ctx.restore();
 
     if(player.hp>0){
@@ -73147,6 +73446,14 @@ function checkHit(target, b, i){
         if (activeShowdownModifier && activeShowdownModifier !== 'none') {
             ctx.fillStyle = '#ffd166';
             ctx.fillText(`Modifier: ${activeShowdownModifierLabel}`, 20, 106);
+            const modifierDef = SHOWDOWN_MODIFIER_DEFS[activeShowdownModifier];
+            if (modifierDef && modifierDef.description) {
+                ctx.save();
+                ctx.font = '11px sans-serif';
+                ctx.fillStyle = 'rgba(255, 209, 102, 0.85)';
+                ctx.fillText(modifierDef.description, 20, 122);
+                ctx.restore();
+            }
         }
     }
 
