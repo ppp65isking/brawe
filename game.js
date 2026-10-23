@@ -277,7 +277,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         }
         if (brawlerId === 'spikey') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp: Math.round(7000 * scale), dmg: Math.round(950 * scale), recallDmg: Math.round(1425 * scale), superDmg: Math.round(1750 * scale), speed: 270 };
+            return { hp: Math.round(7000 * scale), dmg: Math.round(950 * scale), recallDmg: Math.round(950 * scale), superDmg: Math.round(1750 * scale), speed: 270 };
         }
         if (brawlerId === 'magnatar') {
             const scale = 0.55 + (level - 1) * 0.045;
@@ -8725,7 +8725,7 @@ const bolznstienPendingStrikes = [];
             'screener': { name: 'Screener', role: 'Controller', desc: 'Battery-based projector brawler. Starts at 100% battery that drains over time; recharge by landing screen hits.', color: '#7ec8ff', attack: 'Projected Sweep', attackDesc: 'Fires a 360-degree radial burst of screen projectors around you. Each hit recharges battery.', super: 'Projected Charge', superDesc: 'Activates a static projector field for 4s. Incoming shots that touch the field are converted into projector blasts fired out at that angle.', hyper: 'Main attack spins with multiple rotating sweeps. Super gains an extra projector layer and stronger conversions.', g1: 'Power Cell (Instant battery refill + heal)', g2: 'Overclock Grid (Temporarily boost projector output and battery gain)', sp1: 'Efficient Panel (Battery decays slower)', sp2: 'Capacitor Bank (Larger battery capacity and stronger low-battery safety)' },
             'malakor': { name: 'Malakor', role: 'Controller', desc: 'The fallen red-staff child who commands infernal terrain and demon hands.', color: '#ff4a4a', attack: 'Putting You Down', attackDesc: 'Slams his staff and corrupts the ground into Hell around him. Enemies standing in Hell take constant damage. Hell zones last 9 seconds, spreading wider as they burn before decaying near the end. Malakor can sustain up to 5 Hell zones at once.', super: 'Hell Is Forever!', superDesc: 'Slam to create a huge Hell zone that lasts 12.5 seconds and summon demon hands that punish enemies standing in Hell.', hyper: 'UPSIDE DOWN!: Super corrupts the whole map into Hell and summons many more demon hands. Main attack corrupts a larger area.', g1: 'Crimson Surge (Create a bonus Hell pulse and heal)', g2: 'Damnation Mark (Next main attack also summons a demon hand)', sp1: 'Infernal Dominion (Hell terrain deals more damage)', sp2: 'Abyssal Grip (Demon hands strike wider and stun longer)' },
             'feathers': { name: 'Feathers', role: 'Controller', desc: 'A breezy storm-dancer whose feathers ride the wind - and leave it behind to trip up everyone else.', color: '#7fe7ff', attack: 'Feather Shot', attackDesc: 'Flicks a sharp feather that deals damage on hit. When it reaches max range it bursts into a gust of wind: anyone standing in the wind slides around like the floor is ice.', super: 'Windstorm', superDesc: 'Calls down a huge storm at the target spot. Thick fog fills the storm so everyone inside is harder to see - even Feathers - and the ground inside turns slippery.', hyper: 'Cyclone Heart: Feather Shots vacuum nearby enemies inward when their wind bursts. Windstorm crackles with Bolznstien-style lightning that strikes enemies inside for reduced damage.', g1: 'Tailwind Rush (Dash forward, gain speed, and leave slippery wind behind you)', g2: 'Gust Burst (Blast nearby enemies away and shake off slows)', sp1: 'Wide Skies (Wind zones are bigger and last longer)', sp2: 'Slipstream Rider (Move faster inside your own wind and storms)' },
-      'spikey': { name: 'Spikey', role: 'Damage Dealer', desc: 'A prickly hedgehog rocker who parks spikeballs all over the arena, then calls every last one home through whoever is standing in the way.', color: '#a6e34d', attack: 'Triple Thorn Toss', attackDesc: 'Throws a spikeball that damages enemies it passes through and parks where it lands (950 damage). Up to 3 can be deployed; attacking with 3 out recalls them all at once, piercing, for 1,425 damage.', super: 'Mega Spike Ball', superDesc: 'Launches a giant spikeball that bounces 3 times. Each bounce is a large explosion dealing 1,750 damage.', hyper: 'Spike Overdrive: Mega Spike Ball bounces travel further and burst a ring of 8 spikes (500 damage each) on every bounce. Main attack gains +50% projectile speed and +50% unload speed, and its hits root enemies for 0.8s.', g1: 'Burst Barbs (Every deployed spikeball explodes in place for 650 damage, then returns to Spikey)', g2: 'Quill Roll (Roll 230 units toward your aim and deploy a spikeball where you land, if a slot is free)', sp1: 'Deep Roots (Recall hits also slow enemies by 30% for 1s)', sp2: 'Sharper Thorns (Parked spikeballs prick enemies standing close for 150 damage twice a second)' },
+      'spikey': { name: 'Spikey', role: 'Damage Dealer', desc: 'A prickly hedgehog rocker who parks spikeballs all over the arena, then calls every last one home through whoever is standing in the way.', color: '#a6e34d', attack: 'Triple Thorn Toss', attackDesc: 'Throws a spikeball that damages enemies it passes through and parks where it lands (950 damage). Her balls ARE her ammo: throw all 3, then attack again to call them all home, piercing, for 950 damage each. Then all 3 reload together.', super: 'Mega Spike Ball', superDesc: 'The Mega Spike Ball slams 3 times in front of Spikey, stepping forward with each slam. Each slam is a large explosion dealing 1,750 damage.', hyper: 'Spike Overdrive: every slam also pops 2 smaller side balls (500 damage each). Main attack gains +50% projectile speed and +50% unload speed, and its hits root enemies for 0.8s.', g1: 'Burst Barbs (Every deployed spikeball explodes in place for 650 damage, then returns to Spikey)', g2: 'Quill Roll (Roll 230 units toward your aim and deploy a spikeball where you land, if a slot is free)', sp1: 'Deep Roots (Recall hits also slow enemies by 30% for 1s)', sp2: 'Sharper Thorns (Parked spikeballs prick enemies standing close for 150 damage twice a second)' },
             'boom_arang': {
                 name: 'Boom-Arang',
                 role: 'Marksman',
@@ -18481,6 +18481,7 @@ let heistFeverActive = false;
     let feathersStorms = [];
     let spikeyParkedBalls = [];
     let spikeyMegaBalls = [];
+    let spikeyPendingSlams = [];
     function feathersStarChoice(entity) { try { return getEntityStarChoice(entity); } catch (_) { return entity ? entity.selectedStar : null; } }
     function feathersHasSP(entity, slot) { const c = feathersStarChoice(entity); return slot === 'sp1' ? (c === 'sp1' || c === 'slow') : (c === 'sp2' || c === 'long' || c === 'fast'); }
     function findFeathersOwner(ownerId) { if (player && player.id === ownerId) return player; return bots.find((b) => b && b.id === ownerId) || null; }
@@ -18533,6 +18534,14 @@ let heistFeverActive = false;
     const SPIKEY_THORN_RADIUS = 46;
     const SPIKEY_THORN_DMG = 150;
     const SPIKEY_THORN_TICK_MS = 500;
+    const SPIKEY_CYCLE_RELOAD_MS = 1350; // == reloadMsByBrawler.spikey, read directly so NO external reload modifier can change it
+    const SPIKEY_TRAVELING_SUPER_ENABLED = false; // VAULTED 2026-10-23 (rework): traveling bouncing Mega Ball replaced by the slam barrage
+    const SPIKEY_SLAM_FIRST = 110;
+    const SPIKEY_SLAM_STEP = 120;
+    const SPIKEY_SLAM_DELAY_MS = 160;
+    const SPIKEY_SIDE_BALL_DMG = 500;
+    const SPIKEY_SIDE_BALL_RADIUS = 80;
+    const SPIKEY_SIDE_BALL_OFFSET = 175;
     function findSpikeyOwner(ownerId) { if (player && player.id === ownerId) return player; return bots.find((b) => b && b.id === ownerId) || null; }
     function spikeyStarChoice(entity) { try { return getEntityStarChoice(entity); } catch (_) { return entity ? entity.selectedStar : null; } }
     function spikeyHasSP(entity, slot) { const c = spikeyStarChoice(entity); return slot === 'sp1' ? (c === 'sp1' || c === 'slow') : (c === 'sp2' || c === 'long'); }
@@ -18542,6 +18551,42 @@ let heistFeverActive = false;
         for (const b of spikeyParkedBalls) if (b.ownerId === entity.id) n++;
         for (const b of bullets) if (b.isSpikeyThrow && b.ownerId === entity.id) n++;
         return n;
+    }
+    function countSpikeyParked(entity) {
+        if (!entity) return 0;
+        let n = 0;
+        for (const b of spikeyParkedBalls) if (b.ownerId === entity.id) n++;
+        return n;
+    }
+    function isSpikeyEntity(entity) {
+        return !!entity && (entity.brawler === 'spikey' || (!!player && entity.id === player.id && selectedBrawler === 'spikey'));
+    }
+    // Magazine cycle state (rework 2026-10-23), stored on the entity:
+    // spikeyBallsReady = throws in hand; spikeyHomePool = balls that flew home
+    // and are settling; spikeyReloadPending + spikeyReloadEndsAt = the shared
+    // reload that runs when a homecoming leaves her empty.
+    function ensureSpikeyCycle(entity) {
+        if (entity && entity.spikeyBallsReady === undefined) {
+            entity.spikeyBallsReady = SPIKEY_MAX_DEPLOYED;
+            entity.spikeyHomePool = 0;
+            entity.spikeyReloadPending = 0;
+            entity.spikeyReloadEndsAt = 0;
+        }
+        return entity;
+    }
+    function noteSpikeyBallHome(ownerId) {
+        const owner = findSpikeyOwner(ownerId);
+        if (!owner) return;
+        ensureSpikeyCycle(owner);
+        owner.spikeyHomePool = Math.min(SPIKEY_MAX_DEPLOYED, (owner.spikeyHomePool || 0) + 1);
+    }
+    function getSpikeyCycleState(entity) {
+        if (!entity) return 'ready';
+        ensureSpikeyCycle(entity);
+        if (entity.spikeyReloadPending > 0) return 'reloading';
+        if (bullets.some(b => b.isSpikeyRecall && b.ownerId === entity.id)) return 'returning';
+        if (countSpikeyParked(entity) >= SPIKEY_MAX_DEPLOYED) return 'return';
+        return 'ready';
     }
     function parkSpikeyBall(b) {
         const mine = spikeyParkedBalls.filter((p) => p.ownerId === b.ownerId);
@@ -18565,9 +18610,36 @@ let heistFeverActive = false;
     function castSpikeySuper(entity, hyper, tx, ty) {
         if (!entity) return;
         const ang = Math.atan2(ty - entity.y, tx - entity.x);
-        spikeyMegaBalls.push({ x: entity.x + Math.cos(ang) * (entity.radius + 20), y: entity.y + Math.sin(ang) * (entity.radius + 20), vx: Math.cos(ang) * SPIKEY_SUPER_SPEED, vy: Math.sin(ang) * SPIKEY_SUPER_SPEED, ownerId: entity.id, hyper: !!hyper, legTravelled: 0, bouncesLeft: 3, seed: Math.random() * 10 });
-        spawnFloatingText(entity.x, entity.y - 40, '🦔 MEGA SPIKE BALL!', hyper ? '#e056fd' : '#a6e34d');
+        const now = performance.now();
+        // Slam barrage (rework 2026-10-23): the Mega Spike Ball slams 3 times
+        // close to Spikey, each slam a step further forward in the aim
+        // direction, staggered so it reads as a walking barrage.
+        for (let s = 0; s < 3; s++) {
+            const dist = SPIKEY_SLAM_FIRST + s * SPIKEY_SLAM_STEP;
+            spikeyPendingSlams.push({ ownerId: entity.id, x: clamp(entity.x + Math.cos(ang) * dist, 30, WORLD_W - 30), y: clamp(entity.y + Math.sin(ang) * dist, 30, WORLD_H - 30), hyper: !!hyper, at: now + s * SPIKEY_SLAM_DELAY_MS, ang });
+        }
+        spawnFloatingText(entity.x, entity.y - 40, '🦔 MEGA SPIKE SLAM!', hyper ? '#e056fd' : '#a6e34d');
     }
+    function resolveSpikeySlam(slam) {
+        const owner = findSpikeyOwner(slam.ownerId);
+        const level = owner ? (owner.id === player.id ? getSelectedBrawlerLevel() : (owner.level || 11)) : 11;
+        const stats = getScaledStats('spikey', level);
+        AOEDamage(slam.x, slam.y, SPIKEY_SUPER_RADIUS, stats.superDmg, slam.ownerId, false);
+        explosions.push({ x: slam.x, y: slam.y, radius: SPIKEY_SUPER_RADIUS, life: 0, maxLife: .3, color: slam.hyper ? 'rgba(224,86,253,.5)' : 'rgba(166,227,77,.5)', fxKind: 'spikeyBounce' });
+        if (slam.hyper) {
+            // Hypercharge: 2 smaller side balls slam on either side of the main slam.
+            const px = Math.cos(slam.ang + Math.PI / 2), py = Math.sin(slam.ang + Math.PI / 2);
+            for (const side of [-1, 1]) {
+                const sx = clamp(slam.x + px * SPIKEY_SIDE_BALL_OFFSET * side, 24, WORLD_W - 24);
+                const sy = clamp(slam.y + py * SPIKEY_SIDE_BALL_OFFSET * side, 24, WORLD_H - 24);
+                AOEDamage(sx, sy, SPIKEY_SIDE_BALL_RADIUS, SPIKEY_SIDE_BALL_DMG, slam.ownerId, false);
+                explosions.push({ x: sx, y: sy, radius: SPIKEY_SIDE_BALL_RADIUS, life: 0, maxLife: .26, color: 'rgba(224,86,253,.45)', fxKind: 'spikeyBounce' });
+            }
+        }
+    }
+    // VAULTED 2026-10-23 (rework): traveling Mega Ball bounce resolver. Kept
+    // in code per house rules; unreachable while SPIKEY_TRAVELING_SUPER_ENABLED
+    // is false (no mega balls are ever spawned or simulated).
     function spikeySuperBounce(mega) {
         const owner = findSpikeyOwner(mega.ownerId);
         const level = owner ? (owner.id === player.id ? getSelectedBrawlerLevel() : (owner.level || 11)) : 11;
@@ -18600,12 +18672,55 @@ let heistFeverActive = false;
         entity.y = clamp(entity.y + Math.sin(ang) * 230, entity.radius, WORLD_H - entity.radius);
         if (countSpikeyDeployed(entity) < SPIKEY_MAX_DEPLOYED) {
             spikeyParkedBalls.push({ x: entity.x, y: entity.y, ownerId: entity.id, nextThornAt: 0, seed: Math.random() * 10 });
+            // A planted ball counts as deployed: it leaves her hand (cycle).
+            ensureSpikeyCycle(entity);
+            entity.spikeyBallsReady = Math.max(0, entity.spikeyBallsReady - 1);
         }
         explosions.push({ x: entity.x, y: entity.y, radius: 55, life: 0, maxLife: .2, color: 'rgba(166,227,77,.5)' });
         spawnFloatingText(entity.x, entity.y - 32, '🦔 QUILL ROLL', '#a6e34d');
     }
     function updateSpikeySystems(dt) {
         const now = performance.now();
+        // Spike Slam barrage: resolve queued slams as their stagger lands.
+        for (let i = spikeyPendingSlams.length - 1; i >= 0; i--) {
+            if (now >= spikeyPendingSlams[i].at) {
+                const slam = spikeyPendingSlams[i];
+                spikeyPendingSlams.splice(i, 1);
+                resolveSpikeySlam(slam);
+            }
+        }
+        // Magazine cycle (rework 2026-10-23): settle homecoming balls, run the
+        // shared reload on Spikey's own timer, and keep every physical ball
+        // accounted for so the cycle can never softlock. External reload
+        // modifiers never reach this code — that is the point of the design.
+        for (const e of [player, ...bots]) {
+            if (!e || !isSpikeyEntity(e)) continue;
+            ensureSpikeyCycle(e);
+            if (e.hp <= 0) continue;
+            const recallsInFlight = bullets.some(b => b.isSpikeyRecall && b.ownerId === e.id);
+            if (e.spikeyHomePool > 0 && !recallsInFlight) {
+                if (e.spikeyBallsReady <= 0) {
+                    // A homecoming that leaves her empty starts the shared reload.
+                    e.spikeyReloadPending = e.spikeyHomePool;
+                    if (!e.spikeyReloadEndsAt) e.spikeyReloadEndsAt = now + SPIKEY_CYCLE_RELOAD_MS;
+                } else {
+                    e.spikeyBallsReady = Math.min(SPIKEY_MAX_DEPLOYED, e.spikeyBallsReady + e.spikeyHomePool);
+                }
+                e.spikeyHomePool = 0;
+            }
+            if (e.spikeyReloadPending > 0 && e.spikeyReloadEndsAt > 0 && now >= e.spikeyReloadEndsAt) {
+                e.spikeyBallsReady = Math.min(SPIKEY_MAX_DEPLOYED, e.spikeyBallsReady + e.spikeyReloadPending);
+                e.spikeyReloadPending = 0;
+                e.spikeyReloadEndsAt = 0;
+            }
+            const accounted = e.spikeyBallsReady + e.spikeyHomePool + e.spikeyReloadPending + countSpikeyParked(e)
+                + bullets.filter(b => b.ownerId === e.id && (b.isSpikeyThrow || b.isSpikeyRecall)).length;
+            if (accounted < SPIKEY_MAX_DEPLOYED && e.spikeyReloadPending === 0 && e.spikeyHomePool === 0) e.spikeyBallsReady += SPIKEY_MAX_DEPLOYED - accounted;
+            else if (accounted > SPIKEY_MAX_DEPLOYED) e.spikeyBallsReady = Math.max(0, e.spikeyBallsReady - (accounted - SPIKEY_MAX_DEPLOYED));
+            // HUD mirror: the generic ammo pips show balls in hand (max 3 —
+            // the Kinetic Magazine +1 slot cannot create a 4th physical ball).
+            if (e.id === player.id) { maxAmmo = SPIKEY_MAX_DEPLOYED; ammo = e.spikeyBallsReady; ammoReloadTimer = 0; }
+        }
         // Owner defeated: parked balls fly home harmlessly. Owner gone: balls vanish.
         for (const ownerId of [...new Set(spikeyParkedBalls.map((b) => b.ownerId))]) {
             const owner = findSpikeyOwner(ownerId);
@@ -18627,6 +18742,9 @@ let heistFeverActive = false;
             }
             if (pricked) ball.nextThornAt = now + SPIKEY_THORN_TICK_MS;
         }
+        // VAULTED 2026-10-23: traveling Mega Balls are never spawned while
+        // SPIKEY_TRAVELING_SUPER_ENABLED is false; clear any legacy entries.
+        if (!SPIKEY_TRAVELING_SUPER_ENABLED) spikeyMegaBalls.length = 0;
         // Mega Spike Balls: travel a leg, explode, repeat — exactly 3 bounces.
         for (let i = spikeyMegaBalls.length - 1; i >= 0; i--) {
             const mega = spikeyMegaBalls[i];
@@ -18665,7 +18783,7 @@ let heistFeverActive = false;
             ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI * 2); ctx.fill();
             ctx.restore();
         }
-        for (const mega of spikeyMegaBalls) {
+        for (const mega of SPIKEY_TRAVELING_SUPER_ENABLED ? spikeyMegaBalls : []) {
             ctx.save();
             ctx.translate(mega.x, mega.y);
             const rot = now / 160 + mega.seed;
@@ -24074,7 +24192,7 @@ let heistFeverActive = false;
   function startDuelsRound() {
     outlitWallChains.length = 0;
     bullets.length = 0; ragerWarTotems.length = 0;
-    bolznstienPendingStrikes.length = 0; bolznstienShockTrails.length = 0; bolznstienChainArcs.length = 0; chocolatePuddles.length = 0; magnatarVortices.length = 0; oilMakerPuddles.length = 0; oilMakerBarrels.length = 0; oilMakerPendingPuddles.length = 0; steamerPoles.length = 0; weefeePoles.length = 0; chickpigEggZones.length = 0; rings.length = 0; cheeseFields.length = 0; healingPods.length = 0; explosions.length = 0; pendingClones.length = 0; destructibleWalls.length = 0; floatingTexts.length = 0; stickyNotes.length = 0; amplifierToolboxes.length = 0; amplifierScrewZones.length = 0; skeleParachutes.length = 0; skelePortals.length = 0; malakorHellZones.length = 0; malakorHands.length = 0; relativityZones.length = 0; packetTimeFields.length = 0; packetTelegraphs.length = 0; fastpassCheckpoints.length = 0; freestyleMicrophones.length = 0; portaloPortalPairs.length = 0; portaloPrisons.length = 0; portaloShockTimers.length = 0; ghoulHaunts.length = 0; darkenerClouds.length = 0; darkagons.length = 0; cursedStorms.length = 0; cursedHyperClouds.length = 0; antiRoyalMortarShells.length = 0; antiRoyalMortarZones.length = 0; jackTradeVolleys.length = 0; jackTradeThrownEffects.length = 0; jackTradeZones.length = 0; jackTradeEndpointShots.length = 0; badbatSwarm.length = 0; badbatShieldOrbs.length = 0; loomaThreads.length = 0; loomaWeaves.length = 0; feathersWindZones.length = 0; feathersStorms.length = 0; spikeyParkedBalls.length = 0; spikeyMegaBalls.length = 0;
+    bolznstienPendingStrikes.length = 0; bolznstienShockTrails.length = 0; bolznstienChainArcs.length = 0; chocolatePuddles.length = 0; magnatarVortices.length = 0; oilMakerPuddles.length = 0; oilMakerBarrels.length = 0; oilMakerPendingPuddles.length = 0; steamerPoles.length = 0; weefeePoles.length = 0; chickpigEggZones.length = 0; rings.length = 0; cheeseFields.length = 0; healingPods.length = 0; explosions.length = 0; pendingClones.length = 0; destructibleWalls.length = 0; floatingTexts.length = 0; stickyNotes.length = 0; amplifierToolboxes.length = 0; amplifierScrewZones.length = 0; skeleParachutes.length = 0; skelePortals.length = 0; malakorHellZones.length = 0; malakorHands.length = 0; relativityZones.length = 0; packetTimeFields.length = 0; packetTelegraphs.length = 0; fastpassCheckpoints.length = 0; freestyleMicrophones.length = 0; portaloPortalPairs.length = 0; portaloPrisons.length = 0; portaloShockTimers.length = 0; ghoulHaunts.length = 0; darkenerClouds.length = 0; darkagons.length = 0; cursedStorms.length = 0; cursedHyperClouds.length = 0; antiRoyalMortarShells.length = 0; antiRoyalMortarZones.length = 0; jackTradeVolleys.length = 0; jackTradeThrownEffects.length = 0; jackTradeZones.length = 0; jackTradeEndpointShots.length = 0; badbatSwarm.length = 0; badbatShieldOrbs.length = 0; loomaThreads.length = 0; loomaWeaves.length = 0; feathersWindZones.length = 0; feathersStorms.length = 0; spikeyParkedBalls.length = 0; spikeyMegaBalls.length = 0; spikeyPendingSlams.length = 0;
     snapperWaves.length = 0;
     rocketeerFireZones.length = 0;
     minigunninMutationFireZones.length = 0;
@@ -27205,6 +27323,10 @@ let heistFeverActive = false;
   }
   
   function stealAmmo(target, ownerId, amount) {
+      // Spikey immunity (Anthony, 2026-10-23): her balls are physical ammo —
+      // stealing or draining one would softlock her magazine cycle, so ammo
+      // steal/drain effects never apply to her.
+      if (isSpikeyEntity(target)) return;
       const now = performance.now();
       const ammoText = Math.abs(amount - 0.25) < 0.001 ? '0.25' : amount.toFixed(1);
       if(target === player) {
@@ -28958,12 +29080,17 @@ let heistFeverActive = false;
             if (bullets.some(p => p.ownerId === fromEntity.id && p.isDemonBlade && !p.isDemonSpectral)) return;
         }
         if (brawler === 'spikey') {
-            // Triple Thorn Toss: attacking with a full set deployed recalls the
-            // parked balls instead of throwing (no ammo cost, like Demon's blade).
-            if (countSpikeyDeployed(fromEntity) >= 3 && spikeyParkedBalls.some(b => b.ownerId === fromEntity.id)) {
+            // Spikey rework 2026-10-23: her balls ARE her ammo (magazine
+            // cycle). Attacking with all 3 parked is the RETURN — the balls
+            // fly home for throw-level damage, then reload together on her
+            // own timer. No early recall: below 3 parked she throws, and with
+            // no balls in hand the attack does nothing.
+            ensureSpikeyCycle(fromEntity);
+            if (countSpikeyParked(fromEntity) >= SPIKEY_MAX_DEPLOYED) {
                 recallSpikeyBalls(fromEntity);
                 return;
             }
+            if (fromEntity.spikeyBallsReady <= 0) return;
         }
         if (brawler === 'boom_arang') {
             const hasActive = bullets.some(b => b.ownerId === fromEntity.id && b.isBoomArang && !b.super);
@@ -29010,7 +29137,7 @@ let heistFeverActive = false;
             const steamerCost = brawler === 'steamer' ? 5 : (brawler === 'oil_maker' ? 3 : 2);
             const duckCost = null;
             const cost = crystalModeActive ? 1 : (duckCost ?? ((brawler === 'minigunnin' || brawler === 'steamer' || brawler === 'oil_maker') ? steamerCost : 1));
-            if (ammo < cost && !ammoSaverFree) return;
+            if (brawler !== 'spikey' && ammo < cost && !ammoSaverFree) return; // Spikey's throws are gated by her ball cycle, not the generic ammo pool
         }
     } else if (isDraflygonFlight) {
         if ((fromEntity.draflygonFlightAmmo || 0) <= 0) return;
@@ -29067,7 +29194,7 @@ let heistFeverActive = false;
             const classyUnlimitedAmmo = brawler === 'classy' && isSlopSushiMode && getEntitySlopEffectTotal(fromEntity, 'classyEndlessEncore') > 0;
             const robberUnlimitedAmmo = brawler === 'robber' && isSlopSushiMode && getEntitySlopEffectTotal(fromEntity, 'robberPerfectCrime') > 0;
             if (classyUnlimitedAmmo || robberUnlimitedAmmo) ammo = maxAmmo;
-            else if (!ammoSaverFree) ammo -= (crystalModeActive ? 1 : (duckCost ?? ((brawler === 'minigunnin' || brawler === 'steamer' || brawler === 'oil_maker') ? steamerCost : 1)));
+            else if (brawler !== 'spikey' && !ammoSaverFree) ammo -= (crystalModeActive ? 1 : (duckCost ?? ((brawler === 'minigunnin' || brawler === 'steamer' || brawler === 'oil_maker') ? steamerCost : 1))); // Spikey pays with a physical ball in the throw branch instead
             if (ammoSaverFree) spawnFloatingText(player.x, player.y - 36, 'AMMO SAVED!', '#ffd66b');
         }
         player.lastAttackAt = now;
@@ -29635,6 +29762,8 @@ let heistFeverActive = false;
     } else if (brawler === 'spikey') {
         const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
         if (countSpikeyDeployed(fromEntity) >= SPIKEY_MAX_DEPLOYED) return;
+        ensureSpikeyCycle(fromEntity);
+        fromEntity.spikeyBallsReady = Math.max(0, fromEntity.spikeyBallsReady - 1); // a thrown ball leaves her hand (magazine cycle)
         const level = fromEntity.id === player.id ? getSelectedBrawlerLevel() : (fromEntity.level || 11);
         const stats = getScaledStats('spikey', level);
         const spd = SPIKEY_THROW_SPEED * (hyper ? 1.5 : 1);
@@ -32228,6 +32357,7 @@ let heistFeverActive = false;
     }
     function stealAmmoForRobber(owner, target, requested, cap, requireThree=false) {
         if (!owner || !target || target.hp <= 0) return 0;
+        if (isSpikeyEntity(target)) return 0; // Spikey immunity (2026-10-23): physical balls cannot be stolen
         const targetAmmo = target.id === player.id ? ammo : Math.max(0, target.ammo ?? 3);
         const stolen = Math.min(Math.max(0, requested), Math.floor(targetAmmo));
         if (stolen <= 0) return 0;
@@ -41367,7 +41497,7 @@ let heistFeverActive = false;
       isHeadlessBossEvent = showdownMode === 'headless_boss_s4';
       isBossFight = isLavaBossEvent || isBouncinBossEvent || isHeadlessBossEvent;
       activeSkinTrial = null; // real matches never use trial skins
-      feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = [];
+      feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = [];
       if (isBouncinBossEvent) {
           initBouncinBossMatch();
       }
@@ -41762,7 +41892,7 @@ let heistFeverActive = false;
       isMirrorMode = false;
       isImpossibleMode = false;
       isObjectiveMode = false;
-      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = [];
+      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = [];
       isTraining = false;
       isDuels = true;
       isTowerDuelEvent = true;
@@ -42850,7 +42980,7 @@ isBrawlerLabMode = false;
       isTowerDuelEvent = false;
       isWarperEvent = false;
       isObjectiveMode = false;
-      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = [];
+      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = [];
       soloTrialWave = 0;
       soloTrialPending = false;
       playing = true;
@@ -42984,7 +43114,7 @@ isBrawlerLabMode = false;
       isDuels = false;
       isWarperEvent = false;
       isObjectiveMode = false;
-      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = [];
+      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = [];
     isConstructionMode = false;
       if (document.getElementById('topbar')) document.getElementById('topbar').textContent = 'Arena Forge - Rookie Course';
       playing = true;
@@ -46983,7 +47113,8 @@ function checkHit(target, b, i){
             const ownerEntity = b.ownerId === player.id ? player : bots.find(bt=>bt.id===b.ownerId);
             const ownerStar = b.ownerId === player.id ? selectedStar : (ownerEntity?.selectedStar || 'slow');
             if (!b.hasStolenAmmo) {
-                target.reloadDebuffUntil = performance.now() + 3000;
+                // Spikey immunity (2026-10-23): external reload modifiers cannot touch her cycle.
+                if (!isSpikeyEntity(target)) target.reloadDebuffUntil = performance.now() + 3000;
                 spawnFloatingText(target.x, target.y - 20, "DEBT!", "#27ae60");
                 b.hasStolenAmmo = true; // Prevent infinite ammo spam from piercing
             }
@@ -47066,12 +47197,15 @@ function checkHit(target, b, i){
             const victims=ownerEntity.boomArangSuperAmmoVictims || (ownerEntity.boomArangSuperAmmoVictims={});
             if(!victims[target.id]) {
                 victims[target.id]=true;
-                if(target.id===player.id)ammo=Math.max(0,ammo-1);
-                else {
-                    target.ammo=Math.max(0,(Number.isFinite(target.ammo)?target.ammo:(target.maxAmmo||getNativeAmmoCapacity(target.brawler)))-1);
-                    target.lastShot=Math.max(target.lastShot||0,performance.now())+getReloadTime(target.brawler);
+                // Spikey immunity (2026-10-23): her balls are physical ammo — there is no ammo pool to drain.
+                if(!isSpikeyEntity(target)) {
+                    if(target.id===player.id)ammo=Math.max(0,ammo-1);
+                    else {
+                        target.ammo=Math.max(0,(Number.isFinite(target.ammo)?target.ammo:(target.maxAmmo||getNativeAmmoCapacity(target.brawler)))-1);
+                        target.lastShot=Math.max(target.lastShot||0,performance.now())+getReloadTime(target.brawler);
+                    }
+                    spawnFloatingText(target.x,target.y-30,'-1 AMMO','#ffb64d');
                 }
-                spawnFloatingText(target.x,target.y-30,'-1 AMMO','#ffb64d');
             }
         }
     }
@@ -49570,7 +49704,8 @@ function checkHit(target, b, i){
             note.nextTick = now + 1000;
             checkHit(target, { damage: note.dps, ownerBrawler: 'money_and_tax', ownerId: note.ownerId, pierce: true, super: true }, -1);
             if (note.ammoSteal > 0) stealAmmo(target, note.ownerId, note.ammoSteal);
-            target.reloadDebuffUntil = now + 3000;
+            // Spikey immunity (2026-10-23): external reload modifiers cannot touch her cycle.
+            if (!isSpikeyEntity(target)) target.reloadDebuffUntil = now + 3000;
             spawnFloatingText(target.x, target.y - 20, "DEBT!", "#27ae60");
             explosions.push({x: target.x, y: target.y, radius: 25, life: 0, maxLife: 0.2, color: 'rgba(39, 174, 96, 0.6)'});
         }
@@ -51851,7 +51986,7 @@ function checkHit(target, b, i){
           if (!owner) { bullets.splice(i, 1); i--; continue; }
           const dxo = owner.x - b.x, dyo = owner.y - b.y;
           const disto = Math.hypot(dxo, dyo);
-          if (disto <= (owner.radius || 14) + 20) { bullets.splice(i, 1); i--; continue; }
+          if (disto <= (owner.radius || 14) + 20) { noteSpikeyBallHome(b.ownerId); bullets.splice(i, 1); i--; continue; }
           b.vx = (dxo / (disto || 1)) * SPIKEY_RECALL_SPEED;
           b.vy = (dyo / (disto || 1)) * SPIKEY_RECALL_SPEED;
       }
@@ -54157,6 +54292,12 @@ function checkHit(target, b, i){
                ammoReloadTimer = 0;
            }
            currentReloadTime = 9999999;
+       } else if (selectedBrawler === 'spikey') {
+           // Spikey rework 2026-10-23: her shared magazine reload runs on her
+           // own timer in updateSpikeySystems. The generic pipeline — enemy
+           // reloadDebuffUntil (x1.4), Arena Forge reload multipliers, mode
+           // and trinket reload boosts — must never stretch or shrink it.
+           currentReloadTime = 9999999;
        }
        // Jetpack's reload clock is completely paused during flight.
        // Kinetic Magazine (Core Perk): the bonus slot — the segment above the
@@ -55780,8 +55921,12 @@ function checkHit(target, b, i){
           }
       }
       if (selectedBrawler === 'spikey') {
-          const deployed = countSpikeyDeployed(player);
-          return { label: deployed >= 3 ? 'SPIKEBALLS 3/3 \u2022 ATTACK TO RECALL' : `SPIKEBALLS ${deployed}/3 DEPLOYED`, value: deployed, max: 3, segments: 3, color: '#a6e34d' };
+          const cycleState = getSpikeyCycleState(player);
+          const inHand = player.spikeyBallsReady || 0;
+          if (cycleState === 'return') return { label: 'SPIKEBALLS 3/3 \u2022 ATTACK TO RETURN', value: 3, max: 3, segments: 3, color: '#a6e34d' };
+          if (cycleState === 'returning') return { label: 'SPIKEBALLS RETURNING', value: inHand, max: 3, segments: 3, color: '#a6e34d' };
+          if (cycleState === 'reloading') return { label: `SPIKEBALLS RELOADING \u2022 ${Math.max(0, (player.spikeyReloadEndsAt - now) / 1000).toFixed(1)}s`, value: inHand, max: 3, segments: 3, color: '#a6e34d' };
+          return { label: `SPIKEBALLS ${inHand}/3 IN HAND \u2022 ${countSpikeyParked(player)} OUT`, value: inHand + countSpikeyParked(player), max: 3, segments: 3, color: '#a6e34d' };
       }
       if (selectedBrawler === 'jetpack') {
           const flight=player.jetpackFlight;
@@ -80724,6 +80869,9 @@ function renderBouncinBossEvent(phase) {
     get executeMagnatarG2() { return executeMagnatarG2; },
     get spikeyParkedBalls() { return spikeyParkedBalls; },
     get spikeyMegaBalls() { return spikeyMegaBalls; },
+    get spikeyPendingSlams() { return spikeyPendingSlams; },
+    get getSpikeyCycleState() { return getSpikeyCycleState; },
+    get stealAmmo() { return stealAmmo; },
     get castSpikeySuper() { return castSpikeySuper; },
     get executeSpikeyG1() { return executeSpikeyG1; },
     get executeSpikeyG2() { return executeSpikeyG2; },
