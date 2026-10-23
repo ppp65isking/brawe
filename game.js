@@ -4394,6 +4394,8 @@ const bolznstienPendingStrikes = [];
     const BUSH_WORLD_RENDER_ENABLED = true;
   const pendingClones = [];
   const explosions = [];
+  // Thanksgiving big update Phase 3: Power Box break shards (art only).
+  const powerBoxShards = [];
   const nativeExplosionPush = Array.prototype.push;
   let explosionSpawnFrame = -1;
   let lightweightExplosionSpawnsThisFrame = 0;
@@ -4441,6 +4443,10 @@ const bolznstienPendingStrikes = [];
   // the ONLY bush store. Phantom arrays (bushes, walls, hazards, pads...)
   // were never declared — never reference them.
   const destructibleWalls = [];
+  // Thanksgiving big update Phase 2: seasonal leaf-pile decor. Art only —
+  // rebuilt by buildSeasonalDecor on every Showdown map build; never
+  // collision, never nav, never a hiding store.
+  let seasonalDecor = [];
   const outlitWallChains = [];
   const OUTLIT_SUPER_WALL_CHAIN_MULTIPLIERS = Object.freeze([0.90, 0.80, 0.70, 0.60, 0.50]);
   const OUTLIT_SUPER_WALL_CHAIN_RANGE = 300;
@@ -4638,7 +4644,7 @@ const bolznstienPendingStrikes = [];
         {
             name: 'Verdant Delta',
             bgOuter: '#07150f',
-            bgInner: '#0d261b', bushFill: '#2f8f4e', bushDeep: '#17572e',
+            bgInner: '#0d261b', bushFill: '#2f8f4e', bushDeep: '#17572e', fallBushFill: '#cf701f', fallBushDeep: '#7c3f10',
             grid: 'rgba(140, 214, 180, 0.05)',
             wallBorder: '#2d5f4e',
             cubeFill: '#305245',
@@ -4649,7 +4655,7 @@ const bolznstienPendingStrikes = [];
         {
             name: 'Rust Harbor',
             bgOuter: '#14120a',
-            bgInner: '#231d11', bushFill: '#5d8a3c', bushDeep: '#3a5c24',
+            bgInner: '#231d11', bushFill: '#5d8a3c', bushDeep: '#3a5c24', fallBushFill: '#bb8a2c', fallBushDeep: '#6f4c14',
             grid: 'rgba(255, 196, 120, 0.05)',
             wallBorder: '#6a4a2f',
             cubeFill: '#5a3d2a',
@@ -4660,7 +4666,7 @@ const bolznstienPendingStrikes = [];
         {
             name: 'Ember Mire',
             bgOuter: '#1a0d0d',
-            bgInner: '#2a1212', bushFill: '#557f35', bushDeep: '#38591f',
+            bgInner: '#2a1212', bushFill: '#557f35', bushDeep: '#38591f', fallBushFill: '#a83240', fallBushDeep: '#5e1c25',
             grid: 'rgba(255, 120, 120, 0.05)',
             wallBorder: '#7a3131',
             cubeFill: '#5a2424',
@@ -4671,7 +4677,7 @@ const bolznstienPendingStrikes = [];
         {
             name: 'Lotus Canal',
             bgOuter: '#091225',
-            bgInner: '#0f1f3a', bushFill: '#2e8a6e', bushDeep: '#185c46',
+            bgInner: '#0f1f3a', bushFill: '#2e8a6e', bushDeep: '#185c46', fallBushFill: '#c05f1d', fallBushDeep: '#713511',
             grid: 'rgba(140, 190, 255, 0.06)',
             wallBorder: '#2d4d78',
             cubeFill: '#2c3f5f',
@@ -4682,7 +4688,7 @@ const bolznstienPendingStrikes = [];
         {
             name: 'Frost Circuit',
             bgOuter: '#09161f',
-            bgInner: '#112838', bushFill: '#4c9a72', bushDeep: '#2c6647',
+            bgInner: '#112838', bushFill: '#4c9a72', bushDeep: '#2c6647', fallBushFill: '#9c3548', fallBushDeep: '#5a1e2c',
             grid: 'rgba(140, 230, 255, 0.06)',
             wallBorder: '#36657f',
             cubeFill: '#2f4f60',
@@ -4693,7 +4699,7 @@ const bolznstienPendingStrikes = [];
         {
             name: 'Sunset Quarry',
             bgOuter: '#1a1208',
-            bgInner: '#2f1d0f', bushFill: '#6b8f3d', bushDeep: '#47632a',
+            bgInner: '#2f1d0f', bushFill: '#6b8f3d', bushDeep: '#47632a', fallBushFill: '#c2571b', fallBushDeep: '#73320e',
             grid: 'rgba(255, 172, 112, 0.06)',
             wallBorder: '#845235',
             cubeFill: '#6e442b',
@@ -4703,25 +4709,25 @@ const bolznstienPendingStrikes = [];
         },
         {
             name: 'Crownspire Keep',
-            bgOuter: '#090b20', bgInner: '#17143b', bushFill: '#4a7d5c', bushDeep: '#2e4f3a', grid: 'rgba(190,160,255,.07)',
+            bgOuter: '#090b20', bgInner: '#17143b', bushFill: '#4a7d5c', bushDeep: '#2e4f3a', fallBushFill: '#93343f', fallBushDeep: '#561e27', grid: 'rgba(190,160,255,.07)',
             wallBorder: '#6751a8', cubeFill: '#3d356c', cubeStroke: '#8f7ed3',
             wallBoxFill: '#55458b', wallBoxStroke: '#b5a1ff'
         },
         {
             name: 'Gearfall Foundry',
-            bgOuter: '#171009', bgInner: '#31200e', bushFill: '#5f8a3e', bushDeep: '#3d5c26', grid: 'rgba(255,191,93,.07)',
+            bgOuter: '#171009', bgInner: '#31200e', bushFill: '#5f8a3e', bushDeep: '#3d5c26', fallBushFill: '#bd7d20', fallBushDeep: '#6d4410', grid: 'rgba(255,191,93,.07)',
             wallBorder: '#925b25', cubeFill: '#66431f', cubeStroke: '#bd7c36',
             wallBoxFill: '#805125', wallBoxStroke: '#e3a35c'
         },
         {
             name: 'Stormglass Heights',
-            bgOuter: '#07131d', bgInner: '#0e3040', bushFill: '#2f9a7a', bushDeep: '#1c6650', grid: 'rgba(90,230,255,.08)',
+            bgOuter: '#07131d', bgInner: '#0e3040', bushFill: '#2f9a7a', bushDeep: '#1c6650', fallBushFill: '#bf5f1c', fallBushDeep: '#6e3410', grid: 'rgba(90,230,255,.08)',
             wallBorder: '#287b91', cubeFill: '#285364', cubeStroke: '#4fa6bb',
             wallBoxFill: '#326d82', wallBoxStroke: '#75d7eb'
         },
         {
             name: 'Voidtower Ruins',
-            bgOuter: '#12071a', bgInner: '#281037', bushFill: '#35926e', bushDeep: '#1f6b4f', grid: 'rgba(235,104,255,.08)',
+            bgOuter: '#12071a', bgInner: '#281037', bushFill: '#35926e', bushDeep: '#1f6b4f', fallBushFill: '#8e3a52', fallBushDeep: '#512130', grid: 'rgba(235,104,255,.08)',
             wallBorder: '#77318a', cubeFill: '#51265e', cubeStroke: '#9f4db4',
             wallBoxFill: '#673276', wallBoxStroke: '#d070e4'
         }
@@ -17846,8 +17852,96 @@ let heistFeverActive = false;
         return getRotatingShowdownMapIndex();
     }
 
+    // Thanksgiving big update Phase 2 — seasonal environment override.
+    // While Turkey Trouble is active, map art warms up: per-theme fall bush
+    // colours, an amber ground/grid tint, bronze/wood wall tints. The season
+    // gate is isTurkeyTroubleSeasonActive (Nov 1-30), so fall art can never
+    // leak into Xplodemis (Dec 1). Kill switch per house retirement rules.
+    let FALL_ENVIRONMENT_ENABLED = true;
+
+    function mixHexColors(hexA, hexB, amt) {
+        const parse = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+        const a = parse(hexA), b = parse(hexB);
+        const mixed = a.map((v, i) => Math.round(v + (b[i] - v) * amt));
+        return '#' + mixed.map((v) => v.toString(16).padStart(2, '0')).join('');
+    }
+
+    function getSeasonalEnvironmentOverride(now = Date.now(), baseTheme = null) {
+        if (!FALL_ENVIRONMENT_ENABLED) return null;
+        if (!isTurkeyTroubleSeasonActive(now)) return null;
+        const base = baseTheme || SHOWDOWN_MAP_THEMES[getActiveShowdownMapIndex()] || SHOWDOWN_MAP_THEMES[0];
+        const gridMatch = /,\s*([\d.]+)\s*\)\s*$/.exec(base.grid || '');
+        const gridAlpha = gridMatch ? gridMatch[1] : '0.06';
+        return {
+            key: 'turkey',
+            bushFill: base.fallBushFill || base.bushFill,
+            bushDeep: base.fallBushDeep || base.bushDeep,
+            bushHighlight: 'rgba(255, 214, 140, 0.30)',
+            bgOuter: mixHexColors(base.bgOuter, '#2a1708', 0.35),
+            bgInner: mixHexColors(base.bgInner, '#3a2410', 0.32),
+            bgTint: '#3a2410',
+            grid: `rgba(255, 176, 92, ${gridAlpha})`,
+            cubeFill: mixHexColors(base.cubeFill, '#8a5a2b', 0.45),
+            cubeStroke: mixHexColors(base.cubeStroke, '#c98a4b', 0.45),
+            wallBoxFill: mixHexColors(base.wallBoxFill, '#8a5a2b', 0.45),
+            wallBoxStroke: mixHexColors(base.wallBoxStroke, '#d99a55', 0.45),
+            accent: '#e8912d'
+        };
+    }
+
+    function isSeasonalDecorSpotClear(x, y, r) {
+        const rectDistSq = (rect) => {
+            const dx = Math.max(rect.x - x, 0, x - (rect.x + rect.w));
+            const dy = Math.max(rect.y - y, 0, y - (rect.y + rect.h));
+            return dx * dx + dy * dy;
+        };
+        const clearSq = r * r;
+        for (const z of waterZones) if (rectDistSq(z) < clearSq) return false;
+        for (const z of bushZones) if (rectDistSq(z) < clearSq) return false;
+        for (const w of destructibleWalls) if (rectDistSq(w) < clearSq) return false;
+        for (const p of mapProps) if (rectDistSq(p) < clearSq) return false;
+        for (const c of cubes) if (rectDistSq(c) < clearSq) return false;
+        // Map centre objective area plus the 8 Showdown spawn anchors (the
+        // same candidate set getShowdownSpawnPosition samples from).
+        const protectedPoints = [
+            { x: WORLD_W * 0.5, y: WORLD_H * 0.5, r: 300 },
+            { x: 560, y: 560, r: 150 }, { x: WORLD_W - 560, y: 560, r: 150 },
+            { x: WORLD_W - 560, y: WORLD_H - 560, r: 150 }, { x: 560, y: WORLD_H - 560, r: 150 },
+            { x: WORLD_W * 0.5, y: 460, r: 150 }, { x: WORLD_W * 0.5, y: WORLD_H - 460, r: 150 },
+            { x: 460, y: WORLD_H * 0.5, r: 150 }, { x: WORLD_W - 460, y: WORLD_H * 0.5, r: 150 }
+        ];
+        for (const p of protectedPoints) {
+            if (Math.hypot(x - p.x, y - p.y) < p.r + r) return false;
+        }
+        return true;
+    }
+
+    const SEASONAL_DECOR_PILE_COUNT = 14;
+
+    function buildSeasonalDecor() {
+        seasonalDecor = [];
+        if (!getSeasonalEnvironmentOverride()) return;
+        // Deterministic LCG seeded from the built map's geometry, so piles
+        // land identically for every client and on every rebuild.
+        let seed = 1234567 + getActiveShowdownMapIndex() * 7919 + bushZones.length * 104729 + waterZones.length * 1299709 + destructibleWalls.length * 15485863;
+        const rand = () => { seed = (Math.imul(seed, 1103515245) + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+        const pilePalette = ['#d97b29', '#c2571b', '#e8a33d', '#a83240'];
+        let attempts = 0;
+        while (seasonalDecor.length < SEASONAL_DECOR_PILE_COUNT && attempts < SEASONAL_DECOR_PILE_COUNT * 40) {
+            attempts++;
+            const x = 150 + rand() * (WORLD_W - 300);
+            const y = 150 + rand() * (WORLD_H - 300);
+            const r = 24 + rand() * 14;
+            if (!isSeasonalDecorSpotClear(x, y, r)) continue;
+            if (seasonalDecor.some((p) => Math.hypot(p.x - x, p.y - y) < (p.r + r) * 0.9)) continue;
+            seasonalDecor.push({ x, y, r, seed: rand(), color: pilePalette[seasonalDecor.length % pilePalette.length] });
+        }
+    }
+
     function getActiveShowdownTheme() {
-        return SHOWDOWN_MAP_THEMES[getActiveShowdownMapIndex()] || SHOWDOWN_MAP_THEMES[0];
+        const baseTheme = SHOWDOWN_MAP_THEMES[getActiveShowdownMapIndex()] || SHOWDOWN_MAP_THEMES[0];
+        const seasonalOverride = getSeasonalEnvironmentOverride(Date.now(), baseTheme);
+        return seasonalOverride ? { ...baseTheme, ...seasonalOverride } : baseTheme;
     }
 
     function getActiveConstructionMapIndex() {
@@ -22586,6 +22680,7 @@ let heistFeverActive = false;
             wall(1860,1860,280,280);bush(1740,1360,520,140);bush(1740,2500,520,140);bush(1360,1740,140,520);bush(2500,1740,140,520);
         }
         carveWaterNavigationLanes();
+        buildSeasonalDecor();
     }
 
     function buildHandmadeShowdownMap(mapIndex) {
@@ -23044,6 +23139,7 @@ let heistFeverActive = false;
     cubes.length = 0;
     destructibleWalls.length = 0;
     mapProps.length = 0;
+    seasonalDecor = [];
     bushZones.length = 0;
     waterZones.length = 0;
     malakorHellZones.length = 0;
@@ -23877,11 +23973,11 @@ let heistFeverActive = false;
   }
 
   const POWER_BOX_TYPES = Object.freeze({
-      standard:   { hp: 4500, size: 42, weight: 55, color: '#d4ac0d', edge: '#ffe978', icon: '◆', reward: 'cube' },
-      fortified:  { hp: 8000, size: 50, weight: 20, color: '#d86b27', edge: '#ffd39a', icon: 'Ⅱ', reward: 'fortified' },
-      charged:    { hp: 6000, size: 46, weight: 14, color: '#7d45e8', edge: '#d9b6ff', icon: '⚡', reward: 'charged' },
-      vitality:   { hp: 6500, size: 46, weight: 8, color: '#21a86b', edge: '#9affcf', icon: '+', reward: 'vitality' },
-      nova:       { hp: 9500, size: 54, weight: 3, color: '#18b8e2', edge: '#a8f7ff', icon: 'N', reward: 'nova' }
+      standard:   { hp: 3600, size: 42, weight: 55, color: '#d4ac0d', edge: '#ffe978', icon: '◆', reward: 'cube' },
+      fortified:  { hp: 7200, size: 50, weight: 20, color: '#d86b27', edge: '#ffd39a', icon: 'Ⅱ', reward: 'fortified' },
+      charged:    { hp: 4800, size: 46, weight: 14, color: '#7d45e8', edge: '#d9b6ff', icon: '⚡', reward: 'charged' },
+      vitality:   { hp: 5400, size: 46, weight: 8, color: '#21a86b', edge: '#9affcf', icon: '+', reward: 'vitality' },
+      nova:       { hp: 8400, size: 54, weight: 3, color: '#18b8e2', edge: '#a8f7ff', icon: 'N', reward: 'nova' }
   });
 
   function rollPowerBoxType() {
@@ -23899,6 +23995,7 @@ let heistFeverActive = false;
       const hp = overrides.hp || spec.hp;
       return {
           x, y, w: size, h: size, hp, maxHp: hp,
+          spawnedAt: performance.now(),
           isPowerBox: true,
           isPurpleBox: type === 'charged',
           isNovaBox: type === 'nova',
@@ -23961,6 +24058,14 @@ let heistFeverActive = false;
       const cx = box.x + box.w / 2;
       const cy = box.y + box.h / 2;
       const type = box.powerBoxType || (box.isNovaBox ? 'nova' : (box.isPurpleBox ? 'charged' : 'standard'));
+      // Phase 3 box art: 4-6 break shards in the type colour (art only).
+      const shardColor = (POWER_BOX_TYPES[type] || POWER_BOX_TYPES.standard).color;
+      const shardCount = 4 + Math.floor(Math.random() * 3);
+      for (let s = 0; s < shardCount; s++) {
+          const shardAngle = (s / shardCount) * Math.PI * 2 + Math.random() * 0.6;
+          const shardSpeed = 130 + Math.random() * 150;
+          powerBoxShards.push({ x: cx, y: cy, vx: Math.cos(shardAngle) * shardSpeed, vy: Math.sin(shardAngle) * shardSpeed - 60, size: 3 + Math.random() * 3.5, color: shardColor, bornAt: performance.now(), lifeMs: 460, spin: Math.random() * 6 });
+      }
       if (type === 'nova') {
           powerups.push({ x: cx, y: cy, kind: 'nova_core' });
           explosions.push({ x: cx, y: cy, radius: 78, life: 0, maxLife: 0.42, color: 'rgba(61, 224, 255, 0.82)' });
@@ -59201,6 +59306,65 @@ function checkHit(target, b, i){
       };
   }
 
+  // Thanksgiving big update Phase 3: one unified chunky-cube painter for
+  // all typed Showdown Power Boxes (replaces the flat rounded-rect art).
+  // Same rect/HP data — render only. Reads: darker side face offset
+  // down/right for height, bright top face, thick type edge, centred sigil,
+  // Nova idle bob. Damage language: cracks at <=66% and <=33%, plus a small
+  // HP bar under the box only while damaged.
+  function drawChunkyPowerBox(ctx, dw, spec) {
+      const now = performance.now();
+      const hpPct = clamp(dw.hp / Math.max(1, dw.maxHp || dw.hp || 1), 0, 1);
+      const age = dw.spawnedAt ? now - dw.spawnedAt : 9999;
+      const pop = age < 180 ? 0.7 + 0.3 * (age / 180) : 1;
+      const cx = dw.x + dw.w / 2;
+      const cy = dw.y + dw.h / 2;
+      const w = dw.w * pop;
+      const h = dw.h * pop;
+      const x = cx - w / 2;
+      const y = cy - h / 2;
+      const isNova = dw.powerBoxType === 'nova';
+      const bob = isNova ? Math.sin(now / 190) * 1.5 : 0;
+      ctx.save();
+      ctx.translate(0, bob);
+      if (isNova) { ctx.shadowColor = spec.edge; ctx.shadowBlur = 12; }
+      ctx.fillStyle = mixHexColors(spec.color, '#000000', 0.42);
+      ctx.beginPath(); ctx.roundRect(x + 3, y + 4, w, h, 7); ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = spec.color;
+      ctx.strokeStyle = spec.edge;
+      ctx.lineWidth = isNova ? 3 : 2;
+      ctx.beginPath(); ctx.roundRect(x, y, w, h, 7); ctx.fill(); ctx.stroke();
+      ctx.globalAlpha = 0.85;
+      ctx.fillStyle = spec.edge;
+      ctx.beginPath(); ctx.roundRect(x + 3, y + 3, Math.max(4, w - 6), Math.max(4, h * 0.32), 5); ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 17px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(spec.icon, cx, y + h * 0.68 + 6);
+      ctx.textAlign = 'left';
+      if (hpPct <= 0.66) {
+          ctx.strokeStyle = 'rgba(20, 12, 4, 0.55)'; ctx.lineWidth = 1.6;
+          ctx.beginPath();
+          ctx.moveTo(x + w * 0.30, y + h * 0.12); ctx.lineTo(x + w * 0.38, y + h * 0.34); ctx.lineTo(x + w * 0.30, y + h * 0.52);
+          ctx.stroke();
+      }
+      if (hpPct <= 0.33) {
+          ctx.strokeStyle = 'rgba(20, 12, 4, 0.7)';
+          ctx.beginPath();
+          ctx.moveTo(x + w * 0.68, y + h * 0.18); ctx.lineTo(x + w * 0.60, y + h * 0.44); ctx.lineTo(x + w * 0.72, y + h * 0.66);
+          ctx.moveTo(x + w * 0.16, y + h * 0.62); ctx.lineTo(x + w * 0.34, y + h * 0.78);
+          ctx.stroke();
+      }
+      ctx.restore();
+      if (hpPct < 1) {
+          ctx.fillStyle = 'rgba(7, 12, 22, 0.7)';
+          ctx.fillRect(x, y + h + 3 + bob, w, 4);
+          ctx.fillStyle = '#ffb36b';
+          ctx.fillRect(x, y + h + 3 + bob, w * hpPct, 4);
+      }
+  }
+
   function render(){
     const now = performance.now();
     // Camera follow player or living teammate when dead in squad/team modes
@@ -59438,11 +59602,55 @@ function checkHit(target, b, i){
                 ctx.fill();
             }
             // Subtle inner highlight so the foliage edge catches the light.
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.13)';
+            ctx.strokeStyle = envColors.bushHighlight || 'rgba(255, 255, 255, 0.13)';
             ctx.lineWidth = 2;
             ctx.beginPath();
             ctx.roundRect(zone.x + 5, zone.y + 5, zone.w - 10, zone.h - 10, innerR);
             ctx.stroke();
+            ctx.restore();
+        }
+    }
+
+    // Thanksgiving seasonal decor (Phase 2): leaf piles are static art
+    // placed by buildSeasonalDecor; falling leaves are a small fixed pool
+    // derived deterministically from time + index and shed first under
+    // decorative pressure via decorativeFxStride. Gated on the merged
+    // theme's season key, so the art vanishes with the season.
+    if (envColors.key === 'turkey') {
+        for (const pile of seasonalDecor) {
+            if (!isWorldVisualVisible(pile.x, pile.y, pile.r + 40)) continue;
+            ctx.save();
+            ctx.globalAlpha = 0.85;
+            for (let k = 0; k < 6; k++) {
+                const leafAng = pile.seed * 6.283 + k * 1.07;
+                const leafDist = pile.r * (0.18 + ((pile.seed * (k + 3) * 7.13) % 1) * 0.55);
+                const leafX = pile.x + Math.cos(leafAng) * leafDist;
+                const leafY = pile.y + Math.sin(leafAng) * leafDist * 0.62;
+                ctx.fillStyle = k % 2 ? '#e8a33d' : pile.color;
+                ctx.beginPath();
+                ctx.ellipse(leafX, leafY, pile.r * 0.34, pile.r * 0.2, leafAng, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
+        }
+        const leafNow = performance.now();
+        const leafViewW = innerWidth / CAMERA_ZOOM;
+        const leafViewH = innerHeight / CAMERA_ZOOM;
+        for (let i = 0; i < 26; i++) {
+            if (decorativeFxStride > 1 && (i % decorativeFxStride) !== 0) continue;
+            const cycle = 8000 + (i % 5) * 1600;
+            const fallT = ((leafNow + i * 1499) % cycle) / cycle;
+            const leafBaseX = ((i * 0.6180339887) % 1) * (leafViewW + 80);
+            const leafX = camX - 40 + leafBaseX + Math.sin(leafNow / 900 + i * 1.7) * 18;
+            const leafY = camY - 30 + fallT * (leafViewH + 60);
+            ctx.save();
+            ctx.translate(leafX, leafY);
+            ctx.rotate(leafNow / 700 + i);
+            ctx.globalAlpha = 0.55;
+            ctx.fillStyle = ['#d97b29', '#e8a33d', '#a83240'][i % 3];
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 5, 3, 0, 0, Math.PI * 2);
+            ctx.fill();
             ctx.restore();
         }
     }
@@ -70691,20 +70899,7 @@ function checkHit(target, b, i){
             ctx.restore();
         } else if(dw.isPowerBox && dw.powerBoxType) {
             const spec = POWER_BOX_TYPES[dw.powerBoxType] || POWER_BOX_TYPES.standard;
-            const pulse = dw.powerBoxType === 'nova' ? 0.45 + Math.sin(performance.now() / 190) * 0.12 : 0;
-            ctx.save();
-            ctx.shadowColor = spec.edge;
-            ctx.shadowBlur = dw.powerBoxType === 'nova' ? 12 : 4;
-            ctx.fillStyle = spec.color;
-            ctx.strokeStyle = spec.edge;
-            ctx.lineWidth = dw.powerBoxType === 'nova' ? 3 : 2;
-            ctx.beginPath(); ctx.roundRect(dw.x, dw.y, dw.w, dw.h, 7); ctx.fill(); ctx.stroke();
-            ctx.globalAlpha = 0.18 + pulse;
-            ctx.fillStyle = '#ffffff'; ctx.fillRect(dw.x + 5, dw.y + 5, Math.max(4, dw.w - 10), 6);
-            ctx.globalAlpha = 1;
-            ctx.fillStyle = '#ffffff'; ctx.font = 'bold 17px sans-serif'; ctx.textAlign = 'center';
-            ctx.fillText(spec.icon, dw.x + dw.w / 2, dw.y + dw.h / 2 + 6); ctx.textAlign = 'left';
-            ctx.restore();
+            drawChunkyPowerBox(ctx, dw, spec);
         } else if(dw.isNovaBox) {
             ctx.fillStyle = '#18b8e2'; ctx.fillRect(dw.x, dw.y, dw.w, dw.h);
             ctx.strokeStyle = '#a8f7ff'; ctx.lineWidth = 3; ctx.strokeRect(dw.x, dw.y, dw.w, dw.h);
@@ -70772,10 +70967,36 @@ function checkHit(target, b, i){
             ctx.fillStyle='rgba(255,255,255,.1)';ctx.fillRect(dw.x+7,dw.y+7,Math.max(3,dw.w-14),Math.max(3,dw.h*.14));
         }
         if(dw.isPowerBox || dw.isPurpleBox || dw.isGreenBox || dw.isNovaBox){
-            ctx.fillStyle = '#fff';ctx.font = '10px sans-serif';ctx.textAlign = 'center';
-            const hpLabel = Math.ceil(dw.hp);
-            ctx.fillText(hpLabel, dw.x + dw.w/2, dw.y + dw.h/2 + 4);ctx.textAlign = 'left';
+            // Phase 3: typed Showdown boxes dropped the always-on numeric HP
+            // text (drawChunkyPowerBox draws a damaged-only HP bar instead).
+            // Numbers stay in Training (boxes are a DPS tool there) and on
+            // legacy untyped boxes (Power Gods / trial boxes never joined
+            // the typed table).
+            if (isTraining || !dw.powerBoxType) {
+                ctx.fillStyle = '#fff';ctx.font = '10px sans-serif';ctx.textAlign = 'center';
+                const hpLabel = Math.ceil(dw.hp);
+                ctx.fillText(hpLabel, dw.x + dw.w/2, dw.y + dw.h/2 + 4);ctx.textAlign = 'left';
+            }
         }
+    }
+
+    // Power Box break shards (Phase 3): absolute-time particles, pruned
+    // here in the render pass like the outlit wall chains below.
+    for (let shardIndex = powerBoxShards.length - 1; shardIndex >= 0; shardIndex--) {
+        const shard = powerBoxShards[shardIndex];
+        const shardAge = performance.now() - shard.bornAt;
+        if (shardAge > shard.lifeMs) { powerBoxShards.splice(shardIndex, 1); continue; }
+        if (!isWorldVisualVisible(shard.x, shard.y, 60)) continue;
+        const ageSec = shardAge / 1000;
+        const shardX = shard.x + shard.vx * ageSec;
+        const shardY = shard.y + shard.vy * ageSec + 340 * ageSec * ageSec;
+        ctx.save();
+        ctx.translate(shardX, shardY);
+        ctx.rotate(shard.spin + ageSec * 9);
+        ctx.globalAlpha = 1 - shardAge / shard.lifeMs;
+        ctx.fillStyle = shard.color;
+        ctx.fillRect(-shard.size / 2, -shard.size / 2, shard.size, shard.size);
+        ctx.restore();
     }
 
     const outlitChainNow = performance.now();
