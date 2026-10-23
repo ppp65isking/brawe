@@ -8464,7 +8464,7 @@ const bolznstienPendingStrikes = [];
           g1: 'Polarity Inversion (Instantly emits a powerful 180px repulsive magnetic shockwave that knocks all enemies and projectiles away, dealing 900 damage)',
           g2: 'Flux Overcharge (Instantly charges your next attack to maximum orbs with +25% increased projectile size and damage)',
           sp1: 'Ferrous Drag (Enemies caught within the magnetic beacon are slowed by 30% by intense magnetic drag)',
-          sp2: 'Kinetic Induction (Every projectile drawn into the magnetic vortex extends its duration by 0.35s and charges Magnatar\'s Super by 4%)'
+          sp2: 'Kinetic Induction (Every projectile drawn into the magnetic vortex extends its duration by 0.35s (up to +2.0s per beacon) and charges Magnatar\'s Super by 2% (up to 25% per beacon))'
       },
 
       'badbat': {
@@ -10476,7 +10476,9 @@ function isPowerPlayModifierActive(entity = player) {
             expiresAt: now + (isPersonalAura ? 6000 : 5500),
             isHyper: isHyper,
             sp1: sp1,
-            sp2: sp2
+            sp2: sp2,
+            sp2ExtMs: 0, // SP2 nerf 2026-10-23: per-beacon total duration extension granted (cap 2000ms)
+            sp2RefundPct: 0 // SP2 nerf 2026-10-23: per-beacon total Super refund granted (cap 25%)
         };
 
         magnatarVortices.push(beacon);
@@ -53330,16 +53332,29 @@ function checkHit(target, b, i){
                 }
 
                 // SP2: Kinetic Induction (first time projectile enters, extend vortex duration and charge super)
+                // NERF 2026-10-23 (Anthony: "nerf the loop, not the orbs"): refund 4% -> 2% per drawn
+                // projectile, plus per-beacon caps of +2.0s total extension and 25% total Super refund,
+                // so one cast cannot snowball into a near-permanent beacon + free next Super.
                 if (v.sp2 && !b._magnatarSP2Triggered) {
                     b._magnatarSP2Triggered = true;
-                    v.expiresAt = Math.min(v.expiresAt + 350, now + 8000);
+                    v.sp2ExtMs = v.sp2ExtMs || 0;
+                    const sp2ExtGrant = Math.min(350, 2000 - v.sp2ExtMs);
+                    if (sp2ExtGrant > 0) {
+                        v.sp2ExtMs += sp2ExtGrant;
+                        v.expiresAt = Math.min(v.expiresAt + sp2ExtGrant, now + 8000);
+                    }
                     const owner = getEntityById(v.ownerId);
                     if (owner) {
-                        if (owner.id === player.id) {
-                            superCharge = clamp(superCharge + 4, 0, 100);
-                            if (typeof updateSuperButton === 'function') updateSuperButton();
-                        } else {
-                            owner.superCharge = clamp((owner.superCharge || 0) + 4, 0, 100);
+                        v.sp2RefundPct = v.sp2RefundPct || 0;
+                        const sp2RefundGrant = Math.min(2, 25 - v.sp2RefundPct);
+                        if (sp2RefundGrant > 0) {
+                            v.sp2RefundPct += sp2RefundGrant;
+                            if (owner.id === player.id) {
+                                superCharge = clamp(superCharge + sp2RefundGrant, 0, 100);
+                                if (typeof updateSuperButton === 'function') updateSuperButton();
+                            } else {
+                                owner.superCharge = clamp((owner.superCharge || 0) + sp2RefundGrant, 0, 100);
+                            }
                         }
                     }
                 }
