@@ -1,48 +1,38 @@
-// Spikey regression (2026-10-22, new brawler — Anthony's Lumi adaptation,
-// design finished by Cosmo per his delegation).
-//
-// Kit under test:
-// - Triple Thorn Toss: throw a piercing spikeball (950 @P11) that parks where
-//   it lands; max 3 deployed; attacking with 3 out recalls them all, piercing,
-//   for 1,425 @P11. SP1 Deep Roots adds a 30% / 1s slow to recall hits.
-// - Mega Spike Ball Super: travels in legs and explodes (1,750 @P11, r130)
-//   exactly 3 times. Hyper: longer legs (340 vs 260) + an 8-spike ring
-//   (500 each) per bounce; Hyper main attack: +50% projectile/unload speed
-//   and hits root for 0.8s.
-// - Registration: Mythic (270 souls via the rarity table), Damage Dealer.
-import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import vm from 'node:vm';
 
-const game = readFileSync(new URL('../game.js', import.meta.url), 'utf8');
+const game = fs.readFileSync(new URL('../game.js', import.meta.url), 'utf8');
 
-// --- Static anchors: registration ---
-assert.match(game, /'spikey': \{ name: 'Spikey', role: 'Damage Dealer'/, 'brawlerData entry missing');
-assert.match(game, /attack: 'Triple Thorn Toss'/, 'attack name missing');
-assert.match(game, /super: 'Mega Spike Ball'/, 'super name missing');
-assert.match(game, /spikey: 'Mythic'/, 'rarity must be Mythic (270 souls via rarity cost table)');
-assert.match(game, /'feathers', 'spikey'/, 'spikey must be in allBrawlers roster list');
-assert.match(game, /spikey:'Damage Dealer'/, 'primary role map must say Damage Dealer');
-assert.match(game, /spikey: '🦔'/, 'portrait emoji missing');
-assert.match(game, /feathers:5, spikey:6/, 'SUPER_CHARGE_HITS entry missing');
-assert.match(game, /spikey: \{ g1: 14000, g2: 12000 \}/, 'gadget cooldowns missing (g1 14s / g2 12s)');
-assert.match(game, /hp: Math\.round\(7000 \* scale\), dmg: Math\.round\(950 \* scale\), recallDmg: Math\.round\(1425 \* scale\), superDmg: Math\.round\(1750 \* scale\)/, 'authored stats must be hp 7000 / throw 950 / recall 1425 / super 1750 @P11');
-// Spikey must NOT be in the free-unlock migration lists (Feathers precedent).
-assert.doesNotMatch(game, /bid === 'bolznstien' \|\| bid === 'magnatar' \|\| bid === 'badbat' \|\| bid === 'spikey'/, 'spikey must not be free-unlocked by migration');
-// --- Static anchors: mechanics wiring ---
-assert.match(game, /function castSpikeySuper\(entity, hyper, tx, ty\)/, 'castSpikeySuper missing');
-assert.match(game, /function recallSpikeyBalls\(entity, harmless = false\)/, 'recallSpikeyBalls missing');
-assert.match(game, /combatBrawler === 'spikey'\) \{ castSpikeySuper\(player/, 'player super dispatch missing');
-assert.match(game, /botCombatBrawler === 'spikey'\) \{ castSpikeySuper\(bot/, 'bot super dispatch missing');
-assert.match(game, /brawler === 'spikey'\) \{[\s\S]*?countSpikeyDeployed\(fromEntity\) >= 3[\s\S]*?recallSpikeyBalls\(fromEntity\)/, 'fire() recall pre-check missing');
-assert.match(game, /b\.isSpikeyThrow && b\.life >= b\.maxLife\) \{\s*parkSpikeyBall\(b\)/, 'throw must park at max range');
-assert.match(game, /b\.isSpikeyThrow\) \{\s*parkSpikeyBall\(b\);[\s\S]*?bullets\.splice\(i, 1\)/, 'throw must park on wall impact');
-assert.match(game, /mega\.bouncesLeft--/, 'mega ball bounce counter missing');
-assert.match(game, /spikeyRootMs:hyper\?800:0/, 'hyper main attack must root for 0.8s');
-assert.match(game, /SPIKEBALLS \$\{deployed\}\/3 DEPLOYED/, 'mechanic HUD entry missing');
-console.log("✔ static anchors: registration + wiring");
+// ---- Static anchors: identity, kit, and the reworked systems ----
+assert.match(game, /spikey': \{ name: 'Spikey', role: 'Damage Dealer'[\s\S]*?attack: 'Triple Thorn Toss'[\s\S]*?super: 'Mega Spike Ball'/, 'Spikey kit identity must be registered');
+assert.match(game, /g1: 'Burst Barbs \([\s\S]*?g2: 'Quill Roll \(/, 'Spikey gadgets must be registered');
+assert.match(game, /spikey:\s*'Mythic'/, 'Spikey must be Mythic');
+assert.match(game, /spikey:6/, 'Spikey Super must charge in 6 hits');
+assert.match(game, /return \{ hp: Math\.round\(7000 \* scale\), dmg: Math\.round\(950 \* scale\), recallDmg: Math\.round\(950 \* scale\), superDmg: Math\.round\(1750 \* scale\)/, 'Spikey stats: 950 throw AND 950 return (the 1,425 recall is gone)');
+assert.doesNotMatch(game, /recallDmg: Math\.round\(1425/, 'Launch 1,425 recall damage must be gone');
+assert.doesNotMatch(game, /for 1,425 damage/, 'Kit text must not advertise the old recall damage');
+assert.match(game, /SPIKEY_TRAVELING_SUPER_ENABLED = false/, 'Traveling Mega Ball Super must be vaulted');
+assert.match(game, /spikeyPendingSlams\.push/, 'New Super must queue the slam barrage');
+assert.match(game, /ensureSpikeyCycle/, 'Magazine cycle state must exist');
+assert.match(game, /countSpikeyParked\(fromEntity\) >= SPIKEY_MAX_DEPLOYED[\s\S]*?recallSpikeyBalls\(fromEntity\)/, 'fire() must turn the attack into RETURN at 3 parked');
+assert.match(game, /noteSpikeyBallHome\(b\.ownerId\)/, 'Recall arrivals must settle balls home');
+assert.match(game, /ATTACK TO RETURN/, 'HUD must show the RETURN state');
+assert.match(game, /SPIKEBALLS RELOADING/, 'HUD must show the reloading state');
+// Immunity exemption points (Anthony's explicit rule, 2026-10-23):
+assert.match(game, /function stealAmmo\(target, ownerId, amount\) \{\s*\/\/ Spikey immunity[\s\S]*?if \(isSpikeyEntity\(target\)\) return;/, 'stealAmmo must exempt Spikey');
+assert.match(game, /if \(isSpikeyEntity\(target\)\) return 0;/, 'stealAmmoForRobber must exempt Spikey');
+assert.match(game, /if\(!isSpikeyEntity\(target\)\) \{\s*if\(target\.id===player\.id\)ammo=Math\.max\(0,ammo-1\)/, 'Boom-Arang Super drain must exempt Spikey');
+assert.match(game, /if \(!isSpikeyEntity\(target\)\) target\.reloadDebuffUntil = performance\.now\(\) \+ 3000;/, 'Tax Note reload debuff must exempt Spikey');
+assert.match(game, /if \(!isSpikeyEntity\(target\)\) target\.reloadDebuffUntil = now \+ 3000;/, 'Sticky-note reload debuff must exempt Spikey');
+assert.match(game, /else if \(selectedBrawler === 'spikey'\) \{[\s\S]{0,500}?currentReloadTime = 9999999;/, 'Spikey reload must bypass the generic reload pipeline');
+// Bots use the same systems through the shared dispatch.
+assert.match(game, /botCombatBrawler === 'spikey'\) \{ castSpikeySuper\(bot, isHyper, targetX, targetY\)/, 'Bots must cast the new slam Super');
+assert.match(game, /combatBrawler === 'spikey'\) \{ castSpikeySuper\(player, !!isHypercharged, wm\.x, wm\.y\)/, 'Player Super dispatch must target the slam barrage');
+assert.doesNotMatch(game, /freeBrawlers[\s\S]{0,200}spikey/, 'Spikey must not be silently free-unlocked');
 
-// --- Behavioral: boot the real game as Spikey ---
+// ---- Behavioral harness: the real game booted in a vm sandbox ----
+const storage = new Map();
 function makeCtx() {
   const grad = { addColorStop() {} };
   return new Proxy({}, { get: (t, k) => {
@@ -74,151 +64,152 @@ function makeEl() {
     return undefined;
   }, set: () => true });
 }
-const store = new Map();
-store.set('brawl_arena_save', JSON.stringify({ persistent: {
-  selectedBrawler: 'spikey',
-  unlockedBrawlers: { outlit: true, fuser: true, rocketeer: true, spikey: true },
-  brawlerProgress: { spikey: { level: 11, bricks: 0, gadgetUnlocked: true, starPowerUnlocked: true, hyperchargeUnlocked: true, selectedStar: 'slow', selectedGadget: 'g1' } },
-} }));
 const sandbox = {
-  console, Math, JSON, Date, Promise, Set, Map, Array, Object, Number, String, Boolean, RegExp, Error, TypeError, RangeError, Symbol, parseInt, parseFloat, isNaN, isFinite, Infinity, NaN, undefined,
-  setTimeout, clearTimeout, setInterval, clearInterval, queueMicrotask,
-  performance: { now: () => Date.now() },
-  document: {
-    createElement: () => makeEl(), createElementNS: () => makeEl(),
-    getElementById: () => makeEl(), querySelector: () => makeEl(), querySelectorAll: () => [],
-    addEventListener() {}, removeEventListener() {}, body: makeEl(), head: makeEl(),
-    documentElement: makeEl(), hidden: false, visibilityState: 'visible',
-  },
-  localStorage: { getItem: k => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, String(v)), removeItem: k => store.delete(k), clear: () => store.clear() },
-  navigator: { userAgent: 'node', maxTouchPoints: 0 },
-  location: { href: 'http://localhost/', reload() {} },
-  Audio: class { play() { return Promise.resolve(); } pause() {} },
-  Image: class {},
-  requestAnimationFrame: () => 0, cancelAnimationFrame: () => {},
-  addEventListener() {}, removeEventListener() {},
-  innerWidth: 1280, innerHeight: 800, devicePixelRatio: 1,
+  console, Math, JSON, Date, Map, Set, Array, Object, Number, String, Boolean, RegExp, Error, Promise, Uint8Array,
+  performance: { now: () => Date.now() }, requestAnimationFrame: () => 0, cancelAnimationFrame() {}, setTimeout, clearTimeout, setInterval, clearInterval, queueMicrotask,
+  localStorage: { getItem: k => storage.get(k) ?? null, setItem: (k, v) => storage.set(k, String(v)), removeItem: k => storage.delete(k) },
+  document: { createElement: () => makeEl(), createElementNS: () => makeEl(), getElementById: () => makeEl(), querySelector: () => makeEl(), querySelectorAll: () => [], addEventListener() {}, removeEventListener() {}, body: makeEl(), head: makeEl(), documentElement: makeEl(), hidden: false, visibilityState: 'visible' },
+  navigator: { userAgent: 'node', maxTouchPoints: 0 }, innerWidth: 1280, innerHeight: 720, devicePixelRatio: 1,
+  Image: class { constructor() { this.complete = true; } }, Audio: class { play() { return Promise.resolve(); } pause() {} },
+  location: { href: 'http://localhost/', reload() {} }, alert() {}, addEventListener() {}, removeEventListener() {},
   getComputedStyle: () => ({}),
-  alert() {}, confirm: () => true, prompt: () => null,
-  fetch: () => Promise.reject(new Error('no net')),
-  URL, Blob: class {}, FileReader: class {},
   BrawePassTokens: new Proxy({}, { get: (t, k) => (typeof k === 'string' ? (() => 0) : undefined) }),
 };
 sandbox.window = sandbox; sandbox.globalThis = sandbox; sandbox.self = sandbox;
+storage.set('brawl_arena_save', JSON.stringify({ persistent: { coins: 99999, gems: 99999, selectedBrawler: 'spikey', unlockedBrawlers: { rocketeer: true, spikey: true }, brawlerProgress: { spikey: { level: 11, bricks: 9999, gadgetUnlocked: true, starPowerUnlocked: true, hyperchargeUnlocked: true, selectedStar: 'slow', selectedGadget: 'g1' } } } }));
 vm.createContext(sandbox);
 vm.runInContext(game, sandbox, { filename: 'game.js' });
 const api = sandbox.window.__pureHTMLGame;
-assert.ok(api && api.player && api.bots && api.bullets, 'test API unavailable after boot');
-assert.equal(typeof api.fire, 'function', 'fire must be exported for the cycle test');
-assert.equal(typeof api.castSpikeySuper, 'function', 'castSpikeySuper must be exported');
-
-api.launchShowdownMatch();
-api.playing = true;
-const p = api.player;
-assert.equal(p.brawler, 'spikey', `player should be Spikey, got ${p.brawler}`);
-const bot = api.bots.find(b => b && b.hp > 0);
-assert.ok(bot, 'no bot to target');
-api.bots.length = 0;
-api.bots.push(bot);
-bot.hp = bot.maxHp = 100000; bot.shield = 0; bot.shieldMax = 0;
+assert.ok(api, 'game test API must boot');
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 function frames(n, pin) {
-  for (let f = 0; f < n; f++) {
-    bot.stunUntil = Date.now() + 100000;
-    if (pin) { bot.x = pin.x; bot.y = pin.y; }
+  for (let i = 0; i < n; i++) {
+    if (pin) { pin.stunUntil = Date.now() + 100000; pin.x = pin._x; pin.y = pin._y; }
     api.update(1 / 60);
   }
 }
-const myParked = () => api.spikeyParkedBalls.filter(b => b.ownerId === p.id);
+async function framesOverTime(ms, pin) {
+  const end = Date.now() + ms;
+  while (Date.now() < end) { frames(3, pin); await sleep(40); }
+}
 
-// --- Throw -> deploy x3 (bot sits on the throw line: throw damage check) ---
-p.x = 600; p.y = 2000;
-const throwLinePin = { x: p.x + 300, y: p.y };
+api.launchShowdownMatch(1, 1);
+api.playing = true;
+api.bots.length = 1; // quiet lobby: roaming bots would fight/heal the pinned target and pollute HP measurements
+const p = api.player;
+const bot = api.bots[0];
+const origBotBrawler = bot.brawler;
+assert.equal(api.bots.length >= 1, true, 'a bot opponent is required');
+p.x = 600; p.y = 2000; p.hp = p.maxHp; p.shield = 0;
+bot._x = 930; bot._y = 2000; bot.x = bot._x; bot.y = bot._y; bot.hp = 100000; bot.maxHp = 100000; bot.shield = 0;
+
+// ---- Magazine cycle: 3 throws, each consuming a hand ball ----
 for (let t = 0; t < 3; t++) {
   const hpBefore = bot.hp;
-  api.fire(p, p.x + 500, p.y, false, false);
-  const thrown = api.bullets.find(b => b.isSpikeyThrow && b.ownerId === p.id);
-  assert.ok(thrown, `throw ${t + 1}: no spikeball bullet spawned`);
-  assert.equal(thrown.damage, 950, `throw ${t + 1}: damage must be 950 @P11`);
-  frames(70, throwLinePin);
-  if (t === 0) assert.ok(bot.hp <= hpBefore - 900, `throw must pierce the bot on its line (hp ${hpBefore} -> ${bot.hp})`);
-  assert.equal(myParked().length, t + 1, `after throw ${t + 1}: ${t + 1} ball(s) must be parked`);
-  await sleep(280); // player fireDelay 240ms
+  api.fire(p, 1100, 2000, false);
+  frames(70, bot);
+  assert.equal(api.spikeyParkedBalls.filter(b => b.ownerId === p.id).length, t + 1, `throw ${t + 1} must park`);
+  assert.equal(p.spikeyBallsReady, 2 - t, `throw ${t + 1} must consume a ball from hand`);
+  if (t === 0) assert.ok(hpBefore - bot.hp >= 900, 'a throw must deal 950 piercing damage through the pinned bot');
+  if (t < 2) await sleep(300); // player fireDelay between throws
 }
-assert.equal(api.countSpikeyDeployed(p), 3, 'deployed count must read 3 with a full set out'); 
-
-// --- Recall: attack with 3 out -> all fly home, piercing, 1,425, SP1 slow flag ---
-bot.hp = 100000;
-const recallPin = { x: p.x + 330, y: p.y }; // between Spikey and the parked balls
-api.fire(p, p.x + 500, p.y, false, false);
-assert.equal(myParked().length, 0, 'recall must clear the parked set');
+assert.equal(api.getSpikeyCycleState(p), 'return', 'with 3 parked the attack must become RETURN');
+// The next attack is the RETURN: recalls spawn, no throw does.
+api.fire(p, 1100, 2000, false);
 const recalls = api.bullets.filter(b => b.isSpikeyRecall && b.ownerId === p.id);
-assert.equal(recalls.length, 3, 'recall must spawn one return bullet per parked ball');
-assert.ok(recalls.every(b => b.damage === 1425), 'recall damage must be 1,425 @P11 (higher than the throw)');
-assert.ok(recalls.every(b => b.spikeySlowMs === 0), 'without SP1 selected, recall hits must carry no slow (base recall has no CC)');
-const hpBeforeRecall = bot.hp;
-frames(80, recallPin);
-assert.ok(bot.hp <= hpBeforeRecall - 1400, `recall line must damage the bot it passes through (hp ${hpBeforeRecall} -> ${bot.hp})`);
-assert.equal(api.bullets.filter(b => b.isSpikeyRecall).length, 0, 'recall bullets must despawn on arrival');
+assert.equal(recalls.length, 3, 'RETURN must recall exactly the 3 parked balls');
+assert.equal(api.bullets.some(b => b.isSpikeyThrow && b.ownerId === p.id), false, 'RETURN must not spawn a throw');
+for (const r of recalls) assert.equal(r.damage, 950, 'return damage must be 950 per ball (the 1,425 era is over)');
+assert.equal(api.spikeyParkedBalls.filter(b => b.ownerId === p.id).length, 0, 'RETURN must clear the parked balls');
 
-// --- SP1 Deep Roots flag, exercised through a bot (bots carry their own
-// selectedStar on the entity, the same field bot star powers read game-wide) ---
-bot.brawler = 'spikey';
-bot.selectedStar = 'slow';
-bot.level = 11;
-bot.x = 2200; bot.y = 2200;
-for (let k = 0; k < 3; k++) api.spikeyParkedBalls.push({ x: bot.x + 300, y: bot.y, ownerId: bot.id, nextThornAt: 0, seed: 1 });
-api.fire(bot, bot.x - 500, bot.y, true, false);
-const botRecalls = api.bullets.filter(b => b.isSpikeyRecall && b.ownerId === bot.id);
-assert.equal(botRecalls.length, 3, 'bot recall must spawn one return bullet per parked ball');
-assert.ok(botRecalls.every(b => b.spikeySlowMs === 1000), 'SP1 Deep Roots must flag recall hits with the 1s slow');
-assert.ok(botRecalls.every(b => b.damage === 1425), 'bot recall damage must also be 1,425 @P11');
-frames(90, { x: 2200, y: 2200 });
-assert.equal(api.bullets.filter(b => b.isSpikeyRecall).length, 0, 'bot recall bullets must despawn on arrival');
-bot.brawler = 'spikey'; // keep the (single) test bot on Spikey for the super checks below
-
-// --- Super: exactly 3 bounces, heavy AoE per bounce ---
-const superPin = { x: p.x + (p.radius + 20) + 260, y: p.y }; // first bounce point
+// Full return through one pinned target: 3 balls x 950 = 2,850 max, never more.
 bot.hp = 100000;
+frames(90, bot);
+const returnDrop = 100000 - bot.hp;
+assert.ok(returnDrop >= 2800, `a full return through one target must land all 3 balls (drop ${returnDrop})`);
+assert.ok(returnDrop <= 2850, `a full return must never exceed 2,850 on one target (drop ${returnDrop})`);
+assert.equal(api.bullets.some(b => b.isSpikeyRecall && b.ownerId === p.id), false, 'recall bullets must despawn on arrival');
+assert.equal(api.getSpikeyCycleState(p), 'reloading', 'a homecoming that leaves her empty must start the shared reload');
+assert.equal(p.spikeyBallsReady, 0, 'no ball may be ready during the shared reload');
+// No early throws while reloading.
+api.fire(p, 1100, 2000, false);
+assert.equal(api.bullets.some(b => b.isSpikeyThrow && b.ownerId === p.id), false, 'attacking during the shared reload must do nothing');
+
+// ---- Ammo-steal immunity (and a control: steal still works on others) ----
+const lastShotBefore = bot.lastShot || 0;
+api.stealAmmo(bot, p.id, 0.25);
+assert.ok((bot.lastShot || 0) >= lastShotBefore + 200, 'control: stealAmmo must still delay a normal brawler');
+api.stealAmmo(p, bot.id, 1);
+assert.equal(p.spikeyBallsReady, 0, 'ammo steal must not touch Spikey balls');
+assert.equal(api.getSpikeyCycleState(p), 'reloading', 'ammo steal must not disturb the cycle state');
+
+// ---- Reload-modifier immunity: a huge external reload debuff must not
+// stretch her own 1,350ms shared reload (generic pipeline would take ~1,890ms).
+p.reloadDebuffUntil = Date.now() + 60000;
+await framesOverTime(1500, bot);
+assert.equal(p.spikeyBallsReady, 3, 'all 3 balls must be back after her own 1,350ms reload, debuff notwithstanding');
+assert.equal(api.getSpikeyCycleState(p), 'ready', 'cycle must be ready again after the shared reload');
+api.fire(p, 1100, 2000, false);
+frames(70, bot);
+assert.equal(api.spikeyParkedBalls.filter(b => b.ownerId === p.id).length, 1, 'throwing must work again after the reload');
+
+// ---- Bot cycle: a bot Spikey fires RETURN the same way, SP1 slow intact ----
+bot.brawler = 'spikey';
+bot.level = 11;
+bot.selectedStar = 'slow';
+bot.spikeyBallsReady = 0; bot.spikeyHomePool = 0; bot.spikeyReloadPending = 0; bot.spikeyReloadEndsAt = 0;
+bot._x = 2200; bot._y = 2200; bot.x = bot._x; bot.y = bot._y;
+for (const dx of [180, 240, 300]) api.spikeyParkedBalls.push({ x: bot.x + dx, y: bot.y, ownerId: bot.id, nextThornAt: 0, seed: 1 });
+api.fire(bot, bot.x - 200, bot.y, true);
+const botRecalls = api.bullets.filter(b => b.isSpikeyRecall && b.ownerId === bot.id);
+assert.equal(botRecalls.length, 3, 'a bot with 3 parked must RETURN instead of throwing');
+for (const r of botRecalls) {
+  assert.equal(r.damage, 950, 'bot return damage must be 950');
+  assert.equal(r.spikeySlowMs, 1000, 'SP1 slow must ride the return hits');
+}
+frames(90, bot);
+assert.equal(api.bullets.some(b => b.isSpikeyRecall && b.ownerId === bot.id), false, 'bot recall bullets must arrive home');
+bot.brawler = origBotBrawler;
+
+// ---- New Super: 3 slams stepping forward, no traveling Mega Ball ----
+bot._x = 830; bot._y = 2000; bot.x = bot._x; bot.y = bot._y; bot.hp = 100000;
 api.castSpikeySuper(p, false, p.x + 500, p.y);
-assert.equal(api.spikeyMegaBalls.length, 1, 'super must spawn one Mega Spike Ball');
-assert.equal(api.spikeyMegaBalls[0].bouncesLeft, 3, 'mega ball must start with 3 bounces');
-const bounceSeq = [];
-let lastBounces = 3;
-for (let f = 0; f < 240 && api.spikeyMegaBalls.length; f++) {
-  frames(1, superPin);
-  const left = api.spikeyMegaBalls.length ? api.spikeyMegaBalls[0].bouncesLeft : 0;
-  if (left !== lastBounces) { bounceSeq.push(left); lastBounces = left; }
-}
-assert.deepEqual(bounceSeq, [2, 1, 0], `mega ball must bounce exactly 3 times (saw ${bounceSeq})`);
-assert.ok(bot.hp <= 100000 - 1500, `bounce explosion must deal heavy damage (hp -> ${bot.hp})`);
+assert.equal(api.spikeyPendingSlams.length, 3, 'the Super must queue exactly 3 slams');
+assert.equal(api.spikeyPendingSlams.map(s => Math.round(s.x)).join(','), '710,830,950', 'slams must step forward from close range');
+assert.equal(api.spikeyMegaBalls.length, 0, 'the traveling Mega Ball must never spawn');
+await framesOverTime(700, bot);
+assert.equal(api.spikeyPendingSlams.length, 0, 'all slams must resolve');
+const slamDrop = 100000 - bot.hp;
+assert.ok(slamDrop >= 5000 && slamDrop <= 5300, `a target at the middle slam must take all 3 slams (drop ${slamDrop})`);
+// Slams stay close: a target well past the last slam is untouched.
+bot._x = 1500; bot._y = 2000; bot.x = bot._x; bot.y = bot._y; bot.hp = 100000;
+api.castSpikeySuper(p, false, p.x + 500, p.y);
+await framesOverTime(700, bot);
+assert.equal(bot.hp, 100000, 'slams must not reach far targets (no traveling ball)');
 
-// --- Hyper Super: longer legs + spike ring per bounce ---
+// ---- Hypercharge Super: 2 smaller side balls per slam (500, r80) ----
+bot._x = 710; bot._y = 2175; bot.x = bot._x; bot.y = bot._y; bot.hp = 100000;
 api.castSpikeySuper(p, true, p.x + 500, p.y);
-assert.equal(api.spikeyMegaBalls[0].hyper, true, 'hyper cast must flag the mega ball');
-let ringSeen = 0;
-for (let f = 0; f < 240 && api.spikeyMegaBalls.length; f++) {
-  frames(1, superPin);
-  if (api.spikeyMegaBalls.length && api.spikeyMegaBalls[0].bouncesLeft === 2) {
-    ringSeen = api.bullets.filter(b => b.isSpikeyRingSpike).length;
-    break;
-  }
-}
-assert.equal(ringSeen, 8, `hyper bounce must burst a ring of 8 spikes (saw ${ringSeen})`);
+assert.equal(api.spikeyPendingSlams.length, 3, 'Hyper Super must still queue 3 slams');
+assert.ok(api.spikeyPendingSlams.every(s => s.hyper), 'Hyper slams must be flagged hyper');
+await framesOverTime(700, bot);
+const sideDrop = 100000 - bot.hp;
+assert.ok(sideDrop >= 400 && sideDrop <= 600, `a target on a side-ball spot must take one 500 side ball (drop ${sideDrop})`);
 
-// --- Hyper main attack: +50% projectile speed + 0.8s root flag ---
-await sleep(1500); // let an ammo reload finish
+// ---- Hyper main attack boosts unchanged: +50% speed/unload, 0.8s root ----
 api.isHypercharged = true;
-api.hyperchargeUntil = Date.now() + 10000;
-api.fire(p, p.x + 500, p.y, false, false);
+p.hyperchargeUntil = Date.now() + 10000;
+api.spikeyParkedBalls.length = 0;
+api.bullets.length = 0;
+p.spikeyBallsReady = 3; p.spikeyHomePool = 0; p.spikeyReloadPending = 0; p.spikeyReloadEndsAt = 0;
+api.fire(p, 1100, 2000, false);
 const hyperThrow = api.bullets.find(b => b.isSpikeyThrow && b.ownerId === p.id);
-assert.ok(hyperThrow, 'hyper throw did not spawn');
-assert.equal(hyperThrow.spikeyRootMs, 800, 'hyper main attack hits must root for 0.8s');
-assert.ok(Math.abs(Math.hypot(hyperThrow.vx, hyperThrow.vy) - 1320) < 2, `hyper projectile speed must be 880 * 1.5 = 1320 (got ${Math.hypot(hyperThrow.vx, hyperThrow.vy)})`);
-api.isHypercharged = false;
+assert.ok(hyperThrow, 'a Hyper throw must spawn');
+assert.equal(Math.round(Math.hypot(hyperThrow.vx, hyperThrow.vy)), 1320, 'Hyper throw speed must be +50%');
+assert.equal(hyperThrow.spikeyRootMs, 800, 'Hyper hits must root for 0.8s');
+assert.equal(hyperThrow.damage, 950, 'Hyper throw damage stays 950');
+assert.equal(p.spikeyBallsReady, 2, 'a Hyper throw still consumes one hand ball');
 
-console.log('✔ behavioral: throw/deploy/recall cycle, 3-bounce super, hyper ring + root + speed');
-console.log('spikey regression: all checks passed');
-
+console.log('Spikey rework regression passed: magazine cycle (950 return, shared 1,350ms reload), ammo-steal + reload-modifier immunity, 3-slam Super, Hyper side balls, SP1/bot cycle.');
 process.exit(0);
