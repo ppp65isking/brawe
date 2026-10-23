@@ -4430,6 +4430,57 @@ const bolznstienPendingStrikes = [];
   const OUTLIT_SUPER_WALL_CHAIN_RANGE = 300;
   const ARENA_WALL_TILE = 48;
   let nextDestructibleWallHitId = 1;
+  // ENVIRONMENT SYSTEMS - Phase 5 props v1 (2026-10-23): the canonical prop
+  // registry and the Prop Hunt substrate. Solid props are destructibleWalls
+  // entries flagged isProp + propType (see placeProp); floor pads live in
+  // mapProps, a zone store beside bushZones/waterZones. The phantom
+  // healingPads/speedPads arrays stay undeclared - never reference them.
+  let PROPS_V1_ENABLED = true;
+  const PROP_HEAL_PAD_TICK = 175;      // HP per healing-pad tick
+  const PROP_HEAL_PAD_TICK_MS = 500;   // -> 350 HP/s while standing on the pad
+  const PROP_SPEED_PAD_MULT = 1.3;     // +30% move speed while on a speed pad
+  const PROP_DEFS = {
+      barrel:      { w: 48, h: 48, hp: 2400, blocksMove: true,  blocksShots: true  },
+      crate:       { w: 48, h: 48, hp: 1800, blocksMove: true,  blocksShots: true  },
+      plant_pot:   { w: 40, h: 40, hp: 900,  blocksMove: false, blocksShots: true  },
+      sign_post:   { w: 36, h: 36, hp: 700,  blocksMove: false, blocksShots: true  },
+      healing_pad: { w: 96, h: 96, hp: 0,    blocksMove: false, blocksShots: false, pad: true },
+      speed_pad:   { w: 96, h: 96, hp: 0,    blocksMove: false, blocksShots: false, pad: true }
+  };
+  const mapProps = []; // floor-pad prop entries for the current match
+  function placeProp(propType, x, y) {
+      if (!PROPS_V1_ENABLED) return null;
+      const def = PROP_DEFS[propType];
+      if (!def) return null;
+      if (def.pad) {
+          const pad = { propType, x, y, w: def.w, h: def.h, blocksMove: false, blocksShots: false, isPropPad: true };
+          mapProps.push(pad);
+          return pad;
+      }
+      const wall = { x, y, w: def.w, h: def.h, hp: def.hp, maxHp: def.hp, ownerId: null, isProp: true, propType, blocksMove: def.blocksMove, blocksShots: def.blocksShots };
+      destructibleWalls.push(wall);
+      return wall;
+  }
+  function isEntityOnPropPad(entity, propType) {
+      if (!entity || !PROPS_V1_ENABLED) return false;
+      const r = (entity.radius || 14) * 0.6;
+      for (const p of mapProps) {
+          if (p.propType !== propType) continue;
+          if (rectCircleCollides(p.x, p.y, p.w, p.h, entity.x, entity.y, r)) return true;
+      }
+      return false;
+  }
+  function updatePropPads() {
+      if (!PROPS_V1_ENABLED || !mapProps.length) return;
+      const now = performance.now();
+      for (const entity of [player, ...bots]) {
+          if (!entity || entity.hp <= 0) continue;
+          if (now - (entity.propPadHealAt || 0) < PROP_HEAL_PAD_TICK_MS) continue;
+          if (!isEntityOnPropPad(entity, 'healing_pad')) continue;
+          entity.propPadHealAt = now;
+          doHeal(entity, PROP_HEAL_PAD_TICK);
+      }
+  }
   const floatingTexts = [];
   const MAX_ACTIVE_EXPLOSIONS = LOW_POWER_DEVICE ? 80 : 180;
   const MAX_ACTIVE_FLOATING_TEXTS = LOW_POWER_DEVICE ? 48 : 90;
@@ -17805,6 +17856,10 @@ let heistFeverActive = false;
 
     function isNavigationWall(wall, entity = null) {
         if (!wall || wall.isPlatform || isPowerBoxWall(wall)) return false;
+        // Phase 5 props: only blocksMove props are terrain. Plant pots and
+        // sign posts are shootable decor a fighter (or a morphed hider) can
+        // stand in; with the kill switch off props are not terrain at all.
+        if (wall.isProp && (!PROPS_V1_ENABLED || !wall.blocksMove)) return false;
         return !entity || wall.ownerId !== entity.id;
     }
 
@@ -18156,7 +18211,7 @@ let heistFeverActive = false;
         if (!threatPos) return null;
         let best = null;
         let bestScore = Infinity;
-        const terrain = [...destructibleWalls.filter(w => w && w.hp > 0 && !w.isPlatform), ...cubes];
+        const terrain = [...destructibleWalls.filter(w => w && w.hp > 0 && !w.isPlatform && (!w.isProp || w.blocksMove)), ...cubes];
         for (const w of terrain) {
             const cx = w.x + w.w / 2, cy = w.y + w.h / 2;
             const dThreat = Math.hypot(cx - threatPos.x, cy - threatPos.y);
@@ -18379,8 +18434,12 @@ let heistFeverActive = false;
     }
 
     function getTerrainMoveMultiplier(entity) {
-        if (!isEntityInsideWater(entity)) return 1.0;
-        return canEntityTraverseWater(entity) ? 1.0 : 0.74;
+        let mult = 1.0;
+        if (isEntityInsideWater(entity) && !canEntityTraverseWater(entity)) mult = 0.74;
+        // Phase 5: speed pads are terrain like water - this one hook is
+        // shared by the player movement block and the bot movement block.
+        if (PROPS_V1_ENABLED && isEntityOnPropPad(entity, 'speed_pad')) mult *= PROP_SPEED_PAD_MULT;
+        return mult;
     }
 
     function getShowdownSpawnPosition() {
@@ -22398,7 +22457,7 @@ let heistFeverActive = false;
     }
 
     function buildNextShowdownMap(mapIndex) {
-        cubes.length = 0; bushZones.length = 0; waterZones.length = 0; destructibleWalls.length = 0;
+        cubes.length = 0; bushZones.length = 0; waterZones.length = 0; destructibleWalls.length = 0; mapProps.length = 0;
         const idx=((mapIndex%SHOWDOWN_MAP_THEMES.length)+SHOWDOWN_MAP_THEMES.length)%SHOWDOWN_MAP_THEMES.length;
         const wall=(x,y,w,h)=>addArenaWallStrip(x,y,w,h,{wallType:'showdown'});
         const bush=(x,y,w,h)=>bushZones.push({x,y,w,h});
@@ -22413,6 +22472,16 @@ let heistFeverActive = false;
             wall(820,1040,560,120); wall(2620,2840,560,120); wall(1040,2620,120,560); wall(2840,820,120,560);
             bush(1720,1720,560,180); bush(1720,2100,560,180); bush(1720,1900,180,200); bush(2100,1900,180,200);
             bush(520,1520,300,220); bush(3180,2260,300,220); bush(1520,520,220,300); bush(2260,3180,220,300);
+            // Phase 5 props v1: cover + morph targets around the throne lanes,
+            // a healing pad on the throne itself, speed pads on the side
+            // lanes. Every spot is >=240px from the 8 spawn candidates and
+            // clear of the crown walls, moat water and center bushes.
+            placeProp('barrel', 1500, 1976); placeProp('barrel', 2452, 1976);
+            placeProp('crate', 1976, 1460); placeProp('crate', 1976, 2492);
+            placeProp('plant_pot', 1150, 640); placeProp('plant_pot', 2810, 3320);
+            placeProp('sign_post', 3300, 1100); placeProp('sign_post', 664, 2864);
+            placeProp('healing_pad', 1952, 1952);
+            placeProp('speed_pad', 1052, 1952); placeProp('speed_pad', 2852, 1952);
         }else if(idx===1){
             // Tidal Lock: two rivers with three contested land bridges and flank coves.
             water(1020,260,360,1160); water(1020,1680,360,700); water(1020,2640,360,1100);
@@ -22936,6 +23005,7 @@ let heistFeverActive = false;
   function generateCubesLayout(){
     cubes.length = 0;
     destructibleWalls.length = 0;
+    mapProps.length = 0;
     bushZones.length = 0;
     waterZones.length = 0;
     malakorHellZones.length = 0;
@@ -48701,6 +48771,7 @@ function checkHit(target, b, i){
 
     if (playing && !gameOver) updateFeathersSystems(dt);
     if (playing && !gameOver) updateSpikeySystems(dt);
+    if (playing && !gameOver) updatePropPads();
     if (playing && !gameOver) updateChristmasShowdown(dt);
     // (Kinetic heal removed — see Kinetic Magazine rework, 2026-10-22.)
     if (isTurkeyCaptureMode && !isBossFight && !isSoloTrial && !isDuels && !gameOver) {
@@ -52792,7 +52863,7 @@ function checkHit(target, b, i){
                   }
                   break;
               }
-              const damageableObject = !!(dw.isArenaWall || dw.isPowerBox || dw.isBox || dw.isPurpleBox || dw.isGreenBox || dw.isNovaBox || dw.trapperFenceWall || dw.isFreestyleWall || dw.expiresAt);
+              const damageableObject = !!(dw.isArenaWall || dw.isPowerBox || dw.isBox || dw.isPurpleBox || dw.isGreenBox || dw.isNovaBox || dw.trapperFenceWall || dw.isFreestyleWall || dw.expiresAt || dw.isProp);
               if (!dw.isPlatform && !dw.indestructible && damageableObject) {
                   const wallDamage = b.breakWallsInstantly && dw.isArenaWall
                       ? Math.max(1, dw.hp)
@@ -69911,6 +69982,31 @@ function checkHit(target, b, i){
         for(const bx of [x+8,x+w-8])for(const by of [y+8,y+h-8]){ctx.beginPath();ctx.arc(bx,by,2.3,0,Math.PI*2);ctx.fill();}
     }
 
+    // draw Phase 5 floor pads (under walls and fighters)
+    if (PROPS_V1_ENABLED) {
+        for (const p of mapProps) {
+            if (!isWorldVisualVisible(p.x + p.w / 2, p.y + p.h / 2, Math.max(p.w, p.h) / 2 + 45)) continue;
+            const pulse = 0.72 + Math.sin(performance.now() / 320 + p.x * 0.01 + p.y * 0.013) * 0.14;
+            ctx.save();
+            if (p.propType === 'healing_pad') {
+                ctx.fillStyle = `rgba(38,120,72,${0.5 * pulse})`; ctx.strokeStyle = '#5df2c2'; ctx.lineWidth = 3;
+                ctx.beginPath(); ctx.roundRect(p.x + 3, p.y + 3, p.w - 6, p.h - 6, 14); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = `rgba(190,255,225,${0.9 * pulse})`;
+                const padCx = p.x + p.w / 2, padCy = p.y + p.h / 2;
+                ctx.fillRect(padCx - 6, padCy - 20, 12, 40); ctx.fillRect(padCx - 20, padCy - 6, 40, 12);
+            } else {
+                ctx.fillStyle = `rgba(122,84,16,${0.5 * pulse})`; ctx.strokeStyle = '#f5b921'; ctx.lineWidth = 3;
+                ctx.beginPath(); ctx.roundRect(p.x + 3, p.y + 3, p.w - 6, p.h - 6, 14); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = `rgba(255,226,150,${0.9 * pulse})`;
+                for (const off of [-22, 4]) {
+                    const bx = p.x + p.w / 2 + off, by = p.y + p.h / 2;
+                    ctx.beginPath(); ctx.moveTo(bx - 8, by - 14); ctx.lineTo(bx + 10, by); ctx.lineTo(bx - 8, by + 14); ctx.lineTo(bx - 2, by); ctx.closePath(); ctx.fill();
+                }
+            }
+            ctx.restore();
+        }
+    }
+
     // draw destructible walls
     for(const dw of destructibleWalls) {
         if (!isWorldVisualVisible(dw.x + dw.w / 2, dw.y + dw.h / 2, Math.max(dw.w, dw.h) / 2 + 45)) continue;
@@ -69967,6 +70063,39 @@ function checkHit(target, b, i){
                 ctx.moveTo(rx+rw*.5,ry+rh*.08);ctx.lineTo(rx+rw*.43,ry+rh*.38);ctx.lineTo(rx+rw*.62,ry+rh*.58);ctx.lineTo(rx+rw*.49,ry+rh*.91);ctx.stroke();
             }
             if(hpPct<1){ctx.fillStyle='rgba(7,12,22,.7)';ctx.fillRect(rx+5,ry+rh-8,rw-10,4);ctx.fillStyle='#ffb36b';ctx.fillRect(rx+5,ry+rh-8,(rw-10)*hpPct,4);}
+        } else if (dw.isProp) {
+            // Phase 5 prop art: one painter per propType, in the wall loop.
+            const hpPct=Math.max(0,Math.min(1,(dw.hp||1)/Math.max(1,dw.maxHp||dw.hp||1)));
+            const propCx=dw.x+dw.w/2, propCy=dw.y+dw.h/2;
+            ctx.save();
+            if (dw.propType === 'barrel') {
+                ctx.fillStyle='#8a5a2b'; ctx.strokeStyle='#5d3a17'; ctx.lineWidth=2;
+                ctx.beginPath(); ctx.roundRect(dw.x+3, dw.y+2, dw.w-6, dw.h-4, 9); ctx.fill(); ctx.stroke();
+                ctx.strokeStyle='rgba(46,26,8,.75)';
+                ctx.beginPath(); ctx.moveTo(dw.x+4, dw.y+dw.h*0.34); ctx.lineTo(dw.x+dw.w-4, dw.y+dw.h*0.34); ctx.moveTo(dw.x+4, dw.y+dw.h*0.68); ctx.lineTo(dw.x+dw.w-4, dw.y+dw.h*0.68); ctx.stroke();
+                ctx.fillStyle='rgba(255,220,160,.28)'; ctx.fillRect(dw.x+8, dw.y+5, 5, dw.h-10);
+            } else if (dw.propType === 'crate') {
+                ctx.fillStyle='#b08945'; ctx.strokeStyle='#6e5322'; ctx.lineWidth=2;
+                ctx.beginPath(); ctx.roundRect(dw.x+2, dw.y+2, dw.w-4, dw.h-4, 4); ctx.fill(); ctx.stroke();
+                ctx.strokeStyle='rgba(90,64,20,.8)';
+                ctx.beginPath(); ctx.moveTo(dw.x+3, dw.y+3); ctx.lineTo(dw.x+dw.w-3, dw.y+dw.h-3); ctx.moveTo(dw.x+dw.w-3, dw.y+3); ctx.lineTo(dw.x+3, dw.y+dw.h-3); ctx.stroke();
+            } else if (dw.propType === 'plant_pot') {
+                ctx.fillStyle='#3f9e4d';
+                for (const [ox, oy, orr] of [[-9, -7, 12], [9, -8, 11], [0, -15, 13], [-4, 2, 10], [8, 1, 9]]) {
+                    ctx.beginPath(); ctx.arc(propCx + ox, propCy + oy, orr, 0, Math.PI * 2); ctx.fill();
+                }
+                ctx.fillStyle='#b5563c'; ctx.strokeStyle='#7c3524'; ctx.lineWidth=2;
+                ctx.beginPath(); ctx.moveTo(propCx - 13, propCy + 2); ctx.lineTo(propCx + 13, propCy + 2); ctx.lineTo(propCx + 9, propCy + 16); ctx.lineTo(propCx - 9, propCy + 16); ctx.closePath(); ctx.fill(); ctx.stroke();
+            } else { // sign_post
+                ctx.strokeStyle='#6b4a2f'; ctx.lineWidth=5;
+                ctx.beginPath(); ctx.moveTo(propCx, propCy + 16); ctx.lineTo(propCx, propCy - 4); ctx.stroke();
+                ctx.fillStyle='#c98f3d'; ctx.strokeStyle='#7c5320'; ctx.lineWidth=2;
+                ctx.beginPath(); ctx.roundRect(propCx - 15, propCy - 16, 30, 15, 3); ctx.fill(); ctx.stroke();
+                ctx.fillStyle='#5d3a17';
+                ctx.beginPath(); ctx.moveTo(propCx + 3, propCy - 13); ctx.lineTo(propCx + 11, propCy - 8.5); ctx.lineTo(propCx + 3, propCy - 4); ctx.closePath(); ctx.fill();
+            }
+            if (hpPct < 1) { ctx.fillStyle='rgba(7,12,22,.7)'; ctx.fillRect(dw.x+5, dw.y+dw.h-7, dw.w-10, 4); ctx.fillStyle='#ffb36b'; ctx.fillRect(dw.x+5, dw.y+dw.h-7, (dw.w-10)*hpPct, 4); }
+            ctx.restore();
         } else {
             const hpPct=Math.max(0,Math.min(1,(dw.hp||1)/Math.max(1,dw.maxHp||dw.hp||1)));
             const wallGrad=ctx.createLinearGradient(dw.x,dw.y,dw.x,dw.y+dw.h);
@@ -76094,6 +76223,7 @@ function buildBraweBallMap() {
     const addBoundaryWall = (x, y, w, h) => {
         destructibleWalls.push({ x, y, w, h, hp: 999999, maxHp: 999999, indestructible: true, isArenaWall: true });
     };
+    mapProps.length = 0; // Phase 5: pads from a previous match never persist
 
     // Arena side boundary walls
     addBoundaryWall(0, 0, t, WORLD_H);
@@ -76132,6 +76262,16 @@ function buildBraweBallMap() {
         bushZones.push({ x: 60, y: WORLD_H * 0.5 - 220, w: 140, h: 440 });
         bushZones.push({ x: WORLD_W - 200, y: WORLD_H * 0.5 - 220, w: 140, h: 440 });
     }
+
+    // Phase 5 props v1 (180-degree rotational symmetry, >=240px from every
+    // spawn point and the center ball spawn): flank cover + speed lanes at
+    // midfield, healing pads on the lanes to each goal.
+    placeProp('barrel', 226, 1176); placeProp('barrel', 1502, 1176);
+    placeProp('crate', 400, 700); placeProp('crate', 1352, 1652);
+    placeProp('plant_pot', 150, 900); placeProp('plant_pot', 1610, 1460);
+    placeProp('sign_post', 620, 552); placeProp('sign_post', 1144, 1812);
+    placeProp('healing_pad', 852, 652); placeProp('healing_pad', 852, 1652);
+    placeProp('speed_pad', 352, 1152); placeProp('speed_pad', 1352, 1152);
 }
 
 function initBraweBallState() {
@@ -76775,6 +76915,7 @@ function buildKnockoutMap() {
     const addBoundaryWall = (x, y, w, h) => {
         destructibleWalls.push({ x, y, w, h, hp: 999999, maxHp: 999999, indestructible: true, isArenaWall: true });
     };
+    mapProps.length = 0; // Phase 5: pads from a previous match never persist
     addBoundaryWall(0, 0, WORLD_W, t);
     addBoundaryWall(0, WORLD_H - t, WORLD_W, t);
     addBoundaryWall(0, 0, t, WORLD_H);
@@ -76794,6 +76935,16 @@ function buildKnockoutMap() {
         bushZones.push({ x: WORLD_W - 370, y: WORLD_H * 0.5 - 180, w: 130, h: 360 });
         bushZones.push({ x: WORLD_W * 0.5 - 90, y: WORLD_H * 0.5 - 40, w: 180, h: 80 });
     }
+
+    // Phase 5 props v1 (mirrored pairs, >=240px from every spawn point):
+    // cover around the courtyard, pads on the lanes between the spawns
+    // and midfield.
+    placeProp('barrel', 700, 976); placeProp('barrel', 1252, 976);
+    placeProp('crate', 530, 976); placeProp('crate', 1422, 976);
+    placeProp('plant_pot', 300, 700); placeProp('plant_pot', 1660, 700);
+    placeProp('sign_post', 982, 620); placeProp('sign_post', 982, 1344);
+    placeProp('healing_pad', 952, 470); placeProp('healing_pad', 952, 1434);
+    placeProp('speed_pad', 440, 500); placeProp('speed_pad', 1464, 1404);
 }
 
 function initKnockoutState() {
@@ -80886,6 +81037,12 @@ function renderBouncinBossEvent(phase) {
     get bolznstienPendingStrikes() { return bolznstienPendingStrikes; },
     get bolznstienChainArcs() { return bolznstienChainArcs; },
     get destructibleWalls() { return destructibleWalls; },
+    get mapProps() { return mapProps; },
+    get PROP_DEFS() { return PROP_DEFS; },
+    get placeProp() { return placeProp; },
+    get isEntityOnPropPad() { return isEntityOnPropPad; },
+    get PROPS_V1_ENABLED() { return PROPS_V1_ENABLED; },
+    set PROPS_V1_ENABLED(v) { PROPS_V1_ENABLED = !!v; },
     get isHeaterLockableBox() { return isHeaterLockableBox; },
     get applyHeaterBoxDamage() { return applyHeaterBoxDamage; },
     refreshHomeUI,
