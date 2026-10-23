@@ -3505,6 +3505,7 @@ function updateGadgetInfo() {
   superBtn.addEventListener('touchend', () => releaseSuper(false), { passive: true });
   hyperBtn?.addEventListener('click', () => activateHypercharge());
   let signatureTouchBtn = null;
+  let propHuntMorphTouchBtn = null;
   let mobileControlsRoot = null;
   let mobileControlsLastVisible = null;
   // Super aiming is referenced by desktop/mobile listeners during startup.
@@ -3664,7 +3665,17 @@ function updateGadgetInfo() {
       signatureTouchBtn.style.background = 'linear-gradient(135deg,#ffd34f,#fff2a6)';
       signatureTouchBtn.style.color = '#06151d';
       signatureTouchBtn.setAttribute('aria-label', 'Use Signature');
+      propHuntMorphTouchBtn = document.createElement('button');
+      propHuntMorphTouchBtn.className = 'mobile-action-btn mobile-action-btn--morph';
+      propHuntMorphTouchBtn.textContent = '🫣';
+      propHuntMorphTouchBtn.dataset.label = 'MORPH';
+      propHuntMorphTouchBtn.title = 'Morph';
+      propHuntMorphTouchBtn.setAttribute('aria-label', 'Morph into a prop');
+      propHuntMorphTouchBtn.style.display = 'none';
+      propHuntMorphTouchBtn.style.background = 'linear-gradient(135deg,#ffb347,#ff8c42)';
+      propHuntMorphTouchBtn.style.color = '#1d1002';
       actionButtons.appendChild(gadgetTouchBtn);
+      actionButtons.appendChild(propHuntMorphTouchBtn);
       actionButtons.appendChild(signatureTouchBtn);
       actionButtons.appendChild(superTouchBtn);
       actionButtons.appendChild(hyperTouchBtn);
@@ -3717,6 +3728,11 @@ function updateGadgetInfo() {
           e.preventDefault();
           navigator.vibrate?.(18);
           activateSignatureAbility(player);
+      });
+      propHuntMorphTouchBtn.addEventListener('pointerdown', (e) => {
+          e.preventDefault();
+          navigator.vibrate?.(18);
+          tryPropHuntPlayerMorph();
       });
       superTouchBtn.addEventListener('pointerdown', (e) => {
           e.preventDefault();
@@ -10145,6 +10161,13 @@ const bolznstienPendingStrikes = [];
     const PROP_HUNT_MINIMAP_PING_SHOW_MS = 1000; // minimap honors a ping this long; morphed hiders are otherwise minimap-hidden (minimap leak fix)
     const PROP_HUNT_MORPH_RANGE = 150;           // hider must be this close to a morph-suitable prop
     const PROP_HUNT_MORPH_PROP_TYPES = ['barrel', 'crate', 'plant_pot', 'sign_post'];
+    // Prop Hunt v2: the player PICKS their role before the match (Anthony's call).
+    let propHuntSelectedRole = 'seeker';         // session-only; never written to the save
+    let propHuntFootprints = [];                 // world-only decals; NEVER drawn on the minimap
+    const PROP_HUNT_FOOTPRINTS_ENABLED = true;   // kill switch for the footprint trail system
+    const PROP_HUNT_FOOTPRINT_LIFE_MS = 4000;    // prints fade out over ~4s
+    const PROP_HUNT_FOOTPRINT_STEP_PX = 30;      // one print per ~30px travelled
+    const PROP_HUNT_FOOTPRINT_MAX = 260;         // hard cap; oldest prints drop first
     let isImpossibleMode = false;
 let isBlinkEyeDodgeMode = false;
 let blinkEyeDodgeState = null;
@@ -23212,6 +23235,40 @@ let heistFeverActive = false;
       return true;
   }
 
+  // Player-hider morph interaction (M key / touch MORPH button). One press:
+  // morph beside a suitable prop, or voluntarily drop an active morph (the
+  // normal 10s re-morph cooldown applies). FIGHT-OR-FLEE: this never blocks
+  // the hider's weapons -- fire() and fireSuper() already break the morph
+  // and then shoot for real.
+  function tryPropHuntPlayerMorph() {
+      if (!isPropHuntMode || !propHuntState || gameOver || player.hp <= 0) return false;
+      if (player.propHuntRole !== 'hider') return false;
+      const now = performance.now();
+      if (player.propHuntMorphed) {
+          breakPropHuntMorph(player);
+          spawnFloatingText(player.x, player.y - 30, 'MORPH DROPPED', '#ffd166');
+          return true;
+      }
+      if (now < (player.propHuntRemorphAt || 0)) {
+          spawnFloatingText(player.x, player.y - 30, `MORPH READY IN ${Math.ceil(((player.propHuntRemorphAt || 0) - now) / 1000)}s`, '#ff9b9b');
+          return false;
+      }
+      const src = findPropHuntMorphSource(player);
+      if (!src) {
+          spawnFloatingText(player.x, player.y - 30, 'FIND A BARREL, CRATE, PLANT POT OR SIGN POST', '#ff9b9b');
+          return false;
+      }
+      return morphPropHuntHider(player, src.propType);
+  }
+
+  function updatePropHuntMorphTouchButton() {
+      if (!propHuntMorphTouchBtn) return;
+      const show = !!(isPropHuntMode && playing && propHuntState && !gameOver && player.hp > 0 && player.propHuntRole === 'hider');
+      propHuntMorphTouchBtn.style.display = show ? 'flex' : 'none';
+      if (show) propHuntMorphTouchBtn.textContent = player.propHuntMorphed ? '👀' : '🫣';
+  }
+
+
   function applyPropHuntWrongGuessTax(seeker, wall) {
       if (!seeker || seeker.hp <= 0) return;
       // Self-damage convention (cf. ability HP costs): clamp non-lethal at 1 HP.
@@ -23239,6 +23296,10 @@ let heistFeverActive = false;
 
   function makePropHuntBot(spawn, role) {
       const pool = getBotBrawlerPool();
+      // Teams are relative to the PLAYER's chosen role: bots sharing the
+      // player's role are teammates, the opposing role is the enemy team.
+      // With a seeker player this is exactly the v1 assignment.
+      const alliedWithPlayer = role === (player.propHuntRole === 'hider' ? 'hider' : 'seeker');
       const brawler = pool[Math.floor(Math.random() * pool.length)] || selectedBrawler;
       const botLevel = getBotLevelNearPlayer();
       const tier = getHPTier(brawler, botLevel);
@@ -23259,21 +23320,38 @@ let heistFeverActive = false;
           unopcolocoCycle: 0, minigunAmmo: 100, minigunPierceShots: 0,
           ridaSpeedMult: 1.0, ridaHitCooldowns: {}, isFlying: false,
           moneyAndTaxMode: 'money',
-          team: role === 'seeker' ? 'player' : 'enemy',
-          isTeammate: role === 'seeker', isBot3: false,
+          team: alliedWithPlayer ? 'player' : 'enemy',
+          isTeammate: alliedWithPlayer, isBot3: false,
           isDuoEnemy: false, isImpossibleAI: false,
           propHuntRole: role,
           propHuntMorphed: false, propHuntPropType: null, propHuntWall: null, propHuntRemorphAt: 0,
           propHuntClaim: null, propHuntTargetWall: null, propHuntTestedWalls: null,
-          propHuntShotsOnTarget: 0, propHuntNextTestAt: 0
+          propHuntShotsOnTarget: 0, propHuntNextTestAt: 0,
+          propHuntTrailPrevX: null, propHuntTrailPrevY: null, propHuntTrailDistance: 0, propHuntTrailSide: 1
       };
   }
 
   function spawnPropHuntBots() {
-      // Player takes one showdown spawn candidate; the seeker bot takes the
-      // nearest remaining one and hiders take the farthest (scatter room).
+      // The player's role comes from the pre-match picker. It is assigned
+      // here, before any bot is made, because makePropHuntBot derives bot
+      // teams from it; initPropHuntMatch (called right after) announces it.
+      player.propHuntRole = propHuntSelectedRole === 'hider' ? 'hider' : 'seeker';
+      // Player takes one showdown spawn candidate; the remaining points are
+      // sorted farthest-first from the player.
       const free = getPropHuntSpawnPoints().filter(p => Math.hypot(p.x - player.x, p.y - player.y) > 60);
       free.sort((a, b) => Math.hypot(b.x - player.x, b.y - player.y) - Math.hypot(a.x - player.x, a.y - player.y));
+      if (player.propHuntRole === 'hider') {
+          // 2 seeker bots start far from the player (and near each other);
+          // 5 hider bots scatter over the remaining points.
+          bots.push(makePropHuntBot(free[0] || { x: 400, y: 400 }, 'seeker'));
+          bots.push(makePropHuntBot(free[1] || { x: 540, y: 400 }, 'seeker'));
+          for (let i = 0; i < 5; i++) {
+              bots.push(makePropHuntBot(free[i + 2] || { x: 400 + i * 140, y: 400 }, 'hider'));
+          }
+          return;
+      }
+      // Player seeker (v1 composition): the seeker bot takes the nearest
+      // remaining point and the 6 hider bots take the farthest (scatter room).
       const seekerSpawn = free.length ? free[free.length - 1] : { x: player.x + 90, y: player.y };
       bots.push(makePropHuntBot(seekerSpawn, 'seeker'));
       for (let i = 0; i < 6; i++) {
@@ -23291,14 +23369,21 @@ let heistFeverActive = false;
           nextPingAt: 0,
           lastPingAt: 0
       };
-      // V1 solo default: the human player is always a seeker (the bot
-      // roster fills 1 seeker + 6 hiders around them).
-      player.propHuntRole = 'seeker';
+      // The role was picked pre-match (propHuntSelectedRole) and already
+      // applied by spawnPropHuntBots; re-assert it here so this init is the
+      // single place that resets the player's morph/trail state.
+      player.propHuntRole = propHuntSelectedRole === 'hider' ? 'hider' : 'seeker';
       player.propHuntMorphed = false;
       player.propHuntPropType = null;
       player.propHuntWall = null;
       player.propHuntRemorphAt = 0;
-      spawnFloatingText(player.x, player.y - 42, 'YOU ARE A SEEKER', '#ffd166');
+      player.propHuntTrailPrevX = null;
+      player.propHuntTrailPrevY = null;
+      player.propHuntTrailDistance = 0;
+      player.propHuntTrailSide = 1;
+      propHuntFootprints = [];
+      spawnFloatingText(player.x, player.y - 42, player.propHuntRole === 'hider' ? 'YOU ARE A HIDER' : 'YOU ARE A SEEKER', '#ffd166');
+      if (player.propHuntRole === 'hider') spawnFloatingText(player.x, player.y - 66, 'PRESS M / TAP MORPH NEXT TO A PROP', '#ffe9ad');
   }
 
   function getPropHuntHiders() {
@@ -23324,6 +23409,36 @@ let heistFeverActive = false;
           if (!e.propHuntWall || e.propHuntWall.hp <= 0 || !destructibleWalls.includes(e.propHuntWall)) {
               clearPropHuntMorphFields(e);
               e.propHuntRemorphAt = now + PROP_HUNT_REMORPH_COOLDOWN_MS;
+          }
+      }
+      // Footprints (Anthony-sourced from Brawl Stars Hide & Seek): an
+      // unmorphed, moving hider leaves a short-lived trail seekers can
+      // follow. Morphed hiders and seekers leave none. World decals only --
+      // this store is never read by the minimap.
+      if (PROP_HUNT_FOOTPRINTS_ENABLED) {
+          for (let i = propHuntFootprints.length - 1; i >= 0; i--) {
+              if (now >= propHuntFootprints[i].expiresAt) propHuntFootprints.splice(i, 1);
+          }
+          for (const h of getPropHuntHiders()) {
+              if (!h) continue;
+              if (h.hp <= 0 || h.propHuntMorphed) { h.propHuntTrailPrevX = h.x; h.propHuntTrailPrevY = h.y; h.propHuntTrailDistance = 0; continue; }
+              if (h.propHuntTrailPrevX === null || h.propHuntTrailPrevX === undefined) { h.propHuntTrailPrevX = h.x; h.propHuntTrailPrevY = h.y; h.propHuntTrailDistance = 0; h.propHuntTrailSide = 1; continue; }
+              const dx = h.x - h.propHuntTrailPrevX;
+              const dy = h.y - h.propHuntTrailPrevY;
+              const moved = Math.hypot(dx, dy);
+              h.propHuntTrailPrevX = h.x;
+              h.propHuntTrailPrevY = h.y;
+              if (moved < 0.05) { h.propHuntTrailDistance = 0; continue; }
+              h.propHuntTrailDistance = (h.propHuntTrailDistance || 0) + moved;
+              if (h.propHuntTrailDistance >= PROP_HUNT_FOOTPRINT_STEP_PX) {
+                  h.propHuntTrailDistance = 0;
+                  h.propHuntTrailSide = -(h.propHuntTrailSide || 1);
+                  const ang = Math.atan2(dy, dx);
+                  const offX = Math.cos(ang + Math.PI / 2) * 6 * h.propHuntTrailSide;
+                  const offY = Math.sin(ang + Math.PI / 2) * 6 * h.propHuntTrailSide;
+                  propHuntFootprints.push({ x: h.x + offX, y: h.y + offY, angle: ang, side: h.propHuntTrailSide, bornAt: now, expiresAt: now + PROP_HUNT_FOOTPRINT_LIFE_MS });
+                  if (propHuntFootprints.length > PROP_HUNT_FOOTPRINT_MAX) propHuntFootprints.splice(0, propHuntFootprints.length - PROP_HUNT_FOOTPRINT_MAX);
+              }
           }
       }
       // A morphed hider who tries to move drops the morph.
@@ -23449,8 +23564,17 @@ let heistFeverActive = false;
       if (!wall || !destructibleWalls.includes(wall) || bot.propHuntTestedWalls.has(wall)) {
           wall = null;
           let bestDist = Infinity;
+          // Coordination: two seekers must not permanently test the same
+          // wall (double tax, half the coverage). A wall another seeker has
+          // claimed is skipped -- unless it is a detected hider's shell.
+          const claimedByOthers = new Set();
+          for (const b of bots) if (b && b !== bot && b.propHuntRole === 'seeker' && b.propHuntTargetWall) claimedByOthers.add(b.propHuntTargetWall);
           for (const dw of destructibleWalls) {
               if (!dw || !dw.isProp || bot.propHuntTestedWalls.has(dw)) continue;
+              if (claimedByOthers.has(dw)) {
+                  const shellHider = dw.propHuntHiderId ? getPropHuntEntityById(dw.propHuntHiderId) : null;
+                  if (!shellHider || !canDetectMorphedHider(bot, shellHider)) continue;
+              }
               const d = Math.hypot(dw.x + dw.w / 2 - bot.x, dw.y + dw.h / 2 - bot.y);
               if (d < bestDist) { bestDist = d; wall = dw; }
           }
@@ -41345,6 +41469,110 @@ let heistFeverActive = false;
         scheduleNextTurn(500);
     }
 
+    // Prop Hunt v2: pre-match role picker. The choice is session-only
+    // (propHuntSelectedRole) and is consumed by spawnPropHuntBots /
+    // initPropHuntMatch when the match launches.
+    function openPropHuntRolePickerUI() {
+        const overlay = document.createElement('div');
+        overlay.style.position = 'fixed';
+        overlay.style.inset = '0';
+        overlay.style.background = 'rgba(4, 9, 20, 0.88)';
+        overlay.style.zIndex = '2500';
+        overlay.style.display = 'flex';
+        overlay.style.alignItems = 'center';
+        overlay.style.justifyContent = 'center';
+        overlay.style.backdropFilter = 'blur(8px)';
+        overlay.style.padding = '16px';
+
+        const panel = document.createElement('div');
+        panel.style.width = '100%';
+        panel.style.maxWidth = '560px';
+        panel.style.maxHeight = '90vh';
+        panel.style.overflowY = 'auto';
+        panel.style.background = 'linear-gradient(145deg, #091428 0%, #0d1b32 100%)';
+        panel.style.border = '2px solid rgba(255, 209, 102, 0.45)';
+        panel.style.borderRadius = '16px';
+        panel.style.padding = '22px';
+        panel.style.boxShadow = '0 12px 36px rgba(0, 0, 0, 0.6)';
+        panel.style.color = '#e2f3ff';
+        panel.style.fontFamily = 'system-ui, -apple-system, sans-serif';
+
+        const header = document.createElement('div');
+        header.style.display = 'flex';
+        header.style.justifyContent = 'space-between';
+        header.style.alignItems = 'flex-start';
+        header.style.marginBottom = '16px';
+        const titleBox = document.createElement('div');
+        titleBox.innerHTML = '<h2 style="margin:0;font-size:22px;color:#ffd166;display:flex;align-items:center;gap:8px;">🫣 Prop Hunt</h2>' +
+            '<p style="margin:4px 0 0 0;font-size:13px;color:#a9cce3;">Crown Collapse hide & seek. Choose your role — you can switch every match.</p>';
+        const closeBtn = document.createElement('button');
+        closeBtn.textContent = '✕';
+        closeBtn.style.background = 'rgba(255,255,255,0.08)';
+        closeBtn.style.border = '1px solid rgba(255,255,255,0.2)';
+        closeBtn.style.color = '#fff';
+        closeBtn.style.borderRadius = '8px';
+        closeBtn.style.padding = '6px 12px';
+        closeBtn.style.fontSize = '16px';
+        closeBtn.style.cursor = 'pointer';
+        closeBtn.onclick = () => overlay.remove();
+        header.appendChild(titleBox);
+        header.appendChild(closeBtn);
+        panel.appendChild(header);
+
+        const grid = document.createElement('div');
+        grid.style.display = 'grid';
+        grid.style.gridTemplateColumns = 'repeat(auto-fit, minmax(220px, 1fr))';
+        grid.style.gap = '10px';
+        grid.style.marginBottom = '18px';
+        const roleCards = [];
+        const paintCards = () => {
+            for (const c of roleCards) {
+                const active = c.dataset.role === propHuntSelectedRole;
+                c.style.border = active ? '2px solid #ffd166' : '2px solid rgba(255,255,255,0.16)';
+                c.style.background = active ? 'rgba(255, 209, 102, 0.14)' : 'rgba(255,255,255,0.04)';
+            }
+        };
+        const roles = [
+            { id: 'seeker', title: '🔍 SEEKER', body: 'Hunt 6 hiders disguised as props. Wrong guesses cost 400 HP. A bot seeker hunts with you.' },
+            { id: 'hider', title: '🫣 HIDER', body: 'Morph into props (M / MORPH) and survive 2:30. Moving, firing or Super drops your disguise — but you CAN fight back.' }
+        ];
+        for (const r of roles) {
+            const card = document.createElement('button');
+            card.dataset.role = r.id;
+            card.style.textAlign = 'left';
+            card.style.borderRadius = '12px';
+            card.style.padding = '14px';
+            card.style.cursor = 'pointer';
+            card.style.color = '#e2f3ff';
+            card.style.fontFamily = 'inherit';
+            card.innerHTML = `<div style="font-size:17px;font-weight:900;margin-bottom:6px;">${r.title}</div><div style="font-size:12.5px;line-height:1.45;color:#a9cce3;">${r.body}</div>`;
+            card.onclick = () => { propHuntSelectedRole = r.id; paintCards(); };
+            roleCards.push(card);
+            grid.appendChild(card);
+        }
+        paintCards();
+        panel.appendChild(grid);
+
+        const playBtn = document.createElement('button');
+        playBtn.textContent = '▶ PLAY';
+        playBtn.style.width = '100%';
+        playBtn.style.padding = '13px 16px';
+        playBtn.style.borderRadius = '12px';
+        playBtn.style.background = 'linear-gradient(135deg,#5df2c2,#29c996)';
+        playBtn.style.border = 'none';
+        playBtn.style.fontWeight = '900';
+        playBtn.style.cursor = 'pointer';
+        playBtn.style.fontFamily = 'inherit';
+        playBtn.style.fontSize = '15px';
+        playBtn.style.color = '#041810';
+        playBtn.onclick = () => { overlay.remove(); launchShowdownMatch(); };
+        panel.appendChild(playBtn);
+
+        overlay.appendChild(panel);
+        document.body.appendChild(overlay);
+    }
+
+
     function openCustomMutatorPickerUI() {
         const overlay = document.createElement('div');
         overlay.style.position = 'fixed';
@@ -42461,6 +42689,10 @@ let heistFeverActive = false;
           clearRankedSessionState();
           if (showdownMode === 'custom_clash') {
               openCustomMutatorPickerUI();
+              return;
+          }
+          if (showdownMode === 'prop_hunt') {
+              openPropHuntRolePickerUI();
               return;
           }
           if (showdownMode === 'chaos_crown') prepareChaosCrownRun();
@@ -46080,6 +46312,9 @@ isBrawlerLabMode = false;
     if(k === 'r'){
         activateSignatureAbility(player);
     }
+    if(k === 'm'){
+        tryPropHuntPlayerMorph();
+    }
     if(k === 'e' || ((k === ' ' || k === 'escape' || k === 'x') && player.blinkeyeSteering && player.blinkeyeActiveEye)){
         if (isTutorialMode) tutorialProgress.super = true;
         startAimingSuper();
@@ -49177,6 +49412,7 @@ function checkHit(target, b, i){
     if (playing && !gameOver) updatePropPads();
     if (playing && !gameOver) updateChristmasShowdown(dt);
     if (playing && !gameOver) updatePropHuntMode(dt, now);
+    updatePropHuntMorphTouchButton();
     // (Kinetic heal removed — see Kinetic Magazine rework, 2026-10-22.)
     if (isTurkeyCaptureMode && !isBossFight && !isSoloTrial && !isDuels && !gameOver) {
         updateTurkeyCapture(dt);
@@ -59210,6 +59446,26 @@ function checkHit(target, b, i){
             ctx.restore();
         }
     }
+
+    // Prop Hunt footprints: ground decals in the world pass only.
+    // (Deliberately absent from the minimap block -- PR #38's leak stays fixed.)
+    if (isPropHuntMode && PROP_HUNT_FOOTPRINTS_ENABLED && propHuntFootprints.length) {
+        const fpNow = performance.now();
+        for (const fp of propHuntFootprints) {
+            if (!isWorldVisualVisible(fp.x, fp.y, 40)) continue;
+            const lifeLeft = (fp.expiresAt - fpNow) / PROP_HUNT_FOOTPRINT_LIFE_MS;
+            if (lifeLeft <= 0) continue;
+            ctx.save();
+            ctx.translate(fp.x, fp.y);
+            ctx.rotate(fp.angle);
+            ctx.fillStyle = `rgba(28, 20, 10, ${(0.38 * Math.min(1, lifeLeft)).toFixed(3)})`;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 6, 3.4, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+    }
+
 
     // Draw Jump Pads for Heist mode
     for (const pad of (typeof heistJumpPads !== 'undefined' ? heistJumpPads : [])) {
@@ -72679,15 +72935,34 @@ function checkHit(target, b, i){
         const phTime = `${Math.floor(phLeft / 60)}:${String(phLeft % 60).padStart(2, '0')}`;
         const phHidersLeft = bots.filter(b => b && b.hp > 0 && b.propHuntRole === 'hider').length + (player.propHuntRole === 'hider' && player.hp > 0 ? 1 : 0);
         const bannerW = 460;
+        // Player-hider second line: live morph status (plan Phase 1E).
+        let phLine2 = '';
+        if (player.propHuntRole === 'hider' && propHuntState.phase === 'seek') {
+            if (player.propHuntMorphed && player.propHuntWall) {
+                phLine2 = `HIDDEN AS ${(player.propHuntPropType || 'prop').toUpperCase()} • Shell ${Math.max(0, Math.ceil(player.propHuntWall.hp))}/${player.propHuntWall.maxHp} • Move, fire or Super reveals you`;
+            } else {
+                const phCdLeft = Math.ceil(((player.propHuntRemorphAt || 0) - performance.now()) / 1000);
+                phLine2 = phCdLeft > 0 ? `Morph: ${phCdLeft}s` : (findPropHuntMorphSource(player) ? 'Morph: READY (M)' : 'Morph: NO PROP NEARBY');
+            }
+        }
+        const bannerH = phLine2 ? 56 : 36;
         ctx.fillStyle = 'rgba(24, 18, 4, 0.85)';
-        ctx.fillRect(innerWidth / 2 - bannerW / 2, 78, bannerW, 36);
+        ctx.fillRect(innerWidth / 2 - bannerW / 2, 78, bannerW, bannerH);
         ctx.strokeStyle = 'rgba(255, 209, 102, 0.8)';
         ctx.lineWidth = 2;
-        ctx.strokeRect(innerWidth / 2 - bannerW / 2, 78, bannerW, 36);
+        ctx.strokeRect(innerWidth / 2 - bannerW / 2, 78, bannerW, bannerH);
         ctx.fillStyle = '#ffe9ad';
         ctx.font = 'bold 13px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(propHuntState.phase === 'hide' ? `PROP HUNT 🫣 • Hiders are hiding… ${phLeft}s` : `PROP HUNT 🔍 • ${player.propHuntRole === 'hider' ? 'STAY HIDDEN!' : 'FIND THEM!'} • ⏱️ ${phTime} • Hiders left: ${phHidersLeft}`, innerWidth / 2, 96);
+        const phLine1 = propHuntState.phase === 'hide'
+            ? (player.propHuntRole === 'hider' ? `PROP HUNT 🫣 • HIDE! Morph before seekers release • ${phLeft}s` : `PROP HUNT 🫣 • Hiders are hiding… ${phLeft}s`)
+            : `PROP HUNT 🔍 • ${player.propHuntRole === 'hider' ? 'STAY HIDDEN!' : 'FIND THEM!'} • ⏱️ ${phTime} • Hiders left: ${phHidersLeft}`;
+        ctx.fillText(phLine1, innerWidth / 2, 96);
+        if (phLine2) {
+            ctx.fillStyle = '#ffd166';
+            ctx.font = 'bold 12px sans-serif';
+            ctx.fillText(phLine2, innerWidth / 2, 114);
+        }
         ctx.textAlign = 'left';
     } else if (isTurkeyCaptureMode && playing && turkeyCaptureState) {
         const tScores = turkeyCaptureState.scores || { player: 0, enemy: 0 };
@@ -81488,6 +81763,15 @@ function renderBouncinBossEvent(phase) {
     get canDetectMorphedHider() { return canDetectMorphedHider; },
     get applyPropHuntWrongGuessTax() { return applyPropHuntWrongGuessTax; },
     get findPropHuntMorphSource() { return findPropHuntMorphSource; },
+    get propHuntSelectedRole() { return propHuntSelectedRole; },
+    set propHuntSelectedRole(v) { propHuntSelectedRole = v === 'hider' ? 'hider' : 'seeker'; },
+    get propHuntFootprints() { return propHuntFootprints; },
+    get tryPropHuntPlayerMorph() { return tryPropHuntPlayerMorph; },
+    get openPropHuntRolePickerUI() { return openPropHuntRolePickerUI; },
+    get damagePropHuntShell() { return damagePropHuntShell; },
+    get PROP_HUNT_FOOTPRINT_LIFE_MS() { return PROP_HUNT_FOOTPRINT_LIFE_MS; },
+    get PROP_HUNT_FOOTPRINT_MAX() { return PROP_HUNT_FOOTPRINT_MAX; },
+    get PROP_HUNT_FOOTPRINTS_ENABLED() { return PROP_HUNT_FOOTPRINTS_ENABLED; },
     get isEntityOnPropPad() { return isEntityOnPropPad; },
     get PROPS_V1_ENABLED() { return PROPS_V1_ENABLED; },
     set PROPS_V1_ENABLED(v) { PROPS_V1_ENABLED = !!v; },
