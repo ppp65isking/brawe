@@ -11,7 +11,7 @@ const checks = [
   ['Mode color and SOLO tag in syncHomeModeCards', /weefee_boss:\s*'#00f5d4'[\s\S]*?id === 'weefee_boss'[\s\S]*?tag\s*=\s*'SOLO'/],
   ['Mode runtime flag isWeeFeeBossMode initialized', /let isWeeFeeBossMode = false;\s*let weefeeBossState = null;/],
   ['isPowerPlayModifierActive helper defined for WeeFee Boss', /if \(isWeeFeeBossMode && weefeeBossState\?\.hasPowerPlayModifier\) \{[\s\S]*?return true;/],
-  ['generatePowerBoxes explicitly excludes isWeeFeeBossMode', /isBlinkEyeDodgeMode[\s\S]*?isWeeFeeBossMode\)\s*return;/],
+  ['generatePowerBoxes explicitly excludes isWeeFeeBossMode', /isBlinkEyeDodgeMode[\s\S]*?isWeeFeeBossMode \|\| isPropHuntMode\)\s*return;/],
   ['spawnBots returns early for isWeeFeeBossMode', /if \(isDuels \|\| isTraining \|\| isBlinkEyeDodgeMode \|\| .*isWeeFeeBossMode.*\) return;/],
   ['spawnBots sets enemyCount = 0 for isWeeFeeBossMode', /(?:if|else if) \(isWeeFeeBossMode\) enemyCount = 0;/],
   ['Storm check excludes isWeeFeeBossMode', /!isWeeFeeBossMode && !isDemonVillainsBossMode/],

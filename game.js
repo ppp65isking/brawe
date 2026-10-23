@@ -10130,6 +10130,20 @@ const bolznstienPendingStrikes = [];
     let isTrioShowdownMode = false;
     let isMarkedMayhemMode = false;
     let isTugZoneMode = false;
+    let isPropHuntMode = false;
+    let propHuntState = null;
+    // Prop Hunt v1: kill switch follows the house *_ENABLED convention.
+    let PROP_HUNT_ENABLED = true;
+    const PROP_HUNT_MATCH_SECONDS = 150;         // seek-phase timer (starts when seekers activate)
+    const PROP_HUNT_HEAD_START_MS = 15000;       // hiders scatter + morph before seekers activate
+    const PROP_HUNT_REMORPH_COOLDOWN_MS = 10000; // "10-second morph": re-morph cooldown after a break/drop
+    const PROP_HUNT_WRONG_GUESS_TAX = 400;       // seeker HP lost per hit that damages a REAL prop
+    const PROP_HUNT_SHELL_BREAK_DAMAGE = 500;    // flat spillover to the hider when the shell is destroyed
+    const PROP_HUNT_REVEAL_RANGE = 240;          // mirrors canDetectThroughBush's 240px reveal radius
+    const PROP_HUNT_PING_WINDOW_MS = 30000;      // final 30s: morphed hiders ping
+    const PROP_HUNT_PING_INTERVAL_MS = 5000;
+    const PROP_HUNT_MORPH_RANGE = 150;           // hider must be this close to a morph-suitable prop
+    const PROP_HUNT_MORPH_PROP_TYPES = ['barrel', 'crate', 'plant_pot', 'sign_post'];
     let isImpossibleMode = false;
 let isBlinkEyeDodgeMode = false;
 let blinkEyeDodgeState = null;
@@ -23066,7 +23080,7 @@ let heistFeverActive = false;
             destructibleWalls.length = 0;
             return;
         }
-        buildHandmadeShowdownMap(getActiveShowdownMapIndex());
+        buildHandmadeShowdownMap(isPropHuntMode ? 0 : getActiveShowdownMapIndex());
         return;
     }
     const count = 40; // more cubes in large map
@@ -23098,8 +23112,373 @@ let heistFeverActive = false;
     }
   }
 
+
+  // ============================ PROP HUNT v1 ============================
+  // Showdown hide & seek on Crown Collapse (Showdown map 0). A morphed
+  // hider carries a REAL prop wall (placeProp) as an HP shell, anchored at
+  // the hider's position: it blocks movement/shots, renders through the
+  // normal prop pipeline, and feeds the bot nav grid exactly like a prop.
+
+  function getPropHuntMorphDef(propType) {
+      const def = PROP_DEFS[propType];
+      return def && !def.pad ? def : null;
+  }
+
+  function getPropHuntEntityById(id) {
+      if (id === player.id) return player;
+      return bots.find(b => b && b.id === id) || null;
+  }
+
+  function findPropHuntMorphSource(entity) {
+      // Nearest morph-suitable real prop within PROP_HUNT_MORPH_RANGE.
+      let best = null;
+      let bestDist = Infinity;
+      for (const dw of destructibleWalls) {
+          if (!dw || !dw.isProp || dw.propHuntHiderId || !PROP_HUNT_MORPH_PROP_TYPES.includes(dw.propType)) continue;
+          const d = Math.hypot(dw.x + dw.w / 2 - entity.x, dw.y + dw.h / 2 - entity.y);
+          if (d < bestDist) { bestDist = d; best = dw; }
+      }
+      return bestDist <= PROP_HUNT_MORPH_RANGE ? best : null;
+  }
+
+  function morphPropHuntHider(entity, propType) {
+      if (!entity || entity.hp <= 0 || entity.propHuntMorphed) return false;
+      if (performance.now() < (entity.propHuntRemorphAt || 0)) return false;
+      const def = getPropHuntMorphDef(propType);
+      if (!def) return false;
+      const wall = placeProp(propType, entity.x - def.w / 2, entity.y - def.h / 2);
+      if (!wall) return false;
+      wall.propHuntHiderId = entity.id;
+      entity.propHuntMorphed = true;
+      entity.propHuntPropType = propType;
+      entity.propHuntWall = wall;
+      entity.vx = 0;
+      entity.vy = 0;
+      return true;
+  }
+
+  function clearPropHuntMorphFields(entity) {
+      entity.propHuntMorphed = false;
+      entity.propHuntPropType = null;
+      entity.propHuntWall = null;
+  }
+
+  function removePropHuntMorphWall(entity) {
+      const wall = entity.propHuntWall;
+      if (!wall) return;
+      const idx = destructibleWalls.indexOf(wall);
+      if (idx >= 0) {
+          if (isNavigationWall(wall)) markBotNavGridDirty(wall);
+          destructibleWalls.splice(idx, 1);
+      }
+  }
+
+  function revealPropHuntHider(hider) {
+      // Shell destroyed: hider is revealed and eats the flat spillover.
+      // The spillover is the morph collapsing on the hider, not a projectile:
+      // it applies directly (no shield absorb / Relay redirect) so the mode
+      // rule "shell break = 500 damage" is exact for every brawler.
+      clearPropHuntMorphFields(hider);
+      hider.propHuntRemorphAt = performance.now() + PROP_HUNT_REMORPH_COOLDOWN_MS;
+      hider.hp -= PROP_HUNT_SHELL_BREAK_DAMAGE;
+      spawnDamageText(hider, PROP_HUNT_SHELL_BREAK_DAMAGE, '#ffd166');
+      spawnFloatingText(hider.x, hider.y - 30, 'REVEALED!', '#ffd166');
+  }
+
+  // Bullet-vs-wall hook: the wall itself is spliced by the caller.
+  function revealPropHuntHiderFromShell(dw) {
+      const hider = dw ? getPropHuntEntityById(dw.propHuntHiderId) : null;
+      if (hider && hider.propHuntMorphed) revealPropHuntHider(hider);
+  }
+
+  // Piercing / AoE paths that reach the hider entity directly feed the shell.
+  function damagePropHuntShell(hider, amount) {
+      const wall = hider && hider.propHuntWall;
+      if (!wall || amount <= 0) return;
+      wall.hp -= amount;
+      if (wall.hp <= 0) {
+          removePropHuntMorphWall(hider);
+          revealPropHuntHider(hider);
+      }
+  }
+
+  // Voluntary / forced morph break (fire, Super, moving, repositioning).
+  function breakPropHuntMorph(entity) {
+      if (!entity || !entity.propHuntMorphed) return false;
+      removePropHuntMorphWall(entity);
+      clearPropHuntMorphFields(entity);
+      entity.propHuntRemorphAt = performance.now() + PROP_HUNT_REMORPH_COOLDOWN_MS;
+      return true;
+  }
+
+  function applyPropHuntWrongGuessTax(seeker, wall) {
+      if (!seeker || seeker.hp <= 0) return;
+      // Self-damage convention (cf. ability HP costs): clamp non-lethal at 1 HP.
+      const before = seeker.hp;
+      seeker.hp = Math.max(1, seeker.hp - PROP_HUNT_WRONG_GUESS_TAX);
+      if (wall && before - seeker.hp > 0) spawnFloatingText(wall.x + wall.w / 2, wall.y - 14, `WRONG GUESS -${PROP_HUNT_WRONG_GUESS_TAX} HP`, '#ff5f6b');
+  }
+
+  function canDetectMorphedHider(observer, target) {
+      // Parallel to canDetectThroughBush (240px reveal) but WITHOUT the
+      // Darkagon vision pre-gate, per the Phase 6 readiness gate.
+      if (!observer || !target) return true;
+      if (!target.propHuntMorphed) return true;
+      return Math.hypot(observer.x - target.x, observer.y - target.y) <= PROP_HUNT_REVEAL_RANGE;
+  }
+
+  function getPropHuntSpawnPoints() {
+      return [
+          { x: 560, y: 560 }, { x: WORLD_W - 560, y: 560 },
+          { x: 560, y: WORLD_H - 560 }, { x: WORLD_W - 560, y: WORLD_H - 560 },
+          { x: Math.floor(WORLD_W / 2), y: 620 }, { x: Math.floor(WORLD_W / 2), y: WORLD_H - 620 },
+          { x: 620, y: Math.floor(WORLD_H / 2) }, { x: WORLD_W - 620, y: Math.floor(WORLD_H / 2) }
+      ];
+  }
+
+  function makePropHuntBot(spawn, role) {
+      const pool = getBotBrawlerPool();
+      const brawler = pool[Math.floor(Math.random() * pool.length)] || selectedBrawler;
+      const botLevel = getBotLevelNearPlayer();
+      const tier = getHPTier(brawler, botLevel);
+      const unlocks = getUnlocksForLevel(botLevel);
+      const dry = findNearestDrySpot(spawn.x, spawn.y, 14);
+      return {
+          id: nextId++, x: dry.x, y: dry.y, z: 0, vx: 0, vy: 0,
+          hp: tier.hp, maxHp: tier.hp, powerCubes: 0, isDead: false,
+          shield: 0, shieldMax: 0, shieldDecayTimer: 0, reloadBuffUntil: 0,
+          radius: 14, speed: (tier.speed * 0.43) + 18, slowUntil: 0,
+          brawler: brawler, level: botLevel,
+          gadgetUnlocked: unlocks.gadgetUnlocked, starPowerUnlocked: unlocks.starPowerUnlocked, hyperchargeUnlocked: unlocks.hyperchargeUnlocked,
+          lastTargetId: null, targetLockUntil: 0, lastShot: Math.random() * 2000,
+          superCharge: 0, hyperChargeCharge: 0, isHypercharged: false, hyperchargeUntil: 0,
+          gadgetArmed: false, gadgetCooldownUntil: 0,
+          selectedStar: unlocks.starPowerUnlocked ? (Math.random() > 0.5 ? 'slow' : 'long') : 'none',
+          selectedGadget: Math.random() > 0.5 ? 'g1' : 'g2',
+          unopcolocoCycle: 0, minigunAmmo: 100, minigunPierceShots: 0,
+          ridaSpeedMult: 1.0, ridaHitCooldowns: {}, isFlying: false,
+          moneyAndTaxMode: 'money',
+          team: role === 'seeker' ? 'player' : 'enemy',
+          isTeammate: role === 'seeker', isBot3: false,
+          isDuoEnemy: false, isImpossibleAI: false,
+          propHuntRole: role,
+          propHuntMorphed: false, propHuntPropType: null, propHuntWall: null, propHuntRemorphAt: 0,
+          propHuntClaim: null, propHuntTargetWall: null, propHuntTestedWalls: null,
+          propHuntShotsOnTarget: 0, propHuntNextTestAt: 0
+      };
+  }
+
+  function spawnPropHuntBots() {
+      // Player takes one showdown spawn candidate; the seeker bot takes the
+      // nearest remaining one and hiders take the farthest (scatter room).
+      const free = getPropHuntSpawnPoints().filter(p => Math.hypot(p.x - player.x, p.y - player.y) > 60);
+      free.sort((a, b) => Math.hypot(b.x - player.x, b.y - player.y) - Math.hypot(a.x - player.x, a.y - player.y));
+      const seekerSpawn = free.length ? free[free.length - 1] : { x: player.x + 90, y: player.y };
+      bots.push(makePropHuntBot(seekerSpawn, 'seeker'));
+      for (let i = 0; i < 6; i++) {
+          bots.push(makePropHuntBot(free[i] || { x: 400 + i * 140, y: 400 }, 'hider'));
+      }
+  }
+
+  function initPropHuntMatch() {
+      const now = performance.now();
+      propHuntState = {
+          phase: 'hide',
+          phaseEndsAt: now + PROP_HUNT_HEAD_START_MS,
+          endsAt: now + PROP_HUNT_HEAD_START_MS + PROP_HUNT_MATCH_SECONDS * 1000,
+          winner: null,
+          nextPingAt: 0,
+          lastPingAt: 0
+      };
+      // V1 solo default: the human player is always a seeker (the bot
+      // roster fills 1 seeker + 6 hiders around them).
+      player.propHuntRole = 'seeker';
+      player.propHuntMorphed = false;
+      player.propHuntPropType = null;
+      player.propHuntWall = null;
+      player.propHuntRemorphAt = 0;
+      spawnFloatingText(player.x, player.y - 42, 'YOU ARE A SEEKER', '#ffd166');
+  }
+
+  function getPropHuntHiders() {
+      const list = bots.filter(b => b && b.propHuntRole === 'hider');
+      if (player.propHuntRole === 'hider') list.push(player);
+      return list;
+  }
+
+  function getPropHuntSeekers() {
+      const list = bots.filter(b => b && b.propHuntRole === 'seeker');
+      if (player.propHuntRole === 'seeker') list.push(player);
+      return list;
+  }
+
+  function updatePropHuntMode(dt, now) {
+      if (!isPropHuntMode || !propHuntState || gameOver) return;
+      now = now || performance.now();
+      // Consistency: a morph whose shell vanished through a non-bullet path
+      // (or whose hider died to a DoT) drops without spillover.
+      for (const e of [player, ...bots]) {
+          if (!e || !e.propHuntMorphed) continue;
+          if (e.hp <= 0) { removePropHuntMorphWall(e); clearPropHuntMorphFields(e); continue; }
+          if (!e.propHuntWall || e.propHuntWall.hp <= 0 || !destructibleWalls.includes(e.propHuntWall)) {
+              clearPropHuntMorphFields(e);
+              e.propHuntRemorphAt = now + PROP_HUNT_REMORPH_COOLDOWN_MS;
+          }
+      }
+      // A morphed hider who tries to move drops the morph.
+      if (player.propHuntMorphed && player.isMovingNow) breakPropHuntMorph(player);
+      if (propHuntState.phase === 'hide' && now >= propHuntState.phaseEndsAt) {
+          propHuntState.phase = 'seek';
+          spawnFloatingText(player.x, player.y - 42, 'SEEKERS RELEASED!', '#ff5f6b');
+      }
+      const hidersAlive = getPropHuntHiders().filter(h => h.hp > 0).length;
+      if (hidersAlive <= 0) {
+          propHuntState.winner = 'seekers';
+          gameOver = true;
+          return;
+      }
+      if (player.hp <= 0) {
+          if (!propHuntState.winner) propHuntState.winner = player.propHuntRole === 'hider' ? 'seekers' : 'hiders';
+          gameOver = true;
+          return;
+      }
+      if (propHuntState.phase === 'seek' && now >= propHuntState.endsAt) {
+          propHuntState.winner = 'hiders';
+          gameOver = true;
+          return;
+      }
+      // Endgame anti-stall: final 30s, morphed hiders ping every 5s.
+      if (propHuntState.phase === 'seek' && propHuntState.endsAt - now <= PROP_HUNT_PING_WINDOW_MS && now >= (propHuntState.nextPingAt || 0)) {
+          propHuntState.nextPingAt = now + PROP_HUNT_PING_INTERVAL_MS;
+          propHuntState.lastPingAt = now;
+          for (const h of getPropHuntHiders()) {
+              if (h.hp > 0 && h.propHuntMorphed) {
+                  explosions.push({ x: h.x, y: h.y, radius: 56, life: 0, maxLife: 0.55, color: 'rgba(255,95,158,.5)' });
+                  spawnFloatingText(h.x, h.y - 34, 'PING!', '#ff5f9e');
+              }
+          }
+      }
+  }
+
+  function propHuntMoveBot(bot, tx, ty, dt) {
+      const dx = tx - bot.x;
+      const dy = ty - bot.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist < 4) { bot.vx = 0; bot.vy = 0; return true; }
+      const steered = getBotSteeredStep(bot, dx, dy, bot.speed, dt);
+      if (steered.moved) {
+          bot.x = steered.x;
+          bot.y = steered.y;
+          bot.vx = steered.vx;
+          bot.vy = steered.vy;
+      } else {
+          bot.vx = 0;
+          bot.vy = 0;
+      }
+      return dist < 34;
+  }
+
+  function pickPropHuntClaim(bot) {
+      const claimed = new Set();
+      for (const b of bots) if (b && b !== bot && b.propHuntClaim) claimed.add(b.propHuntClaim);
+      let best = null;
+      let bestDist = Infinity;
+      for (const dw of destructibleWalls) {
+          if (!dw || !dw.isProp || dw.propHuntHiderId || claimed.has(dw) || !PROP_HUNT_MORPH_PROP_TYPES.includes(dw.propType)) continue;
+          const d = Math.hypot(dw.x + dw.w / 2 - bot.x, dw.y + dw.h / 2 - bot.y);
+          if (d < bestDist) { bestDist = d; best = dw; }
+      }
+      return best;
+  }
+
+  function updatePropHuntHiderBot(bot, dt, now) {
+      if (bot.propHuntMorphed) { bot.vx = 0; bot.vy = 0; return; } // stay perfectly still
+      if (propHuntState && propHuntState.phase === 'seek') {
+          // Reposition pressure: a seeker very close means run for a new spot.
+          let threat = null;
+          let threatDist = Infinity;
+          for (const s of getPropHuntSeekers()) {
+              if (!s || s.hp <= 0) continue;
+              const d = Math.hypot(s.x - bot.x, s.y - bot.y);
+              if (d < threatDist) { threatDist = d; threat = s; }
+          }
+          if (threat && threatDist < 260) {
+              propHuntMoveBot(bot, bot.x + (bot.x - threat.x), bot.y + (bot.y - threat.y), dt);
+              return;
+          }
+      }
+      if (!bot.propHuntClaim || !destructibleWalls.includes(bot.propHuntClaim) || bot.propHuntClaim.propHuntHiderId) bot.propHuntClaim = pickPropHuntClaim(bot);
+      const claim = bot.propHuntClaim;
+      if (!claim) { bot.vx = 0; bot.vy = 0; return; }
+      // Stand beside the claimed prop; the morph anchors at the hider, so the
+      // disguise appears right next to the real prop it copies.
+      const arrived = propHuntMoveBot(bot, claim.x + claim.w / 2 + 58, claim.y + claim.h / 2, dt);
+      if (arrived && now >= (bot.propHuntRemorphAt || 0)) {
+          const src = findPropHuntMorphSource(bot);
+          if (src) morphPropHuntHider(bot, src.propType);
+      }
+  }
+
+  function updatePropHuntSeekerBot(bot, dt, now) {
+      if (!propHuntState || propHuntState.phase === 'hide') { bot.vx = 0; bot.vy = 0; return; }
+      // Chase a revealed hider (unmorphed, or morphed but inside the 240px
+      // detection radius) with normal combat.
+      let target = null;
+      let targetDist = Infinity;
+      for (const h of getPropHuntHiders()) {
+          if (!h || h.hp <= 0) continue;
+          if (h.propHuntMorphed && !canDetectMorphedHider(bot, h)) continue;
+          const d = Math.hypot(h.x - bot.x, h.y - bot.y);
+          if (d < targetDist) { targetDist = d; target = h; }
+      }
+      if (target && (!target.propHuntMorphed || targetDist <= PROP_HUNT_REVEAL_RANGE)) {
+          if (targetDist > 300) propHuntMoveBot(bot, target.x, target.y, dt);
+          else { bot.vx = 0; bot.vy = 0; }
+          if (targetDist <= 560 && now >= (bot.propHuntNextTestAt || 0)) {
+              bot.propHuntNextTestAt = now + 1100;
+              fire(bot, target.propHuntMorphed && target.propHuntWall ? target.propHuntWall.x + target.propHuntWall.w / 2 : target.x,
+                   target.propHuntMorphed && target.propHuntWall ? target.propHuntWall.y + target.propHuntWall.h / 2 : target.y, true, false);
+          }
+          return;
+      }
+      // Otherwise sweep prop to prop on the nav grid, test-shooting each
+      // untested prop a few times (the wrong-guess tax applies to bots too).
+      if (!bot.propHuntTestedWalls) bot.propHuntTestedWalls = new Set();
+      let wall = bot.propHuntTargetWall;
+      if (!wall || !destructibleWalls.includes(wall) || bot.propHuntTestedWalls.has(wall)) {
+          wall = null;
+          let bestDist = Infinity;
+          for (const dw of destructibleWalls) {
+              if (!dw || !dw.isProp || bot.propHuntTestedWalls.has(dw)) continue;
+              const d = Math.hypot(dw.x + dw.w / 2 - bot.x, dw.y + dw.h / 2 - bot.y);
+              if (d < bestDist) { bestDist = d; wall = dw; }
+          }
+          bot.propHuntTargetWall = wall;
+          bot.propHuntShotsOnTarget = 0;
+      }
+      if (!wall) { bot.vx = 0; bot.vy = 0; return; }
+      const cx = wall.x + wall.w / 2;
+      const cy = wall.y + wall.h / 2;
+      if (Math.hypot(cx - bot.x, cy - bot.y) > 430) { propHuntMoveBot(bot, cx, cy, dt); return; }
+      bot.vx = 0;
+      bot.vy = 0;
+      if (now >= (bot.propHuntNextTestAt || 0)) {
+          bot.propHuntNextTestAt = now + 1100; // modest test-shot rate, not aimbot
+          fire(bot, cx, cy, true, false);
+          bot.propHuntShotsOnTarget = (bot.propHuntShotsOnTarget || 0) + 1;
+          if (bot.propHuntShotsOnTarget >= 3) bot.propHuntTestedWalls.add(wall);
+      }
+  }
+
+  function updatePropHuntBot(bot, dt, now) {
+      if (!bot || bot.hp <= 0) return;
+      if (bot.propHuntRole === 'seeker') updatePropHuntSeekerBot(bot, dt, now);
+      else if (bot.propHuntRole === 'hider') updatePropHuntHiderBot(bot, dt, now);
+  }
+
   function spawnBots(){
     bots.length = 0;
+    if (isPropHuntMode) { spawnPropHuntBots(); return; }
     if (isDuels || isTraining || isBlinkEyeDodgeMode || isOrboBossMode || isDemonVillainsBossMode || isWeeFeeBossMode || isRamageBossMode) return; // Dedicated boss modes handle their own spawns
 
         if (isDuoShowdown || isObjectiveMode || isDamageFillerMode || isMirrorMode || isKnockDonateMode || isTrioShowdownMode || isBrickVaultMode || isArenaForgeMode || isMarkedMayhemMode || isTugZoneMode || isBraweBallMode || isKnockoutMode) {
@@ -23436,7 +23815,7 @@ let heistFeverActive = false;
         }
         return;
     }
-    if(isBlinkEyeDodgeMode || isDuels || isTraining || isBraweBallMode || isKnockoutMode || isImpossibleMode || isDamageFillerMode || isMirrorMode || isKnockDonateMode || isBrickVaultMode || isArenaForgeMode || isMarkedMayhemMode || isTugZoneMode || isTurkeyCaptureMode || isOrboBossMode || isRamageBossMode || isDemonVillainsBossMode || isWeeFeeBossMode) return;
+    if(isBlinkEyeDodgeMode || isDuels || isTraining || isBraweBallMode || isKnockoutMode || isImpossibleMode || isDamageFillerMode || isMirrorMode || isKnockDonateMode || isBrickVaultMode || isArenaForgeMode || isMarkedMayhemMode || isTugZoneMode || isTurkeyCaptureMode || isOrboBossMode || isRamageBossMode || isDemonVillainsBossMode || isWeeFeeBossMode || isPropHuntMode) return;
       const towerBoxMult=isTowerTroubleMode&&towerTroubleVariant!=='gauntlet'?(towerTroubleVariant==='chaos'?(getChaosCrownRule(playerData.slopSushi?.chaosRun?.floor||1).boxMult||1):(TOWER_FLOOR_CHALLENGES[Math.max(0,(playerData.slopSushi?.run?.floor||1)-1)]?.boxMult||1)):1;
       const showdownBoxCount = Math.round(((isDuoShowdown || isTrioShowdownMode) ? 90 : 75)*towerBoxMult);
       for(let i=0; i<showdownBoxCount; i++){
@@ -29109,6 +29488,12 @@ let heistFeverActive = false;
     }
 
     function fire(fromEntity, targetX, targetY, isBot=false, isMoving=false){
+        if (isPropHuntMode && fromEntity) {
+            // Head start: seekers stay holstered while hiders scatter.
+            if (propHuntState && propHuntState.phase === 'hide' && fromEntity.propHuntRole === 'seeker') return;
+            // Firing breaks the morph instantly.
+            if (fromEntity.propHuntMorphed) breakPropHuntMorph(fromEntity);
+        }
         if (isBraweBallMode && braweBallState && braweBallState.ball && braweBallState.ball.carrier === fromEntity.id) {
             kickBraweBall(fromEntity, targetX, targetY, false);
             return;
@@ -34423,6 +34808,7 @@ let heistFeverActive = false;
     function fireSuper(isAimDrag = false){
         normalizeSelectedBrawler();
     if(superCharge < 100 || player.hp <= 0) return;
+        if (isPropHuntMode && player.propHuntMorphed) breakPropHuntMorph(player); // Super breaks the morph instantly
         if (isBrawlerLabMode) maybeStartBrawlerLabRangeCapture('super', player);
         if (selectedBrawler === 'beast' && isBeastyBeastActive(player)) {
             spawnFloatingText(player.x, player.y - 34, 'BEASTYBEAST ACTIVE', '#ffd34f');
@@ -37895,6 +38281,7 @@ let heistFeverActive = false;
       ['headless_boss_s4', '🎃', 'Headless Bolznstien Boss', 'Season 4 co-op ladder • Hard to Impossible XV • Spooky Boxes + free skin'],
       ['capture_turkey', '🦃', 'Capture the Turkey', '3v3 CTF • grab the turkey, haul it home • first to 3 captures • LIVE EARLY'],
       ['christmas_showdown', '🎄', 'Christmas Showdown', 'Season 6 Event • Solo Showdown • grab DMG, Speed and Double HP buffs'],
+      ['prop_hunt', '🫣', 'Prop Hunt', 'Hide & seek on Crown Collapse • hiders morph into props • wrong guesses cost seekers 400 HP'],
       ['tower_duels_weekend', 'TD', 'Tower Duels Weekend', '5 floors - fresh random P11 trio each floor'],
       ['slop_sushi_plus', '🗼', 'Tower Fusion Lab', 'Legacy seven-power sandbox'],
       ['slop_sushi', '🏰', 'Tower Trouble', '10 floors • random maxed brawler • fuse 4'],
@@ -37928,7 +38315,7 @@ let heistFeverActive = false;
   ];
   const HOME_MODE_DATA = Object.fromEntries(HOME_MODE_CARDS.map((entry) => [entry[0], entry]));
   const POWER_PLAY_BRAWLERS = new Set(['blinkeye', 'fuser', 'rocketeer', 'bouncin_balls', 'echo', 'orbo', 'decayer', 'money_and_tax', 'ramage']);
-  const HOME_PERMANENT_MODE_IDS = ['blink_eye_dodge', 'headless_boss_s4', 'orbo_boss', 'ramage_boss', 'weefee_boss', 'demon_villains_boss', 'custom_clash', 'brawe_ball', 'knockout_3v3', 'duels', 'power_play_showdown', 'corrupted_showdown', 'slop_sushi', 'slop_sushi_gauntlet', 'chaos_crown', 'arena_forge', 'arena_forge_overclocked', 'tug_zone', 'construction', 'knock_donate', 'damage_filler', 'capture_turkey'];
+  const HOME_PERMANENT_MODE_IDS = ['blink_eye_dodge', 'headless_boss_s4', 'orbo_boss', 'ramage_boss', 'weefee_boss', 'demon_villains_boss', 'custom_clash', 'brawe_ball', 'knockout_3v3', 'duels', 'power_play_showdown', 'corrupted_showdown', 'slop_sushi', 'slop_sushi_gauntlet', 'chaos_crown', 'arena_forge', 'arena_forge_overclocked', 'tug_zone', 'construction', 'knock_donate', 'damage_filler', 'capture_turkey', 'prop_hunt'];
   HOME_PERMANENT_MODE_IDS.push('arena_forge_minion_surge');
   const HOME_ROTATING_MODE_IDS = ['marked_mayhem', 'objective', 'brick_vault', 'mirror', 'power_gods', 'solo_td', 'impossible'];
   const WEEKLY_FEATURED_MODE_IDS = ['brick_vault', 'power_gods'];
@@ -37976,6 +38363,7 @@ let heistFeverActive = false;
       marked_mayhem: { type:'souls', amount:14, label:'+14 Souls' },
       capture_turkey: { type:'coins', amount:60, label:'+60 Coins' },
       christmas_showdown: { type:'coins', amount:60, label:'+60 Coins' },
+      prop_hunt: { type:'coins', amount:60, label:'+60 Coins' },
       objective: { type:'coins', amount:30, label:'+30 Coins' },
       brick_vault: { type:'souls', amount:12, label:'+12 Souls' },
       mirror: { type:'coins', amount:35, label:'+35 Coins' },
@@ -37991,6 +38379,7 @@ let heistFeverActive = false;
       headless_boss_s4: ['3v1 Co-op vs the Headless Bolznstien!', 'Dodge pumpkin bombs, anvil rain and the Ecto Nova', 'First clears pay coins, souls and up to 3 Spooky Boxes', 'Clear Impossible XV to earn his skin FREE'],
       capture_turkey: ['3v3 Capture the Flag — with a live turkey!', 'Grab the turkey at mid and haul it back to YOUR base', 'Carriers drop the turkey when defeated • it respawns at mid after a capture', 'First team to 3 captures wins • 3:00 match • Released early! Turkey Trouble season quests start Nov 1'],
       christmas_showdown: ['Solo Showdown — with presents under fire!', 'Buff pickups rain down: DMG +30%, Speed +20%, Double HP', 'Buffs last the whole match and stack with Power Cubes', 'First to survive the blizzard wins • Season 6: Xplodemis event (Dec 1-31)'],
+      prop_hunt: ['Hide & seek on Crown Collapse: 2 seekers vs 6 hiders', 'Hiders morph into props (barrel, crate, plant pot, sign post) and win by surviving the 2:30 seek timer', 'Every hit on a REAL prop costs the seeker 400 HP — wrong guesses hurt!', 'A destroyed morph shell reveals the hider for 500 damage • re-morphing takes 10 seconds'],
       orbo_boss: ['1-Player Boss Battle: 1 vs Mega Boss Orbo!', 'Zero Power Cubes — Pure skill showdown', 'Dodge crisscross orbits, bouncing Horizon Super & gravity vortexes'],
       demon_villains_boss: [
         'Story Boss Battle: Demon has possessed the 6 Villains!',
@@ -39655,6 +40044,7 @@ let heistFeverActive = false;
           trio: '#ffb638',
           capture_turkey: '#ffb347',
           christmas_showdown: '#ff5d73',
+          prop_hunt: '#ffd166',
           objective: '#389eff',
           construction: '#f2a25d',
           knock_donate: '#ff7bd1',
@@ -39823,7 +40213,7 @@ let heistFeverActive = false;
           }
       });
 
-      const allEventIds = [...new Set(HOME_MODE_CARDS.map((entry) => entry[0]))].filter((id) => HOME_MODE_DATA[id] && !isRetiredTowerMode(id) && (id !== 'slop_sushi_plus' || isSlopSushiLive()) && (id !== 'brick_vault' || TOWER_POWER_SYSTEM_ENABLED) && (id !== 'tower_duels_weekend' || TOWER_EVENT_MODES_ENABLED));
+      const allEventIds = [...new Set(HOME_MODE_CARDS.map((entry) => entry[0]))].filter((id) => HOME_MODE_DATA[id] && !isRetiredTowerMode(id) && (id !== 'slop_sushi_plus' || isSlopSushiLive()) && (id !== 'brick_vault' || TOWER_POWER_SYSTEM_ENABLED) && (id !== 'tower_duels_weekend' || TOWER_EVENT_MODES_ENABLED) && (id !== 'prop_hunt' || PROP_HUNT_ENABLED));
       const allEvents = createSection('ALL EVENTS', 'EVERY EVENT - ALWAYS AVAILABLE. NO WAITING ON THE ROTATION.', 'all-events-section');
       allEventIds.forEach((id) => {
           const card = createModeCard(id, false);
@@ -41670,6 +42060,8 @@ let heistFeverActive = false;
           initKnockDonateModeState();
       }
       isTurkeyCaptureMode = showdownMode === 'capture_turkey';
+      isPropHuntMode = showdownMode === 'prop_hunt';
+      if (isPropHuntMode && !PROP_HUNT_ENABLED) { showdownMode = 'solo'; isPropHuntMode = false; }
       isObjectiveMode = showdownMode === 'objective' || isTurkeyCaptureMode;
       isConstructionMode = showdownMode === 'construction';
       isDuoShowdown = showdownMode === 'duo';
@@ -41702,6 +42094,7 @@ let heistFeverActive = false;
           else if (isTrioShowdownMode) baseTitle = 'Arena Forge - Trio Showdown';
           else if (isDamageFillerMode) baseTitle = `Arena Forge - Damage Filler ${damageFillerTeamSize}v${damageFillerTeamSize}`;
           else if (isTurkeyCaptureMode) baseTitle = 'Arena Forge - Capture the Turkey (Season 5)';
+          else if (isPropHuntMode) baseTitle = 'Arena Forge - Prop Hunt';
           else if (isObjectiveMode) baseTitle = 'Arena Forge - Control Clash (Prototype)';
           else if (isDuoShowdown) baseTitle = 'Arena Forge - Duo Showdown';
           else if (isImpossibleMode) baseTitle = 'Arena Forge - The Impossible';
@@ -41718,6 +42111,7 @@ let heistFeverActive = false;
       if (brawlerSelect) brawlerSelect.value = selectedBrawler;
       currentMapOverride = null;
             showdownMapIndex = getRotatingShowdownMapIndex();
+      if (isPropHuntMode) showdownMapIndex = 0; // Crown Collapse: all four morph prop types are placed here
       if(isTowerTroubleMode){
           const gauntlet=towerTroubleVariant==='gauntlet',chaos=towerTroubleVariant==='chaos',run=gauntlet?playerData.slopSushi?.gauntletRun:(chaos?playerData.slopSushi?.chaosRun:playerData.slopSushi?.run);
           const floor=Math.max(1,Math.min(gauntlet?TOWER_GAUNTLET_FLOORS:(chaos?CHAOS_CROWN_FLOORS:TOWER_TROUBLE_FLOORS),run?.floor||1));
@@ -41851,6 +42245,7 @@ let heistFeverActive = false;
       if (isObjectiveMode) initObjectiveModeState();
       if (isTurkeyCaptureMode) initTurkeyCaptureState();
       spawnBots();
+      if (isPropHuntMode) initPropHuntMatch();
       if (isRankedMatch || isCustomMutatorMatch) {
           timedDetonationStage = 0;
           window._lastTimedDetonationAt = performance.now();
@@ -41962,7 +42357,7 @@ let heistFeverActive = false;
       isMirrorMode = false;
       isImpossibleMode = false;
       isObjectiveMode = false;
-      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = [];
+      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; isPropHuntMode = false; propHuntState = null;
       isTraining = false;
       isDuels = true;
       isTowerDuelEvent = true;
@@ -43050,7 +43445,7 @@ isBrawlerLabMode = false;
       isTowerDuelEvent = false;
       isWarperEvent = false;
       isObjectiveMode = false;
-      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = [];
+      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; isPropHuntMode = false; propHuntState = null;
       soloTrialWave = 0;
       soloTrialPending = false;
       playing = true;
@@ -43151,6 +43546,7 @@ isBrawlerLabMode = false;
 
   trainingBtn.addEventListener('click', ()=>{
       activeSkinTrial = null;
+      player.propHuntRole = null; player.propHuntMorphed = false; player.propHuntPropType = null; player.propHuntWall = null; player.propHuntRemorphAt = 0;
       launchTrainingSandbox(selectedBrawler);
   });
 
@@ -43184,7 +43580,7 @@ isBrawlerLabMode = false;
       isDuels = false;
       isWarperEvent = false;
       isObjectiveMode = false;
-      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = [];
+      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; isPropHuntMode = false; propHuntState = null;
     isConstructionMode = false;
       if (document.getElementById('topbar')) document.getElementById('topbar').textContent = 'Arena Forge - Rookie Course';
       playing = true;
@@ -45718,6 +46114,12 @@ isBrawlerLabMode = false;
     return { vx, vy };
 }
 function checkHit(target, b, i){
+        // Prop Hunt: direct hits on a morphed hider (piercing / AoE paths that
+        // bypass the shell wall) feed the morph shell instead of the hider.
+        if (target && target.propHuntMorphed && target.propHuntWall) {
+            damagePropHuntShell(target, Math.max(0, (b && b.damage) || 0));
+            return false;
+        }
         // A revived target can earn a fresh premium takedown effect. This also
         // makes Training dummy eliminations useful for previewing owned skins.
         if (target && target.hp > 0) { target._legendaryTakedownFxPlayed = false; target._hypeChainCounted = false; }
@@ -48773,6 +49175,7 @@ function checkHit(target, b, i){
     if (playing && !gameOver) updateSpikeySystems(dt);
     if (playing && !gameOver) updatePropPads();
     if (playing && !gameOver) updateChristmasShowdown(dt);
+    if (playing && !gameOver) updatePropHuntMode(dt, now);
     // (Kinetic heal removed — see Kinetic Magazine rework, 2026-10-22.)
     if (isTurkeyCaptureMode && !isBossFight && !isSoloTrial && !isDuels && !gameOver) {
         updateTurkeyCapture(dt);
@@ -49061,7 +49464,7 @@ function checkHit(target, b, i){
 
     // Check hit flash and handle movement
     
-    if (!isBraweBallMode && !isKnockoutMode && !isWeeFeeBossMode && !isDemonVillainsBossMode && !isRamageBossMode && !isOrboBossMode && !isBlinkEyeDodgeMode && !isObjectiveMode && !isConstructionMode && !isDamageFillerMode && !isMirrorMode && !isImpossibleMode && !isKnockDonateMode && !isBrickVaultMode && !isArenaForgeMode && !isMarkedMayhemMode && !isTugZoneMode && !isTraining && !isBossFight && !isSoloTrial && !gameOver) {
+    if (!isBraweBallMode && !isKnockoutMode && !isWeeFeeBossMode && !isDemonVillainsBossMode && !isRamageBossMode && !isOrboBossMode && !isBlinkEyeDodgeMode && !isObjectiveMode && !isConstructionMode && !isDamageFillerMode && !isMirrorMode && !isImpossibleMode && !isKnockDonateMode && !isBrickVaultMode && !isArenaForgeMode && !isMarkedMayhemMode && !isTugZoneMode && !isPropHuntMode && !isTraining && !isBossFight && !isSoloTrial && !gameOver) {
         stormTimer += dt;
         const stormDuration = getModeStormDurationSeconds();
         stormRadius = Math.max(0, (WORLD_W * 0.8) - (stormTimer / stormDuration) * (WORLD_W * 0.8));
@@ -50558,7 +50961,7 @@ function checkHit(target, b, i){
           vx += mobileInput.moveX;
           vy += mobileInput.moveY;
       }
-    if (playerIsStunned || isEntityRooted(player, now) || player.blinkeyeSteering) { vx = 0; vy = 0; }
+    if (playerIsStunned || isEntityRooted(player, now) || player.blinkeyeSteering || (isPropHuntMode && propHuntState && propHuntState.phase === 'hide' && player.propHuntRole === 'seeker')) { vx = 0; vy = 0; }
       const len = Math.hypot(vx,vy) || 1;
       const isMoving = Math.hypot(vx, vy) > 0;
       player.isMovingNow = isMoving;
@@ -52870,7 +53273,12 @@ function checkHit(target, b, i){
                       : b.damage * mult * (b.ownerBrawler === 'outlit' && b.super ? 1.15 : 1);
                   recordFullOnDamageToTarget(dw,wallDamage);
                   dw.hp -= wallDamage;
+                  // Prop Hunt: a seeker damaging a REAL prop pays the wrong-guess
+                  // tax. A morphed hider's shell (propHuntHiderId) is a correct
+                  // guess: damage feeds the shell, no tax.
+                  if (isPropHuntMode && dw.isProp && !dw.propHuntHiderId && wallDamage > 0 && owner && owner.propHuntRole === 'seeker') applyPropHuntWrongGuessTax(owner, dw);
                   if(dw.hp <= 0) {
+                      if (isPropHuntMode && dw.propHuntHiderId) revealPropHuntHiderFromShell(dw);
                       if (dw.isArenaWall) {
                           const cx=dw.x+dw.w/2,cy=dw.y+dw.h/2;
                           explosions.push({x:cx,y:cy,radius:Math.max(28,Math.min(72,Math.max(dw.w,dw.h)*.65)),life:0,maxLife:.24,color:b.ownerBrawler==='fuser'?'rgba(255,70,112,.58)':'rgba(255,190,82,.52)'});
@@ -54467,6 +54875,7 @@ function checkHit(target, b, i){
     }
 
     for(const t of aliveBots){
+      if (isPropHuntMode && t.propHuntRole) { updatePropHuntBot(t, dt, now); continue; }
       if (isTraining && t.isTrainingBot) {
           if (t.isTrainingAlly) {
               t.isDummy = true;
@@ -55695,7 +56104,7 @@ function checkHit(target, b, i){
         aliveCount = hostileAlive + (teamAlive ? 1 : 0);
     } else {
         aliveCount = aliveBots.length + (player.hp > 0 ? 1 : 0);
-        if (!isCoreBreachIntroMode && !isWeeFeeBossMode && !isBraweBallMode && !isKnockoutMode && !isBlinkEyeDodgeMode && !isObjectiveMode && !isConstructionMode && !isDamageFillerMode && !isMirrorMode && !isBrickVaultMode && !isArenaForgeMode && !isMarkedMayhemMode && !isTugZoneMode && !isKnockDonateMode && !isTrioShowdownMode && !isTraining && !isDuels && !isBossFight && !isSoloTrial && (player.hp <= 0 || aliveBots.length === 0)) {
+        if (!isCoreBreachIntroMode && !isWeeFeeBossMode && !isBraweBallMode && !isKnockoutMode && !isBlinkEyeDodgeMode && !isObjectiveMode && !isConstructionMode && !isDamageFillerMode && !isMirrorMode && !isBrickVaultMode && !isArenaForgeMode && !isMarkedMayhemMode && !isTugZoneMode && !isPropHuntMode && !isKnockDonateMode && !isTrioShowdownMode && !isTraining && !isDuels && !isBossFight && !isSoloTrial && (player.hp <= 0 || aliveBots.length === 0)) {
             gameOver = true;
         }
     }
@@ -59807,6 +60216,7 @@ function checkHit(target, b, i){
     const aliveBots = bots.filter(t=>t.hp>0);
     // bots
     for(const t of aliveBots){
+            if (isPropHuntMode && t.propHuntMorphed) continue; // morphed hiders render only as their prop wall: no nameplate, bar or silhouette
             if (!isWorldVisualVisible(t.x, t.y, Math.max(150, Number(t.radius) || 0) + 90)) continue;
             const liftAmt = (t.hyperoriginLiftUntil && performance.now() < t.hyperoriginLiftUntil) ? (18 + Math.sin(performance.now() / 70) * 3) : 0;
             const drawY = t.y - (t.z || 0) - liftAmt;
@@ -72253,6 +72663,7 @@ function checkHit(target, b, i){
         else if (isMarkedMayhemMode) mapLabel = 'Target Circuit';
         else if (isTugZoneMode) mapLabel = 'Open Tug Field';
         else if (isKnockDonateMode) mapLabel = 'Knock n Donate Arena';
+        else if (isPropHuntMode) mapLabel = 'Prop Hunt — Crown Collapse';
         else if (isTrioShowdownMode) mapLabel = 'Trio Showdown Arena';
         ctx.fillText(`Map: ${mapLabel}`, 20, 86);
         if (activeShowdownModifier && activeShowdownModifier !== 'none') {
@@ -72261,7 +72672,23 @@ function checkHit(target, b, i){
         }
     }
 
-    if (isTurkeyCaptureMode && playing && turkeyCaptureState) {
+    if (isPropHuntMode && playing && propHuntState) {
+        const phClock = propHuntState.phase === 'hide' ? propHuntState.phaseEndsAt : propHuntState.endsAt;
+        const phLeft = Math.max(0, Math.ceil((phClock - performance.now()) / 1000));
+        const phTime = `${Math.floor(phLeft / 60)}:${String(phLeft % 60).padStart(2, '0')}`;
+        const phHidersLeft = bots.filter(b => b && b.hp > 0 && b.propHuntRole === 'hider').length + (player.propHuntRole === 'hider' && player.hp > 0 ? 1 : 0);
+        const bannerW = 460;
+        ctx.fillStyle = 'rgba(24, 18, 4, 0.85)';
+        ctx.fillRect(innerWidth / 2 - bannerW / 2, 78, bannerW, 36);
+        ctx.strokeStyle = 'rgba(255, 209, 102, 0.8)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(innerWidth / 2 - bannerW / 2, 78, bannerW, 36);
+        ctx.fillStyle = '#ffe9ad';
+        ctx.font = 'bold 13px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(propHuntState.phase === 'hide' ? `PROP HUNT 🫣 • Hiders are hiding… ${phLeft}s` : `PROP HUNT 🔍 • ${player.propHuntRole === 'hider' ? 'STAY HIDDEN!' : 'FIND THEM!'} • ⏱️ ${phTime} • Hiders left: ${phHidersLeft}`, innerWidth / 2, 96);
+        ctx.textAlign = 'left';
+    } else if (isTurkeyCaptureMode && playing && turkeyCaptureState) {
         const tScores = turkeyCaptureState.scores || { player: 0, enemy: 0 };
         const tLeft = Math.max(0, Math.ceil(TURKEY_CAPTURE_MATCH_SECONDS - (turkeyCaptureState.timer || 0)));
         const bannerW = 460;
@@ -73023,6 +73450,14 @@ function checkHit(target, b, i){
                 rankNum = won ? 1 : 2;
                 matchText = won ? 'TURKEY CAPTURED — YOU WIN!' : (turkeyCaptureState?.winnerTeam === 'draw' ? 'TURKEY TIE!' : 'THE TURKEY GOT AWAY!');
                 rankText = `Captures: You ${tFinal.player} - ${tFinal.enemy} Enemy`;
+            } else if (isPropHuntMode) {
+                const phSeekersWon = !!propHuntState && propHuntState.winner === 'seekers';
+                won = propHuntState && propHuntState.winner ? (phSeekersWon === (player.propHuntRole === 'seeker')) : false;
+                rankNum = won ? 1 : 2;
+                matchText = won
+                    ? (player.propHuntRole === 'hider' ? 'YOU OUT-HID THEM!' : 'ALL HIDERS FOUND!')
+                    : (player.propHuntRole === 'hider' ? 'FOUND!' : 'THE HIDERS GOT AWAY!');
+                rankText = phSeekersWon ? 'Seekers cleared the map' : 'Hiders survived the timer';
             } else if (isObjectiveMode) {
                 won = !!objectiveWon;
                 const capNow = Math.round(objectiveControl);
@@ -81040,6 +81475,15 @@ function renderBouncinBossEvent(phase) {
     get mapProps() { return mapProps; },
     get PROP_DEFS() { return PROP_DEFS; },
     get placeProp() { return placeProp; },
+    get isPropHuntMode() { return isPropHuntMode; },
+    get propHuntState() { return propHuntState; },
+    get PROP_HUNT_ENABLED() { return PROP_HUNT_ENABLED; },
+    set PROP_HUNT_ENABLED(v) { PROP_HUNT_ENABLED = !!v; },
+    get morphPropHuntHider() { return morphPropHuntHider; },
+    get breakPropHuntMorph() { return breakPropHuntMorph; },
+    get canDetectMorphedHider() { return canDetectMorphedHider; },
+    get applyPropHuntWrongGuessTax() { return applyPropHuntWrongGuessTax; },
+    get findPropHuntMorphSource() { return findPropHuntMorphSource; },
     get isEntityOnPropPad() { return isEntityOnPropPad; },
     get PROPS_V1_ENABLED() { return PROPS_V1_ENABLED; },
     set PROPS_V1_ENABLED(v) { PROPS_V1_ENABLED = !!v; },

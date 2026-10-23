@@ -6,7 +6,7 @@ const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const css = fs.readFileSync(new URL('../tactical-ui.css', import.meta.url), 'utf8');
 
 // Capture the Turkey is released early: a permanent mode with no launch guard.
-assert.match(source, /'damage_filler', 'capture_turkey'\];/, 'capture_turkey must be a permanent home mode');
+assert.match(source, /'damage_filler', 'capture_turkey', 'prop_hunt'\];/, 'capture_turkey must be a permanent home mode');
 assert.doesNotMatch(source, /showdownMode === 'capture_turkey' && !isTurkeyTroubleSeasonActive\(\)/, 'the Nov 1 launch guard for Capture the Turkey must be gone');
 assert.match(source, /LIVE EARLY/, 'the Capture the Turkey card must announce the early release');
 // ...while Christmas Showdown keeps its season gate.
