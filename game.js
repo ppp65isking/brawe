@@ -10142,6 +10142,7 @@ const bolznstienPendingStrikes = [];
     const PROP_HUNT_REVEAL_RANGE = 240;          // mirrors canDetectThroughBush's 240px reveal radius
     const PROP_HUNT_PING_WINDOW_MS = 30000;      // final 30s: morphed hiders ping
     const PROP_HUNT_PING_INTERVAL_MS = 5000;
+    const PROP_HUNT_MINIMAP_PING_SHOW_MS = 1000; // minimap honors a ping this long; morphed hiders are otherwise minimap-hidden (minimap leak fix)
     const PROP_HUNT_MORPH_RANGE = 150;           // hider must be this close to a morph-suitable prop
     const PROP_HUNT_MORPH_PROP_TYPES = ['barrel', 'crate', 'plant_pot', 'sign_post'];
     let isImpossibleMode = false;
@@ -73105,6 +73106,9 @@ function checkHit(target, b, i){
         }
     }
     for(const t of aliveBots){
+        // Prop Hunt: a morphed hider renders only as its prop, so the minimap must not snitch it.
+        // Exception: the final-30s ping is the designed reveal -- the dot flashes only while a ping is fresh.
+        if (isPropHuntMode && t.propHuntMorphed && !(propHuntState && propHuntState.lastPingAt > 0 && performance.now() - propHuntState.lastPingAt < PROP_HUNT_MINIMAP_PING_SHOW_MS)) continue;
         if (t.isArenaForgeCamp) ctx.fillStyle = t.arenaForgeCampType === 'repair' ? '#79f2c0' : (t.arenaForgeCampType === 'arsenal' ? '#ff8b67' : '#67d8ff');
         else if (t.isArenaForgeColossus) ctx.fillStyle = '#ffcf66';
         else ctx.fillStyle = t.team === 'player' ? '#9ef6d6' : '#ff9b9b';
