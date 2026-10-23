@@ -21,4 +21,10 @@ const weights = [...typeTable.matchAll(/\bweight:\s*(\d+)/g)].map(match => Numbe
 assert.equal(weights.length, 5, 'all five Power Box types should participate in weighted rolls');
 assert.equal(weights.reduce((sum, value) => sum + value, 0), 100, 'Power Box weights should total 100%');
 
+// Thanksgiving Phase 3 HP correction: clean-hits x 1,200 reference at P11.
+const hpByType = Object.fromEntries([...typeTable.matchAll(/(\w+):\s*\{\s*hp:\s*(\d+)/g)].map(match => [match[1], Number(match[2])]));
+assert.deepEqual(hpByType, { standard: 3600, fortified: 7200, charged: 4800, vitality: 5400, nova: 8400 }, 'Power Box HP must be the Phase 3 retune (3600/7200/4800/5400/8400)');
+assert.match(source, /spawnedAt: performance\.now\(\)/, 'created boxes should stamp spawnedAt for the spawn pop');
+assert.match(source, /powerBoxShards\.push\(/, 'box breaks should spawn shard particles');
+
 console.log('Power Box 2.0 regression checks passed.');
