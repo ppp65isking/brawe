@@ -20,6 +20,14 @@ assert.match(game, /!isPropHuntMode && !isTraining && !isBossFight && !isSoloTri
 assert.match(game, /if \(isPropHuntMode && t\.propHuntRole\) \{ updatePropHuntBot\(t, dt, now\); continue; \}/, 'Bot loop must route Prop Hunt bots to their controller');
 assert.match(game, /if \(isPropHuntMode && t\.propHuntMorphed\) continue;/, 'Render must skip morphed hiders (they render as the prop wall only)');
 assert.match(game, /function canDetectMorphedHider/, 'Morph detection predicate must exist');
+assert.match(game, /PROP_HUNT_MINIMAP_PING_SHOW_MS = 1000/, 'Minimap ping flash window must be 1s');
+// Minimap leak (Anthony playtest, 2026-10-23): the aliveBots minimap loop must skip morphed
+// hiders -- they render only as props -- flashing the dot only while an endgame ping is fresh.
+const minimapBlock = game.slice(game.indexOf('ctx.translate(mapX, mapY)'));
+const minimapLoopAt = minimapBlock.indexOf('for(const t of aliveBots){');
+assert.ok(minimapLoopAt >= 0, 'minimap aliveBots loop must exist');
+const minimapLoop = minimapBlock.slice(minimapLoopAt, minimapLoopAt + 800);
+assert.match(minimapLoop, /if \(isPropHuntMode && t\.propHuntMorphed && !\(propHuntState && propHuntState\.lastPingAt > 0 && performance\.now\(\) - propHuntState\.lastPingAt < PROP_HUNT_MINIMAP_PING_SHOW_MS\)\) continue;/, 'Minimap must hide morphed hiders except during a fresh endgame ping');
 
 // ---- Behavioral harness: the real game booted in a vm sandbox ----
 const storage = new Map();
@@ -212,6 +220,14 @@ api.propHuntState.endsAt = Date.now() + 20000; // inside the final 30s
 api.propHuntState.nextPingAt = 0;
 frames(3);
 assert.ok(api.propHuntState.lastPingAt > 0, 'morphed hiders must emit reveal pings in the final 30s');
+assert.ok(Date.now() - api.propHuntState.lastPingAt < 1000, 'a fresh ping must fall inside the 1s minimap flash window (PROP_HUNT_MINIMAP_PING_SHOW_MS)');
+
+// ---- Minimap leak: before any endgame ping, the guard inputs keep hiders hidden ----
+launchPropHunt();
+api.propHuntState.phaseEndsAt = Date.now() - 1;
+frames(3);
+assert.equal(api.propHuntState.phase, 'seek');
+assert.equal(api.propHuntState.lastPingAt, 0, 'no ping yet: lastPingAt must be unset so the minimap guard hides morphed hiders');
 
 // ---- Kill switch: disabling PROP_HUNT_ENABLED falls back to solo ----
 api.PROP_HUNT_ENABLED = false;
