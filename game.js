@@ -263,6 +263,10 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             const scale = 0.55 + (level - 1) * 0.045;
             return { hp: Math.round(7200 * scale), dmg: Math.round(1320 * scale), strikeDmg: Math.round(1650 * scale), speed: 265 };
         }
+        if (brawlerId === 'electrostien') {
+            const scale = 0.55 + (level - 1) * 0.045;
+            return { hp: Math.round(8200 * scale), dmg: Math.round(700 * scale), speed: 290 };
+        }
         if (brawlerId === 'looma') {
             const scale = 0.55 + (level - 1) * 0.045;
             return { hp: Math.round(6600 * scale), dmg: Math.round(1450 * scale), speed: 270 };
@@ -3273,6 +3277,18 @@ function updateGadgetInfo() {
       if (entity.hp <= 1) return { ready: false, label: 'NEED HP' };
       return { ready: true, label: 'OVERCHARGE' };
   }
+  function getElectrostienSignatureState(entity) {
+      if (!ELECTROSTIEN_ENABLED) return { ready: false, label: 'DISABLED' };
+      if (entity.hp <= 0) return { ready: false, label: 'DOWN' };
+      if (!isSpecialAbilityAvailableForEntity(entity, 'electrostien')) return { ready: false, label: 'LOCKED' };
+      const realm = entity.electricRealmId ? getElectricRealm(entity.electricRealmId) : null;
+      if (realm) {
+          if (realm.casterId === entity.id && realm.familyCircuit) return { ready: false, label: 'CIRCUIT LIVE' };
+          if (realm.casterId === entity.id) return { ready: true, label: 'ARM CIRCUIT' };
+          return { ready: false, label: 'IN REALM' };
+      }
+      return { ready: !entity.electrostienFamilyCircuitArmed, label: entity.electrostienFamilyCircuitArmed ? 'CIRCUIT ARMED' : 'FAMILY CIRCUIT' };
+  }
 
   function activateSignatureAbility(entity = player) {
       const fighterId = entity.id === player.id ? selectedBrawler : entity.brawler;
@@ -3405,6 +3421,18 @@ function updateGadgetInfo() {
           updateSignatureButton();
           return true;
       }
+      if (fighterId === 'electrostien') {
+          if (!isSpecialAbilityAvailableForEntity(entity, 'electrostien')) return false;
+          const state = getElectrostienSignatureState(entity);
+          if (!state.ready) return false;
+          entity.electrostienFamilyCircuitArmed = true;
+          const realm = entity.electricRealmId ? getElectricRealm(entity.electricRealmId) : null;
+          if (realm && realm.casterId === entity.id) realm.familyCircuit = true;
+          explosions.push({ x: entity.x, y: entity.y, radius: 46, life: 0, maxLife: .24, color: 'rgba(255,211,79,.55)', fxKind: 'familyCircuitArm' });
+          spawnFloatingText(entity.x, entity.y - 44, 'FAMILY CIRCUIT ARMED!', '#ffd34f');
+          updateSignatureButton();
+          return true;
+      }
       if (fighterId !== 'bouncin_balls') return false;
       const state = getBouncinSignatureState(entity);
       if (!state.ready) {
@@ -3429,20 +3457,20 @@ function updateGadgetInfo() {
   }
 
   function updateSignatureButton() {
-      const signatureFighter = selectedBrawler === 'bouncin_balls' || selectedBrawler === 'classy' || selectedBrawler === 'beast' || selectedBrawler === 'mageny' || selectedBrawler === 'beam' || selectedBrawler === 'dashaholic' || selectedBrawler === 'bolznstien';
+      const signatureFighter = selectedBrawler === 'bouncin_balls' || selectedBrawler === 'classy' || selectedBrawler === 'beast' || selectedBrawler === 'mageny' || selectedBrawler === 'beam' || selectedBrawler === 'dashaholic' || selectedBrawler === 'bolznstien' || selectedBrawler === 'electrostien';
       const shouldShow = playing && signatureFighter && isSpecialAbilityAvailableForEntity(player, selectedBrawler);
       if (signatureTouchBtn) signatureTouchBtn.style.display = shouldShow ? 'flex' : 'none';
       if (signatureBtn) signatureBtn.style.display = shouldShow ? '' : 'none';
       if (!shouldShow) return;
-      const state = selectedBrawler === 'dashaholic' ? getDashaholicSignatureState(player) : (selectedBrawler === 'beam' ? getBeamSignatureState(player) : (selectedBrawler === 'classy' ? getClassySignatureState(player) : (selectedBrawler === 'beast' ? getBeastSignatureState(player) : (selectedBrawler === 'mageny' ? getMagenySignatureState(player) : (selectedBrawler === 'bolznstien' ? getBolznstienSignatureState(player) : getBouncinSignatureState(player))))));
-      const costText = selectedBrawler === 'dashaholic' ? ' - costs up to 1200 HP; empowers selected Gadget; 15s cooldown' : (selectedBrawler === 'beam' ? ' - costs 2300 HP; requires Super ammo bar' : (selectedBrawler === 'classy' ? ' - costs up to 1000 HP' : (selectedBrawler === 'beast' ? ' - consumes full ammo; regular form only' : (selectedBrawler === 'mageny' ? ' - costs 2000 HP; press again to detonate' : (selectedBrawler === 'bolznstien' ? ' - costs 1500 HP; only during Electric Eyes; 14s cooldown' : ' - costs up to 1000 HP; turret command also costs up to 750 turret HP')))));
+      const state = selectedBrawler === 'dashaholic' ? getDashaholicSignatureState(player) : (selectedBrawler === 'beam' ? getBeamSignatureState(player) : (selectedBrawler === 'classy' ? getClassySignatureState(player) : (selectedBrawler === 'beast' ? getBeastSignatureState(player) : (selectedBrawler === 'mageny' ? getMagenySignatureState(player) : (selectedBrawler === 'bolznstien' ? getBolznstienSignatureState(player) : (selectedBrawler === 'electrostien' ? getElectrostienSignatureState(player) : getBouncinSignatureState(player)))))));
+      const costText = selectedBrawler === 'dashaholic' ? ' - costs up to 1200 HP; empowers selected Gadget; 15s cooldown' : (selectedBrawler === 'beam' ? ' - costs 2300 HP; requires Super ammo bar' : (selectedBrawler === 'classy' ? ' - costs up to 1000 HP' : (selectedBrawler === 'beast' ? ' - consumes full ammo; regular form only' : (selectedBrawler === 'mageny' ? ' - costs 2000 HP; press again to detonate' : (selectedBrawler === 'bolznstien' ? ' - costs 1500 HP; only during Electric Eyes; 14s cooldown' : (selectedBrawler === 'electrostien' ? ' - free to arm; echoes your punches as sky strikes inside the Electric Realm' : ' - costs up to 1000 HP; turret command also costs up to 750 turret HP'))))));
       if (signatureTouchBtn) {
           signatureTouchBtn.textContent = state.ready ? 'SIG' : '×';
           signatureTouchBtn.title = `Signature: ${state.label}${costText}`;
           signatureTouchBtn.classList.toggle('signature-ready', !!state.ready);
       }
       if (signatureBtn) {
-          signatureBtn.textContent = `Signature: ${state.label}${selectedBrawler === 'dashaholic' ? ' · up to 1200 HP' : (selectedBrawler === 'beam' ? ' · 2300 HP' : (selectedBrawler === 'classy' ? ' · up to 1000 HP' : (selectedBrawler === 'beast' ? ' · FULL AMMO' : (selectedBrawler === 'mageny' ? ' · 2000 HP' : (selectedBrawler === 'bolznstien' ? ' · 1500 HP' : ' · up to 1000 HP + 750 turret HP')))))} (R)`;
+          signatureBtn.textContent = `Signature: ${state.label}${selectedBrawler === 'dashaholic' ? ' · up to 1200 HP' : (selectedBrawler === 'beam' ? ' · 2300 HP' : (selectedBrawler === 'classy' ? ' · up to 1000 HP' : (selectedBrawler === 'beast' ? ' · FULL AMMO' : (selectedBrawler === 'mageny' ? ' · 2000 HP' : (selectedBrawler === 'bolznstien' ? ' · 1500 HP' : (selectedBrawler === 'electrostien' ? ' · WIN-EARNED' : ' · up to 1000 HP + 750 turret HP'))))))} (R)`;
           signatureBtn.disabled = !state.ready;
           signatureBtn.classList.toggle('signature-ready', !!state.ready);
       }
@@ -4781,12 +4809,14 @@ const bolznstienPendingStrikes = [];
             oil_maker: 1.0,
             badbat: 1.0,
             feathers: 1.0,
-            spikey: 1.0
+            spikey: 1.0,
+            electrostien: 1.0
         },
         reloadMsByBrawler: {
             badbat: 1300,
             feathers: 1400,
             spikey: 1350,
+            electrostien: 1100,
             carmela_fudge: 1400,
             oil_maker: 90,
             magnatar: 1450,
@@ -4846,6 +4876,7 @@ const bolznstienPendingStrikes = [];
             badbat: 200,
             feathers: 240,
             spikey: 240,
+            electrostien: 260,
             carmela_fudge: 180,
             oil_maker: 56,
             magnatar: 200,
@@ -4933,6 +4964,8 @@ const bolznstienPendingStrikes = [];
         if ((entity.awakenatorSleepUntil || 0) > now) baseSlow = Math.min(baseSlow, 0.60);
         if (now < (entity.magenyResidualSlowUntil || 0)) baseSlow = Math.min(baseSlow, 0.70);
         if (now < (entity.spikeySlowUntil || 0)) baseSlow = Math.min(baseSlow, 0.70);
+        if (now < (entity.electrostienChainedSlowUntil || 0)) baseSlow = Math.min(baseSlow, 0.80);
+        if (now < (entity.electrostienRealmSlowUntil || 0)) baseSlow = Math.min(baseSlow, 0.70);
         if (now < (entity.beamSlowUntil || 0)) baseSlow = Math.min(baseSlow, 0.50);
         if (now < (entity.ridaSuperArmorUntil || 0)) {
             return 1 - (1 - baseSlow) * 0.65;
@@ -5084,7 +5117,7 @@ const bolznstienPendingStrikes = [];
         'boom_arang', 'teether', 'fuel', 'xray', 'angel', 'demon', 'warrior', 'relay',
         'upiedown', 'chickpig', 'jetpack', 'snapper', 'robber', 'rocketeer',
         'carmela_fudge', 'peter_pickle', 'unstable', 'homer', 'orbo', 'predator', 'fastpass', 'freestyle', 'portalo', 'ghoul', 'jacktrade', 'darkener', 'awakenator', 'adlof', 'cluster', 'witch', 'boomer', 'blade_vane', 'daggershard', 'ice_cream', 'swimmer', 'kage', 'drainbow', 'draflygon', 'axeywaxy', 'trampaheal', 'mageny', 'ramage', 'upgradart', 'cinderion', 'cursed', 'king', 'anti_royal', 'sir_cheeseburger', 'weefee', 'blinkeye', 'bolznstien', 'magnatar', 'oil_maker', 'rager', 'badbat', 'looma',
-        'feathers', 'spikey'
+        'feathers', 'spikey', 'electrostien'
     ];
     const registeredBrawlerModules = window.ArenaForgeModules?.brawlers || Object.create(null);
     for (const moduleId of Object.keys(registeredBrawlerModules)) {
@@ -5186,6 +5219,7 @@ const bolznstienPendingStrikes = [];
             jetpack: 'Mythic',
             feathers: 'Mythic',
             spikey: 'Mythic',
+            electrostien: 'Mythic',
             freestyle: 'Mythic',
 
             // Exotic (10)
@@ -5265,6 +5299,7 @@ const bolznstienPendingStrikes = [];
             playerData.unlockedBrawlers.carmela_fudge = true;
             playerData.unlockedBrawlers.rager = true;
         playerData.unlockedBrawlers.bolznstien = true;
+            playerData.unlockedBrawlers.electrostien = true;
             playerData.unlockedBrawlers.magnatar = true;
             playerData.unlockedBrawlers.oil_maker = true;
             playerData.unlockedBrawlers.rager = true;
@@ -5332,6 +5367,7 @@ const bolznstienPendingStrikes = [];
             playerData.unlockedBrawlers.rocketeer = true;
             playerData.unlockedBrawlers.carmela_fudge = true;
             playerData.unlockedBrawlers.bolznstien = true;
+            playerData.unlockedBrawlers.electrostien = true;
             playerData.unlockedBrawlers.magnatar = true;
             playerData.unlockedBrawlers.oil_maker = true;
             playerData.unlockedBrawlers.rager = true;
@@ -5394,6 +5430,18 @@ const bolznstienPendingStrikes = [];
                 playerData.brawlers.badbat.hyperchargeUnlocked = true;
                 if (!playerData.brawlers.badbat.selectedGadget) playerData.brawlers.badbat.selectedGadget = 'g1';
                 if (!playerData.brawlers.badbat.selectedStar || playerData.brawlers.badbat.selectedStar === 'none') playerData.brawlers.badbat.selectedStar = 'sp1';
+            }
+            // Electrostien release ruling (Anthony, 2026-10-23): FREE for
+            // everyone and starts at Power 11 out of the box.
+            if (!playerData.brawlers.electrostien) {
+                playerData.brawlers.electrostien = { level: 11, bricks: 0, prestige: 0, gadgetUnlocked: true, starPowerUnlocked: true, hyperchargeUnlocked: true, selectedStar: 'sp1', selectedGadget: 'g1', ownedTrinkets: [], equippedTrinkets: [], corePerkUnlocked: false, corePerk: null };
+            } else {
+                playerData.brawlers.electrostien.level = Math.max(playerData.brawlers.electrostien.level || 1, 11);
+                playerData.brawlers.electrostien.gadgetUnlocked = true;
+                playerData.brawlers.electrostien.starPowerUnlocked = true;
+                playerData.brawlers.electrostien.hyperchargeUnlocked = true;
+                if (!playerData.brawlers.electrostien.selectedGadget) playerData.brawlers.electrostien.selectedGadget = 'g1';
+                if (!playerData.brawlers.electrostien.selectedStar || playerData.brawlers.electrostien.selectedStar === 'none') playerData.brawlers.electrostien.selectedStar = 'sp1';
             }
             if (!playerData.soulSummoner || typeof playerData.soulSummoner !== 'object') {
                 playerData.soulSummoner = {};
@@ -8207,6 +8255,12 @@ const bolznstienPendingStrikes = [];
                   desc.style.cssText='font-size:12px;color:#b8cce1;margin:0 0 10px';
                   card.appendChild(desc);
                   if (!ability.unlocked) {
+                      if (fighterId === 'electrostien') {
+                          const note=document.createElement('div');
+                          note.style.cssText='font-size:12px;color:#ffe9a8;margin-top:2px';
+                          note.textContent=`⚡ Family Circuit Pieces are EARNED, never bought: win battles with Electrostien (${Math.min(3, getElectrostienSignatureWins())}/3 wins). No Core Pieces needed.`;
+                          card.appendChild(note);
+                      } else {
                       const row=document.createElement('div');
                       row.style.cssText='display:flex;gap:8px';
                       const pieceBtn=document.createElement('button');
@@ -8225,6 +8279,7 @@ const bolznstienPendingStrikes = [];
                       pieceLine.style.cssText='font-size:11px;color:#8fe9ce;margin-top:7px';
                       pieceLine.textContent=`Next: ${def.pieceName} (${ability.pieces}/3)`;
                       card.appendChild(pieceLine);
+                      }
                   }
                   grid.appendChild(card);
               }
@@ -8799,6 +8854,7 @@ const bolznstienPendingStrikes = [];
             'malakor': { name: 'Malakor', role: 'Controller', desc: 'The fallen red-staff child who commands infernal terrain and demon hands.', color: '#ff4a4a', attack: 'Putting You Down', attackDesc: 'Slams his staff and corrupts the ground into Hell around him. Enemies standing in Hell take constant damage. Hell zones last 9 seconds, spreading wider as they burn before decaying near the end. Malakor can sustain up to 5 Hell zones at once.', super: 'Hell Is Forever!', superDesc: 'Slam to create a huge Hell zone that lasts 12.5 seconds and summon demon hands that punish enemies standing in Hell.', hyper: 'UPSIDE DOWN!: Super corrupts the whole map into Hell and summons many more demon hands. Main attack corrupts a larger area.', g1: 'Crimson Surge (Create a bonus Hell pulse and heal)', g2: 'Damnation Mark (Next main attack also summons a demon hand)', sp1: 'Infernal Dominion (Hell terrain deals more damage)', sp2: 'Abyssal Grip (Demon hands strike wider and stun longer)' },
             'feathers': { name: 'Feathers', role: 'Controller', desc: 'A breezy storm-dancer whose feathers ride the wind - and leave it behind to trip up everyone else.', color: '#7fe7ff', attack: 'Feather Shot', attackDesc: 'Flicks a sharp feather that deals damage on hit. When it reaches max range it bursts into a gust of wind: anyone standing in the wind slides around like the floor is ice.', super: 'Windstorm', superDesc: 'Calls down a huge storm at the target spot. Thick fog fills the storm so everyone inside is harder to see - even Feathers - and the ground inside turns slippery.', hyper: 'Cyclone Heart: Feather Shots vacuum nearby enemies inward when their wind bursts. Windstorm crackles with Bolznstien-style lightning that strikes enemies inside for reduced damage.', g1: 'Tailwind Rush (Dash forward, gain speed, and leave slippery wind behind you)', g2: 'Gust Burst (Blast nearby enemies away and shake off slows)', sp1: 'Wide Skies (Wind zones are bigger and last longer)', sp2: 'Slipstream Rider (Move faster inside your own wind and storms)' },
       'spikey': { name: 'Spikey', role: 'Damage Dealer', desc: 'A prickly hedgehog rocker who parks spikeballs all over the arena, then calls every last one home through whoever is standing in the way.', color: '#a6e34d', attack: 'Triple Thorn Toss', attackDesc: 'Throws a spikeball that damages enemies it passes through and parks where it lands (950 damage). Her balls ARE her ammo: throw all 3, then attack again to call them all home, piercing, for 950 damage each. Then all 3 reload together.', super: 'Mega Spike Ball', superDesc: 'The Mega Spike Ball slams 3 times in front of Spikey, stepping forward with each slam. Each slam is a large explosion dealing 1,750 damage.', hyper: 'Spike Overdrive: every slam also pops 2 smaller side balls (500 damage each). Main attack gains +50% projectile speed and +50% unload speed, and its hits root enemies for 0.8s.', g1: 'Burst Barbs (Every deployed spikeball explodes in place for 650 damage, then returns to Spikey)', g2: 'Quill Roll (Roll 230 units toward your aim and deploy a spikeball where you land, if a slot is free)', sp1: 'Deep Roots (Recall hits also slow enemies by 30% for 1s)', sp2: 'Sharper Thorns (Parked spikeballs prick enemies standing close for 150 damage twice a second)' },
+      'electrostien': { name: 'Electrostien', role: 'Assassin', desc: 'Bolznstien\'s younger brother: a live-wire duelist who sticks a Boltz Chain to one victim, hugs them while it cooks, then drags them into the Electric Realm for a private execution. FREE for everyone and starts at Power 11.', color: '#00f5d4', attack: 'Volt Knuckle', attackDesc: 'A short electric punch (700 damage) that sticks a Boltz Chain to the victim for up to 4s. The chain ticks every 0.25s: 300 damage up close, 120 at mid range, 30 at max tether — and snaps if they escape past 4.5 tiles.', super: 'Electric Realm', superDesc: 'Throws a shock up to 7 tiles. On hit, Electrostien and the victim phase into the Electric Realm for 5s: invisible and untargetable to everyone else, with the Boltz Chain always attached at max tier. Ends early if either fighter falls.', hyper: 'Overvolt Presence: Volt Knuckle swings much wider and farther. While Core Surge is active, taking damage triggers a 360° roar (2.5s cooldown): 400 damage plus a 2s mini-chain (100/tick) on every enemy near him. Storm Realm (Hyper Super): the realm victim is slowed 30%, chain ticks hit 1.5x harder, and 500-damage lightning strikes them every 1s.', g1: 'Static Dash (Dash 3 tiles forward; the next punch within 2s gains +1 tile range and sticks instantly)', g2: 'Discharge (Detonate the active Boltz Chain for 50% of the damage it has dealt, minimum 600, and stun the victim for 0.5s)', sp1: 'Conductive Grip (Chained targets are slowed by 20% while the Boltz Chain holds)', sp2: 'Second Battery (Boltz Chain ticks charge the Electric Realm Super 25% faster)' },
             'boom_arang': {
                 name: 'Boom-Arang',
                 role: 'Marksman',
@@ -9038,7 +9094,7 @@ const bolznstienPendingStrikes = [];
 
     // V4 standardized primary-role organization: exactly one gameplay role per brawler.
     const PRIMARY_ROLE_BY_BRAWLER = {
-        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank', rager:'Controller', looma:'Controller', feathers:'Controller', spikey:'Damage Dealer',
+        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank', rager:'Controller', looma:'Controller', feathers:'Controller', spikey:'Damage Dealer', electrostien:'Assassin',
     carmela_fudge:'Damage Dealer', bolznstien:'Damage Dealer', badbat:'Damage Dealer', magnatar:'Controller', oil_maker:'Controller', sir_cheeseburger:'Tank',
         blade_vane:'Assassin', kage:'Assassin', drainbow:'Controller', bowlin_rida:'Assassin', dashaholic:'Assassin', demon:'Assassin', jetpack:'Assassin', malakor:'Assassin', predator:'Assassin', swimmer:'Assassin', teether:'Assassin',
         boom_arang:'Marksman', cheseypuff:'Marksman', crystila:'Marksman', homer:'Marksman', hunter:'Marksman', orbo:'Marksman', snapper:'Marksman', xray:'Marksman',
@@ -9060,6 +9116,7 @@ const bolznstienPendingStrikes = [];
     badbat: '🦇🏏',
     feathers: '🪶',
             spikey: '🦔',
+            electrostien: '⚡👊',
     looma: '🪡🧵',
         sir_cheeseburger: '🛡️',
         anti_royal: '🏴‍☠️',
@@ -9268,6 +9325,7 @@ const bolznstienPendingStrikes = [];
             hyperorigin: { g1:'Core Overflow grants 4 Energy; excess Energy becomes a 500 shield each.', g2:'Fault Line dashes 260 units and grants an 1800 shield.', slow:'Heavy Singularity pulls enemies 70 units before suspending them.', long:'Stable Origin raises the 5+ Energy damage reduction from 18% to 24%.' },
             feathers: { g1:'Tailwind Rush dashes 210 units toward your aim, grants brief bonus speed, and drops slippery wind at both ends of the dash.', g2:'Gust Burst blasts enemies within 185 units away for 350 damage and clears slows from Feathers.', slow:'Wide Skies: wind zones are 20% bigger and last 40% longer; Windstorm is bigger and lasts longer too.', long:'Slipstream Rider: Feathers moves 18% faster inside his own wind zones and storms.' },
             spikey: { g1:'Burst Barbs detonates every deployed spikeball for 650 damage where it sits, then the balls fly back to Spikey.', g2:'Quill Roll dashes 230 units toward your aim and plants a spikeball at the landing spot if a slot is free.', slow:'Deep Roots: recalled spikeballs also slow enemies by 30% for 1 second on hit.', long:'Sharper Thorns: parked spikeballs prick enemies standing close for 150 damage twice a second.' },
+            electrostien: { g1:'Static Dash dashes 3 tiles forward; the next punch within 2s gains +1 tile range and sticks the Boltz Chain instantly.', g2:'Discharge detonates the active Boltz Chain for 50% of the damage it has dealt (minimum 600) and stuns the victim for 0.5s.', slow:'Conductive Grip: chained targets are slowed by 20% while the Boltz Chain holds.', long:'Second Battery: Boltz Chain ticks charge the Electric Realm Super 25% faster.' },
             heater_miser: { g1:'Pressure Spike burns for 100 damage every 0.5 seconds for 2 seconds.', g2:'Three-Way Flux chains to 2 extra targets at 70% power.', slow:'Stored Heat loses only one ramp stage when the tether disconnects.', long:'Closed Circuit lets the Super zone retether through walls at 75% power.' },
             minigunnin: { g1:'Full Overclock fires 8 radial bullets and grants a 600 shield for 2 seconds.', g2:'Efficient Fortify costs 750 max HP and heals 3500.', slow:'Every 10th bullet pierces once and deals 130% damage.', long:'Walls and forts gain 25% HP and resist their first wall-breaking hit.' },
             steamer: { g1:'Boiler Burst grows 30%; enemies in the inner ring are stunned for 0.45 seconds.', g2:'Express Service lasts 6.5 seconds and grants 15% reload speed.', slow:'Pressure trails burn enemies for 240 damage over 2 seconds.', long:'Last Stop ends with a knockback ring and heals Steamer for 900.' },
@@ -9885,6 +9943,7 @@ const bolznstienPendingStrikes = [];
       badbat: { g1: 14000, g2: 15000 },
       feathers: { g1: 12000, g2: 14000 },
       spikey: { g1: 14000, g2: 12000 },
+      electrostien: { g1: 11000, g2: 13000 },
       carmela_fudge: { g1: 8000, g2: 8000 },
       bolznstien: { g1: 14000, g2: 15000 },
       sir_cheeseburger: { g1: 13000, g2: 14000 },
@@ -14422,6 +14481,7 @@ let heistFeverActive = false;
                       playerData.unlockedBrawlers.bolznstien = true;
                       playerData.unlockedBrawlers.magnatar = true;
                       playerData.unlockedBrawlers.badbat = true;
+                      playerData.unlockedBrawlers.electrostien = true;
                   }
                   if (data.persistent.soulSummoner) playerData.soulSummoner = data.persistent.soulSummoner;
                   if (data.persistent.evilDoctorUnlockEndAt != null) playerData.evilDoctorUnlockEndAt = data.persistent.evilDoctorUnlockEndAt;
@@ -14433,6 +14493,7 @@ let heistFeverActive = false;
                   if (data.persistent.specialAbilityQuests) playerData.specialAbilityQuests = data.persistent.specialAbilityQuests;
                   if (data.persistent.specialAbilityQuestEvent) playerData.specialAbilityQuestEvent = data.persistent.specialAbilityQuestEvent;
                   if (typeof data.persistent.corePieces === 'number') playerData.corePieces = data.persistent.corePieces;
+                  if (typeof data.persistent.electrostienSignatureWins === 'number') playerData.electrostienSignatureWins = data.persistent.electrostienSignatureWins;
                   if (typeof data.persistent.presentCount === 'number') playerData.presentCount = data.persistent.presentCount;
                   if (data.persistent.xplodemisDaily) playerData.xplodemisDaily = data.persistent.xplodemisDaily;
                    if (data.persistent.majorUpdateVNext) playerData.majorUpdateVNext = data.persistent.majorUpdateVNext;
@@ -14596,6 +14657,7 @@ let heistFeverActive = false;
                     specialAbilityQuests: playerData.specialAbilityQuests,
                     specialAbilityQuestEvent: playerData.specialAbilityQuestEvent,
                     corePieces: playerData.corePieces || 0,
+                    electrostienSignatureWins: playerData.electrostienSignatureWins || 0,
                     presentCount: playerData.presentCount || 0,
                     xplodemisDaily: playerData.xplodemisDaily || null,
                     majorUpdateVNext: playerData.majorUpdateVNext,
@@ -16376,6 +16438,14 @@ let heistFeverActive = false;
           pieceName: 'Bolznstien Signature Piece',
           shortDesc: 'While Electric Eyes is active, press Power Move again to Overcharge for 2s (costs 1,500 HP, 14s cooldown): the Super ticks twice as fast and two voltaic hands stun the 2 nearest enemies every 0.9s for 0.1s.'
       },
+      electrostien: {
+          type: 'signature',
+          name: 'Family Circuit',
+          icon: 'FC',
+          color: '#ffd34f',
+          pieceName: 'Electrostien Signature Piece',
+          shortDesc: 'Arm the Family Circuit with the Signature button (R): while Electrostien is inside the Electric Realm, every punch he lands echoes as a Bolznstien-style sky strike (500 damage) on the realm victim. His Pieces are EARNED, never bought: win 3 battles with Electrostien (1 Piece per win). No Core Piece cost.'
+      },
       fightnfire: {
           type: 'instinct',
           name: 'Flash Freeze',
@@ -16654,6 +16724,7 @@ let heistFeverActive = false;
   function buySpecialAbilityPiece(fighterId) {
       const def = getSpecialAbilityDef(fighterId);
       if (!def) return false;
+      if (fighterId === 'electrostien') { alert('Family Circuit Pieces are EARNED by winning battles with Electrostien — they cannot be bought with Core Pieces.'); return false; }
       const ability = getSpecialAbilityState(def.type, fighterId);
       if (ability.unlocked) { alert('That ability is already unlocked!'); return false; }
       if (!spendCorePieces(CORE_PIECE_PRICE)) { alert(`Not enough Core Pieces — one ${def.pieceName} costs ${CORE_PIECE_PRICE} Core Pieces. Earn Core Pieces from Tapper Uppers, Super Tappers, the Season Pass and Presents!`); return false; }
@@ -16676,6 +16747,7 @@ let heistFeverActive = false;
   function buySpecialAbilityFullUnlock(fighterId) {
       const def = getSpecialAbilityDef(fighterId);
       if (!def) return false;
+      if (fighterId === 'electrostien') { alert('Family Circuit is EARNED by winning battles with Electrostien — it cannot be bought with Core Pieces.'); return false; }
       const ability = getSpecialAbilityState(def.type, fighterId);
       if (ability.unlocked) { alert('That ability is already unlocked!'); return false; }
       if (!spendCorePieces(CORE_FULL_UNLOCK_PRICE)) { alert(`Not enough Core Pieces — a full unlock costs ${CORE_FULL_UNLOCK_PRICE} Core Pieces. Earn Core Pieces from Tapper Uppers, Super Tappers, the Season Pass and Presents!`); return false; }
@@ -17724,6 +17796,7 @@ let heistFeverActive = false;
 
           const finishCandidates = [];
           for (const [fid, def] of Object.entries(SPECIAL_ABILITY_DEFS)) {
+              if (fid === 'electrostien') continue; // Family Circuit Pieces are earned by wins, never sold
               if (!(playerData.unlockedBrawlers || {})[fid]) continue;
               const st = getSpecialAbilityState(def.type, fid);
               if (!st.unlocked && st.pieces > 0) finishCandidates.push(fid);
@@ -19074,6 +19147,333 @@ let heistFeverActive = false;
             ctx.restore();
         }
     }
+    // ===== Electrostien systems (Volt Knuckle + Boltz Chain + Electric Realm) =====
+    // Anthony's design (2026-10-23): Bolznstien's younger brother. A melee
+    // Assassin who sticks a Boltz Chain to one victim, stays glued while it
+    // cooks, then drags them into the Electric Realm for a private 5s 1v1.
+    // Combat distances use the spec's own conversion: 1 tile = 80px
+    // (punch 1.5 tiles = 120px, tether break past 4.5 tiles = 360px).
+    // Kill switches are `let` so regression tests can flip them.
+    let ELECTROSTIEN_ENABLED = true;
+    let ELECTRIC_REALM_ENABLED = true;
+    const ELECTROSTIEN_PUNCH_RANGE = 120;
+    const ELECTROSTIEN_PUNCH_RANGE_HYPER = 160;
+    const ELECTROSTIEN_PUNCH_RANGE_DASH_BONUS = 80;
+    const ELECTROSTIEN_PUNCH_SPEED = 1500;
+    const ELECTROSTIEN_CHAIN_TICK_MS = 250;
+    const ELECTROSTIEN_CHAIN_DURATION_MS = 4000;
+    const ELECTROSTIEN_CHAIN_TIER1_DIST = 120;
+    const ELECTROSTIEN_CHAIN_TIER2_DIST = 240;
+    const ELECTROSTIEN_CHAIN_TIER3_DIST = 360;
+    const ELECTROSTIEN_CHAIN_TIER1_DMG = 300;
+    const ELECTROSTIEN_CHAIN_TIER2_DMG = 120;
+    const ELECTROSTIEN_CHAIN_TIER3_DMG = 30;
+    const ELECTROSTIEN_SUPER_THROW_RANGE = 560;
+    const ELECTROSTIEN_SUPER_THROW_SPEED = 980;
+    const ELECTROSTIEN_REALM_DURATION_MS = 5000;
+    const ELECTROSTIEN_ROAR_DAMAGE = 400;
+    const ELECTROSTIEN_ROAR_RADIUS = 240;
+    const ELECTROSTIEN_ROAR_ICD_MS = 2500;
+    const ELECTROSTIEN_MINICHAIN_TICK_MS = 250;
+    const ELECTROSTIEN_MINICHAIN_DAMAGE = 100;
+    const ELECTROSTIEN_MINICHAIN_DURATION_MS = 2000;
+    const ELECTROSTIEN_DISCHARGE_MIN = 600;
+    const ELECTROSTIEN_DISCHARGE_STUN_MS = 500;
+    const ELECTROSTIEN_DASH_DISTANCE = 240;
+    const ELECTROSTIEN_DASH_EMPOWER_MS = 2000;
+    const ELECTROSTIEN_STORM_LIGHTNING_DAMAGE = 500;
+    const ELECTROSTIEN_FAMILY_STRIKE_DAMAGE = 500;
+    const ELECTROSTIEN_FAMILY_STRIKE_DELAY_MS = 350;
+    let electricRealms = [];
+    let electrostienPendingStrikes = [];
+    let nextElectricRealmId = 1;
+    function isElectrostienEntity(entity) {
+        return !!entity && (entity.brawler === 'electrostien' || (!!player && entity.id === player.id && selectedBrawler === 'electrostien'));
+    }
+    function electrostienStarChoice(entity) { try { return getEntityStarChoice(entity); } catch (_) { return entity ? entity.selectedStar : null; } }
+    function electrostienHasSP(entity, slot) { const c = electrostienStarChoice(entity); return slot === 'sp1' ? (c === 'sp1' || c === 'slow') : (c === 'sp2' || c === 'long'); }
+    function findElectrostienEntityById(id) { if (player && player.id === id) return player; return bots.find((b) => b && b.id === id) || null; }
+    function getElectricRealm(realmId) { return electricRealms.find((r) => r.id === realmId) || null; }
+    // Realm separation is the realm's core rule: two fighters interact only
+    // when they share the same realm id (0 = the normal match).
+    function areRealmSeparated(a, b) {
+        if (!a || !b) return false;
+        return (a.electricRealmId || 0) !== (b.electricRealmId || 0);
+    }
+    function isRealmHiddenFromViewer(entity) {
+        if (!entity) return false;
+        const viewerRealm = (player && player.electricRealmId) || 0;
+        return (entity.electricRealmId || 0) !== viewerRealm;
+    }
+    function breakElectrostienChain(owner) {
+        if (!owner) return;
+        owner.electrostienChainTargetId = null;
+        owner.electrostienChainEndsAt = 0;
+        owner.electrostienChainNextTickAt = 0;
+        owner.electrostienChainDamageDealt = 0;
+        owner.electrostienChainRealm = false;
+    }
+    function stickElectrostienChain(owner, target) {
+        if (!ELECTROSTIEN_ENABLED || !owner || !target || owner.hp <= 0 || target.hp <= 0) return false;
+        if (areAlliedEntities(owner, target)) return false;
+        const now = performance.now();
+        const inRealm = !!(owner.electricRealmId && owner.electricRealmId === target.electricRealmId);
+        owner.electrostienChainTargetId = target.id;
+        owner.electrostienChainEndsAt = inRealm ? 0 : now + ELECTROSTIEN_CHAIN_DURATION_MS;
+        owner.electrostienChainNextTickAt = now + ELECTROSTIEN_CHAIN_TICK_MS;
+        owner.electrostienChainDamageDealt = 0;
+        owner.electrostienChainRealm = inRealm;
+        return true;
+    }
+    function getElectrostienChainTierDamage(owner, target) {
+        const d = Math.hypot(target.x - owner.x, target.y - owner.y);
+        if (d <= ELECTROSTIEN_CHAIN_TIER1_DIST) return ELECTROSTIEN_CHAIN_TIER1_DMG;
+        if (d <= ELECTROSTIEN_CHAIN_TIER2_DIST) return ELECTROSTIEN_CHAIN_TIER2_DMG;
+        if (d <= ELECTROSTIEN_CHAIN_TIER3_DIST) return ELECTROSTIEN_CHAIN_TIER3_DMG;
+        return 0;
+    }
+    function exitElectricRealm(entity) {
+        if (!entity || !entity.electricRealmId) return;
+        const realm = getElectricRealm(entity.electricRealmId);
+        const partner = realm ? findElectrostienEntityById(realm.casterId === entity.id ? realm.victimId : realm.casterId) : null;
+        if (realm) {
+            electricRealms = electricRealms.filter((r) => r.id !== realm.id);
+            const caster = findElectrostienEntityById(realm.casterId);
+            if (caster) {
+                if (realm.familyCircuit) caster.electrostienFamilyCircuitArmed = false;
+                if (caster.electrostienChainRealm) breakElectrostienChain(caster);
+            }
+        }
+        entity.electricRealmId = 0;
+        if (partner) partner.electricRealmId = 0;
+    }
+    function enterElectricRealm(caster, victim, hyper) {
+        if (!ELECTROSTIEN_ENABLED || !ELECTRIC_REALM_ENABLED) return false;
+        if (!caster || !victim || caster.hp <= 0 || victim.hp <= 0 || caster.id === victim.id) return false;
+        if (areAlliedEntities(caster, victim)) return false;
+        exitElectricRealm(caster);
+        exitElectricRealm(victim);
+        const realm = { id: nextElectricRealmId++, casterId: caster.id, victimId: victim.id, hyper: !!hyper, endsAt: performance.now() + ELECTROSTIEN_REALM_DURATION_MS, nextLightningAt: performance.now() + 1000, familyCircuit: !!caster.electrostienFamilyCircuitArmed };
+        electricRealms.push(realm);
+        caster.electricRealmId = realm.id;
+        victim.electricRealmId = realm.id;
+        stickElectrostienChain(caster, victim); // the realm chain is always attached
+        explosions.push({ x: (caster.x + victim.x) / 2, y: (caster.y + victim.y) / 2, radius: 130, life: 0, maxLife: .45, color: hyper ? 'rgba(224,86,253,.55)' : 'rgba(0,245,212,.5)', fxKind: 'electricRealmOpen' });
+        spawnFloatingText(victim.x, victim.y - 46, hyper ? 'STORM REALM!' : 'ELECTRIC REALM!', hyper ? '#e056fd' : '#7dfcd9');
+        return true;
+    }
+    function castElectrostienSuper(entity, hyper, tx, ty) {
+        if (!entity || entity.hp <= 0 || !ELECTROSTIEN_ENABLED) return;
+        const ang = Math.atan2(ty - entity.y, tx - entity.x);
+        const realmMode = ELECTRIC_REALM_ENABLED;
+        // Realm disabled (kill switch): the shock falls back to an empowered
+        // stunning blast that also sticks the chain — no dimension, no waste.
+        bullets.push({ ownerBrawler: 'electrostien', isElectrostienShock: true, electrostienHyperSuper: !!hyper, electrostienRealmMode: realmMode, x: entity.x + Math.cos(ang) * (entity.radius + 8), y: entity.y + Math.sin(ang) * (entity.radius + 8), vx: Math.cos(ang) * ELECTROSTIEN_SUPER_THROW_SPEED, vy: Math.sin(ang) * ELECTROSTIEN_SUPER_THROW_SPEED, life: 0, maxLife: ELECTROSTIEN_SUPER_THROW_RANGE / ELECTROSTIEN_SUPER_THROW_SPEED, damage: realmMode ? 0 : 1200, pierce: false, ownerId: entity.id, hitIds: {}, hitboxMod: 1.8, hyperVisual: !!hyper, super: true });
+        spawnFloatingText(entity.x, entity.y - 40, hyper ? 'STORM REALM!' : 'ELECTRIC REALM!', hyper ? '#e056fd' : '#7dfcd9');
+    }
+    function executeElectrostienDischarge(owner) {
+        if (!owner || owner.hp <= 0 || owner.electrostienChainTargetId == null) return false;
+        const target = findElectrostienEntityById(owner.electrostienChainTargetId);
+        if (!target || target.hp <= 0) { breakElectrostienChain(owner); return false; }
+        const burst = Math.max(ELECTROSTIEN_DISCHARGE_MIN, Math.round((owner.electrostienChainDamageDealt || 0) * 0.5));
+        checkHit(target, { ownerBrawler: 'electrostien', ownerId: owner.id, damage: burst, pierce: true, super: true, hitIds: {}, electrostienDischarge: true }, -1);
+        applyStatusEffect(target, 'stun', ELECTROSTIEN_DISCHARGE_STUN_MS, owner);
+        explosions.push({ x: target.x, y: target.y, radius: 74, life: 0, maxLife: .3, color: 'rgba(0,245,212,.6)', fxKind: 'electrostienDischarge' });
+        spawnFloatingText(target.x, target.y - 42, `DISCHARGE ${burst}!`, '#7dfcd9');
+        breakElectrostienChain(owner);
+        return true;
+    }
+    function executeElectrostienG1(entity) {
+        if (!entity || entity.hp <= 0) return;
+        const now = performance.now();
+        let ang;
+        if (entity.id === player.id) { const wm = getMouseWorld(); ang = Math.atan2(wm.y - entity.y, wm.x - entity.x); }
+        else { const t = findElectrostienEntityById(entity.lastTargetId) || player; ang = Math.atan2((t ? t.y : entity.y) - entity.y, (t ? t.x : entity.x) - entity.x); }
+        entity.x = clamp(entity.x + Math.cos(ang) * ELECTROSTIEN_DASH_DISTANCE, entity.radius, WORLD_W - entity.radius);
+        entity.y = clamp(entity.y + Math.sin(ang) * ELECTROSTIEN_DASH_DISTANCE, entity.radius, WORLD_H - entity.radius);
+        entity.electrostienDashEmpoweredUntil = now + ELECTROSTIEN_DASH_EMPOWER_MS;
+        explosions.push({ x: entity.x, y: entity.y, radius: 52, life: 0, maxLife: .2, color: 'rgba(0,245,212,.5)', fxKind: 'electrostienDash' });
+        spawnFloatingText(entity.x, entity.y - 32, 'STATIC DASH', '#7dfcd9');
+    }
+    function executeElectrostienG2(entity) {
+        if (!entity || entity.hp <= 0) return;
+        if (!executeElectrostienDischarge(entity)) spawnFloatingText(entity.x, entity.y - 32, 'NO CHAIN TO DISCHARGE', '#8aa0b9');
+    }
+    function triggerElectrostienRoar(entity) {
+        if (!ELECTROSTIEN_ENABLED || !entity || entity.hp <= 0) return false;
+        if (!isElectrostienEntity(entity)) return false;
+        const now = performance.now();
+        if (!isEntityHyperchargedNow(entity, now)) return false;
+        if (now < (entity.electrostienRoarReadyAt || 0)) return false;
+        entity.electrostienRoarReadyAt = now + ELECTROSTIEN_ROAR_ICD_MS; // set BEFORE damage: roars can never chain-react
+        let hitAny = false;
+        for (const t of [player, ...bots]) {
+            if (!t || t.hp <= 0 || t.id === entity.id || areAlliedEntities(entity, t)) continue;
+            if (areRealmSeparated(entity, t)) continue;
+            if (Math.hypot(t.x - entity.x, t.y - entity.y) > ELECTROSTIEN_ROAR_RADIUS + (t.radius || 14)) continue;
+            checkHit(t, { ownerBrawler: 'electrostien', ownerId: entity.id, damage: ELECTROSTIEN_ROAR_DAMAGE, pierce: true, super: true, hitIds: {}, electrostienRoar: true }, -1);
+            t.electrostienMiniChainOwnerId = entity.id;
+            t.electrostienMiniChainUntil = now + ELECTROSTIEN_MINICHAIN_DURATION_MS;
+            t.electrostienMiniChainNextTickAt = now + ELECTROSTIEN_MINICHAIN_TICK_MS;
+            hitAny = true;
+        }
+        if (hitAny) {
+            explosions.push({ x: entity.x, y: entity.y, radius: ELECTROSTIEN_ROAR_RADIUS, life: 0, maxLife: .3, color: 'rgba(224,86,253,.5)', fxKind: 'electrostienRoar' });
+            spawnFloatingText(entity.x, entity.y - 44, 'OVERVOLT ROAR!', '#e056fd');
+        }
+        return hitAny;
+    }
+    function getElectrostienSignatureWins() { return Math.max(0, Math.floor(Number(playerData.electrostienSignatureWins) || 0)); }
+    function grantElectrostienSignatureWin() {
+        if (!ELECTROSTIEN_ENABLED) return false;
+        playerData.electrostienSignatureWins = getElectrostienSignatureWins() + 1;
+        const ability = getSpecialAbilityState('signature', 'electrostien');
+        if (!ability.unlocked) {
+            ability.pieces = Math.min(3, ability.pieces + 1);
+            if (ability.pieces >= 3) ability.unlocked = true;
+        }
+        saveProgress();
+        return true;
+    }
+    function updateElectrostienSystems(dt) {
+        if (!ELECTROSTIEN_ENABLED) return;
+        const now = performance.now();
+        const entities = [player, ...bots];
+        // --- Boltz Chains ---
+        for (const owner of entities) {
+            if (!owner || owner.electrostienChainTargetId == null) continue;
+            const target = findElectrostienEntityById(owner.electrostienChainTargetId);
+            if (owner.hp <= 0 || !target || target.hp <= 0) { breakElectrostienChain(owner); continue; }
+            const realm = owner.electricRealmId ? getElectricRealm(owner.electricRealmId) : null;
+            const realmChain = !!(realm && realm.casterId === owner.id && realm.victimId === target.id);
+            if (realmChain) {
+                owner.electrostienChainRealm = true; // realm chain ignores the 4s clock and the break distance
+            } else {
+                if (owner.electrostienChainRealm) { owner.electrostienChainRealm = false; owner.electrostienChainEndsAt = now + ELECTROSTIEN_CHAIN_DURATION_MS; }
+                if (now > (owner.electrostienChainEndsAt || 0)) { breakElectrostienChain(owner); continue; }
+                if (Math.hypot(target.x - owner.x, target.y - owner.y) > ELECTROSTIEN_CHAIN_TIER3_DIST) { breakElectrostienChain(owner); continue; }
+            }
+            if (now >= (owner.electrostienChainNextTickAt || 0)) {
+                owner.electrostienChainNextTickAt = now + ELECTROSTIEN_CHAIN_TICK_MS;
+                let dmg = realmChain ? ELECTROSTIEN_CHAIN_TIER1_DMG : getElectrostienChainTierDamage(owner, target);
+                if (realmChain && realm.hyper) dmg = Math.round(dmg * 1.5); // Storm Realm: chain x1.5
+                if (dmg > 0) {
+                    checkHit(target, { ownerBrawler: 'electrostien', ownerId: owner.id, damage: dmg, pierce: true, hitIds: {}, isIndependentChargeTick: true, electrostienChainTick: true }, -1);
+                    owner.electrostienChainDamageDealt = (owner.electrostienChainDamageDealt || 0) + dmg;
+                    if (electrostienHasSP(owner, 'sp2')) {
+                        // Second Battery: ticks charge the Super 25% faster.
+                        const bonus = (100 / getSuperChargeHitsForBrawler('electrostien')) * 0.25;
+                        if (owner.id === player.id) { superCharge = clamp(superCharge + bonus, 0, 100); updateSuperButton(); }
+                        else owner.superCharge = clamp((owner.superCharge || 0) + bonus, 0, 100);
+                    }
+                    if (electrostienHasSP(owner, 'sp1')) target.electrostienChainedSlowUntil = now + ELECTROSTIEN_CHAIN_TICK_MS + 60;
+                }
+            }
+        }
+        // --- Mini-chains (Overvolt Roar residue) ---
+        for (const t of entities) {
+            if (!t || !t.electrostienMiniChainUntil) continue;
+            if (t.hp <= 0 || now > t.electrostienMiniChainUntil) { t.electrostienMiniChainUntil = 0; continue; }
+            if (now >= (t.electrostienMiniChainNextTickAt || 0)) {
+                t.electrostienMiniChainNextTickAt = now + ELECTROSTIEN_MINICHAIN_TICK_MS;
+                const owner = findElectrostienEntityById(t.electrostienMiniChainOwnerId);
+                if (owner && owner.hp > 0 && !areRealmSeparated(owner, t)) checkHit(t, { ownerBrawler: 'electrostien', ownerId: owner.id, damage: ELECTROSTIEN_MINICHAIN_DAMAGE, pierce: true, super: true, hitIds: {}, electrostienMiniChainTick: true }, -1);
+            }
+        }
+        // --- Electric Realms ---
+        for (const realm of [...electricRealms]) { // snapshot: exitElectricRealm reassigns the array
+            if (!realm) continue;
+            const caster = findElectrostienEntityById(realm.casterId);
+            const victim = findElectrostienEntityById(realm.victimId);
+            if (!caster || !victim || caster.hp <= 0 || victim.hp <= 0 || now >= realm.endsAt) {
+                if (caster) exitElectricRealm(caster);
+                else if (victim) exitElectricRealm(victim);
+                continue;
+            }
+            if (realm.hyper) {
+                victim.electrostienRealmSlowUntil = now + 160; // Storm Realm: victim slowed 30%
+                if (now >= (realm.nextLightningAt || 0)) {
+                    realm.nextLightningAt = now + 1000;
+                    explosions.push({ x: victim.x, y: victim.y, radius: 90, life: 0, maxLife: .28, color: 'rgba(224,86,253,.6)', fxKind: 'electrostienLightning' });
+                    checkHit(victim, { ownerBrawler: 'electrostien', ownerId: caster.id, damage: ELECTROSTIEN_STORM_LIGHTNING_DAMAGE, pierce: true, super: true, hitIds: {}, electrostienLightning: true }, -1);
+                }
+            }
+        }
+        // --- Family Circuit sky-strike echoes ---
+        for (let i = electrostienPendingStrikes.length - 1; i >= 0; i--) {
+            const s = electrostienPendingStrikes[i];
+            if (now < s.at) continue;
+            electrostienPendingStrikes.splice(i, 1);
+            const owner = findElectrostienEntityById(s.ownerId);
+            const target = findElectrostienEntityById(s.targetId);
+            if (!owner || !target || owner.hp <= 0 || target.hp <= 0) continue;
+            if (!owner.electricRealmId || owner.electricRealmId !== target.electricRealmId) continue;
+            explosions.push({ x: target.x, y: target.y, radius: 74, life: 0, maxLife: .3, color: 'rgba(255,211,79,.65)', fxKind: 'electrostienFamilyStrike' });
+            checkHit(target, { ownerBrawler: 'electrostien', ownerId: owner.id, damage: ELECTROSTIEN_FAMILY_STRIKE_DAMAGE, pierce: true, super: true, hitIds: {}, electrostienFamilyStrike: true }, -1);
+        }
+        // --- Stale realm flags (record vanished with a mode reset) ---
+        for (const e of entities) {
+            if (e && e.electricRealmId && !getElectricRealm(e.electricRealmId)) e.electricRealmId = 0;
+        }
+    }
+    function drawElectrostienArc(x1, y1, x2, y2, color) {
+        ctx.save();
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 12;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        const steps = 6;
+        const dx = (x2 - x1) / steps, dy = (y2 - y1) / steps;
+        const len = Math.max(1, Math.hypot(x2 - x1, y2 - y1));
+        const perpX = -(y2 - y1) / len, perpY = (x2 - x1) / len;
+        for (let s = 1; s <= steps; s++) {
+            const jitter = s === steps ? 0 : (Math.random() - 0.5) * 22;
+            ctx.lineTo(x1 + dx * s + perpX * jitter, y1 + dy * s + perpY * jitter);
+        }
+        ctx.stroke();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.4;
+        ctx.stroke();
+        ctx.restore();
+    }
+    function renderElectrostienEffects() {
+        const now = performance.now();
+        for (const owner of [player, ...bots]) {
+            if (!owner || owner.electrostienChainTargetId == null || owner.hp <= 0) continue;
+            if (isRealmHiddenFromViewer(owner)) continue;
+            const target = findElectrostienEntityById(owner.electrostienChainTargetId);
+            if (!target || target.hp <= 0) continue;
+            drawElectrostienArc(owner.x, owner.y - (owner.z || 0), target.x, target.y - (target.z || 0), owner.electrostienChainRealm ? '#ffd34f' : '#00f5d4');
+        }
+        for (const t of [player, ...bots]) {
+            if (!t || !(t.electrostienMiniChainUntil > now) || t.hp <= 0) continue;
+            if (isRealmHiddenFromViewer(t)) continue;
+            const owner = findElectrostienEntityById(t.electrostienMiniChainOwnerId);
+            if (!owner || owner.hp <= 0) continue;
+            drawElectrostienArc(owner.x, owner.y - (owner.z || 0), t.x, t.y - (t.z || 0), '#e056fd');
+        }
+        // Realm skin: storm tint + rift ring — drawn only from inside the realm.
+        for (const realm of electricRealms) {
+            if (!player || player.electricRealmId !== realm.id) continue;
+            const caster = findElectrostienEntityById(realm.casterId);
+            const victim = findElectrostienEntityById(realm.victimId);
+            if (!caster || !victim) continue;
+            const cx = (caster.x + victim.x) / 2, cy = (caster.y + victim.y) / 2;
+            const rr = Math.hypot(caster.x - victim.x, caster.y - victim.y) / 2 + 130;
+            ctx.save();
+            ctx.fillStyle = realm.hyper ? 'rgba(88,28,135,.20)' : 'rgba(8,47,73,.22)';
+            ctx.beginPath(); ctx.arc(cx, cy, rr, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = realm.hyper ? '#e056fd' : '#00f5d4';
+            ctx.lineWidth = 3;
+            ctx.shadowColor = ctx.strokeStyle;
+            ctx.shadowBlur = 14;
+            ctx.beginPath(); ctx.arc(cx, cy, rr + Math.sin(now / 90) * 3, 0, Math.PI * 2); ctx.stroke();
+            ctx.restore();
+        }
+    }
+
     // ===== Christmas Showdown buffs (Season 6: Xplodemis) =====
     let christmasBuffTimer = 0;
     function isChristmasShowdownMatch() { return showdownMode === 'christmas_showdown' && !isTraining; }
@@ -21985,7 +22385,7 @@ let heistFeverActive = false;
 
     function getBotLivingEnemies(bot) {
         const enemies = [];
-        const canSee=(enemy)=>canDarkagonObserverSeeTarget(bot,enemy)&&!isGhoulHiddenFromObserver(enemy,bot)&&!((bot.ghoulDarknessUntil||0)>performance.now()&&Math.hypot(enemy.x-bot.x,enemy.y-bot.y)>125);
+        const canSee=(enemy)=>canDarkagonObserverSeeTarget(bot,enemy)&&!isGhoulHiddenFromObserver(enemy,bot)&&!areRealmSeparated(bot,enemy)&&!((bot.ghoulDarknessUntil||0)>performance.now()&&Math.hypot(enemy.x-bot.x,enemy.y-bot.y)>125);
         if (player.hp > 0 && player.id !== bot.ownerId && !areAlliedEntities(bot, player) && canSee(player)) enemies.push(player);
         for (const other of bots) {
             if (!other || other.id === bot.id || other.id === bot.ownerId || other.hp <= 0 || other.isDead || other.isDummy) continue;
@@ -22504,6 +22904,7 @@ let heistFeverActive = false;
         if ((bot.botNextSuperDecisionAt || 0) > context.now) return false;
         bot.botNextSuperDecisionAt = context.now + 360 + (context.slot % 6) * 35;
         const distance = Math.hypot(target.x - bot.x, target.y - bot.y);
+        if (bot.brawler === 'electrostien') return distance < ELECTROSTIEN_SUPER_THROW_RANGE - 40; // realm throw range
         const targetHpPct = target.hp ? target.hp / Math.max(1, target.maxHp || target.hp) : 1;
         const clustered = getBotLivingEnemies(bot).filter((enemy) => Math.hypot(enemy.x - target.x, enemy.y - target.y) < 190).length;
         const objectiveFight = (isObjectiveMode || isTugZoneMode) && Math.hypot(target.x - (objectiveZone?.x || WORLD_W*0.5), target.y - (objectiveZone?.y || WORLD_H*0.5)) < (objectiveZone?.r || 240) + 80;
@@ -22541,6 +22942,7 @@ let heistFeverActive = false;
     function shouldBotShootTarget(bot, target, context, distance) {
         if (!target || target.isPowerup || ['center', 'cart'].includes(target.id)) return false;
         if ((target.invulnerableUntil || 0) > context.now || target.isFlying || (target.angelLiftUntil || 0) > context.now) return false;
+        if (bot.brawler === 'electrostien' && distance > 175) return false; // melee: only swing inside punch reach
 
         // Bots 3.0: Cover & Natural HP Regeneration Discipline
         // If bot is under 35% HP and has taken cover, hold fire to let the 3.0s calm timer trigger natural healing
@@ -24692,7 +25094,7 @@ let heistFeverActive = false;
       beam:8, fuser:24, heater_miser:20, minigunnin:72, money_and_tax:24, outlit:30, steamer:8,
       bouncin_balls:6, chickpig:12, classy:6, copyphase:6, goonbob:6, hoop:5, hyperorigin:5, robber:42,
       portalo:7, ghoul:6, jacktrade:18, darkener:6, awakenator:8, trampaheal:6, axeywaxy:6, mageny:6, draflygon:6, ramage:6, upgradart:10, cinderion:10, cursed:7, king:6, anti_royal:6, weefee:6, rager:4,
-    carmela_fudge:5, bolznstien:5, sir_cheeseburger:4, blinkeye:4, magnatar:6, oil_maker:16, badbat:5, looma:7, feathers:5, spikey:6
+    carmela_fudge:5, bolznstien:5, sir_cheeseburger:4, blinkeye:4, magnatar:6, oil_maker:16, badbat:5, looma:7, feathers:5, spikey:6, electrostien:14
   });
   let nextMainAttackActivationId = 1;
   function getSuperChargeHitsForBrawler(brawler) {
@@ -25069,7 +25471,7 @@ let heistFeverActive = false;
   function startDuelsRound() {
     outlitWallChains.length = 0;
     bullets.length = 0; ragerWarTotems.length = 0;
-    bolznstienPendingStrikes.length = 0; bolznstienShockTrails.length = 0; bolznstienChainArcs.length = 0; chocolatePuddles.length = 0; magnatarVortices.length = 0; oilMakerPuddles.length = 0; oilMakerBarrels.length = 0; oilMakerPendingPuddles.length = 0; steamerPoles.length = 0; weefeePoles.length = 0; chickpigEggZones.length = 0; rings.length = 0; cheeseFields.length = 0; healingPods.length = 0; explosions.length = 0; pendingClones.length = 0; destructibleWalls.length = 0; floatingTexts.length = 0; stickyNotes.length = 0; amplifierToolboxes.length = 0; amplifierScrewZones.length = 0; skeleParachutes.length = 0; skelePortals.length = 0; malakorHellZones.length = 0; malakorHands.length = 0; relativityZones.length = 0; packetTimeFields.length = 0; packetTelegraphs.length = 0; fastpassCheckpoints.length = 0; freestyleMicrophones.length = 0; portaloPortalPairs.length = 0; portaloPrisons.length = 0; portaloShockTimers.length = 0; ghoulHaunts.length = 0; darkenerClouds.length = 0; darkagons.length = 0; cursedStorms.length = 0; cursedHyperClouds.length = 0; antiRoyalMortarShells.length = 0; antiRoyalMortarZones.length = 0; jackTradeVolleys.length = 0; jackTradeThrownEffects.length = 0; jackTradeZones.length = 0; jackTradeEndpointShots.length = 0; badbatSwarm.length = 0; badbatShieldOrbs.length = 0; loomaThreads.length = 0; loomaWeaves.length = 0; feathersWindZones.length = 0; feathersStorms.length = 0; spikeyParkedBalls.length = 0; spikeyMegaBalls.length = 0; spikeyPendingSlams.length = 0;
+    bolznstienPendingStrikes.length = 0; bolznstienShockTrails.length = 0; bolznstienChainArcs.length = 0; chocolatePuddles.length = 0; magnatarVortices.length = 0; oilMakerPuddles.length = 0; oilMakerBarrels.length = 0; oilMakerPendingPuddles.length = 0; steamerPoles.length = 0; weefeePoles.length = 0; chickpigEggZones.length = 0; rings.length = 0; cheeseFields.length = 0; healingPods.length = 0; explosions.length = 0; pendingClones.length = 0; destructibleWalls.length = 0; floatingTexts.length = 0; stickyNotes.length = 0; amplifierToolboxes.length = 0; amplifierScrewZones.length = 0; skeleParachutes.length = 0; skelePortals.length = 0; malakorHellZones.length = 0; malakorHands.length = 0; relativityZones.length = 0; packetTimeFields.length = 0; packetTelegraphs.length = 0; fastpassCheckpoints.length = 0; freestyleMicrophones.length = 0; portaloPortalPairs.length = 0; portaloPrisons.length = 0; portaloShockTimers.length = 0; ghoulHaunts.length = 0; darkenerClouds.length = 0; darkagons.length = 0; cursedStorms.length = 0; cursedHyperClouds.length = 0; antiRoyalMortarShells.length = 0; antiRoyalMortarZones.length = 0; jackTradeVolleys.length = 0; jackTradeThrownEffects.length = 0; jackTradeZones.length = 0; jackTradeEndpointShots.length = 0; badbatSwarm.length = 0; badbatShieldOrbs.length = 0; loomaThreads.length = 0; loomaWeaves.length = 0; feathersWindZones.length = 0; feathersStorms.length = 0; spikeyParkedBalls.length = 0; spikeyMegaBalls.length = 0; spikeyPendingSlams.length = 0; electricRealms.length = 0; electrostienPendingStrikes.length = 0;
     snapperWaves.length = 0;
     rocketeerFireZones.length = 0;
     minigunninMutationFireZones.length = 0;
@@ -28070,6 +28472,7 @@ let heistFeverActive = false;
     }
     for(const bot of bots){
         if(bot.hp <= 0 || bot.id === ownerId || bot.isFlying) continue;
+        if(owner && areRealmSeparated(owner, bot)) continue; // Electric Realm isolation
         if(owner && areAlliedEntities(owner, bot) && !bot.isChairSpinning && !isFriendlyFireActive()) continue; // Chaird super can hit teammates
         if(Math.hypot(bot.x - x, bot.y - y) <= radius + bot.radius){
             if (ownerId === player.id && tryImpossibleInstantAoeDodge(bot, x, y, radius)) continue;
@@ -28103,7 +28506,8 @@ let heistFeverActive = false;
             }
         }
     }
-    if(player.hp > 0 && !player.isFlying && player.id !== ownerId && Math.hypot(player.x - x, player.y - y) <= radius + player.radius){
+    if(owner && areRealmSeparated(owner, player)) { /* Electric Realm isolation: the AoE cannot reach across realms */ }
+    else if(player.hp > 0 && !player.isFlying && player.id !== ownerId && Math.hypot(player.x - x, player.y - y) <= radius + player.radius){
         // respect temporary invulnerability
         if (!(player.invulnerableUntil && player.invulnerableUntil > performance.now())) {
             let dealt = 0;
@@ -28689,13 +29093,15 @@ let heistFeverActive = false;
           for (const b of bots) {
               if (b.hp <= 0 || b.isDummy) continue;
               if (areAlliedEntities(player,b)) continue;
+              if (areRealmSeparated(entity,b)) continue;
               candidates.push(b);
           }
       } else {
-          if (player.hp > 0 && !areAlliedEntities(entity,player)) candidates.push(player);
+          if (player.hp > 0 && !areAlliedEntities(entity,player) && !areRealmSeparated(entity,player)) candidates.push(player);
           for (const b of bots) {
               if (b.id === entity.id || b.hp <= 0 || b.isDummy) continue;
               if (areAlliedEntities(entity,b)) continue;
+              if (areRealmSeparated(entity,b)) continue;
               candidates.push(b);
           }
       }
@@ -30655,6 +31061,16 @@ let heistFeverActive = false;
         const stats = getScaledStats('spikey', level);
         const spd = SPIKEY_THROW_SPEED * (hyper ? 1.5 : 1);
         bullets.push({ownerBrawler:'spikey',isSpikeyThrow:true,x:fromEntity.x+Math.cos(ang)*(fromEntity.radius+7),y:fromEntity.y+Math.sin(ang)*(fromEntity.radius+7),vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd,life:0,maxLife:SPIKEY_THROW_RANGE/spd,damage:stats.dmg,pierce:true,pierceWalls:false,ownerId:fromEntity.id,hitIds:{},hitboxMod:1.6,hyperVisual:hyper,spikeyRootMs:hyper?800:0});
+        return;
+    } else if (brawler === 'electrostien') {
+        const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
+        const level = fromEntity.id === player.id ? getSelectedBrawlerLevel() : (fromEntity.level || 11);
+        const stats = getScaledStats('electrostien', level);
+        const nowMs = performance.now();
+        const empowered = nowMs < (fromEntity.electrostienDashEmpoweredUntil || 0);
+        if (empowered) fromEntity.electrostienDashEmpoweredUntil = 0;
+        const range = (hyper ? ELECTROSTIEN_PUNCH_RANGE_HYPER : ELECTROSTIEN_PUNCH_RANGE) + (empowered ? ELECTROSTIEN_PUNCH_RANGE_DASH_BONUS : 0);
+        bullets.push({ownerBrawler:'electrostien',isElectrostienPunch:true,x:fromEntity.x+Math.cos(ang)*(fromEntity.radius+7),y:fromEntity.y+Math.sin(ang)*(fromEntity.radius+7),vx:Math.cos(ang)*ELECTROSTIEN_PUNCH_SPEED,vy:Math.sin(ang)*ELECTROSTIEN_PUNCH_SPEED,life:0,maxLife:range/ELECTROSTIEN_PUNCH_SPEED,damage:stats.dmg,pierce:false,ownerId:fromEntity.id,hitIds:{},hitboxMod:hyper?3.8:2.4,hyperVisual:hyper});
         return;
     } else if (brawler === 'duck') {
         castDuckMain(fromEntity,targetX,targetY,isBot,isBot?!!fromEntity.isHypercharged:!!isHypercharged);
@@ -35301,6 +35717,7 @@ let heistFeverActive = false;
     if (combatBrawler === 'looma') { castLoomaSuper(player, wm.x, wm.y, !!isHypercharged); updateSuperButton(); return; }
     if (combatBrawler === 'feathers') { castFeathersSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'spikey') { castSpikeySuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
+    if (combatBrawler === 'electrostien') { castElectrostienSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'ramage') { castRamageSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
         if (combatBrawler === 'upgradart') { castUpgradartSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'axeywaxy') { castAxeyWaxySuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
@@ -36553,6 +36970,10 @@ let heistFeverActive = false;
       executeSpikeyG1(bot);
     } else if (bot.brawler === 'spikey' && g === 'g2') {
       executeSpikeyG2(bot);
+    } else if (bot.brawler === 'electrostien' && g === 'g1') {
+      executeElectrostienG1(bot);
+    } else if (bot.brawler === 'electrostien' && g === 'g2') {
+      executeElectrostienG2(bot);
     } else if (bot.brawler === 'rager' && g === 'g1') {
       executeRagerG1(bot);
     } else if (bot.brawler === 'rager' && g === 'g2') {
@@ -37082,6 +37503,7 @@ let heistFeverActive = false;
     if (botCombatBrawler === 'trampaheal') { castTrampahealSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'feathers') { castFeathersSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'spikey') { castSpikeySuper(bot, isHyper, targetX, targetY); return; }
+    if (botCombatBrawler === 'electrostien') { castElectrostienSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'ramage') { castRamageSuper(bot, isHyper, targetX, targetY); return; }
             if (botCombatBrawler === 'upgradart') { castUpgradartSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'axeywaxy') { castAxeyWaxySuper(bot, isHyper, targetX, targetY); return; }
@@ -38631,6 +39053,16 @@ let heistFeverActive = false;
         return;
     } else if (curBrawler === 'spikey' && curGadget === 'g2') {
         executeSpikeyG2(player);
+        gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
+        updateGadgetButton();
+        return;
+    } else if (curBrawler === 'electrostien' && curGadget === 'g1') {
+        executeElectrostienG1(player);
+        gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
+        updateGadgetButton();
+        return;
+    } else if (curBrawler === 'electrostien' && curGadget === 'g2') {
+        executeElectrostienG2(player);
         gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
         updateGadgetButton();
         return;
@@ -42493,7 +42925,7 @@ let heistFeverActive = false;
       isHeadlessBossEvent = showdownMode === 'headless_boss_s4';
       isBossFight = isLavaBossEvent || isBouncinBossEvent || isHeadlessBossEvent;
       activeSkinTrial = null; // real matches never use trial skins
-      feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = [];
+      feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = [];
       if (isBouncinBossEvent) {
           initBouncinBossMatch();
       }
@@ -42894,7 +43326,7 @@ let heistFeverActive = false;
       isMirrorMode = false;
       isImpossibleMode = false;
       isObjectiveMode = false;
-      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; isPropHuntMode = false; propHuntState = null;
+      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; isPropHuntMode = false; propHuntState = null;
       isTraining = false;
       isDuels = true;
       isTowerDuelEvent = true;
@@ -43986,7 +44418,7 @@ isBrawlerLabMode = false;
       isTowerDuelEvent = false;
       isWarperEvent = false;
       isObjectiveMode = false;
-      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; isPropHuntMode = false; propHuntState = null;
+      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; isPropHuntMode = false; propHuntState = null;
       soloTrialWave = 0;
       soloTrialPending = false;
       playing = true;
@@ -44121,7 +44553,7 @@ isBrawlerLabMode = false;
       isDuels = false;
       isWarperEvent = false;
       isObjectiveMode = false;
-      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; isPropHuntMode = false; propHuntState = null;
+      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; isPropHuntMode = false; propHuntState = null;
     isConstructionMode = false;
       if (document.getElementById('topbar')) document.getElementById('topbar').textContent = 'Arena Forge - Rookie Course';
       playing = true;
@@ -46664,6 +47096,12 @@ function checkHit(target, b, i){
             damagePropHuntShell(target, Math.max(0, (b && b.damage) || 0));
             return false;
         }
+        // Electric Realm isolation: fighters in different realms (or one
+        // inside, one outside) cannot touch each other at all.
+        if (ELECTROSTIEN_ENABLED && target && b && b.ownerId !== undefined && !!player) {
+            const realmOwner = b.ownerId === player.id ? player : (typeof bots !== 'undefined' ? bots.find((x) => x.id === b.ownerId) : null);
+            if (realmOwner && areRealmSeparated(realmOwner, target)) return false;
+        }
         // A revived target can earn a fresh premium takedown effect. This also
         // makes Training dummy eliminations useful for previewing owned skins.
         if (target && target.hp > 0) { target._legendaryTakedownFxPlayed = false; target._hypeChainCounted = false; }
@@ -47054,6 +47492,21 @@ function checkHit(target, b, i){
         if(owner&&isSlopSushiMode&&getEntitySlopEffectTotal(owner,'xrayPierce')>0){b.pierce=true;b.hitIds=b.hitIds||{};}
         if (owner && owner.id === player.id && selectedStar === 'slow') target.slowUntil = Math.max(target.slowUntil || 0, performance.now() + 1200);
         explosions.push({x:target.x,y:target.y,radius:46,life:0,maxLife:0.28,color:b.hyperVisual?'#d66cff':'#79f7ff'});
+    }
+    if (b.isElectrostienPunch && !b._esApplied && target && owner && !areAlliedEntities(owner, target)) {
+      b._esApplied = true;
+      stickElectrostienChain(owner, target);
+      if (owner.electrostienFamilyCircuitArmed && owner.electricRealmId && owner.electricRealmId === target.electricRealmId) {
+        const esRealm = getElectricRealm(owner.electricRealmId);
+        if (esRealm && esRealm.casterId === owner.id && esRealm.familyCircuit) {
+          electrostienPendingStrikes.push({ ownerId: owner.id, targetId: target.id, at: performance.now() + ELECTROSTIEN_FAMILY_STRIKE_DELAY_MS });
+        }
+      }
+    }
+    if (b.isElectrostienShock && !b._esApplied && target && owner && !areAlliedEntities(owner, target)) {
+      b._esApplied = true;
+      if (b.electrostienRealmMode) enterElectricRealm(owner, target, !!b.electrostienHyperSuper);
+      else { applyStatusEffect(target, 'stun', 750, owner); stickElectrostienChain(owner, target); }
     }
     if (b.spikeyRootMs && target && owner && !areAlliedEntities(owner, target)) applyStatusEffect(target, 'root', b.spikeyRootMs, owner);
     if (b.spikeySlowMs && target && owner && !areAlliedEntities(owner, target)) target.spikeySlowUntil = Math.max(target.spikeySlowUntil || 0, performance.now() + b.spikeySlowMs);
@@ -47733,6 +48186,9 @@ function checkHit(target, b, i){
     const rawDmg = dealtDamage;
     dealtDamage = applyShieldDamage(target, dealtDamage);
     target.hp -= dealtDamage;
+    if (dealtDamage > 0 && target.hp > 0 && ELECTROSTIEN_ENABLED && !(b && (b.electrostienRoar || b.electrostienChainTick || b.electrostienMiniChainTick))) {
+        if (owner && !areAlliedEntities(owner, target)) triggerElectrostienRoar(target);
+    }
     if (owner && areAlliedEntities(owner, target) && isFriendlyFireActive() && target.id !== owner.id && dealtDamage > 0) {
         const ffNow = performance.now();
         if (ffNow - (target._lastFriendlyFireFloatAt || 0) > 400) {
@@ -49719,6 +50175,7 @@ function checkHit(target, b, i){
 
     if (playing && !gameOver) updateFeathersSystems(dt);
     if (playing && !gameOver) updateSpikeySystems(dt);
+    if (playing && !gameOver) updateElectrostienSystems(dt);
     if (playing && !gameOver) updatePropPads();
     if (playing && !gameOver) updateChristmasShowdown(dt);
     if (playing && !gameOver) updatePropHuntMode(dt, now);
@@ -56478,6 +56935,18 @@ function checkHit(target, b, i){
           if (!t.isArenaForgeMinion && t.gadgetUnlocked && (nowTarget >= getEntityGadgetCooldownUntil(t, 'g1', nowTarget) || nowTarget >= getEntityGadgetCooldownUntil(t, 'g2', nowTarget))) {
               if (shouldBotUseGadget(t, target, botAi)) activateGadgetBot(t);
           }
+          if (!t.isArenaForgeMinion && t.brawler === 'electrostien' && t.gadgetUnlocked && target) {
+              const esChainTarget = t.electrostienChainTargetId != null ? bots.concat([player]).find((x) => x && x.id === t.electrostienChainTargetId) : null;
+              if ((t.electrostienChainDamageDealt || 0) >= 900 && esChainTarget && esChainTarget.hp > 0 && nowTarget >= getEntityGadgetCooldownUntil(t, 'g2', nowTarget)) {
+                  t.selectedGadget = 'g2';
+                  executeElectrostienG2(t);
+                  setEntityGadgetCooldownUntil(t, nowTarget + getGadgetCooldownMsForBrawler('electrostien', 'g2'), 'g2');
+              } else if (!t.electrostienChainTargetId && !target.propHuntMorphed && distToTarget > 200 && distToTarget < 620 && nowTarget >= getEntityGadgetCooldownUntil(t, 'g1', nowTarget)) {
+                  t.selectedGadget = 'g1';
+                  executeElectrostienG1(t);
+                  setEntityGadgetCooldownUntil(t, nowTarget + getGadgetCooldownMsForBrawler('electrostien', 'g1'), 'g1');
+              }
+          }
           if (!t.isArenaForgeMinion && t.brawler === 'magnatar' && t.gadgetUnlocked && target && distToTarget <= 360) {
               if (nowTarget >= getEntityGadgetCooldownUntil(t, 'g1', nowTarget)) {
                   executeMagnatarG1(t);
@@ -56518,6 +56987,18 @@ function checkHit(target, b, i){
           if (t.brawler === 'minigunnin') {
               if (nowTarget - t.lastShot > 1000 && (t.minigunAmmo || 0) < 100) {
                   t.minigunAmmo = Math.min(100, (t.minigunAmmo || 0) + dt * 33);
+              }
+          }
+
+          if (t.hp > 0 && !t.electricRealmId && target) {
+              const chainOwner = bots.concat([player]).find((o) => o && o.hp > 0 && o.electrostienChainTargetId === t.id && !o.electricRealmId);
+              if (chainOwner) {
+                  // Flee the tether unless clearly winning the trade: break 4.5 tiles and the chain snaps.
+                  const outDps = t.hp > chainOwner.hp * 1.15 && t.maxHp >= chainOwner.maxHp;
+                  if (!outDps) {
+                      const fleeAng = Math.atan2(t.y - chainOwner.y, t.x - chainOwner.x);
+                      target = { x: clamp(t.x + Math.cos(fleeAng) * 320, 30, WORLD_W - 30), y: clamp(t.y + Math.sin(fleeAng) * 320, 30, WORLD_H - 30), hp: 1, id: 'center' };
+                  }
               }
           }
 
@@ -56957,6 +57438,23 @@ function checkHit(target, b, i){
               const charged=state?.ready?SPLITTER_INSTINCT_COOLDOWN_MS:SPLITTER_INSTINCT_COOLDOWN_MS-(state?.remaining||0);
               return {label:state?.ready?'INSTINCT - 1 > 5 > 2 READY':`INSTINCT - ${(Math.max(0,state?.remaining||0)/1000).toFixed(1)}s`,value:charged,max:SPLITTER_INSTINCT_COOLDOWN_MS,color:'#62ef88'};
           }
+      }
+      if (selectedBrawler === 'electrostien') {
+          const nowH = performance.now();
+          const chainT = player.electrostienChainTargetId ? findElectrostienEntityById(player.electrostienChainTargetId) : null;
+          if (player.electricRealmId) {
+              const realm = getElectricRealm(player.electricRealmId);
+              const secs = realm ? Math.max(0, (realm.endsAt - nowH) / 1000).toFixed(1) : '0.0';
+              return { label: realm && realm.hyper ? 'STORM REALM' : 'ELECTRIC REALM', value: `${secs}s`, detail: realm && realm.familyCircuit ? 'Family Circuit sky strikes live' : '1v1 dimension — chain at max tier' };
+          }
+          if (chainT && chainT.hp > 0) {
+              const dealt = Math.round(player.electrostienChainDamageDealt || 0);
+              const secs = Math.max(0, ((player.electrostienChainEndsAt || 0) - nowH) / 1000).toFixed(1);
+              return { label: 'BOLTZ CHAIN', value: `${dealt} dmg`, detail: `Discharge pays ${Math.max(600, Math.round(dealt * 0.5))} · chain snaps if you drift past 4.5 tiles (${secs}s left)` };
+          }
+          if (player.electrostienFamilyCircuitArmed) return { label: 'FAMILY CIRCUIT', value: 'ARMED', detail: 'Your next Electric Realm echoes every punch as a sky strike' };
+          if (isSpecialAbilityAvailableForEntity(player, 'electrostien')) return { label: 'FAMILY CIRCUIT', value: 'READY', detail: 'Press the Signature button (R) to arm sky-strike echoes for the realm' };
+          return { label: 'FAMILY CIRCUIT', value: `${getElectrostienSignatureWins()}/3 wins`, detail: 'Win battles with Electrostien to earn his Signature — it is never bought' };
       }
       if (selectedBrawler === 'spikey') {
           const cycleState = getSpikeyCycleState(player);
@@ -59254,6 +59752,22 @@ function checkHit(target, b, i){
                 }
                 ctx.restore();
             }
+            if (brawlerId === 'electrostien') {
+                ctx.save();
+                ctx.strokeStyle = '#00f5d4';
+                ctx.lineWidth = 2.4;
+                ctx.shadowColor = '#00f5d4';
+                ctx.shadowBlur = 8;
+                const esT = performance.now() / 90;
+                for (let k = 0; k < 3; k++) {
+                    const a = esT + k * (Math.PI * 2 / 3);
+                    ctx.beginPath();
+                    ctx.moveTo(entity.x + Math.cos(a) * size * 0.42, drawY + Math.sin(a) * size * 0.42);
+                    ctx.lineTo(entity.x + Math.cos(a + 0.7) * size * 0.6, drawY + Math.sin(a + 0.7) * size * 0.6);
+                    ctx.stroke();
+                }
+                ctx.restore();
+            }
             if (brawlerId === 'spikey') {
                 ctx.save();
                 ctx.strokeStyle = '#a6e34d';
@@ -59812,6 +60326,7 @@ function checkHit(target, b, i){
     renderTurkeyCaptureEvent();
     renderFeathersEffects();
     renderSpikeyEffects();
+    renderElectrostienEffects();
     if (typeof renderBouncinBossEvent === 'function') renderBouncinBossEvent('ground');
     if (isBraweBallMode) renderBraweBallWorld(ctx);
     if (isKnockoutMode) renderKnockoutWorld(ctx);
@@ -61102,6 +61617,7 @@ function checkHit(target, b, i){
     const aliveBots = bots.filter(t=>t.hp>0);
     // bots
     for(const t of aliveBots){
+            if (isRealmHiddenFromViewer(t)) continue; // Electric Realm pair is invisible to outsiders (and outsiders to the pair)
             if (isPropHuntMode && t.propHuntMorphed) continue; // morphed hiders render only as their prop wall: no nameplate, bar or silhouette
             if (!isWorldVisualVisible(t.x, t.y, Math.max(150, Number(t.radius) || 0) + 90)) continue;
             const liftAmt = (t.hyperoriginLiftUntil && performance.now() < t.hyperoriginLiftUntil) ? (18 + Math.sin(performance.now() / 70) * 3) : 0;
@@ -74056,6 +74572,7 @@ function checkHit(target, b, i){
         }
     }
     for(const t of aliveBots){
+        if (isRealmHiddenFromViewer(t)) continue; // Electric Realm: the minimap never snitches the pair
         // Prop Hunt: a morphed hider renders only as its prop, so the minimap must not snitch it.
         // Exception: the final-30s ping is the designed reveal -- the dot flashes only while a ping is fresh.
         if (isPropHuntMode && t.propHuntMorphed && !(propHuntState && propHuntState.lastPingAt > 0 && performance.now() - propHuntState.lastPingAt < PROP_HUNT_MINIMAP_PING_SHOW_MS)) continue;
@@ -74706,6 +75223,7 @@ function checkHit(target, b, i){
 
             let streakBonusCoins = 0;
             let streakDropBonus = 0;
+            if (won && !isTraining && completedMatchFighter === 'electrostien') grantElectrostienSignatureWin();
             if (won) {
                 playerData.winStreak = (playerData.winStreak || 0) + 1;
                 playerData.bestWinStreak = Math.max(playerData.bestWinStreak || 0, playerData.winStreak);
@@ -82407,6 +82925,30 @@ function renderBouncinBossEvent(phase) {
     get deployMagnatarBeacon() { return deployMagnatarBeacon; },
     get executeMagnatarG1() { return executeMagnatarG1; },
     get executeMagnatarG2() { return executeMagnatarG2; },
+    get playerData() { return playerData; },
+    get AOEDamage() { return AOEDamage; },
+    get getEntitySlowMultiplier() { return getEntitySlowMultiplier; },
+    get activateSignatureAbility() { return activateSignatureAbility; },
+    get electricRealms() { return electricRealms; },
+    get electrostienPendingStrikes() { return electrostienPendingStrikes; },
+    get castElectrostienSuper() { return castElectrostienSuper; },
+    get executeElectrostienG1() { return executeElectrostienG1; },
+    get executeElectrostienG2() { return executeElectrostienG2; },
+    get executeElectrostienDischarge() { return executeElectrostienDischarge; },
+    get stickElectrostienChain() { return stickElectrostienChain; },
+    get breakElectrostienChain() { return breakElectrostienChain; },
+    get enterElectricRealm() { return enterElectricRealm; },
+    get exitElectricRealm() { return exitElectricRealm; },
+    get areRealmSeparated() { return areRealmSeparated; },
+    get updateElectrostienSystems() { return updateElectrostienSystems; },
+    get getElectrostienChainTierDamage() { return getElectrostienChainTierDamage; },
+    get triggerElectrostienRoar() { return triggerElectrostienRoar; },
+    get getElectrostienSignatureState() { return getElectrostienSignatureState; },
+    get grantElectrostienSignatureWin() { return grantElectrostienSignatureWin; },
+    get getElectrostienSignatureWins() { return getElectrostienSignatureWins; },
+    get ELECTROSTIEN_ENABLED() { return ELECTROSTIEN_ENABLED; },
+    get ELECTRIC_REALM_ENABLED() { return ELECTRIC_REALM_ENABLED; },
+    setElectrostienKillSwitches(enabled, realmEnabled) { ELECTROSTIEN_ENABLED = !!enabled; ELECTRIC_REALM_ENABLED = !!realmEnabled; },
     get spikeyParkedBalls() { return spikeyParkedBalls; },
     get spikeyMegaBalls() { return spikeyMegaBalls; },
     get spikeyPendingSlams() { return spikeyPendingSlams; },
