@@ -297,6 +297,24 @@ check('master switch blocks chain stick', api.stickElectrostienChain(me, bot) ==
 api.setElectrostienKillSwitches(true, true);
 check('switches restored', api.ELECTROSTIEN_ENABLED === true && api.ELECTRIC_REALM_ENABLED === true);
 
+// --- visuals hotfix (PR #44 crash): renderElectrostienEffects must run with
+// a live punch telegraph + armed signature, on and off. The old code called
+// isWorldVisualVisible() here, but that helper is local to render(), so the
+// first punch threw ReferenceError and paused the match.
+api.ELECTROSTIEN_VISUALS_ENABLED = true;
+api.electrostienPunchTelegraphs.push({ x: me.x, y: me.y, ang: 0, range: 120, hyper: false, empowered: false, until: Date.now() + 60000 });
+me.electrostienFamilyCircuitArmed = true;
+let renderThrew = null;
+try { api.renderElectrostienEffects(); } catch (e) { renderThrew = e; }
+check('renderElectrostienEffects runs with telegraph + armed (no ReferenceError)', renderThrew === null);
+api.ELECTROSTIEN_VISUALS_ENABLED = false;
+let renderOffThrew = null;
+try { api.renderElectrostienEffects(); } catch (e) { renderOffThrew = e; }
+check('renderElectrostienEffects runs with visuals switch off', renderOffThrew === null);
+api.ELECTROSTIEN_VISUALS_ENABLED = true;
+me.electrostienFamilyCircuitArmed = false;
+api.electrostienPunchTelegraphs.length = 0;
+
 console.log(`electrostien-regression: ${passed} passed, ${failed} failed`);
 if (failures.length) { console.log('FAILURES:'); for (const f of failures) console.log(' - ' + f); }
 process.exit(failed ? 1 : 0); // the game's intervals would otherwise hold the event loop open

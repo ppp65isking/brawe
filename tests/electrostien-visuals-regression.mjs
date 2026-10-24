@@ -35,6 +35,19 @@ check('chain traveling spark', game.includes('spark: true') && game.includes('co
 // Punch impact burst
 check('punch impact burst', game.includes("fxKind:'electrostienPunchHit'"));
 
+// Hotfix: PR #44 crash — the telegraph block must not call render()'s local helper
+check('no out-of-scope cull in telegraph block', !game.includes('if (!isWorldVisualVisible(t.x, t.y, t.range)) continue;'));
+
+// Signature visuals (Family Circuit, yellow/gold)
+check('armed indicator ring + bolt', game.includes('Family Circuit armed indicator') && game.includes("ctx.fillText('⚡'"));
+check('family strike sky-bolt branch', game.includes("if (ex.fxKind === 'electrostienFamilyStrike' && ELECTROSTIEN_VISUALS_ENABLED)"));
+check('family strike bolt is gold', game.includes("ctx.shadowColor = '#ffd34f'; ctx.shadowBlur = 20;"));
+
+// Test API exposure for the vm crash check in electrostien-regression
+check('render effects exposed to tests', game.includes('get renderElectrostienEffects() { return renderElectrostienEffects; }'));
+check('telegraphs exposed to tests', game.includes('get electrostienPunchTelegraphs() { return electrostienPunchTelegraphs; }'));
+check('visuals switch exposed to tests', game.includes('get ELECTROSTIEN_VISUALS_ENABLED() { return ELECTROSTIEN_VISUALS_ENABLED; }'));
+
 // Gameplay unchanged: range/speed/damage/timing pins
 check('punch range unchanged', /const ELECTROSTIEN_PUNCH_RANGE = 120;/.test(game));
 check('punch speed unchanged', /const ELECTROSTIEN_PUNCH_SPEED = 1500;/.test(game));

@@ -19532,7 +19532,8 @@ let heistFeverActive = false;
         if (ELECTROSTIEN_VISUALS_ENABLED) {
             electrostienPunchTelegraphs = electrostienPunchTelegraphs.filter(t => t && now < t.until);
             for (const t of electrostienPunchTelegraphs) {
-                if (!isWorldVisualVisible(t.x, t.y, t.range)) continue;
+                // No viewport cull here: isWorldVisualVisible is local to render()
+                // and out of scope in this function; canvas clips offscreen arcs anyway.
                 const tAlpha = Math.max(0, Math.min(1, (t.until - now) / 180));
                 const tCol = t.hyper ? '#c084fc' : '#00f5d4';
                 ctx.save();
@@ -19546,6 +19547,25 @@ let heistFeverActive = false;
                 ctx.globalAlpha = tAlpha * .5;
                 ctx.fillStyle = tCol;
                 ctx.beginPath(); ctx.arc(t.x, t.y, 10 + (1 - tAlpha) * 8, 0, Math.PI * 2); ctx.fill();
+                ctx.restore();
+            }
+        }
+        // Family Circuit armed indicator: pulsing gold ring + bolt above the fighter.
+        if (ELECTROSTIEN_VISUALS_ENABLED) {
+            for (const f of [player, ...bots]) {
+                if (!f || !f.electrostienFamilyCircuitArmed || f.hp <= 0) continue;
+                if (isRealmHiddenFromViewer(f)) continue;
+                const fy = f.y - (f.z || 0);
+                const pulse = 1 + Math.sin(now / 240) * .12;
+                ctx.save();
+                ctx.globalAlpha = .9;
+                ctx.strokeStyle = '#ffd34f'; ctx.lineWidth = 3;
+                ctx.shadowColor = '#ffd34f'; ctx.shadowBlur = 14;
+                ctx.beginPath(); ctx.arc(f.x, fy, (f.radius || 20) + 10 * pulse, 0, Math.PI * 2); ctx.stroke();
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = '#ffd34f';
+                ctx.font = '900 20px sans-serif'; ctx.textAlign = 'center';
+                ctx.fillText('⚡', f.x, fy - (f.radius || 20) - 14);
                 ctx.restore();
             }
         }
@@ -73100,6 +73120,35 @@ function checkHit(target, b, i){
             continue;
         }
         const alpha = Math.max(0, 1 - ex.life/ex.maxLife);
+        if (ex.fxKind === 'electrostienFamilyStrike' && ELECTROSTIEN_VISUALS_ENABLED) {
+            // Family Circuit sky strike: gold thunderbolt from the sky + impact ring.
+            const fAlpha = Math.max(0, 1 - ex.life / ex.maxLife);
+            const boltTopY = ex.y - 680;
+            const fSegs = 12;
+            const fDy = (ex.y - boltTopY) / fSegs;
+            const fPts = [[ex.x, boltTopY]];
+            for (let s = 1; s <= fSegs; s++) {
+                const segY = boltTopY + s * fDy;
+                const jit = (s === fSegs ? 0 : (Math.sin(s * 5 + performance.now() * 0.02) * 26 + (s % 2 === 0 ? 14 : -14)));
+                fPts.push([ex.x + jit, segY]);
+            }
+            ctx.save();
+            ctx.shadowColor = '#ffd34f'; ctx.shadowBlur = 20;
+            ctx.strokeStyle = '#ffd34f'; ctx.lineWidth = 8 * fAlpha; ctx.lineCap = 'round';
+            ctx.beginPath(); ctx.moveTo(fPts[0][0], fPts[0][1]);
+            for (let s = 1; s < fPts.length; s++) ctx.lineTo(fPts[s][0], fPts[s][1]);
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = '#fff7cc'; ctx.lineWidth = 3 * fAlpha;
+            ctx.beginPath(); ctx.moveTo(fPts[0][0], fPts[0][1]);
+            for (let s = 1; s < fPts.length; s++) ctx.lineTo(fPts[s][0], fPts[s][1]);
+            ctx.stroke();
+            ctx.globalAlpha = fAlpha * .8;
+            ctx.strokeStyle = '#ffd34f'; ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.arc(ex.x, ex.y, 46 * (1 - fAlpha * .4), 0, Math.PI * 2); ctx.stroke();
+            ctx.restore();
+            continue;
+        }
         if (ex.fxKind === 'rankedRocketeerBurst') {
             const progress = clamp(ex.life / ex.maxLife, 0, 1);
             const burst = 1 - Math.pow(1 - progress, 3);
@@ -83044,6 +83093,10 @@ function renderBouncinBossEvent(phase) {
     get exitElectricRealm() { return exitElectricRealm; },
     get areRealmSeparated() { return areRealmSeparated; },
     get updateElectrostienSystems() { return updateElectrostienSystems; },
+    get renderElectrostienEffects() { return renderElectrostienEffects; },
+    get electrostienPunchTelegraphs() { return electrostienPunchTelegraphs; },
+    get ELECTROSTIEN_VISUALS_ENABLED() { return ELECTROSTIEN_VISUALS_ENABLED; },
+    set ELECTROSTIEN_VISUALS_ENABLED(v) { ELECTROSTIEN_VISUALS_ENABLED = !!v; },
     get getElectrostienChainTierDamage() { return getElectrostienChainTierDamage; },
     get triggerElectrostienRoar() { return triggerElectrostienRoar; },
     get getElectrostienSignatureState() { return getElectrostienSignatureState; },
