@@ -19156,6 +19156,7 @@ let heistFeverActive = false;
     // Kill switches are `let` so regression tests can flip them.
     let ELECTROSTIEN_ENABLED = true;
     let ELECTRIC_REALM_ENABLED = true;
+    let ELECTROSTIEN_VISUALS_ENABLED = true;
     const ELECTROSTIEN_PUNCH_RANGE = 120;
     const ELECTROSTIEN_PUNCH_RANGE_HYPER = 160;
     const ELECTROSTIEN_PUNCH_RANGE_DASH_BONUS = 80;
@@ -19186,6 +19187,7 @@ let heistFeverActive = false;
     const ELECTROSTIEN_FAMILY_STRIKE_DELAY_MS = 350;
     let electricRealms = [];
     let electrostienPendingStrikes = [];
+    let electrostienPunchTelegraphs = [];
     let nextElectricRealmId = 1;
     function isElectrostienEntity(entity) {
         return !!entity && (entity.brawler === 'electrostien' || (!!player && entity.id === player.id && selectedBrawler === 'electrostien'));
@@ -19416,26 +19418,66 @@ let heistFeverActive = false;
             if (e && e.electricRealmId && !getElectricRealm(e.electricRealmId)) e.electricRealmId = 0;
         }
     }
-    function drawElectrostienArc(x1, y1, x2, y2, color) {
-        ctx.save();
-        ctx.shadowColor = color;
-        ctx.shadowBlur = 12;
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        const steps = 6;
-        const dx = (x2 - x1) / steps, dy = (y2 - y1) / steps;
-        const len = Math.max(1, Math.hypot(x2 - x1, y2 - y1));
-        const perpX = -(y2 - y1) / len, perpY = (x2 - x1) / len;
-        for (let s = 1; s <= steps; s++) {
-            const jitter = s === steps ? 0 : (Math.random() - 0.5) * 22;
-            ctx.lineTo(x1 + dx * s + perpX * jitter, y1 + dy * s + perpY * jitter);
+    function drawElectrostienArc(x1, y1, x2, y2, color, opts) {
+        opts = opts || {};
+        if (!ELECTROSTIEN_VISUALS_ENABLED) {
+            ctx.save();
+            ctx.shadowColor = color;
+            ctx.shadowBlur = 12;
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            const steps = 6;
+            const dx = (x2 - x1) / steps, dy = (y2 - y1) / steps;
+            const len = Math.max(1, Math.hypot(x2 - x1, y2 - y1));
+            const perpX = -(y2 - y1) / len, perpY = (x2 - x1) / len;
+            for (let s = 1; s <= steps; s++) {
+                const jitter = s === steps ? 0 : (Math.random() - 0.5) * 22;
+                ctx.lineTo(x1 + dx * s + perpX * jitter, y1 + dy * s + perpY * jitter);
+            }
+            ctx.stroke();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.4;
+            ctx.stroke();
+            ctx.restore();
+            return;
         }
+        const nowA = performance.now();
+        const glow = opts.glow || color;
+        const core = opts.core || '#ffffff';
+        const width = opts.width || 3;
+        const alpha = (opts.alpha == null ? .95 : opts.alpha);
+        const lenA = Math.max(1, Math.hypot(x2 - x1, y2 - y1));
+        const segs = Math.max(6, Math.min(14, Math.round(lenA / 28)));
+        const dxA = (x2 - x1) / segs, dyA = (y2 - y1) / segs;
+        const perpXA = -(y2 - y1) / lenA, perpYA = (x2 - x1) / lenA;
+        const pts = [];
+        for (let s = 0; s <= segs; s++) {
+            const jit = (s === 0 || s === segs) ? 0 : (Math.sin(s * 2.7 + nowA / 70) * 10 + Math.sin(s * 5.3 + nowA / 130) * 4);
+            pts.push([x1 + dxA * s + perpXA * jit, y1 + dyA * s + perpYA * jit]);
+        }
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.shadowColor = glow; ctx.shadowBlur = 12;
+        ctx.strokeStyle = glow; ctx.lineWidth = width; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
+        for (let s = 1; s < pts.length; s++) ctx.lineTo(pts[s][0], pts[s][1]);
         ctx.stroke();
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1.4;
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = core; ctx.lineWidth = Math.max(1, width - 1.5);
+        ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
+        for (let s = 1; s < pts.length; s++) ctx.lineTo(pts[s][0], pts[s][1]);
         ctx.stroke();
+        if (opts.spark) {
+            const prog = (nowA / 300) % 1;
+            const fi = Math.min(pts.length - 2, Math.floor(prog * (pts.length - 1)));
+            const ff = prog * (pts.length - 1) - fi;
+            const sx = pts[fi][0] + (pts[fi + 1][0] - pts[fi][0]) * ff;
+            const sy = pts[fi][1] + (pts[fi + 1][1] - pts[fi][1]) * ff;
+            ctx.globalAlpha = 1; ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(sx, sy, 3.5, 0, Math.PI * 2); ctx.fill();
+        }
         ctx.restore();
     }
     function renderElectrostienEffects() {
@@ -19445,7 +19487,20 @@ let heistFeverActive = false;
             if (isRealmHiddenFromViewer(owner)) continue;
             const target = findElectrostienEntityById(owner.electrostienChainTargetId);
             if (!target || target.hp <= 0) continue;
-            drawElectrostienArc(owner.x, owner.y - (owner.z || 0), target.x, target.y - (target.z || 0), owner.electrostienChainRealm ? '#ffd34f' : '#00f5d4');
+            const esDist = Math.hypot(target.x - owner.x, target.y - owner.y);
+            const esRealmChain = !!owner.electrostienChainRealm;
+            let esGlow = '#00f5d4', esCore = '#ecfeff', esAlpha = .95, esWidth = 3.5;
+            if (esRealmChain) { esGlow = '#ffd34f'; esCore = '#fff7cc'; }
+            else if (esDist <= ELECTROSTIEN_CHAIN_TIER1_DIST) { esGlow = '#00f5d4'; esCore = '#ffffff'; }
+            else if (esDist <= ELECTROSTIEN_CHAIN_TIER2_DIST) { esGlow = '#00f5d4'; esCore = '#a5f3fc'; }
+            else { esGlow = '#a855f7'; esCore = '#d8b4fe'; }
+            if (!esRealmChain && esDist > 300) { const esWarn = Math.min(1, (esDist - 300) / 60); esAlpha = .95 - esWarn * .45; esWidth = 3.5 - esWarn * 1.5; esGlow = '#ff7a45'; }
+            if (!esRealmChain && ELECTROSTIEN_VISUALS_ENABLED) {
+                const esEnds = owner.electrostienChainEndsAt || 0;
+                if (esEnds > 0 && esEnds - now < 800 && Math.floor(now / 150) % 2 === 0) esAlpha *= .45;
+            }
+            if (ELECTROSTIEN_VISUALS_ENABLED) drawElectrostienArc(owner.x, owner.y - (owner.z || 0), target.x, target.y - (target.z || 0), esGlow, { core: esCore, glow: esGlow, width: esWidth, alpha: esAlpha, spark: true });
+            else drawElectrostienArc(owner.x, owner.y - (owner.z || 0), target.x, target.y - (target.z || 0), owner.electrostienChainRealm ? '#ffd34f' : '#00f5d4');
         }
         for (const t of [player, ...bots]) {
             if (!t || !(t.electrostienMiniChainUntil > now) || t.hp <= 0) continue;
@@ -19471,6 +19526,28 @@ let heistFeverActive = false;
             ctx.shadowBlur = 14;
             ctx.beginPath(); ctx.arc(cx, cy, rr + Math.sin(now / 90) * 3, 0, Math.PI * 2); ctx.stroke();
             ctx.restore();
+        }
+        // Volt Knuckle swing telegraphs: fading range arcs spawned at punch fire time.
+        // Purely visual — the punch itself is unchanged (no wind-up delay added).
+        if (ELECTROSTIEN_VISUALS_ENABLED) {
+            electrostienPunchTelegraphs = electrostienPunchTelegraphs.filter(t => t && now < t.until);
+            for (const t of electrostienPunchTelegraphs) {
+                if (!isWorldVisualVisible(t.x, t.y, t.range)) continue;
+                const tAlpha = Math.max(0, Math.min(1, (t.until - now) / 180));
+                const tCol = t.hyper ? '#c084fc' : '#00f5d4';
+                ctx.save();
+                ctx.globalAlpha = tAlpha * .8;
+                ctx.strokeStyle = tCol; ctx.lineWidth = 3;
+                ctx.beginPath(); ctx.arc(t.x, t.y, t.range, t.ang - .6, t.ang + .6); ctx.stroke();
+                ctx.globalAlpha = tAlpha * .35;
+                ctx.setLineDash([8, 6]);
+                ctx.beginPath(); ctx.moveTo(t.x, t.y); ctx.lineTo(t.x + Math.cos(t.ang) * t.range, t.y + Math.sin(t.ang) * t.range); ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.globalAlpha = tAlpha * .5;
+                ctx.fillStyle = tCol;
+                ctx.beginPath(); ctx.arc(t.x, t.y, 10 + (1 - tAlpha) * 8, 0, Math.PI * 2); ctx.fill();
+                ctx.restore();
+            }
         }
     }
 
@@ -31070,7 +31147,8 @@ let heistFeverActive = false;
         const empowered = nowMs < (fromEntity.electrostienDashEmpoweredUntil || 0);
         if (empowered) fromEntity.electrostienDashEmpoweredUntil = 0;
         const range = (hyper ? ELECTROSTIEN_PUNCH_RANGE_HYPER : ELECTROSTIEN_PUNCH_RANGE) + (empowered ? ELECTROSTIEN_PUNCH_RANGE_DASH_BONUS : 0);
-        bullets.push({ownerBrawler:'electrostien',isElectrostienPunch:true,x:fromEntity.x+Math.cos(ang)*(fromEntity.radius+7),y:fromEntity.y+Math.sin(ang)*(fromEntity.radius+7),vx:Math.cos(ang)*ELECTROSTIEN_PUNCH_SPEED,vy:Math.sin(ang)*ELECTROSTIEN_PUNCH_SPEED,life:0,maxLife:range/ELECTROSTIEN_PUNCH_SPEED,damage:stats.dmg,pierce:false,ownerId:fromEntity.id,hitIds:{},hitboxMod:hyper?3.8:2.4,hyperVisual:hyper});
+        bullets.push({ownerBrawler:'electrostien',isElectrostienPunch:true,esEmpowered:empowered,x:fromEntity.x+Math.cos(ang)*(fromEntity.radius+7),y:fromEntity.y+Math.sin(ang)*(fromEntity.radius+7),vx:Math.cos(ang)*ELECTROSTIEN_PUNCH_SPEED,vy:Math.sin(ang)*ELECTROSTIEN_PUNCH_SPEED,life:0,maxLife:range/ELECTROSTIEN_PUNCH_SPEED,damage:stats.dmg,pierce:false,ownerId:fromEntity.id,hitIds:{},hitboxMod:hyper?3.8:2.4,hyperVisual:hyper});
+        if (ELECTROSTIEN_VISUALS_ENABLED) electrostienPunchTelegraphs.push({x:fromEntity.x,y:fromEntity.y,ang,range,hyper,empowered,until:performance.now()+180});
         return;
     } else if (brawler === 'duck') {
         castDuckMain(fromEntity,targetX,targetY,isBot,isBot?!!fromEntity.isHypercharged:!!isHypercharged);
@@ -47496,6 +47574,7 @@ function checkHit(target, b, i){
     if (b.isElectrostienPunch && !b._esApplied && target && owner && !areAlliedEntities(owner, target)) {
       b._esApplied = true;
       stickElectrostienChain(owner, target);
+      if (ELECTROSTIEN_VISUALS_ENABLED) explosions.push({x:target.x,y:target.y,radius:44,life:0,maxLife:.22,color:'rgba(0,245,212,.7)',fxKind:'electrostienPunchHit'});
       if (owner.electrostienFamilyCircuitArmed && owner.electricRealmId && owner.electricRealmId === target.electricRealmId) {
         const esRealm = getElectricRealm(owner.electricRealmId);
         if (esRealm && esRealm.casterId === owner.id && esRealm.familyCircuit) {
@@ -67383,6 +67462,30 @@ function checkHit(target, b, i){
     }
     for(const b of bullets){ 
       if (!b || !isWorldVisualVisible(b.x, b.y, 120)) continue;
+      if (b.isElectrostienPunch && ELECTROSTIEN_VISUALS_ENABLED) {
+        // Electrostien Volt Knuckle punch visual: glowing fist + lightning trail.
+        const pang = Math.atan2(b.vy, b.vx);
+        const pHyper = !!b.hyperVisual;
+        const pEmp = !!b.esEmpowered;
+        const pGlow = pHyper ? '#c084fc' : '#00f5d4';
+        const pCore = pHyper ? '#f3e8ff' : '#ecfeff';
+        const pR = pEmp ? 16 : 13;
+        ctx.save();
+        ctx.translate(b.x, b.y); ctx.rotate(pang);
+        ctx.shadowColor = pGlow; ctx.shadowBlur = 16;
+        ctx.strokeStyle = pGlow; ctx.lineWidth = 3; ctx.lineCap = 'round';
+        for (let ti = 1; ti <= 3; ti++) {
+          ctx.globalAlpha = .55 - ti * .13;
+          ctx.beginPath(); ctx.moveTo(-ti * 14 - 6, (ti % 2 === 0 ? -5 : 5)); ctx.lineTo(-ti * 14 - 16, (ti % 2 === 0 ? -9 : 9)); ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = pGlow; ctx.beginPath(); ctx.arc(0, 0, pR, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = pCore; ctx.beginPath(); ctx.arc(0, 0, pR * .55, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(pR * .4, -pR * .7); ctx.lineTo(pR * .9, -pR * 1.2); ctx.moveTo(pR * .4, pR * .7); ctx.lineTo(pR * .9, pR * 1.2); ctx.stroke();
+        ctx.restore();
+        continue;
+      }
       if(b.portaloWarpTrailUntil>performance.now()){
           const fade=clamp((b.portaloWarpTrailUntil-performance.now())/220,0,1);ctx.save();ctx.globalAlpha=.62*fade;ctx.strokeStyle='#7cecff';ctx.shadowColor='#a65dff';ctx.shadowBlur=16;ctx.lineWidth=3;ctx.setLineDash([7,7]);ctx.beginPath();ctx.moveTo(b.portaloWarpFromX||b.x,b.portaloWarpFromY||b.y);ctx.lineTo(b.x,b.y);ctx.stroke();ctx.setLineDash([]);ctx.restore();
       }
