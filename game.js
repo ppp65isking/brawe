@@ -6048,6 +6048,21 @@ const bolznstienPendingStrikes = [];
             superEffect: { type: 'goldSilverSuper', color: '#bdc3c7', glow: true },
             takedownEffect: { type: 'goldSilverTakedown', color: '#f1c40f', glow: true }
         },
+        'tombstone-moneytax': {
+            id: 'tombstone-moneytax',
+            name: 'Tombstone Tycoon',
+            brawler: 'money_and_tax',
+            rarity: 'mythic',
+            set: 'Graveyard Ledger',
+            price: 49,
+            currency: 'gems',
+            icon: '💀',
+            _displayColor: '#7dffb0',
+            description: 'Money & Tax rise from the grave as the Graveyard Ledger undead broker. Fires ghostly skull coins, buries foes in blood-red death-tax notes, and seals Supers with a spectral tombstone sigil — with custom Hypercharge flames.',
+            attackEffect: { type: 'graveSkullCoin', color: '#7dffb0', glow: true },
+            superEffect: { type: 'graveSkullSuper', color: '#b26bff', glow: true },
+            takedownEffect: { type: 'graveTakedown', color: '#7dffb0', glow: true }
+        },
         'classic-classy': {
             id: 'classic-classy',
             name: 'Classic Classy',
@@ -6497,6 +6512,256 @@ const bolznstienPendingStrikes = [];
 
         ctx.restore();
         return true;
+    }
+
+    // Tombstone Tycoon (tombstone-moneytax) art helpers. Visuals only: these
+    // functions only issue canvas draws and never touch combat state.
+    function drawGraveTaxSkullCoin(ctx, b, hyper) {
+        const radius = b.isBoomerang ? 14 : (b.moneyEmpoweredCenter ? 10 : 7);
+        const ang = Math.atan2(b.vy || 0, b.vx || 1);
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        // Ghostly wisp trail behind the coin
+        ctx.strokeStyle = hyper ? 'rgba(178, 107, 255, 0.55)' : 'rgba(125, 255, 176, 0.45)';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        for (let w = 1; w <= 3; w++) {
+            ctx.globalAlpha = 0.5 - w * 0.12;
+            ctx.beginPath();
+            ctx.moveTo(-Math.cos(ang) * (radius + w * 6), -Math.sin(ang) * (radius + w * 6));
+            ctx.lineTo(-Math.cos(ang) * (radius + w * 6 + 4), -Math.sin(ang) * (radius + w * 6 + 4));
+            ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+        // Hypercharge: violet flame ring around the coin
+        if (hyper) {
+            ctx.shadowColor = '#b26bff';
+            ctx.shadowBlur = 16;
+            ctx.strokeStyle = '#b26bff';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.arc(0, 0, radius + 4, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+        }
+        // Spectral coin disc
+        ctx.shadowColor = '#7dffb0';
+        ctx.shadowBlur = hyper ? 18 : 12;
+        ctx.fillStyle = hyper ? '#d8ffe9' : '#c9ffdf';
+        ctx.beginPath();
+        ctx.arc(0, 0, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = hyper ? '#b26bff' : '#5b2a86';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        // Skull face stamped on the coin
+        const eyeR = Math.max(1.2, radius * 0.18);
+        ctx.fillStyle = '#0b0f14';
+        ctx.beginPath();
+        ctx.arc(-radius * 0.34, -radius * 0.18, eyeR, 0, Math.PI * 2);
+        ctx.arc(radius * 0.34, -radius * 0.18, eyeR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = hyper ? '#b26bff' : '#7dffb0';
+        ctx.beginPath();
+        ctx.arc(-radius * 0.34, -radius * 0.18, eyeR * 0.4, 0, Math.PI * 2);
+        ctx.arc(radius * 0.34, -radius * 0.18, eyeR * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+        // Nose + teeth
+        ctx.fillStyle = '#0b0f14';
+        ctx.beginPath();
+        ctx.moveTo(0, -radius * 0.05);
+        ctx.lineTo(-radius * 0.12, radius * 0.22);
+        ctx.lineTo(radius * 0.12, radius * 0.22);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#0b0f14';
+        ctx.lineWidth = Math.max(1, radius * 0.08);
+        ctx.beginPath();
+        for (let tt = -1; tt <= 1; tt++) {
+            ctx.moveTo(tt * radius * 0.28, radius * 0.42);
+            ctx.lineTo(tt * radius * 0.28, radius * 0.68);
+        }
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    function drawGraveTaxNote(ctx, b, hyper) {
+        const sticky = !!b.isStickySuper;
+        const noteScale = sticky ? 1 : (b.hitboxMod || 1);
+        const w = (sticky ? 26 : 14) * noteScale;
+        const h = (sticky ? 15 : 8) * noteScale;
+        const ang = Math.atan2(b.vy || 0, b.vx || 1);
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        ctx.rotate(ang);
+        if (hyper) {
+            ctx.shadowColor = '#b26bff';
+            ctx.shadowBlur = 16;
+        } else {
+            ctx.shadowColor = '#c81e3a';
+            ctx.shadowBlur = 10;
+        }
+        // Blood-red death-tax note (sticky Super: deep grave-purple seal), bone border
+        ctx.fillStyle = sticky ? '#3d1257' : '#8b1a2d';
+        ctx.fillRect(-w / 2, -h / 2, w, h);
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = '#f5ecd7';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(-w / 2, -h / 2, w, h);
+        if (sticky) {
+            // Skull sigil + chain links around the seal edge
+            ctx.fillStyle = '#d8ffe9';
+            ctx.beginPath();
+            ctx.arc(0, 0, h * 0.32, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#0b0f14';
+            ctx.beginPath();
+            ctx.arc(-h * 0.12, -h * 0.08, h * 0.09, 0, Math.PI * 2);
+            ctx.arc(h * 0.12, -h * 0.08, h * 0.09, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = hyper ? '#b26bff' : '#7dffb0';
+            ctx.lineWidth = 1.5;
+            for (let cl = 0; cl < 4; cl++) {
+                ctx.beginPath();
+                ctx.arc(-w / 2 + 3 + cl * ((w - 6) / 3), -h / 2 - 2, 1.8, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+        } else {
+            ctx.fillStyle = '#f5ecd7';
+            ctx.font = 'bold ' + Math.max(6, h * 0.9) + 'px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('TAX', 0, 0);
+        }
+        ctx.restore();
+        // Hypercharge: violet flame ring around the note (unrotated)
+        if (hyper) {
+            ctx.save();
+            ctx.translate(b.x, b.y);
+            ctx.strokeStyle = 'rgba(178, 107, 255, 0.9)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(0, 0, Math.max(w, h) * 0.75 + 3, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+        }
+    }
+
+    function drawGraveTaxBody(ctx, t, drawY, mode, hyper) {
+        const r = t.radius || 16;
+        const tax = mode === 'tax';
+        ctx.save();
+        ctx.translate(t.x, drawY);
+        // Spectral shroud over the portrait
+        ctx.fillStyle = 'rgba(216, 255, 233, 0.28)';
+        ctx.beginPath();
+        ctx.arc(0, 0, r + 3, 0, Math.PI * 2);
+        ctx.fill();
+        // Grave-purple rim glow
+        ctx.strokeStyle = hyper ? '#b26bff' : 'rgba(91, 42, 134, 0.9)';
+        ctx.lineWidth = hyper ? 3 : 2;
+        ctx.shadowColor = '#b26bff';
+        ctx.shadowBlur = hyper ? 18 : 8;
+        ctx.beginPath();
+        ctx.arc(0, 0, r + 3, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        // Skull face
+        ctx.fillStyle = '#f5ecd7';
+        ctx.beginPath();
+        ctx.arc(0, -1, r * 0.62, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#0b0f14';
+        ctx.beginPath();
+        ctx.arc(-r * 0.24, -r * 0.18, r * 0.14, 0, Math.PI * 2);
+        ctx.arc(r * 0.24, -r * 0.18, r * 0.14, 0, Math.PI * 2);
+        ctx.fill();
+        // Eerie glowing pupils: gold-green for money, blood-red for tax
+        ctx.fillStyle = tax ? '#ff4d5e' : '#7dffb0';
+        ctx.beginPath();
+        ctx.arc(-r * 0.24, -r * 0.18, r * 0.05, 0, Math.PI * 2);
+        ctx.arc(r * 0.24, -r * 0.18, r * 0.05, 0, Math.PI * 2);
+        ctx.fill();
+        // Teeth
+        ctx.strokeStyle = '#0b0f14';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let tt = -1; tt <= 1; tt++) {
+            ctx.moveTo(tt * r * 0.2, r * 0.28);
+            ctx.lineTo(tt * r * 0.2, r * 0.5);
+        }
+        ctx.stroke();
+        // Mode wisps orbiting the body
+        ctx.strokeStyle = tax ? 'rgba(200, 30, 58, 0.8)' : 'rgba(241, 196, 15, 0.8)';
+        ctx.lineWidth = 1.5;
+        for (let wi = 0; wi < 3; wi++) {
+            const wa = (performance.now() / 400 + wi * (Math.PI * 2 / 3));
+            ctx.beginPath();
+            ctx.arc(Math.cos(wa) * (r + 8), Math.sin(wa) * (r + 8), 2.5, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+        // Hypercharge: spectral green flame ring + orbiting mini skulls
+        if (hyper) {
+            ctx.strokeStyle = 'rgba(125, 255, 176, 0.9)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([6, 5]);
+            ctx.beginPath();
+            ctx.arc(0, 0, r + 10, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            for (let os = 0; os < 2; os++) {
+                const oa = performance.now() / 300 + os * Math.PI;
+                const ox = Math.cos(oa) * (r + 14);
+                const oy = Math.sin(oa) * (r + 14);
+                ctx.fillStyle = '#f5ecd7';
+                ctx.beginPath();
+                ctx.arc(ox, oy, 4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#0b0f14';
+                ctx.beginPath();
+                ctx.arc(ox - 1.5, oy - 1, 1, 0, Math.PI * 2);
+                ctx.arc(ox + 1.5, oy - 1, 1, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        ctx.restore();
+    }
+
+    function drawGraveTaxSuperAura(ctx, t, drawY) {
+        const r = t.radius || 16;
+        const now = performance.now();
+        ctx.save();
+        ctx.translate(t.x, drawY);
+        // Tombstone ring: dashed violet outer, spectral green inner
+        ctx.strokeStyle = 'rgba(178, 107, 255, 0.9)';
+        ctx.lineWidth = 3;
+        ctx.setLineDash([10, 7]);
+        ctx.beginPath();
+        ctx.arc(0, 0, r + 22, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.strokeStyle = 'rgba(125, 255, 176, 0.75)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, r + 16, 0, Math.PI * 2);
+        ctx.stroke();
+        // Orbiting mini skulls
+        for (let os = 0; os < 4; os++) {
+            const oa = now / 250 + os * (Math.PI / 2);
+            const ox = Math.cos(oa) * (r + 19);
+            const oy = Math.sin(oa) * (r + 19);
+            ctx.fillStyle = '#f5ecd7';
+            ctx.beginPath();
+            ctx.arc(ox, oy, 4.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#0b0f14';
+            ctx.beginPath();
+            ctx.arc(ox - 1.6, oy - 1, 1.1, 0, Math.PI * 2);
+            ctx.arc(ox + 1.6, oy - 1, 1.1, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.restore();
     }
 
     function getSkinRarityMeta(rarity) {
@@ -10161,6 +10426,7 @@ const bolznstienPendingStrikes = [];
   let decayerHomingArmed = false;
   let unopcolocoCycle = 0;
   let unopcolocoSuperUntil = 0;
+  let moneyTaxSuperUntil = 0;
   let unopcolocoG1Armed = false;
   let unopcolocoG2Until = 0;
   let screenShakeUntil = 0;
@@ -36490,6 +36756,7 @@ let heistFeverActive = false;
     }
 
     if(selectedBrawler === 'money_and_tax') {
+        moneyTaxSuperUntil = performance.now() + 2400;
         const hc = isHypercharged;
         if (isPowerPlayShowdownMode) {
             const coinCount = 6 + 8; // 14 boomerang coins (+8 extra)
@@ -38027,6 +38294,7 @@ let heistFeverActive = false;
         return;
     }
     if (bot.brawler === 'money_and_tax') {
+        bot.moneyTaxSuperUntil = now + 2400;
         const hc = bot.isHypercharged;
         if (isPowerPlayShowdownMode) {
             const coinCount = 6 + 8; // 14 boomerang coins (+8 extra)
@@ -62087,6 +62355,10 @@ function checkHit(target, b, i){
       if(t.healFlashUntil && performance.now() < t.healFlashUntil){
         ctx.beginPath(); ctx.fillStyle = 'rgba(100, 255, 100, 0.6)'; ctx.arc(t.x, drawY, t.radius, 0, Math.PI*2); ctx.fill();
       }
+      if (t.brawler === 'money_and_tax' && getActiveSkinForBrawler(t.brawler)?.id === 'tombstone-moneytax') {
+          // Tombstone Tycoon spectral body + Hypercharge flames
+          drawGraveTaxBody(ctx, t, drawY, (t.moneyAndTaxMode || 'money'), !!t.isHypercharged);
+      }
       if (t.brawler === 'money_and_tax') {
           const modeColor = (t.moneyAndTaxMode || 'money') === 'money' ? '#f1c40f' : '#27ae60';
           ctx.beginPath(); ctx.fillStyle = modeColor;
@@ -62317,6 +62589,11 @@ function checkHit(target, b, i){
                     ctx.fill();
                     
                     ctx.restore();
+            }
+
+            // Tombstone Tycoon: spectral tombstone Super aura
+            if (t.brawler === 'money_and_tax' && tSkin?.id === 'tombstone-moneytax' && performance.now() < (t.moneyTaxSuperUntil || 0)) {
+                    drawGraveTaxSuperAura(ctx, t, drawY);
             }
             
             // HERO: Eagle Sentinel - orange predatory aura
@@ -62597,6 +62874,12 @@ function checkHit(target, b, i){
           }
       }
     }
+      if (selectedBrawler === 'money_and_tax' && getActiveSkinForBrawler(selectedBrawler)?.id === 'tombstone-moneytax') {
+          // Tombstone Tycoon spectral body + Hypercharge flames
+          drawGraveTaxBody(ctx, player, drawY, (player.moneyAndTaxMode || 'money'), !!player.isHypercharged);
+          // Tombstone Tycoon spectral tombstone Super aura
+          if (performance.now() < moneyTaxSuperUntil) drawGraveTaxSuperAura(ctx, player, drawY);
+      }
       if(player.shield > 0){
         ctx.beginPath(); ctx.fillStyle = 'rgba(123, 224, 255, 0.25)'; ctx.arc(player.x, drawY, player.radius + 8, 0, Math.PI*2); ctx.fill();
         ctx.strokeStyle = 'rgba(123, 224, 255, 0.6)'; ctx.lineWidth = 2; ctx.stroke();
@@ -68151,6 +68434,14 @@ function checkHit(target, b, i){
           ctx.arc(b.x, b.y, sped ? 10 : 13, 0, Math.PI * 2);
           ctx.stroke();
           ctx.restore();
+      }
+      // Tombstone Tycoon: ghostly skull coins, death-tax notes, spectral Super seals.
+      // Placed before the universal renderer so this skin's custom shapes win;
+      // mutation visuals above already continued, so they keep their own look.
+      if (activeSkinId === 'tombstone-moneytax' && b.ownerBrawler === 'money_and_tax' && (b.isCoin || b.isBoomerang || b.isTaxNote || b.isStickySuper)) {
+          if (b.isCoin || b.isBoomerang) drawGraveTaxSkullCoin(ctx, b, !!b.hyperVisual);
+          else drawGraveTaxNote(ctx, b, !!b.hyperVisual);
+          continue;
       }
       // New catalogue skins use one shared renderer so their previews and live
       // projectiles stay consistent without changing any combat hitboxes.
