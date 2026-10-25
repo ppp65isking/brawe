@@ -76,7 +76,10 @@ function extractFn(src, name) {
   throw new Error('unbalanced braces in ' + name);
 }
 
-const helperNames = ['drawGraveTaxSkullCoin', 'drawGraveTaxNote', 'drawGraveTaxBody', 'drawGraveTaxSuperAura'];
+// Rework 2026-10-25: the grave helpers are now wrappers over the shared
+// detailed-art engine, so the vm run must extract the engine too (plus
+// the module-level size/spread constants the coin helper references).
+const helperNames = ['moneyTaxArtPalette', 'drawDetailedMoneyTaxCoin', 'drawDetailedMoneyTaxNote', 'drawDetailedMoneyTaxBody', 'drawDetailedMoneyTaxAura', 'drawGraveTaxSkullCoin', 'drawGraveTaxNote', 'drawGraveTaxBody', 'drawGraveTaxSuperAura'];
 const helperSrcs = helperNames.map((n) => extractFn(game, n));
 for (const [idx, src] of helperSrcs.entries()) {
   check(helperNames[idx] + ' is pure draw code (no combat writes)', !/\.damage\s*=|\.hp\s*=|[^a-zA-Z]speed\s*=/.test(src));
@@ -84,7 +87,7 @@ for (const [idx, src] of helperSrcs.entries()) {
 
 const sandbox = { performance: { now: () => 100000 }, Math };
 vm.createContext(sandbox);
-vm.runInContext(helperSrcs.join('\n') + '\nthis.__fns = { drawGraveTaxSkullCoin, drawGraveTaxNote, drawGraveTaxBody, drawGraveTaxSuperAura };', sandbox);
+vm.runInContext('const MONEY_TAX_REGULAR_COIN_SIZE_MULT = 1.12;\nconst MONEY_TAX_REGULAR_SPREAD_MULT = 1.12;\n' + helperSrcs.join('\n') + '\nthis.__fns = { drawGraveTaxSkullCoin, drawGraveTaxNote, drawGraveTaxBody, drawGraveTaxSuperAura };', sandbox);
 const fns = sandbox.__fns;
 
 function stubCtx() {
