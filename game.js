@@ -6468,6 +6468,10 @@ const bolznstienPendingStrikes = [];
         const projectileBrawler = b.ownerBrawler || (b.ownerId === (typeof player !== 'undefined' ? player.id : '') ? (typeof selectedBrawler !== 'undefined' ? selectedBrawler : '') : '');
         if (skin.brawler && projectileBrawler && projectileBrawler !== skin.brawler) return false;
 
+        // Money & Tax coins/notes have dedicated detailed art below; the
+        // generic glow dot must never swallow them (PR #47 verdict: every
+        // skinned coin read as a plain dot because this ran first).
+        if (b.ownerBrawler === 'money_and_tax' && (b.isCoin || b.isBoomerang || b.isTaxNote || b.isStickySuper)) return false;
         // Don't override special visual flags that have dedicated render blocks
         if (b.isMagenyMagnet || b.isTrappedInMagenyVortex || b.isOrboSuper || b.isOrboMain || b.isHomerProjectile || b.isRocketeerMain || b.isRocketeerMini || b.isClassyNote || b.isFuserBullet) return false;
 
@@ -6629,9 +6633,9 @@ function drawDetailedMoneyTaxCoin(ctx, b, skinKey, hyper) {
     ctx.beginPath();
     ctx.arc(0, 0, r, 0, Math.PI * 2);
     ctx.fill();
-    // Thick outer rim.
+    // Thick outer rim (bold enough to read at coin scale).
     ctx.strokeStyle = hyper && pal.rimHyper ? pal.rimHyper : pal.rim;
-    ctx.lineWidth = Math.max(1.5, r * 0.22);
+    ctx.lineWidth = Math.max(2, r * 0.26);
     ctx.beginPath();
     ctx.arc(0, 0, r * 0.92, 0, Math.PI * 2);
     ctx.stroke();
@@ -6652,6 +6656,16 @@ function drawDetailedMoneyTaxCoin(ctx, b, skinKey, hyper) {
     ctx.beginPath();
     ctx.arc(0, 0, r * 0.62, 0, Math.PI * 2);
     ctx.stroke();
+    // Small-coin medallion: at ~15px on screen the disc/emblem tones blur
+    // into one blob, so small coins get a high-contrast center disc for
+    // the emblem/skull to sit on (light medallion for metal coins, dark
+    // purple backing for the pale tombstone skull).
+    if (r < 10) {
+        ctx.fillStyle = skinKey === 'tombstone' ? pal.discDark : pal.accent;
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 0.58, 0, Math.PI * 2);
+        ctx.fill();
+    }
     // Metallic shading: dark lower-right crescent + light upper-left crescent.
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.28)';
     ctx.lineWidth = Math.max(1, r * 0.18);
@@ -6667,17 +6681,17 @@ function drawDetailedMoneyTaxCoin(ctx, b, skinKey, hyper) {
     if (skinKey === 'tombstone') {
         ctx.fillStyle = '#f5ecd7';
         ctx.beginPath();
-        ctx.arc(0, -r * 0.05, r * 0.42, 0, Math.PI * 2);
+        ctx.arc(0, -r * 0.05, r * 0.50, 0, Math.PI * 2);
         ctx.fill();
         ctx.fillStyle = '#0b0f14';
         ctx.beginPath();
-        ctx.arc(-r * 0.17, -r * 0.15, r * 0.13, 0, Math.PI * 2);
-        ctx.arc(r * 0.17, -r * 0.15, r * 0.13, 0, Math.PI * 2);
+        ctx.arc(-r * 0.19, -r * 0.15, r * 0.17, 0, Math.PI * 2);
+        ctx.arc(r * 0.19, -r * 0.15, r * 0.17, 0, Math.PI * 2);
         ctx.fill();
         ctx.fillStyle = hyper ? '#b26bff' : '#7dffb0';
         ctx.beginPath();
-        ctx.arc(-r * 0.17, -r * 0.15, r * 0.05, 0, Math.PI * 2);
-        ctx.arc(r * 0.17, -r * 0.15, r * 0.05, 0, Math.PI * 2);
+        ctx.arc(-r * 0.19, -r * 0.15, Math.max(1, r * 0.09), 0, Math.PI * 2);
+        ctx.arc(r * 0.19, -r * 0.15, Math.max(1, r * 0.09), 0, Math.PI * 2);
         ctx.fill();
         ctx.fillStyle = '#0b0f14';
         ctx.beginPath();
@@ -6687,7 +6701,7 @@ function drawDetailedMoneyTaxCoin(ctx, b, skinKey, hyper) {
         ctx.closePath();
         ctx.fill();
         ctx.strokeStyle = '#0b0f14';
-        ctx.lineWidth = Math.max(1, r * 0.06);
+        ctx.lineWidth = Math.max(1.5, r * 0.09);
         ctx.beginPath();
         for (let tt = -1; tt <= 1; tt++) {
             ctx.moveTo(tt * r * 0.18, r * 0.28);
@@ -6696,21 +6710,19 @@ function drawDetailedMoneyTaxCoin(ctx, b, skinKey, hyper) {
         ctx.stroke();
     } else {
         ctx.fillStyle = pal.emblem;
-        ctx.font = 'bold ' + Math.max(6, r * 0.95) + 'px sans-serif';
+        ctx.font = 'bold ' + Math.max(8, r * 1.0) + 'px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText('$', 0, r * 0.05);
-        ctx.strokeStyle = pal.emblem;
-        ctx.lineWidth = 1;
-        ctx.beginPath();
+        // Star sparkles as filled dots: 1px strokes vanish at coin scale.
+        ctx.fillStyle = pal.emblem;
         const starPts = [[-0.42, -0.42], [0.42, -0.42], [-0.42, 0.42], [0.42, 0.42]];
+        const starR = Math.max(1.1, r * 0.08);
         for (const sp of starPts) {
-            ctx.moveTo(sp[0] * r - r * 0.07, sp[1] * r);
-            ctx.lineTo(sp[0] * r + r * 0.07, sp[1] * r);
-            ctx.moveTo(sp[0] * r, sp[1] * r - r * 0.07);
-            ctx.lineTo(sp[0] * r, sp[1] * r + r * 0.07);
+            ctx.beginPath();
+            ctx.arc(sp[0] * r, sp[1] * r, starR, 0, Math.PI * 2);
+            ctx.fill();
         }
-        ctx.stroke();
     }
     // Specular highlight crescent (not a dot).
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
