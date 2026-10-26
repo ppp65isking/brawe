@@ -2935,6 +2935,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     player.ghoulShadowSpeedUntil = 0;
     player.dashaholicSuperCharges = 0;
     player.dashaholicSuperSubCharge = 0;
+    player.mallowSuperCharges = 0;
+    player.mallowSuperSubCharge = 0;
     player.dashaholicSignatureArmed = '';
     player.dashaholicSignatureCooldownUntil = 0;
     player.dashaholicHealingAuraUntil = 0;
@@ -3508,7 +3510,8 @@ function updateGadgetInfo() {
           return;
       }
       updateSuperUseIndicator(player);
-      superBtn.textContent = superCharge >= 100 ? 'Power Move: Ready' : `Power Move: ${Math.floor(superCharge)}%`;
+      const badgeCount = getSuperChargeBadgeCount(player);
+      superBtn.textContent = superCharge >= 100 ? `Power Move: Ready · ×${badgeCount}` : `Power Move: ${Math.floor(superCharge)}% · ×${badgeCount}`;
       superBtn.disabled = superCharge < 100;
   }
 
@@ -3585,10 +3588,10 @@ function updateGadgetInfo() {
           superTouchBtn.style.setProperty('--mobile-charge', `${charge * 3.6}deg`);
           superTouchBtn.disabled = !!superBtn.disabled;
           superTouchBtn.classList.toggle('is-ready', (charges > 0 || charge >= 100) && !superBtn.disabled);
-          if (isMulti && charges > 0) {
+          if (charges > 0) {
               superTouchBtn.dataset.charges = `x${charges}`;
               const maxCharges = getBrawlerSuperMaxCharges(selectedBrawler, !!isHypercharged);
-              superTouchBtn.textContent = `★ ${charges}/${maxCharges}`;
+              superTouchBtn.textContent = isMulti ? `★ ${charges}/${maxCharges}` : `★ ${charges}`;
           } else {
               delete superTouchBtn.dataset.charges;
               superTouchBtn.textContent = '★';
@@ -4973,7 +4976,6 @@ const bolznstienPendingStrikes = [];
         if (now < (entity.electrostienChainedSlowUntil || 0)) baseSlow = Math.min(baseSlow, 0.80);
         if (now < (entity.electrostienRealmSlowUntil || 0)) baseSlow = Math.min(baseSlow, 0.70);
         if (now < (entity.mallowSlowUntil || 0)) baseSlow = Math.min(baseSlow, getMallowSlowMultiplier(entity, now));
-        if (now < (entity.mallowZoneSlowUntil || 0)) baseSlow = Math.min(baseSlow, MALLOW_SLOW_ZONE_MULT);
         if (now < (entity.beamSlowUntil || 0)) baseSlow = Math.min(baseSlow, 0.50);
         if (now < (entity.ridaSuperArmorUntil || 0)) {
             return 1 - (1 - baseSlow) * 0.65;
@@ -17121,7 +17123,7 @@ let heistFeverActive = false;
           pieceName: 'Electrostien Signature Piece',
           shortDesc: 'Arm the Family Circuit with the Signature button (R): while Electrostien is inside the Electric Realm, every punch he lands echoes as a Bolznstien-style sky strike (500 damage) on the realm victim. His Pieces are EARNED, never bought: win 3 battles with Electrostien (1 Piece per win). No Core Piece cost.'
       },
-      'mallow': { name: 'Mallow', role: 'Controller', desc: 'A puffy marshmallow Controller who sprays sticky-slow cones and dashes through Overheated marshmallow trails that burn and burst.', color: '#ffdfb0', attack: 'Marshmallow Spray', attackDesc: 'Fires 8 marshmallows in a cone (320 damage each). Each hit slows by 4% for 1s, stacking to 32%. Cannot attack again until the volley finishes.', super: 'Overheated', superDesc: 'Dashes smoothly forward, leaving 6 marshmallow trail puffs. Enemies on the trail burn, and each puff explodes 1.1s after placement for 400 damage.', hyper: 'Hyper Marshmallows: main attack marshmallows explode at the end of flight for burn damage. Overheated dashes faster and further, dashes twice, leaves a wider trail, and every 3rd trail puff creates a slow zone.', g1: 'Sticky Volley (Next volley applies 6% slow per hit instead of 4%)', g2: 'Second Tool coming soon.', sp1: 'Toasted Haste (Move 5% faster while an enemy is slowed by your marshmallows)', sp2: 'Second Talent coming soon.' },
+      'mallow': { name: 'Mallow', role: 'Controller', desc: 'A puffy marshmallow Controller who sprays sticky-slow fans and dashes through Overheated marshmallow trails that burn and burst.', color: '#ffdfb0', attack: 'Marshmallow Spray', attackDesc: 'Fires 8 marshmallows in a wide Pam-style fan (320 damage each). Each hit slows by 4% for 1s, stacking to 32%. Cannot attack again until the volley finishes.', super: 'Overheated', superDesc: 'Aim and dash smoothly forward, leaving 6 marshmallow trail puffs. Enemies on the trail burn, and each puff explodes 1.32s after placement for 400 damage. Holds 2 charges — aim each dash separately.', hyper: 'Hyper Marshmallows: visuals turn purple; main attack marshmallows explode at the end of flight for burn damage. Overheated dashes faster and further, dashes twice, leaves a wider trail, and hyper trail explosions release 4 mini-mallows in a + shape that explode again for 150 damage each.', g1: 'Sticky Volley (Next volley applies 6% slow per hit instead of 4%)', g2: 'Second Tool coming soon.', sp1: 'Toasted Haste (Move 5% faster while an enemy is slowed by your marshmallows)', sp2: 'Second Talent coming soon.' },
       fightnfire: {
           type: 'instinct',
           name: 'Flash Freeze',
@@ -20254,7 +20256,7 @@ let heistFeverActive = false;
     const MALLOW_VOLLEY_COUNT = 8;
     const MALLOW_VOLLEY_RANGE = 600;
     const MALLOW_VOLLEY_SPEED = 900;
-    const MALLOW_VOLLEY_CONE = 0.56;
+    const MALLOW_VOLLEY_FAN_ARC = 1.20;
     const MALLOW_CHANNEL_MS = 500;
     const MALLOW_SLOW_PER_HIT = 0.04;
     const MALLOW_SLOW_GADGET_PER_HIT = 0.06;
@@ -20266,19 +20268,20 @@ let heistFeverActive = false;
     const MALLOW_TRAIL_PUFFS = 6;
     const MALLOW_TRAIL_BURN_DPS = 200;
     const MALLOW_TRAIL_TICK_MS = 250;
-    const MALLOW_TRAIL_FUSE_MS = 1100;
+    const MALLOW_TRAIL_FUSE_MS = 1320;
     const MALLOW_TRAIL_EXPLOSION_DAMAGE = 400;
     const MALLOW_TRAIL_EXPLOSION_RADIUS = 90;
     const MALLOW_TRAIL_PUFF_RADIUS = 26;
     const MALLOW_TRAIL_PUFF_RADIUS_HYPER = 36;
-    const MALLOW_SLOW_ZONE_RADIUS = 120;
-    const MALLOW_SLOW_ZONE_DURATION_MS = 2000;
-    const MALLOW_SLOW_ZONE_MULT = 0.75;
+    const MALLOW_MINI_OFFSET = 55;
+    const MALLOW_MINI_FUSE_MS = 350;
+    const MALLOW_MINI_DAMAGE = 150;
+    const MALLOW_MINI_RADIUS = 50;
     const MALLOW_HYPER_BURN_TOTAL = 150;
     const MALLOW_HYPER_BURN_TICKS = 5;
     const MALLOW_HYPER_BURN_TICK_MS = 200;
     let mallowTrailPuffs = [];
-    let mallowSlowZones = [];
+    let mallowMinis = [];
     let mallowBurns = [];
     let mallowExplosions = [];
     let mallowTelegraphs = [];
@@ -20322,21 +20325,24 @@ let heistFeverActive = false;
             targetY: clamp(entity.y + Math.sin(angle) * dist, r, WORLD_H - r),
             startAt: performance.now(), durationMs: MALLOW_DASH_DURATION_MS,
             angle: angle, hyper: !!hyper,
-            dashesLeft: hyper ? 1 : 0,
             puffsPlaced: 0
         };
     }
     function castMallowSuper(entity, isHyper, targetX, targetY) {
         if (!MALLOW_ENABLED || !entity || entity.hp <= 0) return false;
+        ensureMallowSuperState(entity);
         const angle = Math.atan2(targetY - entity.y, targetX - entity.x);
         entity.mallowDash = createMallowDashState(entity, angle, !!isHyper);
+        consumeMallowSuperCharge(entity);
         return true;
     }
-    function placeMallowTrailPuff(owner, x, y, hyper, index) {
+    function placeMallowTrailPuff(owner, x, y, hyper) {
         const now = performance.now();
         mallowTrailPuffs.push({ x: x, y: y, ownerId: owner.id, placedAt: now, explodeAt: now + MALLOW_TRAIL_FUSE_MS, radius: hyper ? MALLOW_TRAIL_PUFF_RADIUS_HYPER : MALLOW_TRAIL_PUFF_RADIUS, hyper: !!hyper, hitAt: {}, exploded: false });
-        if (hyper && index % 3 === 2) {
-            mallowSlowZones.push({ x: x, y: y, radius: MALLOW_SLOW_ZONE_RADIUS, endsAt: now + MALLOW_SLOW_ZONE_DURATION_MS, ownerId: owner.id });
+    }
+    function spawnMallowMinis(puff, now) {
+        for (const [mx, my] of [[MALLOW_MINI_OFFSET, 0], [-MALLOW_MINI_OFFSET, 0], [0, MALLOW_MINI_OFFSET], [0, -MALLOW_MINI_OFFSET]]) {
+            mallowMinis.push({ x: puff.x + mx, y: puff.y + my, ownerId: puff.ownerId, explodeAt: now + MALLOW_MINI_FUSE_MS, exploded: false });
         }
     }
     function mallowHyperEndBurst(b) {
@@ -20366,17 +20372,11 @@ let heistFeverActive = false;
         entity.x = nx; entity.y = ny;
         while (dash.puffsPlaced < MALLOW_TRAIL_PUFFS && t >= (dash.puffsPlaced + 1) / MALLOW_TRAIL_PUFFS) {
             const f = (dash.puffsPlaced + 1) / MALLOW_TRAIL_PUFFS;
-            placeMallowTrailPuff(entity, dash.startX + (dash.targetX - dash.startX) * f, dash.startY + (dash.targetY - dash.startY) * f, dash.hyper, dash.puffsPlaced);
+            placeMallowTrailPuff(entity, dash.startX + (dash.targetX - dash.startX) * f, dash.startY + (dash.targetY - dash.startY) * f, dash.hyper);
             dash.puffsPlaced++;
         }
         if (t >= 1) {
-            if (dash.hyper && dash.dashesLeft > 0) {
-                const next = createMallowDashState(entity, dash.angle, true);
-                next.dashesLeft = dash.dashesLeft - 1;
-                entity.mallowDash = next;
-            } else {
-                entity.mallowDash = null;
-            }
+            entity.mallowDash = null;
         }
     }
     function updateMallowSystems(dt) {
@@ -20407,6 +20407,7 @@ let heistFeverActive = false;
                     checkHit(target, { ownerBrawler: 'mallow', ownerId: owner.id, damage: MALLOW_TRAIL_EXPLOSION_DAMAGE, pierce: true, super: true, hitIds: {}, mallowTrailExplosion: true }, -1);
                 }
                 mallowExplosions.push({ x: puff.x, y: puff.y, startedAt: now, durationMs: 450, hyper: !!puff.hyper });
+                if (puff.hyper) spawnMallowMinis(puff, now);
                 mallowTrailPuffs.splice(i, 1);
             }
         }
@@ -20420,15 +20421,20 @@ let heistFeverActive = false;
                 checkHit(target, { ownerBrawler: 'mallow', ownerId: burn.ownerId, damage: burn.tickDmg, pierce: true, super: true, hitIds: {}, mallowBurnTick: true }, -1);
             }
         }
-        for (let i = mallowSlowZones.length - 1; i >= 0; i--) {
-            const zone = mallowSlowZones[i];
-            if (now >= zone.endsAt) { mallowSlowZones.splice(i, 1); continue; }
-            const owner = findMallowEntityById(zone.ownerId);
-            if (!owner) continue;
-            for (const target of [player, ...bots]) {
-                if (!target || target.hp <= 0 || target.id === owner.id) continue;
-                if (areAlliedEntities(owner, target)) continue;
-                if (Math.hypot(target.x - zone.x, target.y - zone.y) <= zone.radius + (target.radius || 14)) target.mallowZoneSlowUntil = now + 150;
+        for (let i = mallowMinis.length - 1; i >= 0; i--) {
+            const mini = mallowMinis[i];
+            const owner = findMallowEntityById(mini.ownerId);
+            if (!owner || owner.hp <= 0) { mallowMinis.splice(i, 1); continue; }
+            if (now >= mini.explodeAt && !mini.exploded) {
+                mini.exploded = true;
+                for (const target of [player, ...bots]) {
+                    if (!target || target.hp <= 0 || target.id === owner.id) continue;
+                    if (areAlliedEntities(owner, target)) continue;
+                    if (Math.hypot(target.x - mini.x, target.y - mini.y) > MALLOW_MINI_RADIUS + (target.radius || 14)) continue;
+                    checkHit(target, { ownerBrawler: 'mallow', ownerId: owner.id, damage: MALLOW_MINI_DAMAGE, pierce: true, super: true, hitIds: {}, mallowMiniExplosion: true }, -1);
+                }
+                mallowExplosions.push({ x: mini.x, y: mini.y, startedAt: now, durationMs: 350, hyper: true });
+                mallowMinis.splice(i, 1);
             }
         }
         mallowTelegraphs = mallowTelegraphs.filter(function (t) { return t && now < t.until; });
@@ -20440,7 +20446,7 @@ let heistFeverActive = false;
         ctx.save();
         ctx.translate(b.x, b.y);
         ctx.rotate(angle);
-        ctx.shadowColor = hyper ? '#e08a2e' : '#d9b06a';
+        ctx.shadowColor = hyper ? '#a855f7' : '#d9b06a';
         ctx.shadowBlur = hyper ? 14 : 8;
         ctx.globalAlpha = 0.35;
         ctx.fillStyle = '#fff3d6';
@@ -20448,14 +20454,14 @@ let heistFeverActive = false;
         ctx.ellipse(-16, 0, 8, 5, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.globalAlpha = 1;
-        ctx.fillStyle = hyper ? '#fff1cf' : '#fff8ec';
-        ctx.strokeStyle = '#e8d3a8';
+        ctx.fillStyle = hyper ? '#f5e9ff' : '#fff8ec';
+        ctx.strokeStyle = hyper ? '#a855f7' : '#e8d3a8';
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.roundRect(-11, -7, 22, 14, 7);
         ctx.fill();
         ctx.stroke();
-        ctx.fillStyle = hyper ? '#c97a1f' : '#d99a4e';
+        ctx.fillStyle = hyper ? '#9333ea' : '#d99a4e';
         ctx.beginPath();
         ctx.arc(-11, 0, 4.5, 0, Math.PI * 2);
         ctx.arc(11, 0, 4.5, 0, Math.PI * 2);
@@ -20464,7 +20470,7 @@ let heistFeverActive = false;
         ctx.beginPath();
         ctx.ellipse(-2, -3, 5, 2.5, 0, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = 'rgba(217,154,78,0.55)';
+        ctx.fillStyle = hyper ? 'rgba(147,51,234,0.55)' : 'rgba(217,154,78,0.55)';
         ctx.beginPath();
         ctx.arc(4, 3, 3, 0, Math.PI * 2);
         ctx.fill();
@@ -20481,15 +20487,15 @@ let heistFeverActive = false;
             ctx.strokeStyle = '#ffd9a8';
             ctx.lineWidth = 3;
             ctx.beginPath();
-            ctx.arc(t.x, t.y, 90, t.ang - 0.28, t.ang + 0.28);
+            ctx.arc(t.x, t.y, 90, t.ang - MALLOW_VOLLEY_FAN_ARC / 2, t.ang + MALLOW_VOLLEY_FAN_ARC / 2);
             ctx.stroke();
             ctx.globalAlpha = alpha * 0.35;
             ctx.setLineDash([8, 6]);
             ctx.beginPath();
             ctx.moveTo(t.x, t.y);
-            ctx.lineTo(t.x + Math.cos(t.ang - 0.28) * 90, t.y + Math.sin(t.ang - 0.28) * 90);
+            ctx.lineTo(t.x + Math.cos(t.ang - MALLOW_VOLLEY_FAN_ARC / 2) * 90, t.y + Math.sin(t.ang - MALLOW_VOLLEY_FAN_ARC / 2) * 90);
             ctx.moveTo(t.x, t.y);
-            ctx.lineTo(t.x + Math.cos(t.ang + 0.28) * 90, t.y + Math.sin(t.ang + 0.28) * 90);
+            ctx.lineTo(t.x + Math.cos(t.ang + MALLOW_VOLLEY_FAN_ARC / 2) * 90, t.y + Math.sin(t.ang + MALLOW_VOLLEY_FAN_ARC / 2) * 90);
             ctx.stroke();
             ctx.setLineDash([]);
             ctx.restore();
@@ -20500,20 +20506,20 @@ let heistFeverActive = false;
             const pulse = 1 + Math.sin(now / 90) * 0.12;
             ctx.save();
             ctx.globalAlpha = 0.95;
-            ctx.fillStyle = fuseT > 0.6 ? '#ffd0a0' : '#fff8ec';
-            ctx.strokeStyle = fuseT > 0.6 ? '#e0652a' : '#e8d3a8';
+            ctx.fillStyle = puff.hyper ? (fuseT > 0.6 ? '#d8b4fe' : '#f5e9ff') : (fuseT > 0.6 ? '#ffd0a0' : '#fff8ec');
+            ctx.strokeStyle = puff.hyper ? (fuseT > 0.6 ? '#7e22ce' : '#a855f7') : (fuseT > 0.6 ? '#e0652a' : '#e8d3a8');
             ctx.lineWidth = 2;
             ctx.beginPath();
             ctx.arc(puff.x, puff.y, puff.radius * pulse, 0, Math.PI * 2);
             ctx.fill();
             ctx.stroke();
-            ctx.fillStyle = 'rgba(217,154,78,0.6)';
+            ctx.fillStyle = puff.hyper ? 'rgba(147,51,234,0.6)' : 'rgba(217,154,78,0.6)';
             ctx.beginPath();
             ctx.arc(puff.x - puff.radius * 0.3, puff.y - puff.radius * 0.25, puff.radius * 0.22, 0, Math.PI * 2);
             ctx.fill();
             if (fuseLeft < 400) {
                 ctx.globalAlpha = 0.7;
-                ctx.strokeStyle = '#ff5a2a';
+                ctx.strokeStyle = puff.hyper ? '#c026d3' : '#ff5a2a';
                 ctx.lineWidth = 3;
                 ctx.beginPath();
                 ctx.arc(puff.x, puff.y, MALLOW_TRAIL_EXPLOSION_RADIUS * (1 - fuseLeft / 400) + 20, 0, Math.PI * 2);
@@ -20521,28 +20527,76 @@ let heistFeverActive = false;
             }
             ctx.restore();
         }
-        for (const zone of mallowSlowZones) {
+        for (const mini of mallowMinis) {
+            const miniFuseLeft = Math.max(0, mini.explodeAt - now);
             ctx.save();
-            ctx.globalAlpha = 0.5;
-            ctx.strokeStyle = '#ffb35c';
-            ctx.lineWidth = 3;
-            ctx.setLineDash([10, 8]);
+            ctx.globalAlpha = 0.95;
+            ctx.fillStyle = '#e9d5ff';
+            ctx.strokeStyle = '#9333ea';
+            ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.arc(zone.x, zone.y, zone.radius, 0, Math.PI * 2);
+            ctx.arc(mini.x, mini.y, 12, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            if (miniFuseLeft < 200) {
+                ctx.globalAlpha = 0.7;
+                ctx.strokeStyle = '#c026d3';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(mini.x, mini.y, MALLOW_MINI_RADIUS * (1 - miniFuseLeft / 200) + 12, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+        if (typeof aimingSuper !== 'undefined' && aimingSuper && typeof selectedBrawler !== 'undefined' && selectedBrawler === 'mallow' && typeof player !== 'undefined' && player && player.hp > 0 && typeof getMouseWorld === 'function') {
+            const aimWm = getMouseWorld();
+            const aimHyper = (typeof isHypercharged !== 'undefined' && isHypercharged);
+            const aimDist = aimHyper ? MALLOW_DASH_DISTANCE_HYPER : MALLOW_DASH_DISTANCE;
+            const aimAng = Math.atan2(aimWm.y - player.y, aimWm.x - player.x);
+            const aimTx = player.x + Math.cos(aimAng) * aimDist;
+            const aimTy = player.y + Math.sin(aimAng) * aimDist;
+            ctx.save();
+            ctx.strokeStyle = aimHyper ? '#c084fc' : '#ffd9a8';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([10, 7]);
+            ctx.lineDashOffset = -now / 35;
+            ctx.beginPath();
+            ctx.moveTo(player.x, player.y);
+            ctx.lineTo(aimTx, aimTy);
             ctx.stroke();
             ctx.setLineDash([]);
-            ctx.globalAlpha = 0.15;
-            ctx.fillStyle = '#ffb35c';
-            ctx.beginPath();
-            ctx.arc(zone.x, zone.y, zone.radius, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.fillStyle = aimHyper ? '#c084fc' : '#ffd9a8';
+            for (let pi = 1; pi <= MALLOW_TRAIL_PUFFS; pi++) {
+                const pf = pi / MALLOW_TRAIL_PUFFS;
+                ctx.beginPath();
+                ctx.arc(player.x + (aimTx - player.x) * pf, player.y + (aimTy - player.y) * pf, aimHyper ? MALLOW_TRAIL_PUFF_RADIUS_HYPER : MALLOW_TRAIL_PUFF_RADIUS, 0, Math.PI * 2);
+                ctx.fill();
+            }
             ctx.restore();
+        }
+        if (typeof bots !== 'undefined' && typeof player !== 'undefined') {
+            for (const ent of [player, ...bots]) {
+                if (!ent || ent.hp <= 0) continue;
+                const entIsMallow = ent.brawler === 'mallow' || (ent.id === player.id && typeof selectedBrawler !== 'undefined' && selectedBrawler === 'mallow');
+                if (!entIsMallow) continue;
+                if (typeof isEntityHyperchargedNow !== 'function' || !isEntityHyperchargedNow(ent, now)) continue;
+                ctx.save();
+                ctx.globalAlpha = 0.85;
+                ctx.strokeStyle = '#c084fc';
+                ctx.shadowColor = '#a855f7';
+                ctx.shadowBlur = 16;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(ent.x, ent.y, (ent.radius || 14) + 12, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.restore();
+            }
         }
         for (const e of mallowExplosions) {
             const p = Math.max(0, Math.min(1, (now - e.startedAt) / e.durationMs));
             ctx.save();
             ctx.globalAlpha = (1 - p) * 0.9;
-            ctx.strokeStyle = e.hyper ? '#ff9a3c' : '#ffb35c';
+            ctx.strokeStyle = e.hyper ? '#c084fc' : '#ffb35c';
             ctx.lineWidth = 4;
             ctx.beginPath();
             ctx.arc(e.x, e.y, 20 + p * 70, 0, Math.PI * 2);
@@ -26510,6 +26564,8 @@ let heistFeverActive = false;
               addOilMakerSuperCharge(owner, gain);
           } else if (activeBrawler === 'dashaholic') {
               addDashaholicSuperCharge(owner, gain);
+          } else if (activeBrawler === 'mallow') {
+              addMallowSuperCharge(owner, gain);
           }
           if (owner.id === player.id) {
               if (!isHypercharged) hyperChargeCharge = clamp(hyperChargeCharge + modeHyperGain, 0, 100);
@@ -27108,12 +27164,23 @@ let heistFeverActive = false;
   // MULTI-SUPER SYSTEM & OIL MAKER HELPERS
   // ==========================================
   function hasMultiSuper(brawlerId) {
-      return brawlerId === 'steamer' || brawlerId === 'oil_maker' || brawlerId === 'dashaholic';
+      return brawlerId === 'steamer' || brawlerId === 'oil_maker' || brawlerId === 'dashaholic' || brawlerId === 'mallow';
+  }
+
+  function getSuperChargeBadgeCount(entity = player) {
+      if (!entity) return 0;
+      const brawlerId = entity.id === player.id ? selectedBrawler : (entity.brawler || '');
+      if (hasMultiSuper(brawlerId)) {
+          return clamp(Math.floor(getBrawlerSuperCharges(entity) || 0), 0, getBrawlerSuperMaxCharges(brawlerId, isEntityHyperchargedNow(entity, performance.now())));
+      }
+      const meter = entity.id === player.id ? superCharge : (entity.superCharge || 0);
+      return meter >= 100 ? 1 : 0;
   }
 
   function updateSuperUseIndicator(entity = player) {
       if (!superBtn) return;
       const brawlerId = entity && entity.id === player.id ? selectedBrawler : (entity?.brawler || '');
+      superBtn.dataset.superChargeCount = String(getSuperChargeBadgeCount(entity));
       if (!hasMultiSuper(brawlerId)) {
           delete superBtn.dataset.superUses;
           delete superBtn.dataset.superUsesLabel;
@@ -27129,6 +27196,7 @@ let heistFeverActive = false;
       if (brawlerId === 'steamer') return 5;
       if (brawlerId === 'oil_maker') return isHyper ? 5 : 3;
       if (brawlerId === 'dashaholic') return 2;
+      if (brawlerId === 'mallow') return 2;
       return 1;
   }
 
@@ -27151,6 +27219,15 @@ let heistFeverActive = false;
               entity.dashaholicSuperSubCharge = 0;
           }
           return entity.dashaholicSuperCharges || 0;
+      }
+      if (brawler === 'mallow') {
+          ensureMallowSuperState(entity);
+          const meter = entity.id === player.id ? superCharge : (entity.superCharge || 0);
+          if (entity.mallowSuperCharges < 1 && meter >= 100) {
+              entity.mallowSuperCharges = 2;
+              entity.mallowSuperSubCharge = 0;
+          }
+          return entity.mallowSuperCharges || 0;
       }
       return (entity.id === player.id ? superCharge : (entity.superCharge || 0)) >= 100 ? 1 : 0;
   }
@@ -27180,6 +27257,35 @@ let heistFeverActive = false;
       ensureDashaholicSuperState(entity);
       if (entity.dashaholicSuperCharges > 0) entity.dashaholicSuperCharges--;
       const visible = entity.dashaholicSuperCharges > 0 ? 100 : entity.dashaholicSuperSubCharge;
+      if (entity.id === player.id) { superCharge = visible; updateSuperButton(); }
+      else entity.superCharge = visible;
+  }
+
+  function ensureMallowSuperState(entity) {
+      if (!entity) return;
+      if (typeof entity.mallowSuperCharges !== 'number') entity.mallowSuperCharges = 0;
+      if (typeof entity.mallowSuperSubCharge !== 'number') entity.mallowSuperSubCharge = 0;
+  }
+
+  function addMallowSuperCharge(entity, amount) {
+      if (!entity) return;
+      ensureMallowSuperState(entity);
+      if (entity.mallowSuperCharges > 0) return;
+      entity.mallowSuperSubCharge = Math.min(100, (entity.mallowSuperSubCharge || 0) + amount);
+      if (entity.mallowSuperSubCharge >= 100) {
+          entity.mallowSuperCharges = 2;
+          entity.mallowSuperSubCharge = 0;
+      }
+      const visible = entity.mallowSuperCharges > 0 ? 100 : entity.mallowSuperSubCharge;
+      if (entity.id === player.id) { superCharge = visible; updateSuperButton(); }
+      else entity.superCharge = visible;
+  }
+
+  function consumeMallowSuperCharge(entity) {
+      if (!entity) return;
+      ensureMallowSuperState(entity);
+      if (entity.mallowSuperCharges > 0) entity.mallowSuperCharges--;
+      const visible = entity.mallowSuperCharges > 0 ? 100 : entity.mallowSuperSubCharge;
       if (entity.id === player.id) { superCharge = visible; updateSuperButton(); }
       else entity.superCharge = visible;
   }
@@ -34614,7 +34720,7 @@ let heistFeverActive = false;
         lockMainAttackSequence(fromEntity, MALLOW_CHANNEL_MS, now);
         mallowTelegraphs.push({ x: fromEntity.x, y: fromEntity.y, ang: ang, until: now + 180 });
         for (let mi = 0; mi < MALLOW_VOLLEY_COUNT; mi++) {
-            const mallowAng = ang + (mi - (MALLOW_VOLLEY_COUNT - 1) / 2) * (MALLOW_VOLLEY_CONE / (MALLOW_VOLLEY_COUNT - 1));
+            const mallowAng = ang + (mi - (MALLOW_VOLLEY_COUNT - 1) / 2) * (MALLOW_VOLLEY_FAN_ARC / (MALLOW_VOLLEY_COUNT - 1));
             bullets.push({ ownerBrawler: 'mallow', isMallow: true, isPrimaryChargeProjectile: true, mallowSlowPerHit: mallowSlowPerHit, mallowHyper: mallowHyper, x: fromEntity.x + Math.cos(mallowAng) * (fromEntity.radius + 7), y: fromEntity.y + Math.sin(mallowAng) * (fromEntity.radius + 7), vx: Math.cos(mallowAng) * MALLOW_VOLLEY_SPEED, vy: Math.sin(mallowAng) * MALLOW_VOLLEY_SPEED, life: 0, maxLife: MALLOW_VOLLEY_RANGE / MALLOW_VOLLEY_SPEED, damage: mallowStats.dmg, pierce: false, ownerId: fromEntity.id, hitIds: {}, hitboxMod: 1.3, hyperVisual: mallowHyper });
         }
         return;
@@ -38592,7 +38698,7 @@ let heistFeverActive = false;
             ensureCinderionState(bot);
             if (bot.cinderionOrbitFlames.filter(flame => flame.expiresAt > performance.now() && !flame.spent).length < 3) return;
         }
-    if (bot.brawler !== 'steamer' && bot.brawler !== 'oil_maker' && bot.brawler !== 'dashaholic') {
+    if (bot.brawler !== 'steamer' && bot.brawler !== 'oil_maker' && bot.brawler !== 'dashaholic' && bot.brawler !== 'mallow') {
         bot.superCharge = 0;
     }
     bot.lastAttackAt = performance.now();
@@ -75739,9 +75845,10 @@ function checkHit(target, b, i){
     ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(bx-6, by-6, barW+12, barH+12);
     ctx.fillStyle = '#223a47'; ctx.fillRect(bx, by, barW, barH);
     ctx.fillStyle = '#f4a261'; ctx.fillRect(bx, by, barW * (superCharge/100), barH);
-    const hudSuperUses = selectedBrawler === 'dashaholic' ? getBrawlerSuperCharges(player) : 0;
-    const hudSuperLabel = selectedBrawler === 'dashaholic' ? `POWER MOVE · ${hudSuperUses}/2 USES` : 'POWER MOVE';
-    ctx.fillStyle = '#cfeef7'; ctx.font = selectedBrawler === 'dashaholic' ? 'bold 12px sans-serif' : '12px sans-serif'; ctx.fillText(hudSuperLabel, bx, by-10);
+    const hudIsMulti = selectedBrawler === 'dashaholic' || selectedBrawler === 'mallow';
+    const hudSuperUses = hudIsMulti ? getBrawlerSuperCharges(player) : (superCharge >= 100 ? 1 : 0);
+    const hudSuperLabel = hudIsMulti ? `POWER MOVE · ${hudSuperUses}/2 USES` : (superCharge >= 100 ? 'POWER MOVE · ×1' : 'POWER MOVE');
+    ctx.fillStyle = '#cfeef7'; ctx.font = hudIsMulti ? 'bold 12px sans-serif' : '12px sans-serif'; ctx.fillText(hudSuperLabel, bx, by-10);
 
     // hypercharge bar
     const hy = by - 36;
