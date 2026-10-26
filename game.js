@@ -5527,6 +5527,26 @@ const bolznstienPendingStrikes = [];
             }
         }
 
+        // Excess souls belong in Soul Water: once the roster is complete
+        // there is nothing left to summon, so souls sitting in the
+        // summoner (leftover from the final summon, or from reward paths
+        // that bypass the split) are moved to Soul Water, where they can
+        // roll celestial rewards immediately. Assumption (Anthony's
+        // wording, 2026-10-26): the leftover goes 100% to Soul Water, not
+        // the 25/75 earnings split — the bank keeps growing from new
+        // earnings only, and stays reserved for upcoming fighters and the
+        // soul exchange. Returns the amount routed (0 when nothing).
+        function routeExcessSoulsToWater() {
+            ensureSoulSummonerData();
+            const excess = Math.max(0, Math.floor(playerData.souls || 0));
+            if (excess <= 0) return 0;
+            playerData.souls = 0;
+            playerData.soulSummoner.soulWater = (playerData.soulSummoner.soulWater || 0) + excess;
+            checkSoulWaterRewards();
+            saveProgress();
+            return excess;
+        }
+
         function autoSpendSoulsOnTarget(calledFromUI) {
             ensureSoulSummonerData();
             const ss = playerData.soulSummoner;
@@ -5566,6 +5586,13 @@ const bolznstienPendingStrikes = [];
                         playerData.soulSummoner.soulBank = 0;
                         autoSpendSoulsOnTarget();
                     }
+                }
+                // Final summon: with the roster complete, leftover souls
+                // have nothing left to buy — route them to Soul Water
+                // instead of leaving them stranded in the summoner.
+                const stillLocked = allBrawlers.filter(b => getBrawlerRarity(b) !== 'Starter' && !isBrawlerUnlocked(b) && !disabledBrawlers.has(b));
+                if (stillLocked.length === 0) {
+                    routeExcessSoulsToWater();
                 }
                 // Show unlock popup if on screen
                 _tryShowUnlockBrawlerPopup(justUnlocked);
@@ -16639,6 +16666,10 @@ let heistFeverActive = false;
               body.appendChild(choiceSection);
           } else {
               // All Unlocked Cosmic Overflow Fountain
+              // Stranded souls (leftover from the final summon, or from
+              // reward paths that bypass the split) belong in Soul Water,
+              // not sitting in the summoner header with nothing to buy.
+              routeExcessSoulsToWater();
               const fountainCard = document.createElement('div');
               fountainCard.style.cssText = 'background:linear-gradient(135deg, rgba(30,20,60,0.8), rgba(10,30,50,0.8));border:2px solid #5df2c2;border-radius:18px;padding:20px;box-shadow:0 0 30px rgba(93,242,194,0.3);text-align:center;box-sizing:border-box;';
               fountainCard.innerHTML = `
