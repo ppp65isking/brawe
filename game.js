@@ -10985,7 +10985,8 @@ function isPowerPlayModifierActive(entity = player) {
         const state=coreBreachState;if(!state||state.finished)return;state.finished=true;state.phase='ending';const {season}=ensureSeason3State();if(!season.coreBreachReplayDebug)season.coreBreachCompleted=true;season.coreBreachSignalsRevealed=true;
         addPacketSignal('bird',100,'CORE BREACH',false);for(const id of Object.keys(PACKET_DEFS))if(id!=='bird')addPacketSignal(id,20,'BIOME SIGNAL',false);saveProgress();
         progressSeason3Quest('core_ball',1,true);
-        const overlay=document.createElement('div');overlay.className='core-breach-ending';overlay.innerHTML='<small>CORE BALL DESTROYED</small><h1>6 UNKNOWN PACKET SIGNALS DETECTED</h1><div><span>SKYWILD</span><span>MOLTEN CROWN</span><span>IRON CHORUS</span><span>GLACIER SIGNAL</span><span>UMBRAL GARDEN</span><span>CHRONO DIVIDE</span></div>';document.body.appendChild(overlay);setTimeout(()=>{overlay.remove();gameOver=true;},4200);
+        if(gameOver){return;}
+        const overlay=document.createElement('div');overlay.className='core-breach-ending';overlay.innerHTML='<small>CORE BALL DESTROYED</small><h1>6 UNKNOWN PACKET SIGNALS DETECTED</h1><div><span>SKYWILD</span><span>MOLTEN CROWN</span><span>IRON CHORUS</span><span>GLACIER SIGNAL</span><span>UMBRAL GARDEN</span><span>CHRONO DIVIDE</span></div><small>CLICK TO CONTINUE</small>';const breachEndTimer=setTimeout(()=>{overlay.remove();gameOver=true;},4200);overlay.onclick=()=>{clearTimeout(breachEndTimer);overlay.remove();gameOver=true;};document.body.appendChild(overlay);
     }
     function updateCoreBreachIntro(dt,now=performance.now()){
         const state=coreBreachState;if(!isCoreBreachIntroMode||!state)return;
@@ -16436,6 +16437,12 @@ let heistFeverActive = false;
 
       const overlay = document.createElement('div');
       overlay.style.cssText = 'position:fixed;inset:0;background:radial-gradient(ellipse at 50% 10%, rgba(15, 23, 48, 0.98), rgba(3, 6, 14, 0.98));z-index:1500;display:flex;align-items:center;justify-content:center;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#fff;padding:clamp(8px, 2vh, 16px);box-sizing:border-box;backdrop-filter:blur(14px);';
+      // Dismissal: Escape key + backdrop click (house modal pattern).
+      // The summon action is synchronous, so closing is always safe.
+      const soulSummonerKeyboard = (event) => { if (event.key === 'Escape') { event.stopPropagation(); closeSoulSummoner(); } };
+      const closeSoulSummoner = () => { overlay.remove(); document.removeEventListener('keydown', soulSummonerKeyboard); };
+      document.addEventListener('keydown', soulSummonerKeyboard);
+      overlay.onclick = (e) => { if (e.target === overlay) closeSoulSummoner(); };
 
       const panel = document.createElement('div');
       panel.style.cssText = 'width:min(880px, 98vw);max-height:calc(100dvh - 24px);max-height:calc(100vh - 24px);background:linear-gradient(180deg, #0d172e 0%, #060b17 100%);border:2px solid rgba(138,92,255,0.45);border-radius:20px;box-shadow:0 25px 80px rgba(0,0,0,0.85), inset 0 1px 0 rgba(255,255,255,0.1);display:flex;flex-direction:column;overflow:hidden;box-sizing:border-box;position:relative;';
@@ -16476,7 +16483,7 @@ let heistFeverActive = false;
           closeBtn.style.cssText = 'width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);color:#dbe8ff;font-size:15px;font-weight:bold;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.18s;flex-shrink:0;';
           closeBtn.onmouseenter = () => { closeBtn.style.background = 'rgba(255,70,70,0.35)'; closeBtn.style.borderColor = '#ff6b6b'; };
           closeBtn.onmouseleave = () => { closeBtn.style.background = 'rgba(255,255,255,0.08)'; closeBtn.style.borderColor = 'rgba(255,255,255,0.2)'; };
-          closeBtn.onclick = () => document.body.removeChild(overlay);
+          closeBtn.onclick = () => closeSoulSummoner();
 
           headerRight.appendChild(soulChip);
           headerRight.appendChild(closeBtn);
