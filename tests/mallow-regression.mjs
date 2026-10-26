@@ -34,7 +34,7 @@ check('reload 1500ms', game.includes('mallow: 1500,'));
 check('fire delay 550ms', game.includes('mallow: 550,'));
 check('brawlerData entry present', game.includes("'mallow': { name: 'Mallow'") && game.includes("attack: 'Marshmallow Spray'") && game.includes("super: 'Overheated'"));
 check('brawlerData has one real gadget + one real star', game.includes("g1: 'Sticky Volley") && game.includes("sp1: 'Toasted Haste"));
-check('gadget cooldown map entry', game.includes('mallow: { g1: 12000, g2: 12000 },'));
+check('gadget cooldown map entry', game.includes('mallow: { g1: 12000, g2: 14000 },'));
 check('fire branch exists with 8-volley + per-hit charge + channel lock',
   game.includes("brawler === 'mallow'") && game.includes('MALLOW_VOLLEY_COUNT') &&
   game.includes('isPrimaryChargeProjectile: true') &&
@@ -146,12 +146,14 @@ try {
     MALLOW_SLOW_PER_HIT: 0.04,
     MALLOW_SLOW_GADGET_PER_HIT: 0.06,
     MALLOW_SLOW_DURATION_MS: 1000,
+    MALLOW_SLOW_DURATION_SP2_MS: 1500,
     MALLOW_SLOW_MAX_STACKS: 8,
   };
   vm.createContext(sandbox);
   vm.runInContext(
     extractFn(game, 'mallowStarChoice') + '\n' +
     extractFn(game, 'mallowHasSP1') + '\n' +
+    extractFn(game, 'mallowHasSP2') + '\n' +
     extractFn(game, 'getMallowSlowMultiplier') + '\n' +
     extractFn(game, 'applyMallowSlowHit') + '\n' +
     extractFn(game, 'getMallowSp1SpeedMult'),
