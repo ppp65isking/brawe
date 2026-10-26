@@ -130,29 +130,27 @@ const returnDrop = 100000 - bot.hp;
 assert.ok(returnDrop >= 2800, `a full return through one target must land all 3 balls (drop ${returnDrop})`);
 assert.ok(returnDrop <= 2850, `a full return must never exceed 2,850 on one target (drop ${returnDrop})`);
 assert.equal(api.bullets.some(b => b.isSpikeyRecall && b.ownerId === p.id), false, 'recall bullets must despawn on arrival');
-assert.equal(api.getSpikeyCycleState(p), 'reloading', 'a homecoming that leaves her empty must start the shared reload');
-assert.equal(p.spikeyBallsReady, 0, 'no ball may be ready during the shared reload');
-// No early throws while reloading.
-api.fire(p, 1100, 2000, false);
-assert.equal(api.bullets.some(b => b.isSpikeyThrow && b.ownerId === p.id), false, 'attacking during the shared reload must do nothing');
+assert.equal(api.getSpikeyCycleState(p), 'ready', 'with the reload gone, a homecoming must leave her instantly ready');
+assert.equal(p.spikeyBallsReady, 3, 'all 3 balls must be back the moment the return lands — no reload wait');
 
 // ---- Ammo-steal immunity (and a control: steal still works on others) ----
 const lastShotBefore = bot.lastShot || 0;
 api.stealAmmo(bot, p.id, 0.25);
 assert.ok((bot.lastShot || 0) >= lastShotBefore + 200, 'control: stealAmmo must still delay a normal brawler');
 api.stealAmmo(p, bot.id, 1);
-assert.equal(p.spikeyBallsReady, 0, 'ammo steal must not touch Spikey balls');
-assert.equal(api.getSpikeyCycleState(p), 'reloading', 'ammo steal must not disturb the cycle state');
+assert.equal(p.spikeyBallsReady, 3, 'ammo steal must not touch Spikey balls');
+assert.equal(api.getSpikeyCycleState(p), 'ready', 'ammo steal must not disturb the cycle state');
 
 // ---- Reload-modifier immunity: a huge external reload debuff must not
-// stretch her own 1,350ms shared reload (generic pipeline would take ~1,890ms).
+// create any wait — there is no reload left to stretch.
 p.reloadDebuffUntil = Date.now() + 60000;
 await framesOverTime(1500, bot);
-assert.equal(p.spikeyBallsReady, 3, 'all 3 balls must be back after her own 1,350ms reload, debuff notwithstanding');
-assert.equal(api.getSpikeyCycleState(p), 'ready', 'cycle must be ready again after the shared reload');
+assert.equal(p.spikeyBallsReady, 3, 'balls must stay ready through a reload debuff — no reload exists to stretch');
+assert.equal(api.getSpikeyCycleState(p), 'ready', 'cycle must stay ready through a reload debuff');
+// Throwing works immediately after the return.
 api.fire(p, 1100, 2000, false);
 frames(70, bot);
-assert.equal(api.spikeyParkedBalls.filter(b => b.ownerId === p.id).length, 1, 'throwing must work again after the reload');
+assert.equal(api.spikeyParkedBalls.filter(b => b.ownerId === p.id).length, 1, 'throwing must work immediately after the return');
 
 // ---- Bot cycle: a bot Spikey fires RETURN the same way, SP1 slow intact ----
 bot.brawler = 'spikey';
@@ -197,7 +195,7 @@ await framesOverTime(700, bot);
 const sideDrop = 100000 - bot.hp;
 assert.ok(sideDrop >= 400 && sideDrop <= 600, `a target on a side-ball spot must take one 500 side ball (drop ${sideDrop})`);
 
-// ---- Hyper main attack boosts unchanged: +50% speed/unload, 0.8s root ----
+// ---- Hyper main attack boosts: +100% speed/unload (was +50%), 0.8s root ----
 api.isHypercharged = true;
 p.hyperchargeUntil = Date.now() + 10000;
 api.spikeyParkedBalls.length = 0;
@@ -206,10 +204,10 @@ p.spikeyBallsReady = 3; p.spikeyHomePool = 0; p.spikeyReloadPending = 0; p.spike
 api.fire(p, 1100, 2000, false);
 const hyperThrow = api.bullets.find(b => b.isSpikeyThrow && b.ownerId === p.id);
 assert.ok(hyperThrow, 'a Hyper throw must spawn');
-assert.equal(Math.round(Math.hypot(hyperThrow.vx, hyperThrow.vy)), 1320, 'Hyper throw speed must be +50%');
+assert.equal(Math.round(Math.hypot(hyperThrow.vx, hyperThrow.vy)), 1760, 'Hyper throw speed must be +100% (880 x 2)');
 assert.equal(hyperThrow.spikeyRootMs, 800, 'Hyper hits must root for 0.8s');
 assert.equal(hyperThrow.damage, 950, 'Hyper throw damage stays 950');
 assert.equal(p.spikeyBallsReady, 2, 'a Hyper throw still consumes one hand ball');
 
-console.log('Spikey rework regression passed: magazine cycle (950 return, shared 1,350ms reload), ammo-steal + reload-modifier immunity, 3-slam Super, Hyper side balls, SP1/bot cycle.');
+console.log('Spikey rework regression passed: magazine cycle (950 return, reload removed — instant return), ammo-steal + reload-modifier immunity, 3-slam Super, Hyper side balls, SP1/bot cycle.');
 process.exit(0);

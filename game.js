@@ -9505,7 +9505,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
             'screener': { name: 'Screener', role: 'Controller', desc: 'Battery-based projector brawler. Starts at 100% battery that drains over time; recharge by landing screen hits.', color: '#7ec8ff', attack: 'Projected Sweep', attackDesc: 'Fires a 360-degree radial burst of screen projectors around you. Each hit recharges battery.', super: 'Projected Charge', superDesc: 'Activates a static projector field for 4s. Incoming shots that touch the field are converted into projector blasts fired out at that angle.', hyper: 'Main attack spins with multiple rotating sweeps. Super gains an extra projector layer and stronger conversions.', g1: 'Power Cell (Instant battery refill + heal)', g2: 'Overclock Grid (Temporarily boost projector output and battery gain)', sp1: 'Efficient Panel (Battery decays slower)', sp2: 'Capacitor Bank (Larger battery capacity and stronger low-battery safety)' },
             'malakor': { name: 'Malakor', role: 'Controller', desc: 'The fallen red-staff child who commands infernal terrain and demon hands.', color: '#ff4a4a', attack: 'Putting You Down', attackDesc: 'Slams his staff and corrupts the ground into Hell around him. Enemies standing in Hell take constant damage. Hell zones last 9 seconds, spreading wider as they burn before decaying near the end. Malakor can sustain up to 5 Hell zones at once.', super: 'Hell Is Forever!', superDesc: 'Slam to create a huge Hell zone that lasts 12.5 seconds and summon demon hands that punish enemies standing in Hell.', hyper: 'UPSIDE DOWN!: Super corrupts the whole map into Hell and summons many more demon hands. Main attack corrupts a larger area.', g1: 'Crimson Surge (Create a bonus Hell pulse and heal)', g2: 'Damnation Mark (Next main attack also summons a demon hand)', sp1: 'Infernal Dominion (Hell terrain deals more damage)', sp2: 'Abyssal Grip (Demon hands strike wider and stun longer)' },
             'feathers': { name: 'Feathers', role: 'Controller', desc: 'A breezy storm-dancer whose feathers ride the wind - and leave it behind to trip up everyone else.', color: '#7fe7ff', attack: 'Feather Shot', attackDesc: 'Flicks a sharp feather that deals damage on hit. When it reaches max range it bursts into a gust of wind: anyone standing in the wind slides around like the floor is ice.', super: 'Windstorm', superDesc: 'Calls down a huge storm at the target spot. Thick fog fills the storm so everyone inside is harder to see - even Feathers - and the ground inside turns slippery.', hyper: 'Cyclone Heart: Feather Shots vacuum nearby enemies inward when their wind bursts. Windstorm crackles with Bolznstien-style lightning that strikes enemies inside for reduced damage.', g1: 'Tailwind Rush (Dash forward, gain speed, and leave slippery wind behind you)', g2: 'Gust Burst (Blast nearby enemies away and shake off slows)', sp1: 'Wide Skies (Wind zones are bigger and last longer)', sp2: 'Slipstream Rider (Move faster inside your own wind and storms)' },
-      'spikey': { name: 'Spikey', role: 'Damage Dealer', desc: 'A prickly hedgehog rocker who parks spikeballs all over the arena, then calls every last one home through whoever is standing in the way.', color: '#a6e34d', attack: 'Triple Thorn Toss', attackDesc: 'Throws a spikeball that damages enemies it passes through and parks where it lands (950 damage). Her balls ARE her ammo: throw all 3, then attack again to call them all home, piercing, for 950 damage each. Then all 3 reload together.', super: 'Mega Spike Ball', superDesc: 'The Mega Spike Ball slams 3 times in front of Spikey, stepping forward with each slam. Each slam is a large explosion dealing 1,750 damage.', hyper: 'Spike Overdrive: every slam also pops 2 smaller side balls (500 damage each). Main attack gains +50% projectile speed and +50% unload speed, and its hits root enemies for 0.8s.', g1: 'Burst Barbs (Every deployed spikeball explodes in place for 650 damage, then returns to Spikey)', g2: 'Quill Roll (Roll 230 units toward your aim and deploy a spikeball where you land, if a slot is free)', sp1: 'Deep Roots (Recall hits also slow enemies by 30% for 1s)', sp2: 'Sharper Thorns (Parked spikeballs prick enemies standing close for 150 damage twice a second)' },
+      'spikey': { name: 'Spikey', role: 'Damage Dealer', desc: 'A prickly hedgehog rocker who parks spikeballs all over the arena, then calls every last one home through whoever is standing in the way.', color: '#a6e34d', attack: 'Triple Thorn Toss', attackDesc: 'Throws a spikeball that damages enemies it passes through and parks where it lands (950 damage). Her balls ARE her ammo: throw all 3, then attack again to call them all home, piercing, for 950 damage each. Once home, all 3 are ready to throw again instantly.', super: 'Mega Spike Ball', superDesc: 'The Mega Spike Ball slams 3 times in front of Spikey, stepping forward with each slam. Each slam is a large explosion dealing 1,750 damage.', hyper: 'Spike Overdrive: every slam also pops 2 smaller side balls (500 damage each). Main attack gains +100% projectile speed and +100% unload speed, and its hits root enemies for 0.8s.', g1: 'Burst Barbs (Every deployed spikeball explodes in place for 650 damage, then returns to Spikey)', g2: 'Quill Roll (Roll 230 units toward your aim and deploy a spikeball where you land, if a slot is free)', sp1: 'Deep Roots (Recall hits also slow enemies by 30% for 1s)', sp2: 'Sharper Thorns (Parked spikeballs prick enemies standing close for 150 damage twice a second)' },
       'electrostien': { name: 'Electrostien', role: 'Assassin', desc: 'Bolznstien\'s younger brother: a live-wire duelist who sticks a Boltz Chain to one victim, hugs them while it cooks, then drags them into the Electric Realm for a private execution. FREE for everyone and starts at Power 11.', color: '#00f5d4', attack: 'Volt Knuckle', attackDesc: 'A short electric punch (700 damage) that sticks a Boltz Chain to the victim for up to 4s. The chain ticks every 0.25s: 300 damage up close, 120 at mid range, 30 at max tether — and snaps if they escape past 4.5 tiles.', super: 'Electric Realm', superDesc: 'Throws a shock up to 7 tiles. On hit, Electrostien and the victim phase into the Electric Realm for 5s: invisible and untargetable to everyone else, with the Boltz Chain always attached at max tier. Ends early if either fighter falls.', hyper: 'Overvolt Presence: Volt Knuckle swings much wider and farther. While Core Surge is active, taking damage triggers a 360° roar (2.5s cooldown): 400 damage plus a 2s mini-chain (100/tick) on every enemy near him. Storm Realm (Hyper Super): the realm victim is slowed 30%, chain ticks hit 1.5x harder, and 500-damage lightning strikes them every 1s.', g1: 'Static Dash (Dash 3 tiles forward; the next punch within 2s gains +1 tile range and sticks instantly)', g2: 'Discharge (Detonate the active Boltz Chain for 50% of the damage it has dealt, minimum 600, and stun the victim for 0.5s)', sp1: 'Conductive Grip (Chained targets are slowed by 20% while the Boltz Chain holds)', sp2: 'Second Battery (Boltz Chain ticks charge the Electric Realm Super 25% faster)' },
             'boom_arang': {
                 name: 'Boom-Arang',
@@ -19540,7 +19540,6 @@ let heistFeverActive = false;
     const SPIKEY_THORN_RADIUS = 46;
     const SPIKEY_THORN_DMG = 150;
     const SPIKEY_THORN_TICK_MS = 500;
-    const SPIKEY_CYCLE_RELOAD_MS = 1350; // == reloadMsByBrawler.spikey, read directly so NO external reload modifier can change it
     const SPIKEY_TRAVELING_SUPER_ENABLED = false; // VAULTED 2026-10-23 (rework): traveling bouncing Mega Ball replaced by the slam barrage
     const SPIKEY_SLAM_FIRST = 110;
     const SPIKEY_SLAM_STEP = 120;
@@ -19569,8 +19568,9 @@ let heistFeverActive = false;
     }
     // Magazine cycle state (rework 2026-10-23), stored on the entity:
     // spikeyBallsReady = throws in hand; spikeyHomePool = balls that flew home
-    // and are settling; spikeyReloadPending + spikeyReloadEndsAt = the shared
-    // reload that runs when a homecoming leaves her empty.
+    // and are settling; spikeyReloadPending + spikeyReloadEndsAt are retained
+    // (HUD compat) but the shared reload was removed 2026-10-26 — homecoming
+    // balls go straight back into the hand.
     function ensureSpikeyCycle(entity) {
         if (entity && entity.spikeyBallsReady === undefined) {
             entity.spikeyBallsReady = SPIKEY_MAX_DEPLOYED;
@@ -19695,8 +19695,8 @@ let heistFeverActive = false;
                 resolveSpikeySlam(slam);
             }
         }
-        // Magazine cycle (rework 2026-10-23): settle homecoming balls, run the
-        // shared reload on Spikey's own timer, and keep every physical ball
+        // Magazine cycle (rework 2026-10-23): settle homecoming balls, and keep every physical ball
+        // (reload REMOVED 2026-10-26: homecoming balls are instantly ready again)
         // accounted for so the cycle can never softlock. External reload
         // modifiers never reach this code — that is the point of the design.
         for (const e of [player, ...bots]) {
@@ -19705,19 +19705,10 @@ let heistFeverActive = false;
             if (e.hp <= 0) continue;
             const recallsInFlight = bullets.some(b => b.isSpikeyRecall && b.ownerId === e.id);
             if (e.spikeyHomePool > 0 && !recallsInFlight) {
-                if (e.spikeyBallsReady <= 0) {
-                    // A homecoming that leaves her empty starts the shared reload.
-                    e.spikeyReloadPending = e.spikeyHomePool;
-                    if (!e.spikeyReloadEndsAt) e.spikeyReloadEndsAt = now + SPIKEY_CYCLE_RELOAD_MS;
-                } else {
-                    e.spikeyBallsReady = Math.min(SPIKEY_MAX_DEPLOYED, e.spikeyBallsReady + e.spikeyHomePool);
-                }
+                // Balance 2026-10-26: the shared reload is gone — balls that
+                // fly home are instantly ready to throw again, no wait.
+                e.spikeyBallsReady = Math.min(SPIKEY_MAX_DEPLOYED, e.spikeyBallsReady + e.spikeyHomePool);
                 e.spikeyHomePool = 0;
-            }
-            if (e.spikeyReloadPending > 0 && e.spikeyReloadEndsAt > 0 && now >= e.spikeyReloadEndsAt) {
-                e.spikeyBallsReady = Math.min(SPIKEY_MAX_DEPLOYED, e.spikeyBallsReady + e.spikeyReloadPending);
-                e.spikeyReloadPending = 0;
-                e.spikeyReloadEndsAt = 0;
             }
             const accounted = e.spikeyBallsReady + e.spikeyHomePool + e.spikeyReloadPending + countSpikeyParked(e)
                 + bullets.filter(b => b.ownerId === e.id && (b.isSpikeyThrow || b.isSpikeyRecall)).length;
@@ -31142,9 +31133,9 @@ let heistFeverActive = false;
         if (brawler === 'spikey') {
             // Spikey rework 2026-10-23: her balls ARE her ammo (magazine
             // cycle). Attacking with all 3 parked is the RETURN — the balls
-            // fly home for throw-level damage, then reload together on her
-            // own timer. No early recall: below 3 parked she throws, and with
-            // no balls in hand the attack does nothing.
+            // fly home for throw-level damage, then are instantly ready to
+            // throw again (reload removed 2026-10-26). No early recall: below
+            // 3 parked she throws, and with no balls in hand the attack does nothing.
             ensureSpikeyCycle(fromEntity);
             if (countSpikeyParked(fromEntity) >= SPIKEY_MAX_DEPLOYED) {
                 recallSpikeyBalls(fromEntity);
@@ -31168,7 +31159,7 @@ let heistFeverActive = false;
     if(isBot&&brawler==='fastpass'&&fromEntity.selectedStar==='long'&&(fromEntity.fastpassMomentum||0)>=.64)fireDelay/=1.15;
     if(isBot&&brawler==='freestyle'&&now<(fromEntity.freestyleRemixUntil||0))fireDelay/=1.18;
     if(brawler==='outlit'&&hasOutlitMutation(fromEntity)&&(fromEntity.outlitMutationCharges||0)>0)fireDelay*=.5;
-    if(brawler==='spikey'&&(isBot?!!fromEntity.isHypercharged:!!isHypercharged))fireDelay/=1.5;
+    if(brawler==='spikey'&&(isBot?!!fromEntity.isHypercharged:!!isHypercharged))fireDelay/=2; // Hyper unload 2x (was 1.5x) — balance 2026-10-26
         if (isBot && fromEntity.isImpossibleAI) fireDelay *= 0.72;
     if (!isBot && isSlopSushiMode) fireDelay *= Math.max(0.45, 1 - getSlopEffectTotal('fireDelayPct'));
     if (isBot && isSlopSushiMode) fireDelay *= Math.max(0.45, 1 - getEntitySlopEffectTotal(fromEntity, 'fireDelayPct'));
@@ -31826,7 +31817,7 @@ let heistFeverActive = false;
         fromEntity.spikeyBallsReady = Math.max(0, fromEntity.spikeyBallsReady - 1); // a thrown ball leaves her hand (magazine cycle)
         const level = fromEntity.id === player.id ? getSelectedBrawlerLevel() : (fromEntity.level || 11);
         const stats = getScaledStats('spikey', level);
-        const spd = SPIKEY_THROW_SPEED * (hyper ? 1.5 : 1);
+        const spd = SPIKEY_THROW_SPEED * (hyper ? 2 : 1); // Hyper throw speed 2x (was 1.5x) — balance 2026-10-26
         bullets.push({ownerBrawler:'spikey',isSpikeyThrow:true,x:fromEntity.x+Math.cos(ang)*(fromEntity.radius+7),y:fromEntity.y+Math.sin(ang)*(fromEntity.radius+7),vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd,life:0,maxLife:SPIKEY_THROW_RANGE/spd,damage:stats.dmg,pierce:true,pierceWalls:false,ownerId:fromEntity.id,hitIds:{},hitboxMod:1.6,hyperVisual:hyper,spikeyRootMs:hyper?800:0});
         return;
     } else if (brawler === 'electrostien') {
