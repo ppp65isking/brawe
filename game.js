@@ -267,6 +267,10 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             const scale = 0.55 + (level - 1) * 0.045;
             return { hp: Math.round(8200 * scale), dmg: Math.round(700 * scale), speed: 290 };
         }
+        if (brawlerId === 'mallow') {
+            const scale = 0.55 + (level - 1) * 0.045;
+            return { hp: Math.round(6800 * scale), dmg: Math.round(320 * scale), speed: 270 };
+        }
         if (brawlerId === 'looma') {
             const scale = 0.55 + (level - 1) * 0.045;
             return { hp: Math.round(6600 * scale), dmg: Math.round(1450 * scale), speed: 270 };
@@ -4817,6 +4821,7 @@ const bolznstienPendingStrikes = [];
             feathers: 1400,
             spikey: 1350,
             electrostien: 1100,
+            mallow: 1500,
             carmela_fudge: 1400,
             oil_maker: 90,
             magnatar: 1450,
@@ -4877,6 +4882,7 @@ const bolznstienPendingStrikes = [];
             feathers: 240,
             spikey: 240,
             electrostien: 260,
+            mallow: 550,
             carmela_fudge: 180,
             oil_maker: 56,
             magnatar: 200,
@@ -4966,6 +4972,8 @@ const bolznstienPendingStrikes = [];
         if (now < (entity.spikeySlowUntil || 0)) baseSlow = Math.min(baseSlow, 0.70);
         if (now < (entity.electrostienChainedSlowUntil || 0)) baseSlow = Math.min(baseSlow, 0.80);
         if (now < (entity.electrostienRealmSlowUntil || 0)) baseSlow = Math.min(baseSlow, 0.70);
+        if (now < (entity.mallowSlowUntil || 0)) baseSlow = Math.min(baseSlow, getMallowSlowMultiplier(entity, now));
+        if (now < (entity.mallowZoneSlowUntil || 0)) baseSlow = Math.min(baseSlow, MALLOW_SLOW_ZONE_MULT);
         if (now < (entity.beamSlowUntil || 0)) baseSlow = Math.min(baseSlow, 0.50);
         if (now < (entity.ridaSuperArmorUntil || 0)) {
             return 1 - (1 - baseSlow) * 0.65;
@@ -5117,7 +5125,7 @@ const bolznstienPendingStrikes = [];
         'boom_arang', 'teether', 'fuel', 'xray', 'angel', 'demon', 'warrior', 'relay',
         'upiedown', 'chickpig', 'jetpack', 'snapper', 'robber', 'rocketeer',
         'carmela_fudge', 'peter_pickle', 'unstable', 'homer', 'orbo', 'predator', 'fastpass', 'freestyle', 'portalo', 'ghoul', 'jacktrade', 'darkener', 'awakenator', 'adlof', 'cluster', 'witch', 'boomer', 'blade_vane', 'daggershard', 'ice_cream', 'swimmer', 'kage', 'drainbow', 'draflygon', 'axeywaxy', 'trampaheal', 'mageny', 'ramage', 'upgradart', 'cinderion', 'cursed', 'king', 'anti_royal', 'sir_cheeseburger', 'weefee', 'blinkeye', 'bolznstien', 'magnatar', 'oil_maker', 'rager', 'badbat', 'looma',
-        'feathers', 'spikey', 'electrostien'
+        'feathers', 'spikey', 'electrostien', 'mallow'
     ];
     const registeredBrawlerModules = window.ArenaForgeModules?.brawlers || Object.create(null);
     for (const moduleId of Object.keys(registeredBrawlerModules)) {
@@ -5172,7 +5180,7 @@ const bolznstienPendingStrikes = [];
             upgradart: 'Rare',
             dr0ne: 'Rare',
 
-            // Epic (31)
+            // Epic (32)
             magnatar: 'Epic',
             trapper: 'Epic',
             heater_miser: 'Epic',
@@ -5204,6 +5212,7 @@ const bolznstienPendingStrikes = [];
             witch: 'Epic',
             duck: 'Epic',
             unhitabble: 'Epic',
+            mallow: 'Epic',
 
             // Mythic (12)
             dashaholic: 'Mythic',
@@ -9746,7 +9755,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
 
     // V4 standardized primary-role organization: exactly one gameplay role per brawler.
     const PRIMARY_ROLE_BY_BRAWLER = {
-        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank', rager:'Controller', looma:'Controller', feathers:'Controller', spikey:'Damage Dealer', electrostien:'Assassin',
+        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank', rager:'Controller', looma:'Controller', feathers:'Controller', spikey:'Damage Dealer', electrostien:'Assassin', mallow:'Controller',
     carmela_fudge:'Damage Dealer', bolznstien:'Damage Dealer', badbat:'Damage Dealer', magnatar:'Controller', oil_maker:'Controller', sir_cheeseburger:'Tank',
         blade_vane:'Assassin', kage:'Assassin', drainbow:'Controller', bowlin_rida:'Assassin', dashaholic:'Assassin', demon:'Assassin', jetpack:'Assassin', malakor:'Assassin', predator:'Assassin', swimmer:'Assassin', teether:'Assassin',
         boom_arang:'Marksman', cheseypuff:'Marksman', crystila:'Marksman', homer:'Marksman', hunter:'Marksman', orbo:'Marksman', snapper:'Marksman', xray:'Marksman',
@@ -9769,6 +9778,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
     feathers: '🪶',
             spikey: '🦔',
             electrostien: '⚡👊',
+            mallow: '🍡',
     looma: '🪡🧵',
         sir_cheeseburger: '🛡️',
         anti_royal: '🏴‍☠️',
@@ -10596,6 +10606,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
       feathers: { g1: 12000, g2: 14000 },
       spikey: { g1: 14000, g2: 12000 },
       electrostien: { g1: 11000, g2: 13000 },
+      mallow: { g1: 12000, g2: 12000 },
       carmela_fudge: { g1: 8000, g2: 8000 },
       bolznstien: { g1: 14000, g2: 15000 },
       sir_cheeseburger: { g1: 13000, g2: 14000 },
@@ -17110,6 +17121,7 @@ let heistFeverActive = false;
           pieceName: 'Electrostien Signature Piece',
           shortDesc: 'Arm the Family Circuit with the Signature button (R): while Electrostien is inside the Electric Realm, every punch he lands echoes as a Bolznstien-style sky strike (500 damage) on the realm victim. His Pieces are EARNED, never bought: win 3 battles with Electrostien (1 Piece per win). No Core Piece cost.'
       },
+      'mallow': { name: 'Mallow', role: 'Controller', desc: 'A puffy marshmallow Controller who sprays sticky-slow cones and dashes through Overheated marshmallow trails that burn and burst.', color: '#ffdfb0', attack: 'Marshmallow Spray', attackDesc: 'Fires 8 marshmallows in a cone (320 damage each). Each hit slows by 4% for 1s, stacking to 32%. Cannot attack again until the volley finishes.', super: 'Overheated', superDesc: 'Dashes smoothly forward, leaving 6 marshmallow trail puffs. Enemies on the trail burn, and each puff explodes 1.1s after placement for 400 damage.', hyper: 'Hyper Marshmallows: main attack marshmallows explode at the end of flight for burn damage. Overheated dashes faster and further, dashes twice, leaves a wider trail, and every 3rd trail puff creates a slow zone.', g1: 'Sticky Volley (Next volley applies 6% slow per hit instead of 4%)', g2: 'Second Tool coming soon.', sp1: 'Toasted Haste (Move 5% faster while an enemy is slowed by your marshmallows)', sp2: 'Second Talent coming soon.' },
       fightnfire: {
           type: 'instinct',
           name: 'Flash Freeze',
@@ -20223,6 +20235,331 @@ let heistFeverActive = false;
                 ctx.fillText('⚡', f.x, fy - (f.radius || 20) - 14);
                 ctx.restore();
             }
+        }
+    }
+
+
+    // ===== Mallow systems (Marshmallow Spray + Overheated) =====
+    // Anthony design (2026-10-26): a puffy marshmallow Controller.
+    // Main attack fires 8 marshmallows in a cone; each hit slows 4% for
+    // 1s, stacking to 32%. Super Overheated is a SMOOTH dash (never a
+    // teleport) that leaves marshmallow trail puffs: burn while standing
+    // on them, then each puff explodes 1.1s after placement.
+    // Kill switches are `let` so regression tests can flip them.
+    // Dedicated art lives in its OWN branches below: Mallow bullets are
+    // drawn before the universal skin renderer call, never through it
+    // (PR #48 lesson: generic renderers intercept dedicated art).
+    let MALLOW_ENABLED = true;
+    let MALLOW_VISUALS_ENABLED = true;
+    const MALLOW_VOLLEY_COUNT = 8;
+    const MALLOW_VOLLEY_RANGE = 600;
+    const MALLOW_VOLLEY_SPEED = 900;
+    const MALLOW_VOLLEY_CONE = 0.56;
+    const MALLOW_CHANNEL_MS = 500;
+    const MALLOW_SLOW_PER_HIT = 0.04;
+    const MALLOW_SLOW_GADGET_PER_HIT = 0.06;
+    const MALLOW_SLOW_DURATION_MS = 1000;
+    const MALLOW_SLOW_MAX_STACKS = 8;
+    const MALLOW_DASH_DISTANCE = 480;
+    const MALLOW_DASH_DISTANCE_HYPER = 640;
+    const MALLOW_DASH_DURATION_MS = 220;
+    const MALLOW_TRAIL_PUFFS = 6;
+    const MALLOW_TRAIL_BURN_DPS = 200;
+    const MALLOW_TRAIL_TICK_MS = 250;
+    const MALLOW_TRAIL_FUSE_MS = 1100;
+    const MALLOW_TRAIL_EXPLOSION_DAMAGE = 400;
+    const MALLOW_TRAIL_EXPLOSION_RADIUS = 90;
+    const MALLOW_TRAIL_PUFF_RADIUS = 26;
+    const MALLOW_TRAIL_PUFF_RADIUS_HYPER = 36;
+    const MALLOW_SLOW_ZONE_RADIUS = 120;
+    const MALLOW_SLOW_ZONE_DURATION_MS = 2000;
+    const MALLOW_SLOW_ZONE_MULT = 0.75;
+    const MALLOW_HYPER_BURN_TOTAL = 150;
+    const MALLOW_HYPER_BURN_TICKS = 5;
+    const MALLOW_HYPER_BURN_TICK_MS = 200;
+    let mallowTrailPuffs = [];
+    let mallowSlowZones = [];
+    let mallowBurns = [];
+    let mallowExplosions = [];
+    let mallowTelegraphs = [];
+    function isMallowEntity(entity) {
+        return !!entity && (entity.brawler === 'mallow' || (!!player && entity.id === player.id && selectedBrawler === 'mallow'));
+    }
+    function mallowStarChoice(entity) { try { return getEntityStarChoice(entity); } catch (_) { return entity ? entity.selectedStar : null; } }
+    function mallowHasSP1(entity) { const c = mallowStarChoice(entity); return c === 'sp1' || c === 'slow'; }
+    function getMallowSlowMultiplier(entity, now) {
+        if (!entity || !(now < (entity.mallowSlowUntil || 0))) return 1.0;
+        const perHit = entity.mallowSlowPerHit || MALLOW_SLOW_PER_HIT;
+        const stacks = Math.min(MALLOW_SLOW_MAX_STACKS, entity.mallowSlowStacks || 0);
+        return Math.min(1, Math.max(0.5, 1 - perHit * stacks));
+    }
+    function getMallowSp1SpeedMult(entity, now) {
+        if (!entity || !mallowHasSP1(entity)) return 1.0;
+        return now < (entity.mallowSp1SpeedUntil || 0) ? 1.05 : 1.0;
+    }
+    function applyMallowSlowHit(target, owner, b) {
+        if (!MALLOW_ENABLED || !target || target.hp <= 0) return;
+        const now = performance.now();
+        if (now >= (target.mallowSlowUntil || 0)) target.mallowSlowStacks = 0;
+        target.mallowSlowStacks = Math.min(MALLOW_SLOW_MAX_STACKS, (target.mallowSlowStacks || 0) + 1);
+        target.mallowSlowPerHit = (b && b.mallowSlowPerHit) || MALLOW_SLOW_PER_HIT;
+        target.mallowSlowUntil = now + MALLOW_SLOW_DURATION_MS;
+        if (owner && mallowHasSP1(owner)) owner.mallowSp1SpeedUntil = now + MALLOW_SLOW_DURATION_MS;
+    }
+    function findMallowEntityById(id) { if (player && player.id === id) return player; return bots.find((b) => b && b.id === id) || null; }
+    function executeMallowG1(entity) {
+        if (!entity) return;
+        if (entity.id === player.id) { gadgetArmed = true; }
+        else { entity.gadgetArmed = true; }
+        spawnFloatingText(entity.x, entity.y - 36, 'STICKY VOLLEY ARMED', '#ffd9a8');
+    }
+    function createMallowDashState(entity, angle, hyper) {
+        const dist = hyper ? MALLOW_DASH_DISTANCE_HYPER : MALLOW_DASH_DISTANCE;
+        const r = entity.radius || 14;
+        return {
+            startX: entity.x, startY: entity.y,
+            targetX: clamp(entity.x + Math.cos(angle) * dist, r, WORLD_W - r),
+            targetY: clamp(entity.y + Math.sin(angle) * dist, r, WORLD_H - r),
+            startAt: performance.now(), durationMs: MALLOW_DASH_DURATION_MS,
+            angle: angle, hyper: !!hyper,
+            dashesLeft: hyper ? 1 : 0,
+            puffsPlaced: 0
+        };
+    }
+    function castMallowSuper(entity, isHyper, targetX, targetY) {
+        if (!MALLOW_ENABLED || !entity || entity.hp <= 0) return false;
+        const angle = Math.atan2(targetY - entity.y, targetX - entity.x);
+        entity.mallowDash = createMallowDashState(entity, angle, !!isHyper);
+        return true;
+    }
+    function placeMallowTrailPuff(owner, x, y, hyper, index) {
+        const now = performance.now();
+        mallowTrailPuffs.push({ x: x, y: y, ownerId: owner.id, placedAt: now, explodeAt: now + MALLOW_TRAIL_FUSE_MS, radius: hyper ? MALLOW_TRAIL_PUFF_RADIUS_HYPER : MALLOW_TRAIL_PUFF_RADIUS, hyper: !!hyper, hitAt: {}, exploded: false });
+        if (hyper && index % 3 === 2) {
+            mallowSlowZones.push({ x: x, y: y, radius: MALLOW_SLOW_ZONE_RADIUS, endsAt: now + MALLOW_SLOW_ZONE_DURATION_MS, ownerId: owner.id });
+        }
+    }
+    function mallowHyperEndBurst(b) {
+        if (!MALLOW_ENABLED || !b) return;
+        const owner = findMallowEntityById(b.ownerId);
+        if (!owner) return;
+        const now = performance.now();
+        for (const target of [player, ...bots]) {
+            if (!target || target.hp <= 0 || target.id === owner.id) continue;
+            if (areAlliedEntities(owner, target)) continue;
+            if (Math.hypot(target.x - b.x, target.y - b.y) > MALLOW_TRAIL_EXPLOSION_RADIUS + (target.radius || 14)) continue;
+            mallowBurns.push({ targetId: target.id, ownerId: owner.id, endsAt: now + MALLOW_HYPER_BURN_TICKS * MALLOW_HYPER_BURN_TICK_MS, nextTickAt: now + MALLOW_HYPER_BURN_TICK_MS, tickDmg: MALLOW_HYPER_BURN_TOTAL / MALLOW_HYPER_BURN_TICKS, ticksLeft: MALLOW_HYPER_BURN_TICKS });
+        }
+        mallowExplosions.push({ x: b.x, y: b.y, startedAt: now, durationMs: 450, hyper: true });
+    }
+    function updateMallowDash(entity, now) {
+        const dash = entity.mallowDash;
+        if (!dash) return;
+        if (entity.hp <= 0) { entity.mallowDash = null; return; }
+        const t = clamp((now - dash.startAt) / dash.durationMs, 0, 1);
+        const nx = dash.startX + (dash.targetX - dash.startX) * t;
+        const ny = dash.startY + (dash.targetY - dash.startY) * t;
+        if (!canBotMoveToPosition(entity, nx, ny)) {
+            entity.mallowDash = null;
+            return;
+        }
+        entity.x = nx; entity.y = ny;
+        while (dash.puffsPlaced < MALLOW_TRAIL_PUFFS && t >= (dash.puffsPlaced + 1) / MALLOW_TRAIL_PUFFS) {
+            const f = (dash.puffsPlaced + 1) / MALLOW_TRAIL_PUFFS;
+            placeMallowTrailPuff(entity, dash.startX + (dash.targetX - dash.startX) * f, dash.startY + (dash.targetY - dash.startY) * f, dash.hyper, dash.puffsPlaced);
+            dash.puffsPlaced++;
+        }
+        if (t >= 1) {
+            if (dash.hyper && dash.dashesLeft > 0) {
+                const next = createMallowDashState(entity, dash.angle, true);
+                next.dashesLeft = dash.dashesLeft - 1;
+                entity.mallowDash = next;
+            } else {
+                entity.mallowDash = null;
+            }
+        }
+    }
+    function updateMallowSystems(dt) {
+        if (!MALLOW_ENABLED) return;
+        const now = performance.now();
+        for (const entity of [player, ...bots]) {
+            if (entity && entity.hp > 0) updateMallowDash(entity, now);
+        }
+        for (let i = mallowTrailPuffs.length - 1; i >= 0; i--) {
+            const puff = mallowTrailPuffs[i];
+            const owner = findMallowEntityById(puff.ownerId);
+            if (!owner || owner.hp <= 0) { mallowTrailPuffs.splice(i, 1); continue; }
+            for (const target of [player, ...bots]) {
+                if (!target || target.hp <= 0 || target.id === owner.id) continue;
+                if (areAlliedEntities(owner, target)) continue;
+                if (Math.hypot(target.x - puff.x, target.y - puff.y) > puff.radius + (target.radius || 14)) continue;
+                if (now - (puff.hitAt[target.id] || 0) >= MALLOW_TRAIL_TICK_MS) {
+                    puff.hitAt[target.id] = now;
+                    checkHit(target, { ownerBrawler: 'mallow', ownerId: owner.id, damage: Math.round(MALLOW_TRAIL_BURN_DPS * MALLOW_TRAIL_TICK_MS / 1000), pierce: true, super: true, hitIds: {}, mallowTrailBurn: true }, -1);
+                }
+            }
+            if (now >= puff.explodeAt && !puff.exploded) {
+                puff.exploded = true;
+                for (const target of [player, ...bots]) {
+                    if (!target || target.hp <= 0 || target.id === owner.id) continue;
+                    if (areAlliedEntities(owner, target)) continue;
+                    if (Math.hypot(target.x - puff.x, target.y - puff.y) > MALLOW_TRAIL_EXPLOSION_RADIUS + (target.radius || 14)) continue;
+                    checkHit(target, { ownerBrawler: 'mallow', ownerId: owner.id, damage: MALLOW_TRAIL_EXPLOSION_DAMAGE, pierce: true, super: true, hitIds: {}, mallowTrailExplosion: true }, -1);
+                }
+                mallowExplosions.push({ x: puff.x, y: puff.y, startedAt: now, durationMs: 450, hyper: !!puff.hyper });
+                mallowTrailPuffs.splice(i, 1);
+            }
+        }
+        for (let i = mallowBurns.length - 1; i >= 0; i--) {
+            const burn = mallowBurns[i];
+            const target = findMallowEntityById(burn.targetId);
+            if (!target || target.hp <= 0 || now >= burn.endsAt || burn.ticksLeft <= 0) { mallowBurns.splice(i, 1); continue; }
+            if (now >= burn.nextTickAt) {
+                burn.nextTickAt = now + MALLOW_HYPER_BURN_TICK_MS;
+                burn.ticksLeft--;
+                checkHit(target, { ownerBrawler: 'mallow', ownerId: burn.ownerId, damage: burn.tickDmg, pierce: true, super: true, hitIds: {}, mallowBurnTick: true }, -1);
+            }
+        }
+        for (let i = mallowSlowZones.length - 1; i >= 0; i--) {
+            const zone = mallowSlowZones[i];
+            if (now >= zone.endsAt) { mallowSlowZones.splice(i, 1); continue; }
+            const owner = findMallowEntityById(zone.ownerId);
+            if (!owner) continue;
+            for (const target of [player, ...bots]) {
+                if (!target || target.hp <= 0 || target.id === owner.id) continue;
+                if (areAlliedEntities(owner, target)) continue;
+                if (Math.hypot(target.x - zone.x, target.y - zone.y) <= zone.radius + (target.radius || 14)) target.mallowZoneSlowUntil = now + 150;
+            }
+        }
+        mallowTelegraphs = mallowTelegraphs.filter(function (t) { return t && now < t.until; });
+        mallowExplosions = mallowExplosions.filter(function (e) { return e && now < e.startedAt + e.durationMs; });
+    }
+    function drawMallowProjectile(ctx, b) {
+        const angle = Math.atan2(b.vy, b.vx);
+        const hyper = !!b.hyperVisual;
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        ctx.rotate(angle);
+        ctx.shadowColor = hyper ? '#e08a2e' : '#d9b06a';
+        ctx.shadowBlur = hyper ? 14 : 8;
+        ctx.globalAlpha = 0.35;
+        ctx.fillStyle = '#fff3d6';
+        ctx.beginPath();
+        ctx.ellipse(-16, 0, 8, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = hyper ? '#fff1cf' : '#fff8ec';
+        ctx.strokeStyle = '#e8d3a8';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(-11, -7, 22, 14, 7);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = hyper ? '#c97a1f' : '#d99a4e';
+        ctx.beginPath();
+        ctx.arc(-11, 0, 4.5, 0, Math.PI * 2);
+        ctx.arc(11, 0, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.85)';
+        ctx.beginPath();
+        ctx.ellipse(-2, -3, 5, 2.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(217,154,78,0.55)';
+        ctx.beginPath();
+        ctx.arc(4, 3, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+    function renderMallowEffects() {
+        const now = performance.now();
+        if (!MALLOW_VISUALS_ENABLED) return;
+        mallowTelegraphs = mallowTelegraphs.filter(function (t) { return t && now < t.until; });
+        for (const t of mallowTelegraphs) {
+            const alpha = Math.max(0, Math.min(1, (t.until - now) / 180));
+            ctx.save();
+            ctx.globalAlpha = alpha * 0.8;
+            ctx.strokeStyle = '#ffd9a8';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(t.x, t.y, 90, t.ang - 0.28, t.ang + 0.28);
+            ctx.stroke();
+            ctx.globalAlpha = alpha * 0.35;
+            ctx.setLineDash([8, 6]);
+            ctx.beginPath();
+            ctx.moveTo(t.x, t.y);
+            ctx.lineTo(t.x + Math.cos(t.ang - 0.28) * 90, t.y + Math.sin(t.ang - 0.28) * 90);
+            ctx.moveTo(t.x, t.y);
+            ctx.lineTo(t.x + Math.cos(t.ang + 0.28) * 90, t.y + Math.sin(t.ang + 0.28) * 90);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.restore();
+        }
+        for (const puff of mallowTrailPuffs) {
+            const fuseLeft = Math.max(0, puff.explodeAt - now);
+            const fuseT = 1 - fuseLeft / MALLOW_TRAIL_FUSE_MS;
+            const pulse = 1 + Math.sin(now / 90) * 0.12;
+            ctx.save();
+            ctx.globalAlpha = 0.95;
+            ctx.fillStyle = fuseT > 0.6 ? '#ffd0a0' : '#fff8ec';
+            ctx.strokeStyle = fuseT > 0.6 ? '#e0652a' : '#e8d3a8';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(puff.x, puff.y, puff.radius * pulse, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.fillStyle = 'rgba(217,154,78,0.6)';
+            ctx.beginPath();
+            ctx.arc(puff.x - puff.radius * 0.3, puff.y - puff.radius * 0.25, puff.radius * 0.22, 0, Math.PI * 2);
+            ctx.fill();
+            if (fuseLeft < 400) {
+                ctx.globalAlpha = 0.7;
+                ctx.strokeStyle = '#ff5a2a';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(puff.x, puff.y, MALLOW_TRAIL_EXPLOSION_RADIUS * (1 - fuseLeft / 400) + 20, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+        for (const zone of mallowSlowZones) {
+            ctx.save();
+            ctx.globalAlpha = 0.5;
+            ctx.strokeStyle = '#ffb35c';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([10, 8]);
+            ctx.beginPath();
+            ctx.arc(zone.x, zone.y, zone.radius, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.globalAlpha = 0.15;
+            ctx.fillStyle = '#ffb35c';
+            ctx.beginPath();
+            ctx.arc(zone.x, zone.y, zone.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+        for (const e of mallowExplosions) {
+            const p = Math.max(0, Math.min(1, (now - e.startedAt) / e.durationMs));
+            ctx.save();
+            ctx.globalAlpha = (1 - p) * 0.9;
+            ctx.strokeStyle = e.hyper ? '#ff9a3c' : '#ffb35c';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(e.x, e.y, 20 + p * 70, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.globalAlpha = (1 - p) * 0.8;
+            ctx.fillStyle = '#fff8ec';
+            ctx.beginPath();
+            ctx.arc(e.x, e.y, 26 * (1 - p) + 6, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#d99a4e';
+            for (let k = 0; k < 8; k++) {
+                const a = k * Math.PI / 4;
+                ctx.beginPath();
+                ctx.arc(e.x + Math.cos(a) * p * 60, e.y + Math.sin(a) * p * 60, 4, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
         }
     }
 
@@ -25846,7 +26183,7 @@ let heistFeverActive = false;
       beam:8, fuser:24, heater_miser:20, minigunnin:72, money_and_tax:24, outlit:30, steamer:8,
       bouncin_balls:6, chickpig:12, classy:6, copyphase:6, goonbob:6, hoop:5, hyperorigin:5, robber:42,
       portalo:7, ghoul:6, jacktrade:18, darkener:6, awakenator:8, trampaheal:6, axeywaxy:6, mageny:6, draflygon:6, ramage:6, upgradart:10, cinderion:10, cursed:7, king:6, anti_royal:6, weefee:6, rager:4,
-    carmela_fudge:5, bolznstien:5, sir_cheeseburger:4, blinkeye:4, magnatar:6, oil_maker:16, badbat:5, looma:7, feathers:5, spikey:6, electrostien:14
+    carmela_fudge:5, bolznstien:5, sir_cheeseburger:4, blinkeye:4, magnatar:6, oil_maker:16, badbat:5, looma:7, feathers:5, spikey:6, electrostien:14, mallow:12
   });
   let nextMainAttackActivationId = 1;
   function getSuperChargeHitsForBrawler(brawler) {
@@ -34263,6 +34600,24 @@ let heistFeverActive = false;
             hitIds: {},
             ownerId: fromEntity.id
         });
+    } else if (brawler === 'mallow') {
+        if (!MALLOW_ENABLED) return;
+        const mallowHyper = isEntityHyperchargedNow(fromEntity, now);
+        const mallowLevel = fromEntity.id === player.id ? getSelectedBrawlerLevel() : (fromEntity.level || 11);
+        const mallowStats = getScaledStats('mallow', mallowLevel);
+        const mallowGadgetBoost = !isBot ? (gadgetArmed && selectedGadget === 'g1') : (fromEntity.gadgetArmed && fromEntity.selectedGadget === 'g1');
+        const mallowSlowPerHit = mallowGadgetBoost ? MALLOW_SLOW_GADGET_PER_HIT : MALLOW_SLOW_PER_HIT;
+        if (mallowGadgetBoost) {
+            if (!isBot) { gadgetArmed = false; updateGadgetButton(); }
+            else { fromEntity.gadgetArmed = false; }
+        }
+        lockMainAttackSequence(fromEntity, MALLOW_CHANNEL_MS, now);
+        mallowTelegraphs.push({ x: fromEntity.x, y: fromEntity.y, ang: ang, until: now + 180 });
+        for (let mi = 0; mi < MALLOW_VOLLEY_COUNT; mi++) {
+            const mallowAng = ang + (mi - (MALLOW_VOLLEY_COUNT - 1) / 2) * (MALLOW_VOLLEY_CONE / (MALLOW_VOLLEY_COUNT - 1));
+            bullets.push({ ownerBrawler: 'mallow', isMallow: true, isPrimaryChargeProjectile: true, mallowSlowPerHit: mallowSlowPerHit, mallowHyper: mallowHyper, x: fromEntity.x + Math.cos(mallowAng) * (fromEntity.radius + 7), y: fromEntity.y + Math.sin(mallowAng) * (fromEntity.radius + 7), vx: Math.cos(mallowAng) * MALLOW_VOLLEY_SPEED, vy: Math.sin(mallowAng) * MALLOW_VOLLEY_SPEED, life: 0, maxLife: MALLOW_VOLLEY_RANGE / MALLOW_VOLLEY_SPEED, damage: mallowStats.dmg, pierce: false, ownerId: fromEntity.id, hitIds: {}, hitboxMod: 1.3, hyperVisual: mallowHyper });
+        }
+        return;
     }
   }
 
@@ -36482,6 +36837,7 @@ let heistFeverActive = false;
     if (combatBrawler === 'feathers') { castFeathersSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'spikey') { castSpikeySuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'electrostien') { castElectrostienSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
+    if (combatBrawler === 'mallow') { castMallowSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'ramage') { castRamageSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
         if (combatBrawler === 'upgradart') { castUpgradartSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'axeywaxy') { castAxeyWaxySuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
@@ -37739,6 +38095,8 @@ let heistFeverActive = false;
       executeElectrostienG1(bot);
     } else if (bot.brawler === 'electrostien' && g === 'g2') {
       executeElectrostienG2(bot);
+    } else if (bot.brawler === 'mallow' && g === 'g1') {
+      executeMallowG1(bot);
     } else if (bot.brawler === 'rager' && g === 'g1') {
       executeRagerG1(bot);
     } else if (bot.brawler === 'rager' && g === 'g2') {
@@ -38269,6 +38627,7 @@ let heistFeverActive = false;
     if (botCombatBrawler === 'feathers') { castFeathersSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'spikey') { castSpikeySuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'electrostien') { castElectrostienSuper(bot, isHyper, targetX, targetY); return; }
+    if (botCombatBrawler === 'mallow') { castMallowSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'ramage') { castRamageSuper(bot, isHyper, targetX, targetY); return; }
             if (botCombatBrawler === 'upgradart') { castUpgradartSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'axeywaxy') { castAxeyWaxySuper(bot, isHyper, targetX, targetY); return; }
@@ -39829,6 +40188,11 @@ let heistFeverActive = false;
         return;
     } else if (curBrawler === 'electrostien' && curGadget === 'g2') {
         executeElectrostienG2(player);
+        gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
+        updateGadgetButton();
+        return;
+    } else if (curBrawler === 'mallow' && curGadget === 'g1') {
+        executeMallowG1(player);
         gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
         updateGadgetButton();
         return;
@@ -49168,6 +49532,7 @@ function checkHit(target, b, i){
     // of pellet count, fragments, repeated damage, or raw damage dealt.
     if(!b.super && !b.isSuperDash && !b.isMinigunninMutationFire && !target.isPet && !(areAlliedEntities(owner, target) && isFriendlyFireActive())) grantMainAttackCharge(owner, b);
     if(!b.super && !b.isSuperDash && !b.isMinigunninMutationFire && !target.isPet && areAlliedEntities(owner, target) && isFriendlyFirePlusActive()) grantMainAttackCharge(owner, b);
+    if (b.isMallow && owner && target) applyMallowSlowHit(target, owner, b);
     if (b.ownerBrawler === 'rager' && b.isRagerTimber && b.hasSp1) {
             // SP1: burst into 4 cardinal splinter darts
             const dartDirs = [0, Math.PI / 2, Math.PI, Math.PI * 1.5];
@@ -50943,6 +51308,7 @@ function checkHit(target, b, i){
     if (playing && !gameOver) updateFeathersSystems(dt);
     if (playing && !gameOver) updateSpikeySystems(dt);
     if (playing && !gameOver) updateElectrostienSystems(dt);
+    if (playing && !gameOver) updateMallowSystems(dt);
     if (playing && !gameOver) updatePropPads();
     if (playing && !gameOver) updateChristmasShowdown(dt);
     if (playing && !gameOver) updatePropHuntMode(dt, now);
@@ -52727,7 +53093,7 @@ function checkHit(target, b, i){
               }
           }
       }
-    const playerSlowMult = getEntitySlowMultiplier(player, now) * playerCheeseSlow;
+    const playerSlowMult = getEntitySlowMultiplier(player, now) * playerCheeseSlow * getMallowSp1SpeedMult(player, now);
 
       let vx=0, vy=0;
       if(keys['w']||keys['arrowup']) vy -= 1;
@@ -54568,6 +54934,12 @@ function checkHit(target, b, i){
           continue;
       }
       if(b.life > b.maxLife){ 
+            if (b.isMallow) {
+                if (b.mallowHyper) mallowHyperEndBurst(b);
+                bullets.splice(i, 1);
+                i--;
+                continue;
+            }
             if (b.isOilMakerCrude) {
                 // Main attack now makes one puddle at the end after 2 seconds
                 oilMakerPendingPuddles.push({
@@ -56917,7 +57289,7 @@ function checkHit(target, b, i){
         }
       }
     const upiedownMapSlow = now < upiedownPieUntil && t.brawler !== 'upiedown' ? 0.72 : 1;
-    const slow = getEntitySlowMultiplier(t, now) * cheeseSlow * upiedownMapSlow;
+    const slow = getEntitySlowMultiplier(t, now) * cheeseSlow * upiedownMapSlow * getMallowSp1SpeedMult(t, now);
       
       // find nearest enemy (player or other bot), biased toward low HP targets
       let target = null;
@@ -60579,6 +60951,27 @@ function checkHit(target, b, i){
                 }
                 ctx.restore();
             }
+            if (brawlerId === 'mallow') {
+                ctx.save();
+                ctx.shadowColor = '#ffd9a8';
+                ctx.shadowBlur = 8;
+                ctx.fillStyle = '#fff8ec';
+                ctx.strokeStyle = '#e8d3a8';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(entity.x - size * 0.18, drawY - size * 0.1, size * 0.3, 0, Math.PI * 2);
+                ctx.arc(entity.x + size * 0.18, drawY - size * 0.1, size * 0.3, 0, Math.PI * 2);
+                ctx.arc(entity.x, drawY - size * 0.28, size * 0.32, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = 'rgba(217,154,78,0.75)';
+                ctx.beginPath();
+                ctx.arc(entity.x - size * 0.2, drawY - size * 0.3, size * 0.09, 0, Math.PI * 2);
+                ctx.arc(entity.x + size * 0.22, drawY - size * 0.05, size * 0.07, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
             ctx.textAlign = 'left';
             ctx.textBaseline = 'alphabetic';
     }
@@ -61094,6 +61487,7 @@ function checkHit(target, b, i){
     renderFeathersEffects();
     renderSpikeyEffects();
     renderElectrostienEffects();
+    renderMallowEffects();
     if (typeof renderBouncinBossEvent === 'function') renderBouncinBossEvent('ground');
     if (isBraweBallMode) renderBraweBallWorld(ctx);
     if (isKnockoutMode) renderKnockoutWorld(ctx);
@@ -68264,6 +68658,10 @@ function checkHit(target, b, i){
 
           ctx.restore();
           continue;
+      }
+      if (b.isMallow) {
+        drawMallowProjectile(ctx, b);
+        continue;
       }
       const earlyProjectileBrawler = b.ownerBrawler || (b.ownerId === player.id ? selectedBrawler : '');
       const earlyProjectileSkin = getActiveSkinForBrawler(earlyProjectileBrawler);
