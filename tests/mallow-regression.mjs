@@ -1,9 +1,9 @@
 // Mallow regression — Anthony's marshmallow brawler, ordered 2026-10-26.
-// Locked design: Epic Controller, 6800 HP / 270 speed, 8-marshmallow cone
+// Locked design: Epic Controller, 6800 HP / 270 speed, 8-marshmallow Pam fan
 // (320 each, 4% slow per hit for 1s stacking to 32%), Overheated smooth
-// dash with 6 trail puffs (burn 200/s, explode 1.1s after placement for
+// dash with 6 trail puffs (burn 200/s, explode 1.32s after placement for
 // 400), Hyper: end-of-flight burn + faster/further double dash + wider
-// trail + slow zone on every 3rd puff. Visuals are DEDICATED branches:
+// trail, NO slow zones (removed by the 2026-10-26 balance PR). Visuals are DEDICATED branches:
 // marshmallow projectiles are drawn before the universal skin renderer
 // call (PR #48 lesson), never through it, and never as dots.
 // Helpers are EXECUTED in a vm with a recording stub canvas (PR #45
@@ -50,7 +50,7 @@ check('expiry hook bursts hyper bullets at end of flight',
 check('checkHit slow hook on landed hits',
   game.includes('if (b.isMallow && owner && target) applyMallowSlowHit(target, owner, b);'));
 check('slow multiplier hooked into movement slow',
-  game.includes('getMallowSlowMultiplier(entity, now)') && game.includes('MALLOW_SLOW_ZONE_MULT'));
+  game.includes('getMallowSlowMultiplier(entity, now)'));
 check('slow constants 4%/1s/stack-8', game.includes('const MALLOW_SLOW_PER_HIT = 0.04;') && game.includes('const MALLOW_SLOW_DURATION_MS = 1000;') && game.includes('const MALLOW_SLOW_MAX_STACKS = 8;'));
 check('gadget slow 6% per hit', game.includes('const MALLOW_SLOW_GADGET_PER_HIT = 0.06;'));
 check('player super dispatch', game.includes("if (combatBrawler === 'mallow') { castMallowSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }"));
@@ -58,10 +58,9 @@ check('bot super dispatch', game.includes("if (botCombatBrawler === 'mallow') { 
 check('player gadget dispatch', game.includes("curBrawler === 'mallow' && curGadget === 'g1'"));
 check('bot gadget dispatch', game.includes("bot.brawler === 'mallow' && g === 'g1'"));
 check('dash constants 480/640 over 220ms', game.includes('const MALLOW_DASH_DISTANCE = 480;') && game.includes('const MALLOW_DASH_DISTANCE_HYPER = 640;') && game.includes('const MALLOW_DASH_DURATION_MS = 220;'));
-check('trail constants 6 puffs / 200 dps / 1.1s fuse / 400 dmg',
+check('trail constants 6 puffs / 200 dps / 1.32s fuse / 400 dmg',
   game.includes('const MALLOW_TRAIL_PUFFS = 6;') && game.includes('const MALLOW_TRAIL_BURN_DPS = 200;') &&
-  game.includes('const MALLOW_TRAIL_FUSE_MS = 1100;') && game.includes('const MALLOW_TRAIL_EXPLOSION_DAMAGE = 400;'));
-check('slow zone on every 3rd puff', game.includes('index % 3 === 2') && game.includes('const MALLOW_SLOW_ZONE_RADIUS = 120;') && game.includes('const MALLOW_SLOW_ZONE_DURATION_MS = 2000;'));
+  game.includes('const MALLOW_TRAIL_FUSE_MS = 1320;') && game.includes('const MALLOW_TRAIL_EXPLOSION_DAMAGE = 400;'));
 check('hyper burn total 150 over 5 ticks', game.includes('const MALLOW_HYPER_BURN_TOTAL = 150;') && game.includes('const MALLOW_HYPER_BURN_TICKS = 5;'));
 check('update loop calls updateMallowSystems', game.includes('if (playing && !gameOver) updateMallowSystems(dt);'));
 check('render calls renderMallowEffects', game.includes('    renderMallowEffects();'));
@@ -132,8 +131,8 @@ try {
   check('projectile tips are 4.5px arcs', s.calls.some((c) => c.m === 'arc' && near(c.args[2], 4.5)));
   const sh = stubCtx();
   sandbox.drawMallowProjectile(sh.proxy, { x: 100, y: 100, vx: 900, vy: 0, hyperVisual: true });
-  check('hyper projectile body is warmer cream', hasFill(sh.sets, '#fff1cf'));
-  check('hyper projectile tips are deeper toast', hasFill(sh.sets, '#c97a1f'));
+  check('hyper projectile body is light purple-white', hasFill(sh.sets, '#f5e9ff'));
+  check('hyper projectile tips are purple', hasFill(sh.sets, '#9333ea'));
 } catch (e) { failures.push('projectile art vm block threw: ' + e.message); }
 
 // --- executed: slow stacking math ---
@@ -193,7 +192,7 @@ try {
     mallowTrailPuffs: [], mallowSlowZones: [],
     MALLOW_DASH_DISTANCE: 480, MALLOW_DASH_DISTANCE_HYPER: 640,
     MALLOW_DASH_DURATION_MS: 220,
-    MALLOW_TRAIL_FUSE_MS: 1100,
+    MALLOW_TRAIL_FUSE_MS: 1320,
     MALLOW_TRAIL_PUFF_RADIUS: 26, MALLOW_TRAIL_PUFF_RADIUS_HYPER: 36,
     MALLOW_SLOW_ZONE_RADIUS: 120, MALLOW_SLOW_ZONE_DURATION_MS: 2000,
   };
@@ -206,23 +205,18 @@ try {
   const d = sandbox.createMallowDashState(e, 0, false);
   check('dash: base distance is 480px', near(d.targetX, 580) && near(d.targetY, 100));
   check('dash: base duration is 220ms', d.durationMs === 220);
-  check('dash: base grants no second dash', d.dashesLeft === 0);
+  check('dash: no auto-chain field (each activation is one dash)', !('dashesLeft' in d));
   const dh = sandbox.createMallowDashState(e, 0, true);
   check('dash: hyper distance is 640px', near(dh.targetX, 740));
-  check('dash: hyper grants a second dash', dh.dashesLeft === 1);
   const owner = { id: 7 };
   for (let k = 0; k < 6; k++) sandbox.placeMallowTrailPuff(owner, 100 + k * 80, 100, false, k);
   check('trail: 6 puffs placed for a dash', sandbox.mallowTrailPuffs.length === 6);
   check('trail: base puffs are radius 26', sandbox.mallowTrailPuffs.every((p) => p.radius === 26));
-  check('trail: base puffs fuse at 1.1s', sandbox.mallowTrailPuffs.every((p) => p.explodeAt === 101100));
-  check('trail: no slow zones without hyper', sandbox.mallowSlowZones.length === 0);
+  check('trail: base puffs fuse at 1.32s', sandbox.mallowTrailPuffs.every((p) => p.explodeAt === 101320));
   sandbox.mallowTrailPuffs = [];
   sandbox.mallowSlowZones = [];
   for (let k = 0; k < 6; k++) sandbox.placeMallowTrailPuff(owner, 100 + k * 80, 100, true, k);
   check('trail: hyper puffs are wider (radius 36)', sandbox.mallowTrailPuffs.every((p) => p.radius === 36));
-  check('trail: every 3rd hyper puff makes a slow zone (2 zones)', sandbox.mallowSlowZones.length === 2);
-  check('trail: slow zones are radius 120 for 2s',
-    sandbox.mallowSlowZones.every((z) => z.radius === 120 && z.endsAt === 102000));
 } catch (e) { failures.push('dash vm block threw: ' + e.message); }
 
 // --- executed: renderMallowEffects draws telegraphs, puffs, zones, bursts ---
@@ -232,8 +226,10 @@ try {
     Math,
     performance: { now: () => nowValue },
     MALLOW_VISUALS_ENABLED: true,
-    MALLOW_TRAIL_FUSE_MS: 1100,
+    MALLOW_TRAIL_FUSE_MS: 1320,
     MALLOW_TRAIL_EXPLOSION_RADIUS: 90,
+    MALLOW_VOLLEY_FAN_ARC: 1.20,
+    mallowMinis: [],
     mallowTelegraphs: [{ x: 50, y: 50, ang: 0, until: 100100 }],
     mallowTrailPuffs: [
       { x: 200, y: 200, radius: 26, explodeAt: 100200, hyper: false },
@@ -251,8 +247,6 @@ try {
   check('render: late-fuse puff reddens (warning ring stroke)', s.sets.some((x) => x.p === 'strokeStyle' && x.v === '#ff5a2a'));
   check('render: late-fuse puff body warms', s.sets.some((x) => x.p === 'fillStyle' && x.v === '#ffd0a0'));
   check('render: early-fuse puff stays cream', s.sets.some((x) => x.p === 'fillStyle' && x.v === '#fff8ec'));
-  check('render: slow zone ring radius 120', s.calls.some((c) => c.m === 'arc' && near(c.args[2], 120)));
-  check('render: slow zone fill is warm gold', s.sets.some((x) => x.p === 'fillStyle' && x.v === '#ffb35c'));
   check('render: custom explosion draws an expanding ring', hasArcIn(s.calls, 20, 90));
   check('render: explosion draws toasted shards (4px arcs)', s.calls.some((c) => c.m === 'arc' && near(c.args[2], 4)));
 } catch (e) { failures.push('render vm block threw: ' + e.message); }
