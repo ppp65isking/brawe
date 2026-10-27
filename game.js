@@ -4469,6 +4469,7 @@ const bolznstienPendingStrikes = [];
           if (entry.mainAttackActivationId != null) continue;
           const owner = entry.ownerId === player.id ? player : bots.find(bot => bot.id === entry.ownerId);
           if (owner?.currentMainAttackActivationId != null) entry.mainAttackActivationId = owner.currentMainAttackActivationId;
+      if (owner?.isTombstoneBoss || owner?.isTombstoneMinion) entry.tombstoneBoss = true;
       }
       return nativeBulletPush.apply(this, entries);
   };
@@ -4501,6 +4502,7 @@ const bolznstienPendingStrikes = [];
       crate:       { w: 48, h: 48, hp: 1800, blocksMove: true,  blocksShots: true  },
       plant_pot:   { w: 40, h: 40, hp: 900,  blocksMove: false, blocksShots: true  },
       sign_post:   { w: 36, h: 36, hp: 700,  blocksMove: false, blocksShots: true  },
+      tombstone:   { w: 48, h: 48, hp: 2400, blocksMove: true,  blocksShots: true  },
       healing_pad: { w: 96, h: 96, hp: 0,    blocksMove: false, blocksShots: false, pad: true },
       speed_pad:   { w: 96, h: 96, hp: 0,    blocksMove: false, blocksShots: false, pad: true }
   };
@@ -10881,6 +10883,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
     let propHuntState = null;
     // Prop Hunt v1: kill switch follows the house *_ENABLED convention.
     let PROP_HUNT_ENABLED = true;
+    let TOMBSTONE_BOSS_ENABLED = true;
     const PROP_HUNT_MATCH_SECONDS = 150;         // seek-phase timer (starts when seekers activate)
     const PROP_HUNT_HEAD_START_MS = 15000;       // hiders scatter + morph before seekers activate
     const PROP_HUNT_REMORPH_COOLDOWN_MS = 10000; // "10-second morph": re-morph cooldown after a break/drop
@@ -13300,9 +13303,11 @@ let heistFeverActive = false;
         let isBeastBossEvent = false;
         let isLavaBossEvent = false;
     let isHeadlessBossEvent = false;
+    let isTombstoneBossEvent = false;
         let activeLavaBossDifficulty = 'hard';
         let activeHeadlessBossDifficulty = 'hard';
         let headlessBossRuntime = null;
+        let tombstoneBossRuntime = null;
         let lavaBossRuntime = null;
                 let isOverlordTrialEvent = false;
                 let isWarperEvent = false;
@@ -14199,6 +14204,91 @@ let heistFeverActive = false;
       panel.appendChild(ladder);panel.querySelector('header button').onclick=()=>overlay.remove();overlay.onclick=e=>{if(e.target===overlay)overlay.remove();};overlay.appendChild(panel);document.body.appendChild(overlay);
   }
 
+  // ===== Tombstone Tycoon Boss Fight (solo, single difficulty) =====
+  // Base kit attacks come free from the generic bot AI (money_and_tax fan
+  // volleys, tax notes, alternating supers); this block adds only the
+  // boss-specific layer: phases, summons, the shield ring, and lose-on-death.
+  const TOMBSTONE_BOSS_HP = 90000;
+  const TOMBSTONE_BOSS_REWARD_COINS = 60;
+  const TOMBSTONE_MINION_CAP = 6;
+  const TOMBSTONE_MINION_HP = 900;
+  const TOMBSTONE_MINION_SUMMON_INTERVAL_MS = 8000;
+  const TOMBSTONE_MINION_SUMMON_COUNT = 2;
+  const TOMBSTONE_MODE_FLIP_INTERVAL_MS = 5000;
+  const TOMBSTONE_SHIELD_RING_COUNT = 8;
+  const TOMBSTONE_SHIELD_RING_RADIUS = 130;
+  const TOMBSTONE_SHIELD_WALL_HP = 2400;
+  function spawnTombstoneMinion(boss, x, y){
+      const living = bots.filter(e=>e && e.isTombstoneMinion && e.hp > 0 && !e.isDead).length;
+      if (living >= TOMBSTONE_MINION_CAP) return false;
+      bots.push({id:`tombstone_minion_${boss.id}_${Math.floor(performance.now())}_${Math.floor(Math.random()*99999)}`,brawler:'skeletrooper',x:clamp(x,18,WORLD_W-18),y:clamp(y,18,WORLD_H-18),z:0,radius:13,hp:TOMBSTONE_MINION_HP,maxHp:TOMBSTONE_MINION_HP,speed:175,team:'tombstone_enemy',ownerId:boss.id,isPet:true,isSummon:true,isTombstoneMinion:true,noRespawn:true,noPowerupDrop:true,selectedStar:'none',selectedGadget:'g1',lastShot:0});
+      return true;
+  }
+  function spawnTombstoneShieldRing(boss){
+      const walls = [];
+      for (let i = 0; i < TOMBSTONE_SHIELD_RING_COUNT; i++) {
+          const a = (i / TOMBSTONE_SHIELD_RING_COUNT) * Math.PI * 2;
+          const wall = {x: boss.x + Math.cos(a) * TOMBSTONE_SHIELD_RING_RADIUS - 24, y: boss.y + Math.sin(a) * TOMBSTONE_SHIELD_RING_RADIUS - 24, w: 48, h: 48, hp: TOMBSTONE_SHIELD_WALL_HP, maxHp: TOMBSTONE_SHIELD_WALL_HP, ownerId: boss.id, isProp: true, propType: 'tombstone', blocksMove: false, blocksShots: true, isTombstoneShield: true};
+          destructibleWalls.push(wall);
+          walls.push(wall);
+      }
+      return walls;
+  }
+  function initTombstoneBossMatch(){
+      bots.length=0;destructibleWalls.length=0;waterZones.length=0;bushZones.length=0;powerups.length=0;cubes.length=0;
+      player.team='player';player.x=WORLD_W*.5;player.y=WORLD_H-260;player.bossLives=1;player.respawnTimer=0;player.defenseUntil=performance.now()+1500;
+      const boss={id:nextId++,x:WORLD_W*.5,y:360,z:20,vx:0,vy:0,hp:TOMBSTONE_BOSS_HP,maxHp:TOMBSTONE_BOSS_HP,shield:0,shieldMax:0,radius:40,speed:140,brawler:'money_and_tax',level:11,team:'tombstone_enemy',isBoss:true,isTombstoneBoss:true,noRespawn:true,noPowerupDrop:true,lastShot:0,superCharge:0,hyperChargeCharge:0,isHypercharged:false,gadgetArmed:false,selectedStar:'none',selectedGadget:'g1',moneyAndTaxMode:'money',ammo:3,maxAmmo:3};
+      bots.push(boss);
+      const now=performance.now();
+      tombstoneBossRuntime={bossId:boss.id,startedAt:now,shieldRingSpawned:false,minionWaveSpawned:false,ringWalls:[],nextMinionAt:now+6000,nextModeFlipAt:now+TOMBSTONE_MODE_FLIP_INTERVAL_MS};
+      // Haunted graveyard cover, kept clear of both spawns.
+      placeProp('tombstone', WORLD_W*.2, WORLD_H*.28);
+      placeProp('tombstone', WORLD_W*.8, WORLD_H*.28);
+      placeProp('tombstone', WORLD_W*.16, WORLD_H*.55);
+      placeProp('tombstone', WORLD_W*.84, WORLD_H*.55);
+      placeProp('tombstone', WORLD_W*.3, WORLD_H*.78);
+      placeProp('tombstone', WORLD_W*.7, WORLD_H*.78);
+      placeProp('tombstone', WORLD_W*.5, WORLD_H*.45);
+      placeProp('tombstone', WORLD_W*.5, WORLD_H*.62);
+      spawnFloatingText(player.x,player.y-70,'TOMBSTONE TYCOON • SOLO BOSS','#7dffb0');
+  }
+  function updateTombstoneBossEvent(now, dt){
+      if(!isTombstoneBossEvent||!tombstoneBossRuntime||gameOver)return;
+      const boss=bots.find(b=>b.id===tombstoneBossRuntime.bossId);
+      if(!boss||boss.hp<=0){gameOver=true;return;}
+      if(player.hp<=0){gameOver=true;return;}
+      const rt=tombstoneBossRuntime, stage=boss.bossStage||1;
+      if(stage>=2&&!rt.shieldRingSpawned){
+          rt.shieldRingSpawned=true;
+          rt.ringWalls=spawnTombstoneShieldRing(boss);
+          spawnFloatingText(boss.x,boss.y-110,'HOSTILE TAKEOVER!','#7dffb0');
+          explosions.push({x:boss.x,y:boss.y,radius:170,life:0,maxLife:.5,color:'rgba(125,255,176,.7)',legendary:true});
+      }
+      if(stage>=3&&!rt.minionWaveSpawned){
+          rt.minionWaveSpawned=true;
+          for(let i=0;i<4;i++){const a=(i/4)*Math.PI*2;spawnTombstoneMinion(boss,boss.x+Math.cos(a)*90,boss.y+Math.sin(a)*90);}
+          spawnFloatingText(boss.x,boss.y-110,'GRAVEYARD FRENZY!','#7dffb0');
+          explosions.push({x:boss.x,y:boss.y,radius:200,life:0,maxLife:.55,color:'rgba(125,255,176,.8)',legendary:true});
+      }
+      if(now>=rt.nextModeFlipAt){rt.nextModeFlipAt=now+TOMBSTONE_MODE_FLIP_INTERVAL_MS;boss.moneyAndTaxMode=boss.moneyAndTaxMode==='tax'?'money':'tax';}
+      if(now>=rt.nextMinionAt){
+          rt.nextMinionAt=now+TOMBSTONE_MINION_SUMMON_INTERVAL_MS;
+          for(let i=0;i<TOMBSTONE_MINION_SUMMON_COUNT;i++)spawnTombstoneMinion(boss,boss.x+(Math.random()-.5)*140,boss.y+(Math.random()-.5)*140);
+      }
+      if(rt.ringWalls)for(let i=0;i<rt.ringWalls.length;i++){const w=rt.ringWalls[i];if(w&&destructibleWalls.includes(w)){const a=(i/rt.ringWalls.length)*Math.PI*2;w.x=boss.x+Math.cos(a)*TOMBSTONE_SHIELD_RING_RADIUS-24;w.y=boss.y+Math.sin(a)*TOMBSTONE_SHIELD_RING_RADIUS-24;}}
+  }
+  function renderTombstoneBossEvent(){
+      if(!isTombstoneBossEvent||!tombstoneBossRuntime)return;
+      const boss=bots.find(b=>b.id===tombstoneBossRuntime.bossId);
+      if(!boss)return;
+      const now=performance.now(), pulse=.8+.2*Math.sin(now/140);
+      ctx.save();
+      ctx.strokeStyle='#7dffb0';ctx.lineWidth=3;ctx.globalAlpha=.65+.35*pulse;
+      ctx.beginPath();ctx.arc(boss.x,boss.y,(boss.radius||40)+12,0,Math.PI*2);ctx.stroke();
+      ctx.globalAlpha=1;ctx.fillStyle='#7dffb0';ctx.font='900 20px sans-serif';ctx.textAlign='center';
+      ctx.fillText(`TOMBSTONE TYCOON • PHASE ${boss.bossStage||1}`,boss.x,boss.y-(boss.radius||40)-34);
+      ctx.textAlign='left';ctx.restore();
+  }
   function showLavaExtremeUnlockReveal(){
       const overlay=document.createElement('div');overlay.className='lava-extreme-reveal';overlay.innerHTML='<small>THE CORE CRACKS OPEN</small><h1>EXTREME DIFFICULTIES UNLOCKED</h1><p>Impossible III → Impossible XV</p><div><i></i><b>CORE SURGE BEGINS AT IMPOSSIBLE VI</b><i></i></div>';
       Object.assign(overlay.style,{position:'fixed',inset:'0',zIndex:'1500',display:'grid',placeContent:'center',textAlign:'center',color:'#fff4ad',background:'radial-gradient(circle,rgba(105,12,20,.72),rgba(3,5,12,.96))',pointerEvents:'none'});overlay.querySelector('h1').style.cssText='font:900 clamp(28px,6vw,72px) sans-serif;margin:8px;text-shadow:0 0 28px #ff5a24';overlay.querySelector('small').style.cssText='font:900 14px sans-serif;letter-spacing:.3em;color:#ff9b55';overlay.querySelector('p').style.cssText='font:800 20px sans-serif;color:#ffcf70';overlay.querySelector('div').style.cssText='display:flex;gap:18px;align-items:center;justify-content:center;margin-top:18px';document.body.appendChild(overlay);setTimeout(()=>overlay.remove(),3800);
@@ -39171,7 +39261,7 @@ let heistFeverActive = false;
             bot.moneyAndTaxMode = (bot.moneyAndTaxMode === 'tax') ? 'money' : 'tax';
             return;
         }
-        if ((bot.moneyAndTaxMode || 'money') === 'money') {
+        if ((bot.moneyAndTaxMode || 'money') === 'money' && !(bot.isTombstoneBoss && (bot.bossStage || 1) < 2)) {
             for (let i = 0; i < 6; i++) {
                 const a = ang + (i - 2.5) * (1 / 6);
                 bullets.push({ ownerBrawler: 'money_and_tax', isBoomerang: true, boomerangPhase: 0, boomerangTurnAt: 0.80, x: bot.x, y: bot.y, vx: Math.cos(a) * 900 * 0.6, vy: Math.sin(a) * 900 * 0.6, life: 0, maxLife: 2.4, damage: 900, pierce: true, pierceWalls: hc, hyperVisual: hc, ownerId: bot.id, super: true, hitIds: {} });
@@ -39182,7 +39272,7 @@ let heistFeverActive = false;
             bot.moneyAndTaxMode = 'money';
         }
         if (bot.isBoss) {
-            for(let i=0; i<10; i++) {
+            for(let i=0; i<(bot.isTombstoneBoss && (bot.bossStage || 1) < 2 ? 0 : 10); i++) {
                 const a = (i/10) * Math.PI * 2;
                 bullets.push({ ownerBrawler: 'money_and_tax', isBoomerang: true, boomerangPhase: 0, x: bot.x, y: bot.y, vx: Math.cos(a) * 900 * 0.6, vy: Math.sin(a) * 900 * 0.6, life: 0, maxLife: 3.0, damage: 1000, pierce: true, pierceWalls: true, hyperVisual: true, ownerId: bot.id, super: true, hitIds: {} });
             }
@@ -40379,6 +40469,7 @@ let heistFeverActive = false;
       ['power_play_showdown', '⚡', 'Power Play Showdown', '3-Powers LTM with 5 curated hypercharged fighters'],
       ['corrupted_showdown', 'CS', 'Corrupted Showdown', 'Season 3 unstable Packet signals'],
       ['headless_boss_s4', '🎃', 'Headless Bolznstien Boss', 'Season 4 co-op ladder • Hard to Impossible XV • Spooky Boxes + free skin'],
+      ['tombstone_boss', '🪦', 'Boss Battle: Tombstone Tycoon', 'Solo boss fight • skull coins, death-tax notes & a tombstone shield ring • +60 Coins on win'],
       ['capture_turkey', '🦃', 'Capture the Turkey', '3v3 CTF • grab the turkey, haul it home • first to 3 captures • LIVE EARLY'],
       ['christmas_showdown', '🎄', 'Christmas Showdown', 'Season 6 Event • Solo Showdown • grab DMG, Speed and Double HP buffs'],
       ['prop_hunt', '🫣', 'Prop Hunt', 'Hide & seek on Crown Collapse • hiders morph into props • wrong guesses cost seekers 400 HP'],
@@ -40415,7 +40506,7 @@ let heistFeverActive = false;
   ];
   const HOME_MODE_DATA = Object.fromEntries(HOME_MODE_CARDS.map((entry) => [entry[0], entry]));
   const POWER_PLAY_BRAWLERS = new Set(['blinkeye', 'fuser', 'rocketeer', 'bouncin_balls', 'echo', 'orbo', 'decayer', 'money_and_tax', 'ramage']);
-  const HOME_PERMANENT_MODE_IDS = ['blink_eye_dodge', 'headless_boss_s4', 'orbo_boss', 'ramage_boss', 'weefee_boss', 'demon_villains_boss', 'custom_clash', 'brawe_ball', 'knockout_3v3', 'duels', 'power_play_showdown', 'corrupted_showdown', 'slop_sushi', 'slop_sushi_gauntlet', 'chaos_crown', 'arena_forge', 'arena_forge_overclocked', 'tug_zone', 'construction', 'knock_donate', 'damage_filler', 'capture_turkey', 'prop_hunt'];
+  const HOME_PERMANENT_MODE_IDS = ['blink_eye_dodge', 'headless_boss_s4', 'tombstone_boss', 'orbo_boss', 'ramage_boss', 'weefee_boss', 'demon_villains_boss', 'custom_clash', 'brawe_ball', 'knockout_3v3', 'duels', 'power_play_showdown', 'corrupted_showdown', 'slop_sushi', 'slop_sushi_gauntlet', 'chaos_crown', 'arena_forge', 'arena_forge_overclocked', 'tug_zone', 'construction', 'knock_donate', 'damage_filler', 'capture_turkey', 'prop_hunt'];
   HOME_PERMANENT_MODE_IDS.push('arena_forge_minion_surge');
   const HOME_ROTATING_MODE_IDS = ['marked_mayhem', 'objective', 'brick_vault', 'mirror', 'power_gods', 'solo_td', 'impossible'];
   const WEEKLY_FEATURED_MODE_IDS = ['brick_vault', 'power_gods'];
@@ -40477,6 +40568,7 @@ let heistFeverActive = false;
       blink_eye_dodge: ['1-Player Boss Battle: 1 vs Mega Boss BlinkEye!', 'Zero Power Cubes — Pure skill showdown', 'Dodge bouncing Ricochet Gaze lasers, Retinal Flash & All-Seeing Eyes', 'Defeat Mega Boss BlinkEye & his Sentinels to claim Victory!'],
       knock_donate: ['Ring-out 3v3 battles with friendly fire', 'Friendly Fire Active'],
       headless_boss_s4: ['3v1 Co-op vs the Headless Bolznstien!', 'Dodge pumpkin bombs, anvil rain and the Ecto Nova', 'First clears pay coins, souls and up to 3 Spooky Boxes', 'Clear Impossible XV to earn his skin FREE'],
+      tombstone_boss: ['Solo Boss Battle: 1 vs Tombstone Tycoon!', 'Zero Power Cubes — Pure skill showdown', 'Survive 3 phases: coin fans, death-tax notes, a tombstone shield ring, then a graveyard frenzy', 'Defeat him to claim +60 Coins!'],
       capture_turkey: ['3v3 Capture the Flag — with a live turkey!', 'Grab the turkey at mid and haul it back to YOUR base', 'Carriers drop the turkey when defeated • it respawns at mid after a capture', 'First team to 3 captures wins • 3:00 match • Released early! Turkey Trouble season quests start Nov 1'],
       christmas_showdown: ['Solo Showdown — with presents under fire!', 'Buff pickups rain down: DMG +30%, Speed +20%, Double HP', 'Buffs last the whole match and stack with Power Cubes', 'First to survive the blizzard wins • Season 6: Xplodemis event (Dec 1-31)'],
       prop_hunt: ['Hide & seek on Crown Collapse: 2 seekers vs 6 hiders', 'Hiders morph into props (barrel, crate, plant pot, sign post) and win by surviving the 2:30 seek timer', 'Every hit on a REAL prop costs the seeker 400 HP — wrong guesses hurt!', 'A destroyed morph shell reveals the hider for 500 damage • re-morphing takes 10 seconds'],
@@ -42145,6 +42237,7 @@ let heistFeverActive = false;
           capture_turkey: '#ffb347',
           christmas_showdown: '#ff5d73',
           prop_hunt: '#ffd166',
+          tombstone_boss: '#7dffb0',
           objective: '#389eff',
           construction: '#f2a25d',
           knock_donate: '#ff7bd1',
@@ -42193,7 +42286,7 @@ let heistFeverActive = false;
           else if(id==='tower_duels_weekend') tag='5F';
           else if (id === 'duo') tag = 'DUO';
           else if (id === 'trio') tag = 'TRIO';
-          else if (id === 'orbo_boss' || id === 'ramage_boss' || id === 'demon_villains_boss' || id === 'weefee_boss' || id === 'blink_eye_dodge' || id === 'power_gods' || id === 'damage_filler' || id === 'solo_td') tag = 'SOLO';
+          else if (id === 'orbo_boss' || id === 'ramage_boss' || id === 'demon_villains_boss' || id === 'weefee_boss' || id === 'blink_eye_dodge' || id === 'power_gods' || id === 'damage_filler' || id === 'solo_td' || id === 'tombstone_boss') tag = 'SOLO';
           else if (id === 'duels' || id === 'impossible') tag = '1V1';
           else if (id === 'arena_forge') tag = '3V3';
           else if (id === 'marked_mayhem') tag = '3V3';
@@ -42313,7 +42406,7 @@ let heistFeverActive = false;
           }
       });
 
-      const allEventIds = [...new Set(HOME_MODE_CARDS.map((entry) => entry[0]))].filter((id) => HOME_MODE_DATA[id] && !isRetiredTowerMode(id) && (id !== 'slop_sushi_plus' || isSlopSushiLive()) && (id !== 'brick_vault' || TOWER_POWER_SYSTEM_ENABLED) && (id !== 'tower_duels_weekend' || TOWER_EVENT_MODES_ENABLED) && (id !== 'prop_hunt' || PROP_HUNT_ENABLED));
+      const allEventIds = [...new Set(HOME_MODE_CARDS.map((entry) => entry[0]))].filter((id) => HOME_MODE_DATA[id] && !isRetiredTowerMode(id) && (id !== 'slop_sushi_plus' || isSlopSushiLive()) && (id !== 'brick_vault' || TOWER_POWER_SYSTEM_ENABLED) && (id !== 'tower_duels_weekend' || TOWER_EVENT_MODES_ENABLED) && (id !== 'prop_hunt' || PROP_HUNT_ENABLED) && (id !== 'tombstone_boss' || TOMBSTONE_BOSS_ENABLED));
       const allEvents = createSection('ALL EVENTS', 'EVERY EVENT - ALWAYS AVAILABLE. NO WAITING ON THE ROTATION.', 'all-events-section');
       allEventIds.forEach((id) => {
           const card = createModeCard(id, false);
@@ -44159,7 +44252,8 @@ let heistFeverActive = false;
       isBouncinBossEvent = showdownMode === 'bouncin_boss_s3';
       isLavaBossEvent = showdownMode === 'lava_boss_s3';
       isHeadlessBossEvent = showdownMode === 'headless_boss_s4';
-      isBossFight = isLavaBossEvent || isBouncinBossEvent || isHeadlessBossEvent;
+      isTombstoneBossEvent = showdownMode === 'tombstone_boss';
+      isBossFight = isLavaBossEvent || isBouncinBossEvent || isHeadlessBossEvent || isTombstoneBossEvent;
       activeSkinTrial = null; // real matches never use trial skins
       feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = [];
       if (isBouncinBossEvent) {
@@ -44266,6 +44360,7 @@ let heistFeverActive = false;
       isTurkeyCaptureMode = showdownMode === 'capture_turkey';
       isPropHuntMode = showdownMode === 'prop_hunt';
       if (isPropHuntMode && !PROP_HUNT_ENABLED) { showdownMode = 'solo'; isPropHuntMode = false; }
+      if (isTombstoneBossEvent && !TOMBSTONE_BOSS_ENABLED) { showdownMode = 'solo'; isTombstoneBossEvent = false; isBossFight = false; }
       isObjectiveMode = showdownMode === 'objective' || isTurkeyCaptureMode;
       isConstructionMode = showdownMode === 'construction';
       isDuoShowdown = showdownMode === 'duo';
@@ -44322,7 +44417,7 @@ let heistFeverActive = false;
           showdownMapIndex=(floor-1)%TOWER_TROUBLE_FLOORS;
       }
     constructionMapIndex = getRotatingConstructionMapIndex();
-      if (isLavaBossEvent || isHeadlessBossEvent) {
+      if (isLavaBossEvent || isHeadlessBossEvent || isTombstoneBossEvent) {
           WORLD_W = 2400;
           WORLD_H = 2200;
       } else if (isTurkeyCaptureMode) {
@@ -44513,6 +44608,7 @@ let heistFeverActive = false;
       }
       if (isLavaBossEvent) initLavaBossMatch();
       if (isHeadlessBossEvent) initHeadlessBossMatch();
+      if (isTombstoneBossEvent) initTombstoneBossMatch();
       if (isBrickVaultMode) initBrickVaultModeState();
       if (isArenaForgeMode) {
           spawnArenaForgeStructures();
@@ -45647,6 +45743,7 @@ isBrawlerLabMode = false;
       isBeastBossEvent = false;
       isLavaBossEvent = false;
       isHeadlessBossEvent = false;
+      isTombstoneBossEvent = false;
       isOverlordTrialEvent = false;
       isHyperEvent = false;
       isBossFight = false;
@@ -45783,6 +45880,7 @@ isBrawlerLabMode = false;
       isBeastBossEvent = false;
       isLavaBossEvent = false;
       isHeadlessBossEvent = false;
+      isTombstoneBossEvent = false;
       isOverlordTrialEvent = false;
       isHyperEvent = false;
       isBossFight = false;
@@ -51191,6 +51289,7 @@ function checkHit(target, b, i){
     updateCoreInstability(now);
     updateLavaBossEvent(now,dt);
     updateHeadlessBossEvent(now,dt);
+    updateTombstoneBossEvent(now,dt);
 
     updateAngelDemonStates(dt);
       updateWeeFeeSystems(dt);
@@ -55472,7 +55571,7 @@ function checkHit(target, b, i){
       for(const c of cubes){ if(!portalPhased && rectCircleCollides(c.x,c.y,c.w,c.h, b.x,b.y, wallBreakHitRadius)){ hitCube = true; hitRect = c; break; } }
       for(let wIdx = destructibleWalls.length - 1; wIdx >= 0; wIdx--){
           const dw = destructibleWalls[wIdx];
-          if(!portalPhased && rectCircleCollides(dw.x, dw.y, dw.w, dw.h, b.x, b.y, wallBreakHitRadius)){
+          if(!portalPhased && rectCircleCollides(dw.x, dw.y, dw.w, dw.h, b.x, b.y, wallBreakHitRadius) && !(dw.isTombstoneShield && b.tombstoneBoss)){
               if (b.isTrapperGateProj) {
                   // Gate projectile hits wall; deploy gate at impact location
                   spawnTrapperGateWall(b.x, b.y, b.gateAngle, 2000);
@@ -61589,6 +61688,7 @@ function checkHit(target, b, i){
     renderCoreInstability();
     renderLavaBossEvent();
     renderHeadlessBossEvent();
+    renderTombstoneBossEvent();
     renderTurkeyCaptureEvent();
     renderFeathersEffects();
     renderSpikeyEffects();
@@ -63255,17 +63355,17 @@ function checkHit(target, b, i){
       if(t.healFlashUntil && performance.now() < t.healFlashUntil){
         ctx.beginPath(); ctx.fillStyle = 'rgba(100, 255, 100, 0.6)'; ctx.arc(t.x, drawY, t.radius, 0, Math.PI*2); ctx.fill();
       }
-      if (t.brawler === 'money_and_tax' && getActiveSkinForBrawler(t.brawler)?.id === 'tombstone-moneytax') {
+      if (t.brawler === 'money_and_tax' && (getActiveSkinForBrawler(t.brawler)?.id === 'tombstone-moneytax' || t.isTombstoneBoss)) {
           // Tombstone Tycoon spectral body + Hypercharge flames
           drawGraveTaxBody(ctx, t, drawY, (t.moneyAndTaxMode || 'money'), !!t.isHypercharged);
       }
-      if (t.brawler === 'money_and_tax' && getActiveSkinForBrawler(t.brawler)?.id === 'battle-moneytax') {
+      if (t.brawler === 'money_and_tax' && getActiveSkinForBrawler(t.brawler)?.id === 'battle-moneytax' && !t.isTombstoneBoss) {
           drawDetailedMoneyTaxBody(ctx, t, drawY, (t.moneyAndTaxMode || 'money'), 'battle', !!t.isHypercharged);
       }
-      if (t.brawler === 'money_and_tax' && getActiveSkinForBrawler(t.brawler)?.id === 'gold-silver-moneytax') {
+      if (t.brawler === 'money_and_tax' && getActiveSkinForBrawler(t.brawler)?.id === 'gold-silver-moneytax' && !t.isTombstoneBoss) {
           drawDetailedMoneyTaxBody(ctx, t, drawY, (t.moneyAndTaxMode || 'money'), 'goldsilver', !!t.isHypercharged);
       }
-      if (t.brawler === 'money_and_tax' && !getActiveSkinForBrawler(t.brawler)) {
+      if (t.brawler === 'money_and_tax' && !getActiveSkinForBrawler(t.brawler) && !t.isTombstoneBoss) {
           drawDetailedMoneyTaxBody(ctx, t, drawY, (t.moneyAndTaxMode || 'money'), 'regular', !!t.isHypercharged);
       }
       if (t.brawler === 'money_and_tax') {
@@ -69320,7 +69420,7 @@ function checkHit(target, b, i){
       // Tombstone Tycoon: ghostly skull coins, death-tax notes, spectral Super seals.
       // Placed before the universal renderer so this skin's custom shapes win;
       // mutation visuals above already continued, so they keep their own look.
-      if (activeSkinId === 'tombstone-moneytax' && b.ownerBrawler === 'money_and_tax' && (b.isCoin || b.isBoomerang || b.isTaxNote || b.isStickySuper)) {
+      if ((activeSkinId === 'tombstone-moneytax' || b.tombstoneBoss) && b.ownerBrawler === 'money_and_tax' && (b.isCoin || b.isBoomerang || b.isTaxNote || b.isStickySuper)) {
           if (b.isCoin || b.isBoomerang) drawGraveTaxSkullCoin(ctx, b, !!b.hyperVisual);
           else drawGraveTaxNote(ctx, b, !!b.hyperVisual);
           continue;
@@ -73115,6 +73215,13 @@ function checkHit(target, b, i){
                 }
                 ctx.fillStyle='#b5563c'; ctx.strokeStyle='#7c3524'; ctx.lineWidth=2;
                 ctx.beginPath(); ctx.moveTo(propCx - 13, propCy + 2); ctx.lineTo(propCx + 13, propCy + 2); ctx.lineTo(propCx + 9, propCy + 16); ctx.lineTo(propCx - 9, propCy + 16); ctx.closePath(); ctx.fill(); ctx.stroke();
+            } else if (dw.propType === 'tombstone') {
+                ctx.fillStyle = dw.isTombstoneShield ? '#6b7c8d' : '#7d8590'; ctx.strokeStyle = '#3d434d'; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.roundRect(dw.x + 6, dw.y + 4, dw.w - 12, dw.h - 6, 8); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = '#2b2f36';
+                ctx.beginPath(); ctx.arc(propCx - 7, propCy - 2, 4, 0, Math.PI * 2); ctx.arc(propCx + 7, propCy - 2, 4, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.moveTo(propCx, propCy + 6); ctx.lineTo(propCx - 4, propCy + 12); ctx.lineTo(propCx + 4, propCy + 12); ctx.closePath(); ctx.fill();
+                if (dw.isTombstoneShield) { ctx.strokeStyle = '#7dffb0'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(propCx, propCy, dw.w * 0.62, 0, Math.PI * 2); ctx.stroke(); }
             } else { // sign_post
                 ctx.strokeStyle='#6b4a2f'; ctx.lineWidth=5;
                 ctx.beginPath(); ctx.moveTo(propCx, propCy + 16); ctx.lineTo(propCx, propCy - 4); ctx.stroke();
@@ -76027,11 +76134,11 @@ function checkHit(target, b, i){
                 ctx.fillText(`⚔️ SOLO TRIAL MODE - WAVE ${Math.min(soloTrialWave + 1, SOLO_TRIAL_MAX_WAVES)}/${SOLO_TRIAL_MAX_WAVES} ⚔️`, innerWidth/2, 60);
         ctx.textAlign = 'left';
     } else if (isBossFight) {
-        ctx.fillStyle = isLavaBossEvent ? '#ff9a3d' : isHeadlessBossEvent ? '#7dff6a' : '#ff6bb2';
+        ctx.fillStyle = isLavaBossEvent ? '#ff9a3d' : isHeadlessBossEvent ? '#7dff6a' : isTombstoneBossEvent ? '#7dffb0' : '#ff6bb2';
         ctx.font = 'bold 14px sans-serif';
         ctx.textAlign = 'center';
         const diffName = getBeastBossDifficultyName(getBeastBossDifficultyIndex());
-        ctx.fillText(isLavaBossEvent?`LAVA VILLAIN 3V1 • ${getLavaBossDifficulty(lavaBossRuntime?.difficulty).name} • ${Math.max(0,Math.ceil((lavaBossRuntime.timeLimitMs-(performance.now()-lavaBossRuntime.startedAt))/1000))}s`:isHeadlessBossEvent?`HEADLESS BOLZNSTIEN 3V1 • ${getHeadlessBossDifficulty(headlessBossRuntime?.difficulty).name} • ${Math.max(0,Math.ceil((headlessBossRuntime.timeLimitMs-(performance.now()-headlessBossRuntime.startedAt))/1000))}s`:`🧬 BEAST BOSS 5V1 [${diffName}] - COLLECT CRYSTALS FOR 5s EMPOWERED BEAST 🧬`, innerWidth/2, 60);
+        ctx.fillText(isLavaBossEvent?`LAVA VILLAIN 3V1 • ${getLavaBossDifficulty(lavaBossRuntime?.difficulty).name} • ${Math.max(0,Math.ceil((lavaBossRuntime.timeLimitMs-(performance.now()-lavaBossRuntime.startedAt))/1000))}s`:isHeadlessBossEvent?`HEADLESS BOLZNSTIEN 3V1 • ${getHeadlessBossDifficulty(headlessBossRuntime?.difficulty).name} • ${Math.max(0,Math.ceil((headlessBossRuntime.timeLimitMs-(performance.now()-headlessBossRuntime.startedAt))/1000))}s`:isTombstoneBossEvent?`🪦 TOMBSTONE TYCOON • SOLO BOSS`:`🧬 BEAST BOSS 5V1 [${diffName}] - COLLECT CRYSTALS FOR 5s EMPOWERED BEAST 🧬`, innerWidth/2, 60);
         ctx.textAlign = 'left';
     } else if (isConstructionMode) {
         ctx.fillStyle = '#7dd8ff';
@@ -76150,11 +76257,14 @@ function checkHit(target, b, i){
                     rankText=`Difficulty: ${cfg.name}`;
                     if(won)rankText+=` • ${completeHeadlessBossDifficulty(cfg.id)}`;
                     matchText=won?'HEADLESS BOLZNSTIEN DEFEATED!':'THE HEADLESS ONE PREVAILS — TRY AGAIN!';
+                } else if (isTombstoneBossEvent) {
+                    rankText='Solo Boss Fight';
+                    matchText=won?'TOMBSTONE TYCOON DEFEATED!':'THE GRAVEYARD CLAIMS YOU — TRY AGAIN!';
                 } else if (isBeastBossEvent) {
                     const diffName = getBeastBossDifficultyName(getBeastBossDifficultyIndex());
                     rankText = `Difficulty: ${diffName}`;
                 }
-                if(!isLavaBossEvent&&!isHeadlessBossEvent)matchText = won ? (isBeastBossEvent ? "BEAST BOSS DEFEATED!" : "BOSS DEFEATED!") : "TEAM WIPED OUT!";
+                if(!isLavaBossEvent&&!isHeadlessBossEvent&&!isTombstoneBossEvent)matchText = won ? (isBeastBossEvent ? "BEAST BOSS DEFEATED!" : "BOSS DEFEATED!") : "TEAM WIPED OUT!";
             } else if (isSoloTrial) {
                 won = player.hp > 0 && soloTrialWave >= SOLO_TRIAL_MAX_WAVES && bots.every(b => b.hp <= 0 || b.isDead);
                 matchText = won ? "SOLO TRIAL COMPLETE!" : "SOLO TRIAL FAILED!";
@@ -76473,7 +76583,7 @@ function checkHit(target, b, i){
             }
 
             let rewardCoins = won ? 30 : 10;
-            if (isBossFight && won) rewardCoins = isBeastBossEvent ? 150 : 100;
+            if (isBossFight && won) rewardCoins = isBeastBossEvent ? 150 : (isTombstoneBossEvent ? TOMBSTONE_BOSS_REWARD_COINS : 100);
             if (isSoloTrial && won) rewardCoins = 80;
             if (isDuels && won) rewardCoins = 50;
 
@@ -76814,6 +76924,7 @@ function checkHit(target, b, i){
                 isBeastBossEvent = false;
                 isLavaBossEvent = false;
       isHeadlessBossEvent = false;
+      isTombstoneBossEvent = false;
                 isOverlordTrialEvent = false;
                 window.location.reload();
             };
@@ -84235,6 +84346,7 @@ function renderBouncinBossEvent(phase) {
     get propHuntState() { return propHuntState; },
     get PROP_HUNT_ENABLED() { return PROP_HUNT_ENABLED; },
     set PROP_HUNT_ENABLED(v) { PROP_HUNT_ENABLED = !!v; },
+    set TOMBSTONE_BOSS_ENABLED(v) { TOMBSTONE_BOSS_ENABLED = !!v; },
     get morphPropHuntHider() { return morphPropHuntHider; },
     get breakPropHuntMorph() { return breakPropHuntMorph; },
     get canDetectMorphedHider() { return canDetectMorphedHider; },
