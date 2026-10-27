@@ -154,7 +154,7 @@ for (const [label, b] of [
   const s = stubCtx();
   fns.drawDetailedMoneyTaxCoin(s.proxy, { x: 100, y: 100, vx: 100, vy: 0, isCoin: true }, 'tombstone', false);
   check('tombstone small coin medallion is dark purple backing', hasFill(s.sets, '#5b2a86'));
-  check('tombstone small coin skull face is 0.50r (was 0.42r)', hasArcR(s.calls, 0.50 * 7));
+  check('tombstone small coin skull face is 0.50r (was 0.42r)', hasArcR(s.calls, 0.50 * 7.392));
   check('tombstone small coin pupils have 1px floor (was 0.35px)', hasArcR(s.calls, 1));
   check('tombstone small coin keeps bone skull', hasFill(s.sets, '#f5ecd7'));
 }
@@ -162,7 +162,7 @@ for (const [label, b] of [
 {
   const s = stubCtx();
   fns.drawDetailedMoneyTaxCoin(s.proxy, { x: 100, y: 100, vx: 100, vy: 0, isCoin: true }, 'goldsilver', false);
-  check('goldsilver small coin has white contrast medallion', hasArcR(s.calls, 0.58 * 7) && hasFill(s.sets, '#ffffff'));
+  check('goldsilver small coin has white contrast medallion', hasArcR(s.calls, 0.58 * 7.392) && hasFill(s.sets, '#ffffff'));
   const b = stubCtx();
   fns.drawDetailedMoneyTaxCoin(b.proxy, { x: 100, y: 100, vx: 100, vy: 0, isBoomerang: true }, 'regular', false);
   check('regular boomerang keeps radius 16 and gets no small-coin medallion', near(maxArcR(b.calls), 16) && !hasFill(b.sets, '#fff3c4'));

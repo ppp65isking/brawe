@@ -6635,11 +6635,10 @@ function moneyTaxArtPalette(skinKey) {
 function drawDetailedMoneyTaxCoin(ctx, b, skinKey, hyper) {
     const pal = moneyTaxArtPalette(skinKey);
     const boom = !!b.isBoomerang;
+    // Unified coin size: every skin draws the regular standard, so the drawn
+    // size == hitbox size on every skin (boomerangs stay 16 on all skins).
     let r = boom ? 16 : (b.moneyEmpoweredCenter ? 14 : 6.6);
-    if (skinKey === 'battle') r = boom ? 13 : 8;
-    else if (skinKey === 'goldsilver') r = boom ? 14 : 7;
-    else if (skinKey === 'tombstone') r = boom ? 14 : (b.moneyEmpoweredCenter ? 10 : 7);
-    else if (skinKey === 'regular' && b.isCoin) r *= MONEY_TAX_REGULAR_COIN_SIZE_MULT;
+    if (b.isCoin && !boom) r *= MONEY_TAX_REGULAR_COIN_SIZE_MULT;
     const ang = Math.atan2(b.vy || 0, b.vx || 1);
     ctx.save();
     ctx.translate(b.x, b.y);
@@ -14235,6 +14234,21 @@ let heistFeverActive = false;
   const TOMBSTONE_SLAM_SAFE_GAP = 0.5;
   const TOMBSTONE_SLAM_DAMAGE = 1000;
   const TOMBSTONE_SLAM_INTERVAL_MS = 16000;
+  // Phase 4 LAST STAND (under 15% HP, all tiers): radial coin-spam bursts,
+  // intensified coin rain, and a faster boss. Burst damage/rate scale by tier.
+  const TOMBSTONE_LAST_STAND_HP_PCT = 0.15;
+  const TOMBSTONE_LAST_STAND_SPEED_MULT = 1.2;
+  const TOMBSTONE_LAST_STAND_RAIN_INTERVAL_MS = 8000;
+  const TOMBSTONE_LAST_STAND_RAIN_TICK_MULT = 1.5;
+  const TOMBSTONE_LAST_STAND_BURST_SPEED = 540;
+  const TOMBSTONE_LAST_STAND_BURST_LIFE = 1.2;
+  const TOMBSTONE_LAST_STAND_BURST_HITBOX_MOD = 1.232; // == unified money coin hitbox (7.392/6)
+  const TOMBSTONE_LAST_STAND_BURST = Object.freeze({
+      normal: Object.freeze({count:10,damage:300,intervalMs:8000}),
+      hard: Object.freeze({count:12,damage:375,intervalMs:7000}),
+      extreme: Object.freeze({count:14,damage:450,intervalMs:6000}),
+      impossible: Object.freeze({count:16,damage:550,intervalMs:5000}),
+  });
   const TOMBSTONE_BOSS_DIFFICULTIES = Object.freeze({
       normal: Object.freeze({id:'normal',name:'Normal',order:0,maxHp:TOMBSTONE_BOSS_HP,availableAttacks:Object.freeze([]),minionIntervalMs:TOMBSTONE_MINION_SUMMON_INTERVAL_MS,minionCap:TOMBSTONE_MINION_CAP,rewardCoins:TOMBSTONE_BOSS_REWARD_COINS}),
       hard: Object.freeze({id:'hard',name:'Hard',order:1,maxHp:135000,availableAttacks:Object.freeze(['eruption']),minionIntervalMs:TOMBSTONE_MINION_SUMMON_INTERVAL_MS,minionCap:TOMBSTONE_MINION_CAP,rewardCoins:120}),
@@ -14250,6 +14264,14 @@ let heistFeverActive = false;
       bots.push({id:`tombstone_minion_${boss.id}_${Math.floor(performance.now())}_${Math.floor(Math.random()*99999)}`,brawler:'skeletrooper',x:clamp(x,18,WORLD_W-18),y:clamp(y,18,WORLD_H-18),z:0,radius:13,hp:TOMBSTONE_MINION_HP,maxHp:TOMBSTONE_MINION_HP,speed:175,team:'tombstone_enemy',ownerId:boss.id,isPet:true,isSummon:true,isTombstoneMinion:true,noRespawn:true,noPowerupDrop:true,selectedStar:'none',selectedGadget:'g1',lastShot:0});
       return true;
   }
+  function spawnTombstoneCoinBurst(boss, cfg){
+      const p = TOMBSTONE_LAST_STAND_BURST[cfg.id] || TOMBSTONE_LAST_STAND_BURST.normal;
+      for(let i=0;i<p.count;i++){
+          const a=(i/p.count)*Math.PI*2;
+          bullets.push({ownerBrawler:'money_and_tax',isCoin:true,tombstoneBoss:true,x:boss.x,y:boss.y,vx:Math.cos(a)*TOMBSTONE_LAST_STAND_BURST_SPEED,vy:Math.sin(a)*TOMBSTONE_LAST_STAND_BURST_SPEED,life:0,maxLife:TOMBSTONE_LAST_STAND_BURST_LIFE,damage:p.damage,pierce:false,ownerId:boss.id,hitIds:{},hitboxMod:TOMBSTONE_LAST_STAND_BURST_HITBOX_MOD,maxCoinDist:650});
+      }
+      spawnFloatingText(boss.x,boss.y-110,'COIN SPAM!','#ffd34f');
+  }
   function spawnTombstoneShieldRing(boss){
       const walls = [];
       for (let i = 0; i < TOMBSTONE_SHIELD_RING_COUNT; i++) {
@@ -14263,7 +14285,7 @@ let heistFeverActive = false;
   function openTombstoneBossEvent(){
       const overlay=document.createElement('div');overlay.className='season3-overlay';
       const panel=document.createElement('section');panel.className='season3-panel lava-boss-panel';
-      panel.innerHTML=`<header><div><small>SOLO BOSS FIGHT</small><h1>TOMBSTONE TYCOON</h1><p>Normal \u2192 Impossible \u2022 each tier adds a NEW attack \u2022 higher tiers pay more coins \u2022 all tiers open</p></div><button aria-label="Close">X</button></header>`;
+      panel.innerHTML=`<header><div><small>SOLO BOSS FIGHT</small><h1>TOMBSTONE TYCOON</h1><p>Normal \u2192 Impossible \u2022 each tier adds a NEW attack \u2022 higher tiers pay more coins \u2022 all tiers open \u2022 LAST STAND under 15% HP</p></div><button aria-label="Close">X</button></header>`;
       const ladder=document.createElement('div');ladder.className='lava-boss-ladder';
       for(const cfg of Object.values(TOMBSTONE_BOSS_DIFFICULTIES)){
           const row=document.createElement('button');row.className='lava-boss-tier';
@@ -14278,6 +14300,13 @@ let heistFeverActive = false;
       if(rt.nextEruptionAt==null)rt.nextEruptionAt=999999;
       if(rt.nextRainAt==null)rt.nextRainAt=999999;
       if(rt.nextSlamAt==null)rt.nextSlamAt=999999;
+      if(rt.nextBurstAt==null)rt.nextBurstAt=999999;
+      if(!rt.lastStand&&boss.hp<=boss.maxHp*TOMBSTONE_LAST_STAND_HP_PCT){
+          rt.lastStand=true;boss.speed*=TOMBSTONE_LAST_STAND_SPEED_MULT;
+          rt.nextBurstAt=now+800;rt.nextRainAt=Math.min(rt.nextRainAt,now+2000);
+          spawnFloatingText(boss.x,boss.y-110,'LAST STAND!','#ffd34f');
+          explosions.push({x:boss.x,y:boss.y,radius:220,life:0,maxLife:.55,color:'rgba(255,211,79,.8)',legendary:true});
+      }
       const attacks=cfg.availableAttacks||[];
       if(cfg.id==='impossible'&&!rt.frenzyEarly&&boss.hp<=boss.maxHp*.50){
           rt.frenzyEarly=true;boss.speed*=1.25;boss.superCharge=100;
@@ -14295,10 +14324,15 @@ let heistFeverActive = false;
               rt.telegraphs.push({kind:'eruption',x:clamp(player.x+(Math.random()-.5)*220,60,WORLD_W-60),y:clamp(player.y+(Math.random()-.5)*220,60,WORLD_H-60),radius:TOMBSTONE_ERUPTION_RADIUS,explodeAt:now+TOMBSTONE_ERUPTION_WARN_MS,damage:TOMBSTONE_ERUPTION_DAMAGE});
           }
       }
-      if(attacks.includes('rain')&&now>=rt.nextRainAt){
-          rt.nextRainAt=now+TOMBSTONE_RAIN_INTERVAL_MS;
+      if((attacks.includes('rain')||rt.lastStand)&&now>=rt.nextRainAt){
+          rt.nextRainAt=now+(rt.lastStand?TOMBSTONE_LAST_STAND_RAIN_INTERVAL_MS:TOMBSTONE_RAIN_INTERVAL_MS);
           rt.telegraphs.push({kind:'rain',x:player.x,y:player.y,radius:TOMBSTONE_RAIN_RADIUS,explodeAt:now+TOMBSTONE_RAIN_WARN_MS});
           spawnFloatingText(boss.x,boss.y-110,'COIN RAIN!','#7dffb0');
+      }
+      if(rt.lastStand&&now>=rt.nextBurstAt){
+          const bp=TOMBSTONE_LAST_STAND_BURST[cfg.id]||TOMBSTONE_LAST_STAND_BURST.normal;
+          rt.nextBurstAt=now+bp.intervalMs;
+          spawnTombstoneCoinBurst(boss,cfg);
       }
       if(attacks.includes('slam')&&now>=rt.nextSlamAt){
           rt.nextSlamAt=now+TOMBSTONE_SLAM_INTERVAL_MS;
@@ -14321,7 +14355,7 @@ let heistFeverActive = false;
       for(let i=rt.rainZones.length-1;i>=0;i--){
           const z=rt.rainZones[i];
           if(now>=z.until){rt.rainZones.splice(i,1);continue;}
-          if(now>=z.nextTickAt){z.nextTickAt=now+TOMBSTONE_RAIN_TICK_MS;AOEDamage(z.x,z.y,z.radius,TOMBSTONE_RAIN_TICK_DAMAGE,boss.id,true);}
+          if(now>=z.nextTickAt){z.nextTickAt=now+TOMBSTONE_RAIN_TICK_MS;AOEDamage(z.x,z.y,z.radius,rt.lastStand?Math.round(TOMBSTONE_RAIN_TICK_DAMAGE*TOMBSTONE_LAST_STAND_RAIN_TICK_MULT):TOMBSTONE_RAIN_TICK_DAMAGE,boss.id,true);}
       }
       for(let i=rt.slamRings.length-1;i>=0;i--){
           const r=rt.slamRings[i];
@@ -14345,7 +14379,7 @@ let heistFeverActive = false;
       const boss={id:nextId++,x:WORLD_W*.5,y:360,z:20,vx:0,vy:0,hp:cfg.maxHp,maxHp:cfg.maxHp,shield:0,shieldMax:0,radius:40,speed:140,brawler:'money_and_tax',level:11,team:'tombstone_enemy',isBoss:true,isTombstoneBoss:true,noRespawn:true,noPowerupDrop:true,lastShot:0,superCharge:0,hyperChargeCharge:0,isHypercharged:false,gadgetArmed:false,selectedStar:'none',selectedGadget:'g1',moneyAndTaxMode:'money',ammo:3,maxAmmo:3};
       bots.push(boss);
       const now=performance.now();
-      tombstoneBossRuntime={bossId:boss.id,startedAt:now,difficulty:cfg.id,shieldRingSpawned:false,minionWaveSpawned:false,ringWalls:[],telegraphs:[],rainZones:[],slamRings:[],frenzyEarly:false,nextMinionAt:now+6000,nextModeFlipAt:now+TOMBSTONE_MODE_FLIP_INTERVAL_MS,nextEruptionAt:now+5000,nextRainAt:now+9000,nextSlamAt:now+13000};
+      tombstoneBossRuntime={bossId:boss.id,startedAt:now,difficulty:cfg.id,shieldRingSpawned:false,minionWaveSpawned:false,ringWalls:[],telegraphs:[],rainZones:[],slamRings:[],frenzyEarly:false,lastStand:false,nextMinionAt:now+6000,nextModeFlipAt:now+TOMBSTONE_MODE_FLIP_INTERVAL_MS,nextEruptionAt:now+5000,nextRainAt:now+9000,nextSlamAt:now+13000,nextBurstAt:999999};
       // Haunted graveyard cover, kept clear of both spawns.
       placeProp('tombstone', WORLD_W*.2, WORLD_H*.28);
       placeProp('tombstone', WORLD_W*.8, WORLD_H*.28);
@@ -14364,7 +14398,7 @@ let heistFeverActive = false;
       if(player.hp<=0){gameOver=true;return;}
       const rt=tombstoneBossRuntime, cfg=getTombstoneBossDifficulty(rt.difficulty);
       updateTombstoneBossAttacks(rt,boss,cfg,now);
-      const stage=Math.max(boss.bossStage||1,rt.frenzyEarly?3:1);
+      const stage=Math.max(boss.bossStage||1,rt.frenzyEarly?3:1,rt.lastStand?4:1);
       if(stage>=2&&!rt.shieldRingSpawned){
           rt.shieldRingSpawned=true;
           rt.ringWalls=spawnTombstoneShieldRing(boss);
@@ -14410,7 +14444,7 @@ let heistFeverActive = false;
       ctx.strokeStyle='#7dffb0';ctx.lineWidth=3;ctx.globalAlpha=.65+.35*pulse;
       ctx.beginPath();ctx.arc(boss.x,boss.y,(boss.radius||40)+12,0,Math.PI*2);ctx.stroke();
       ctx.globalAlpha=1;ctx.fillStyle='#7dffb0';ctx.font='900 20px sans-serif';ctx.textAlign='center';
-      ctx.fillText(`TOMBSTONE TYCOON • ${cfg.name} • PHASE ${Math.max(boss.bossStage||1,rt.frenzyEarly?3:1)}`,boss.x,boss.y-(boss.radius||40)-34);
+      ctx.fillText(`TOMBSTONE TYCOON • ${cfg.name} • PHASE ${Math.max(boss.bossStage||1,rt.frenzyEarly?3:1,rt.lastStand?4:1)}`,boss.x,boss.y-(boss.radius||40)-34);
       ctx.textAlign='left';ctx.restore();
   }
   function showLavaExtremeUnlockReveal(){
@@ -26476,15 +26510,17 @@ let heistFeverActive = false;
   const MONEY_TAX_MUTATION_TRIGGER_ATTACKS = 12;
   const MONEY_TAX_MUTATION_POWERED_ATTACKS = 4;
   const MONEY_TAX_BASE_SPREAD = 0.105; // +20% wider Money fan
-  const MONEY_TAX_MONEY_SIZE_MULT = 1.10; // small consistency buff
-  const MONEY_TAX_FULL_CENTER_SIZE_MULT = 1.40;
+  const MONEY_TAX_MONEY_SIZE_MULT = 1.232; // unified coin hitbox: 7.392 drawn px / 6px collision base
+  const MONEY_TAX_FULL_CENTER_SIZE_MULT = 1.5838; // 1.65 * this * 6 = 15.68 unified empowered draw radius
   const MONEY_TAX_TAX_SPREAD = 0.056; // 20% tighter Tax pair
   const MONEY_TAX_TAX_DAMAGE_MULT = 1.45;
   const MONEY_TAX_TAX_SIZE_MULT = 2.30; // +15% over the prior double-size note
-  // Rework 2026-10-25 (Anthony's order): regular (default-skin) coins draw
-  // 12% bigger (visual only — hit detection uses hitboxMod, untouched) and
-  // fire on a 12% wider fan. The fan change is GAMEPLAY-VISIBLE (wider
-  // trajectories); skinned coins keep their existing sizes and spreads.
+  // Rework 2026-10-25 (Anthony's order) + unification: ALL skins now draw
+  // the regular standard (7.392 / 15.68 / 16) and fire on the 12% wider fan,
+  // and the spawn hitboxMods are set so hit radius == drawn radius on every
+  // skin (normal 1.232*6 = 7.392, empowered 1.65*1.5838*6 = 15.68, boomerang
+  // 2.6667*6 = 16). The fan change is GAMEPLAY-VISIBLE (wider trajectories);
+  // damage values are untouched.
   const MONEY_TAX_REGULAR_COIN_SIZE_MULT = 1.12;
   const MONEY_TAX_REGULAR_SPREAD_MULT = 1.12;
   function ensureMinigunninMutationState(entity) {
@@ -34221,11 +34257,9 @@ let heistFeverActive = false;
             const coinHoming=isSlopSushiMode?getEntitySlopEffectTotal(fromEntity,'moneyCoinHoming'):0;
             const coinHomingRadius=isSlopSushiMode?getEntitySlopEffectTotal(fromEntity,'moneyCoinHomingRadius'):0;
             lockMainAttackSequence(fromEntity,(3+extraWaves-1)*150,now);
-            // Regular coins fire on the wider fan; skinned coins keep the old one.
-            // Rendered bullets use the player's Money & Tax skin, so this
-            // matches the draw-side regular check.
-            const mntRegularFan = !getActiveSkinForBrawler('money_and_tax');
-            const mntFanSpread = MONEY_TAX_BASE_SPREAD * (mntRegularFan ? MONEY_TAX_REGULAR_SPREAD_MULT : 1);
+            // Unified fan: every skin fires on the regular +12% wider fan, so
+            // no skin has different trajectories from another.
+            const mntFanSpread = MONEY_TAX_BASE_SPREAD * MONEY_TAX_REGULAR_SPREAD_MULT;
             for (let w = 0; w < 3 + extraWaves; w++) {
                 setTimeout(() => {
                     if (fromEntity.hp <= 0 && isBot) return; // Don't fire remaining waves if bot dies
@@ -34241,7 +34275,7 @@ let heistFeverActive = false;
                             vx: Math.cos(a)*950 * 0.6, vy: Math.sin(a)*950 * 0.6,
                             life: 0, maxLife: 0.9 + extraLife, damage: empoweredCenter ? (isBot ? 150 : 338)*(1+centerDamage) : (isBot ? 120 : 270), pierce: isHyper, hyperVisual: isHyper, ownerId: fromEntity.id, maxCoinDist: 513 + extraRangeTiles,
                             hitboxMod: enlargedCenter
-                                ? 1.65 * (firedAtFullAmmo ? MONEY_TAX_FULL_CENTER_SIZE_MULT : 1) * (1 + centerSize)
+                                ? 1.65 * MONEY_TAX_FULL_CENTER_SIZE_MULT * (1 + centerSize)
                                 : MONEY_TAX_MONEY_SIZE_MULT,
                             moneyEmpoweredCenter: enlargedCenter,
                             moneyTaxMutationVisual: mutationVolley,
@@ -37838,7 +37872,7 @@ let heistFeverActive = false;
             const coinCount = 6 + 8; // 14 boomerang coins (+8 extra)
             for (let i = 0; i < coinCount; i++) {
                 const a = ang + (i - (coinCount - 1) / 2) * (1 / 8);
-                bullets.push({ ownerBrawler: 'money_and_tax', isBoomerang: true, boomerangPhase: 0, boomerangTurnAt: 0.80, x: player.x, y: player.y, vx: Math.cos(a) * 900 * 0.6, vy: Math.sin(a) * 900 * 0.6, life: 0, maxLife: 2.4, damage: 900, pierce: true, pierceWalls: true, hyperVisual: true, ownerId: player.id, super: true, hitIds: {} });
+                bullets.push({ ownerBrawler: 'money_and_tax', isBoomerang: true, boomerangPhase: 0, boomerangTurnAt: 0.80, x: player.x, y: player.y, vx: Math.cos(a) * 900 * 0.6, vy: Math.sin(a) * 900 * 0.6, life: 0, maxLife: 2.4, damage: 900, pierce: true, pierceWalls: true, hyperVisual: true, ownerId: player.id, super: true, hitIds: {}, hitboxMod: 2.6667 });
             }
             bullets.push({ ownerBrawler: 'money_and_tax', isStickySuper: true, hcChain: true, x: player.x, y: player.y, vx: Math.cos(ang) * 1100 * 0.6, vy: Math.sin(ang) * 1100 * 0.6, life: 0, maxLife: 1.5, damage: 0, pierce: false, hyperVisual: true, ownerId: player.id, super: true, hitIds: {}, homingRadius: 400 });
             player.moneyAndTaxMode = (player.moneyAndTaxMode === 'tax') ? 'money' : 'tax';
@@ -37848,7 +37882,7 @@ let heistFeverActive = false;
         if ((player.moneyAndTaxMode || 'money') === 'money') {
             for (let i = 0; i < 6; i++) {
                 const a = ang + (i - 2.5) * (1 / 6);
-                bullets.push({ ownerBrawler: 'money_and_tax', isBoomerang: true, boomerangPhase: 0, boomerangTurnAt: 0.80, x: player.x, y: player.y, vx: Math.cos(a) * 900 * 0.6, vy: Math.sin(a) * 900 * 0.6, life: 0, maxLife: 2.4, damage: 900, pierce: true, pierceWalls: hc, hyperVisual: hc, ownerId: player.id, super: true, hitIds: {} });
+                bullets.push({ ownerBrawler: 'money_and_tax', isBoomerang: true, boomerangPhase: 0, boomerangTurnAt: 0.80, x: player.x, y: player.y, vx: Math.cos(a) * 900 * 0.6, vy: Math.sin(a) * 900 * 0.6, life: 0, maxLife: 2.4, damage: 900, pierce: true, pierceWalls: hc, hyperVisual: hc, ownerId: player.id, super: true, hitIds: {}, hitboxMod: 2.6667 });
             }
             player.moneyAndTaxMode = 'tax';
         } else {
@@ -39379,7 +39413,7 @@ let heistFeverActive = false;
             const coinCount = 6 + 8; // 14 boomerang coins (+8 extra)
             for (let i = 0; i < coinCount; i++) {
                 const a = ang + (i - (coinCount - 1) / 2) * (1 / 8);
-                bullets.push({ ownerBrawler: 'money_and_tax', isBoomerang: true, boomerangPhase: 0, boomerangTurnAt: 0.80, x: bot.x, y: bot.y, vx: Math.cos(a) * 900 * 0.6, vy: Math.sin(a) * 900 * 0.6, life: 0, maxLife: 2.4, damage: 900, pierce: true, pierceWalls: true, hyperVisual: true, ownerId: bot.id, super: true, hitIds: {} });
+                bullets.push({ ownerBrawler: 'money_and_tax', isBoomerang: true, boomerangPhase: 0, boomerangTurnAt: 0.80, x: bot.x, y: bot.y, vx: Math.cos(a) * 900 * 0.6, vy: Math.sin(a) * 900 * 0.6, life: 0, maxLife: 2.4, damage: 900, pierce: true, pierceWalls: true, hyperVisual: true, ownerId: bot.id, super: true, hitIds: {}, hitboxMod: 2.6667 });
             }
             bullets.push({ ownerBrawler: 'money_and_tax', isStickySuper: true, hcChain: true, x: bot.x, y: bot.y, vx: Math.cos(ang) * 1100 * 0.6, vy: Math.sin(ang) * 1100 * 0.6, life: 0, maxLife: 1.5, damage: 0, pierce: false, hyperVisual: true, ownerId: bot.id, super: true, hitIds: {}, homingRadius: 400 });
             bot.moneyAndTaxMode = (bot.moneyAndTaxMode === 'tax') ? 'money' : 'tax';
@@ -39388,7 +39422,7 @@ let heistFeverActive = false;
         if ((bot.moneyAndTaxMode || 'money') === 'money' && !(bot.isTombstoneBoss && (bot.bossStage || 1) < 2)) {
             for (let i = 0; i < 6; i++) {
                 const a = ang + (i - 2.5) * (1 / 6);
-                bullets.push({ ownerBrawler: 'money_and_tax', isBoomerang: true, boomerangPhase: 0, boomerangTurnAt: 0.80, x: bot.x, y: bot.y, vx: Math.cos(a) * 900 * 0.6, vy: Math.sin(a) * 900 * 0.6, life: 0, maxLife: 2.4, damage: 900, pierce: true, pierceWalls: hc, hyperVisual: hc, ownerId: bot.id, super: true, hitIds: {} });
+                bullets.push({ ownerBrawler: 'money_and_tax', isBoomerang: true, boomerangPhase: 0, boomerangTurnAt: 0.80, x: bot.x, y: bot.y, vx: Math.cos(a) * 900 * 0.6, vy: Math.sin(a) * 900 * 0.6, life: 0, maxLife: 2.4, damage: 900, pierce: true, pierceWalls: hc, hyperVisual: hc, ownerId: bot.id, super: true, hitIds: {}, hitboxMod: 2.6667 });
             }
             bot.moneyAndTaxMode = 'tax';
         } else {
@@ -39398,7 +39432,7 @@ let heistFeverActive = false;
         if (bot.isBoss) {
             for(let i=0; i<(bot.isTombstoneBoss && (bot.bossStage || 1) < 2 ? 0 : 10); i++) {
                 const a = (i/10) * Math.PI * 2;
-                bullets.push({ ownerBrawler: 'money_and_tax', isBoomerang: true, boomerangPhase: 0, x: bot.x, y: bot.y, vx: Math.cos(a) * 900 * 0.6, vy: Math.sin(a) * 900 * 0.6, life: 0, maxLife: 3.0, damage: 1000, pierce: true, pierceWalls: true, hyperVisual: true, ownerId: bot.id, super: true, hitIds: {} });
+                bullets.push({ ownerBrawler: 'money_and_tax', isBoomerang: true, boomerangPhase: 0, x: bot.x, y: bot.y, vx: Math.cos(a) * 900 * 0.6, vy: Math.sin(a) * 900 * 0.6, life: 0, maxLife: 3.0, damage: 1000, pierce: true, pierceWalls: true, hyperVisual: true, ownerId: bot.id, super: true, hitIds: {}, hitboxMod: 2.6667 });
             }
             for(const t of [player, ...bots]) {
                 if(t.hp > 0 && t.team === 'player') attachStickyNote(t, bot.id, 400, 0, false);
@@ -40692,7 +40726,7 @@ let heistFeverActive = false;
       blink_eye_dodge: ['1-Player Boss Battle: 1 vs Mega Boss BlinkEye!', 'Zero Power Cubes — Pure skill showdown', 'Dodge bouncing Ricochet Gaze lasers, Retinal Flash & All-Seeing Eyes', 'Defeat Mega Boss BlinkEye & his Sentinels to claim Victory!'],
       knock_donate: ['Ring-out 3v3 battles with friendly fire', 'Friendly Fire Active'],
       headless_boss_s4: ['3v1 Co-op vs the Headless Bolznstien!', 'Dodge pumpkin bombs, anvil rain and the Ecto Nova', 'First clears pay coins, souls and up to 3 Spooky Boxes', 'Clear Impossible XV to earn his skin FREE'],
-      tombstone_boss: ['Solo Boss Battle: 1 vs Tombstone Tycoon!', 'Zero Power Cubes — Pure skill showdown', 'Survive 3 phases: coin fans, death-tax notes, a tombstone shield ring, then a graveyard frenzy', 'Defeat him to claim Coins — Normal +60, Hard +120, Extreme +200, Impossible +350!'],
+      tombstone_boss: ['Solo Boss Battle: 1 vs Tombstone Tycoon!', 'Zero Power Cubes — Pure skill showdown', 'Survive 4 phases: coin fans, death-tax notes, a tombstone shield ring, a graveyard frenzy, then a LAST STAND under 15% HP', 'Defeat him to claim Coins — Normal +60, Hard +120, Extreme +200, Impossible +350!'],
       capture_turkey: ['3v3 Capture the Flag — with a live turkey!', 'Grab the turkey at mid and haul it back to YOUR base', 'Carriers drop the turkey when defeated • it respawns at mid after a capture', 'First team to 3 captures wins • 3:00 match • Released early! Turkey Trouble season quests start Nov 1'],
       christmas_showdown: ['Solo Showdown — with presents under fire!', 'Buff pickups rain down: DMG +30%, Speed +20%, Double HP', 'Buffs last the whole match and stack with Power Cubes', 'First to survive the blizzard wins • Season 6: Xplodemis event (Dec 1-31)'],
       prop_hunt: ['Hide & seek on Crown Collapse: 2 seekers vs 6 hiders', 'Hiders morph into props (barrel, crate, plant pot, sign post) and win by surviving the 2:30 seek timer', 'Every hit on a REAL prop costs the seeker 400 HP — wrong guesses hurt!', 'A destroyed morph shell reveals the hider for 500 damage • re-morphing takes 10 seconds'],

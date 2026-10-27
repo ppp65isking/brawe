@@ -22,8 +22,8 @@ function check(name, cond) {
 // ---------------------------------------------------------- 1. source: sizes, spread, wiring
 check('regular coin size const is 1.12', /const MONEY_TAX_REGULAR_COIN_SIZE_MULT = 1\.12;/.test(game));
 check('regular spread const is 1.12', /const MONEY_TAX_REGULAR_SPREAD_MULT = 1\.12;/.test(game));
-check('fire fan branches on regular skin', game.includes("const mntRegularFan = !getActiveSkinForBrawler('money_and_tax');"));
-check('fire fan applies spread mult', game.includes('const mntFanSpread = MONEY_TAX_BASE_SPREAD * (mntRegularFan ? MONEY_TAX_REGULAR_SPREAD_MULT : 1);'));
+check('fire fan is unified across skins', !game.includes('mntRegularFan'));
+check('fire fan applies spread mult to all skins', game.includes('const mntFanSpread = MONEY_TAX_BASE_SPREAD * MONEY_TAX_REGULAR_SPREAD_MULT;'));
 check('fire fan uses widened spread', game.includes('const a = ang + (i - centerIndex) * mntFanSpread;'));
 check('widened fan math: 0.105 * 1.12 = 0.1176', Math.abs(0.105 * 1.12 - 0.1176) < 1e-9);
 check('base spread itself untouched (0.105)', game.includes('const MONEY_TAX_BASE_SPREAD = 0.105;'));
@@ -102,13 +102,13 @@ const maxArcR = (calls) => Math.max(-1, ...calls.filter((c) => c.m === 'arc').ma
 const near = (a, b) => Math.abs(a - b) < 0.01;
 
 // Coins: detailed art + sizes, per skin
-for (const [skin, baseR] of [['regular', 6.6], ['battle', 8], ['goldsilver', 7]]) {
+for (const [skin, baseR] of [['regular', 6.6], ['battle', 6.6], ['goldsilver', 6.6]]) { // unified coin base: every skin draws the regular standard
   const s = stubCtx();
   fns.drawDetailedMoneyTaxCoin(s.proxy, { x: 100, y: 100, vx: 100, vy: 0, isCoin: true }, skin, false);
   check(skin + ' coin is detailed, not a dot (>=30 canvas calls)', s.calls.length >= 30);
   check(skin + ' coin has ridge ticks + emblem (>=15 lineTo, $ print)', count(s.calls, 'lineTo') >= 15 && hasText(s.calls, '$'));
   check(skin + ' coin non-hyper has no flame tongues', count(s.calls, 'quadraticCurveTo') === 0);
-  const expR = skin === 'regular' ? baseR * 1.12 : baseR;
+  const expR = baseR * 1.12;
   check(skin + ' coin disc radius is ' + expR.toFixed(3), near(maxArcR(s.calls), expR));
   const sh = stubCtx();
   fns.drawDetailedMoneyTaxCoin(sh.proxy, { x: 100, y: 100, vx: 100, vy: 0, isCoin: true }, skin, true);
