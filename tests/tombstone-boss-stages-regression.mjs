@@ -36,7 +36,7 @@ check('home card opens the picker', game.includes("if (id === 'tombstone_boss') 
 check('init uses picked HP', game.includes('hp:cfg.maxHp,maxHp:cfg.maxHp'));
 check('init stores difficulty + attack timers', game.includes('difficulty:cfg.id,') && game.includes('nextEruptionAt:now+5000,nextRainAt:now+9000,nextSlamAt:now+13000'));
 check('updater runs the attack engine', game.includes('updateTombstoneBossAttacks(rt,boss,cfg,now);'));
-check('updater effective stage honors early frenzy', game.includes('const stage=Math.max(boss.bossStage||1,rt.frenzyEarly?3:1);'));
+check('updater effective stage honors early frenzy', game.includes('const stage=Math.max(boss.bossStage||1,rt.frenzyEarly?3:1,rt.lastStand?4:1);'));
 check('updater minion pace follows tier', game.includes('rt.nextMinionAt=now+cfg.minionIntervalMs;'));
 check('frenzy triggers at 50% on Impossible', game.includes("cfg.id==='impossible'&&!rt.frenzyEarly&&boss.hp<=boss.maxHp*.50"));
 check('frenzy applies speed + wave once', game.includes('rt.frenzyEarly=true;boss.speed*=1.25;'));
@@ -104,7 +104,7 @@ function extractConstBlock(src, name) {
   }
   throw new Error('unbalanced braces in ' + name);
 }
-const CONST_NAMES = ['TOMBSTONE_BOSS_HP', 'TOMBSTONE_BOSS_REWARD_COINS', 'TOMBSTONE_MINION_CAP', 'TOMBSTONE_MINION_HP', 'TOMBSTONE_MINION_SUMMON_INTERVAL_MS', 'TOMBSTONE_MINION_SUMMON_COUNT', 'TOMBSTONE_MODE_FLIP_INTERVAL_MS', 'TOMBSTONE_SHIELD_RING_COUNT', 'TOMBSTONE_SHIELD_RING_RADIUS', 'TOMBSTONE_SHIELD_WALL_HP', 'TOMBSTONE_ERUPTION_RADIUS', 'TOMBSTONE_ERUPTION_WARN_MS', 'TOMBSTONE_ERUPTION_DAMAGE', 'TOMBSTONE_ERUPTION_INTERVAL_MS', 'TOMBSTONE_RAIN_RADIUS', 'TOMBSTONE_RAIN_WARN_MS', 'TOMBSTONE_RAIN_DURATION_MS', 'TOMBSTONE_RAIN_TICK_MS', 'TOMBSTONE_RAIN_TICK_DAMAGE', 'TOMBSTONE_RAIN_INTERVAL_MS', 'TOMBSTONE_SLAM_WARN_MS', 'TOMBSTONE_SLAM_MAX_RADIUS', 'TOMBSTONE_SLAM_SPEED', 'TOMBSTONE_SLAM_BAND', 'TOMBSTONE_SLAM_SAFE_GAP', 'TOMBSTONE_SLAM_DAMAGE', 'TOMBSTONE_SLAM_INTERVAL_MS'];
+const CONST_NAMES = ['TOMBSTONE_BOSS_HP', 'TOMBSTONE_BOSS_REWARD_COINS', 'TOMBSTONE_MINION_CAP', 'TOMBSTONE_MINION_HP', 'TOMBSTONE_MINION_SUMMON_INTERVAL_MS', 'TOMBSTONE_MINION_SUMMON_COUNT', 'TOMBSTONE_MODE_FLIP_INTERVAL_MS', 'TOMBSTONE_SHIELD_RING_COUNT', 'TOMBSTONE_SHIELD_RING_RADIUS', 'TOMBSTONE_SHIELD_WALL_HP', 'TOMBSTONE_ERUPTION_RADIUS', 'TOMBSTONE_ERUPTION_WARN_MS', 'TOMBSTONE_ERUPTION_DAMAGE', 'TOMBSTONE_ERUPTION_INTERVAL_MS', 'TOMBSTONE_RAIN_RADIUS', 'TOMBSTONE_RAIN_WARN_MS', 'TOMBSTONE_RAIN_DURATION_MS', 'TOMBSTONE_RAIN_TICK_MS', 'TOMBSTONE_RAIN_TICK_DAMAGE', 'TOMBSTONE_RAIN_INTERVAL_MS', 'TOMBSTONE_SLAM_WARN_MS', 'TOMBSTONE_SLAM_MAX_RADIUS', 'TOMBSTONE_SLAM_SPEED', 'TOMBSTONE_SLAM_BAND', 'TOMBSTONE_SLAM_SAFE_GAP', 'TOMBSTONE_SLAM_DAMAGE', 'TOMBSTONE_SLAM_INTERVAL_MS', 'TOMBSTONE_LAST_STAND_HP_PCT', 'TOMBSTONE_LAST_STAND_SPEED_MULT', 'TOMBSTONE_LAST_STAND_RAIN_INTERVAL_MS', 'TOMBSTONE_LAST_STAND_RAIN_TICK_MULT', 'TOMBSTONE_LAST_STAND_BURST_SPEED', 'TOMBSTONE_LAST_STAND_BURST_LIFE', 'TOMBSTONE_LAST_STAND_BURST_HITBOX_MOD'];
 function loadConsts(sandbox) {
   for (const name of CONST_NAMES) {
     const m = game.match(new RegExp('const ' + name + ' = ([^;]+);'));
