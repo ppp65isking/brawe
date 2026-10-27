@@ -1,6 +1,7 @@
 // Tombstone Tycoon solo boss fight regression — Anthony-approved design 2026-10-27.
-// Solo arena, 3 phases, coins-only win reward (+60). Boss art reuses the
-// existing Tombstone Tycoon skin; no new skin, currency, or difficulty ladder.
+// Solo arena, 3 phases, coins-only win reward (Normal +60). Boss art reuses
+// the existing Tombstone Tycoon skin; no new skin or currency. 4 difficulties
+// were added by the stages PR (all open, no gating); pins updated for it.
 // Same vm pattern as mallow-balance-regression.mjs: helpers are EXECUTED.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -26,7 +27,7 @@ check('kill switch declared default ON', game.includes('let TOMBSTONE_BOSS_ENABL
 check('kill switch debug setter', game.includes('set TOMBSTONE_BOSS_ENABLED(v) { TOMBSTONE_BOSS_ENABLED = !!v; }'));
 check('event flag + runtime declared', game.includes('let isTombstoneBossEvent = false;') && game.includes('let tombstoneBossRuntime = null;'));
 check('mode card entry', game.includes("['tombstone_boss', '🪦', 'Boss Battle: Tombstone Tycoon'"));
-check('mode card promises +60 on win', game.includes('+60 Coins on win'));
+check('mode card promises up to +350 on win', game.includes('up to +350 Coins'));
 check('permanent mode list', game.includes("'headless_boss_s4', 'tombstone_boss', 'orbo_boss'"));
 check('mode rules entry', game.includes("tombstone_boss: ['Solo Boss Battle: 1 vs Tombstone Tycoon!'"));
 check('mode color grave-green', game.includes("tombstone_boss: '#7dffb0',"));
@@ -43,9 +44,9 @@ check('cleanup resets flag (3 sites)', (game.match(/isTombstoneBossEvent = false
 check('end screen win text', game.includes("matchText=won?'TOMBSTONE TYCOON DEFEATED!':'THE GRAVEYARD CLAIMS YOU — TRY AGAIN!';"));
 check('end screen rank text', game.includes("rankText='Solo Boss Fight';"));
 check('generic end text does not overwrite tombstone', game.includes('if(!isLavaBossEvent&&!isHeadlessBossEvent&&!isTombstoneBossEvent)matchText'));
-check('reward branch uses the 60-coin const', game.includes('(isTombstoneBossEvent ? TOMBSTONE_BOSS_REWARD_COINS : 100);'));
+check('reward branch uses per-difficulty coins', game.includes('(isTombstoneBossEvent ? getTombstoneBossDifficulty(tombstoneBossRuntime?.difficulty).rewardCoins : 100);'));
 check('HUD banner color', game.includes("isTombstoneBossEvent ? '#7dffb0' : '#ff6bb2';"));
-check('HUD banner text', game.includes('🪦 TOMBSTONE TYCOON • SOLO BOSS'));
+check('HUD banner text shows difficulty', game.includes('TOMBSTONE TYCOON • ${getTombstoneBossDifficulty(tombstoneBossRuntime?.difficulty).name} • SOLO BOSS'));
 check('tombstone prop def', game.includes("tombstone:   { w: 48, h: 48, hp: 2400, blocksMove: true,  blocksShots: true  },"));
 check('tombstone prop painter', game.includes("} else if (dw.propType === 'tombstone') {"));
 check('body art: boss forces tombstone body', game.includes("(getActiveSkinForBrawler(t.brawler)?.id === 'tombstone-moneytax' || t.isTombstoneBoss)"));
@@ -90,7 +91,35 @@ function extractFn(src, name) {
   throw new Error('unbalanced braces in ' + name);
 }
 
-const CONST_NAMES = ['TOMBSTONE_BOSS_HP', 'TOMBSTONE_BOSS_REWARD_COINS', 'TOMBSTONE_MINION_CAP', 'TOMBSTONE_MINION_HP', 'TOMBSTONE_MINION_SUMMON_INTERVAL_MS', 'TOMBSTONE_MINION_SUMMON_COUNT', 'TOMBSTONE_MODE_FLIP_INTERVAL_MS', 'TOMBSTONE_SHIELD_RING_COUNT', 'TOMBSTONE_SHIELD_RING_RADIUS', 'TOMBSTONE_SHIELD_WALL_HP'];
+const CONST_NAMES = ['TOMBSTONE_BOSS_HP', 'TOMBSTONE_BOSS_REWARD_COINS', 'TOMBSTONE_MINION_CAP', 'TOMBSTONE_MINION_HP', 'TOMBSTONE_MINION_SUMMON_INTERVAL_MS', 'TOMBSTONE_MINION_SUMMON_COUNT', 'TOMBSTONE_MODE_FLIP_INTERVAL_MS', 'TOMBSTONE_SHIELD_RING_COUNT', 'TOMBSTONE_SHIELD_RING_RADIUS', 'TOMBSTONE_SHIELD_WALL_HP', 'TOMBSTONE_ERUPTION_RADIUS', 'TOMBSTONE_ERUPTION_WARN_MS', 'TOMBSTONE_ERUPTION_DAMAGE', 'TOMBSTONE_ERUPTION_INTERVAL_MS', 'TOMBSTONE_RAIN_RADIUS', 'TOMBSTONE_RAIN_WARN_MS', 'TOMBSTONE_RAIN_DURATION_MS', 'TOMBSTONE_RAIN_TICK_MS', 'TOMBSTONE_RAIN_TICK_DAMAGE', 'TOMBSTONE_RAIN_INTERVAL_MS', 'TOMBSTONE_SLAM_WARN_MS', 'TOMBSTONE_SLAM_MAX_RADIUS', 'TOMBSTONE_SLAM_SPEED', 'TOMBSTONE_SLAM_BAND', 'TOMBSTONE_SLAM_SAFE_GAP', 'TOMBSTONE_SLAM_DAMAGE', 'TOMBSTONE_SLAM_INTERVAL_MS'];
+function extractConstBlock(src, name) {
+  const start = src.indexOf('const ' + name + ' = ');
+  assert.notEqual(start, -1, name + ' not found');
+  let i = src.indexOf('{', start);
+  let depth = 0;
+  let inS = null;
+  let esc = false;
+  let lineComment = false;
+  let blockComment = false;
+  for (; i < src.length; i++) {
+    const ch = src[i];
+    const nxt = src[i + 1];
+    if (lineComment) { if (ch === '\n') lineComment = false; continue; }
+    if (blockComment) { if (ch === '*' && nxt === '/') { blockComment = false; i++; } continue; }
+    if (inS) {
+      if (esc) esc = false;
+      else if (ch === '\\') esc = true;
+      else if (ch === inS) inS = null;
+      continue;
+    }
+    if (ch === '/' && nxt === '/') { lineComment = true; continue; }
+    if (ch === '/' && nxt === '*') { blockComment = true; continue; }
+    if (ch === "'" || ch === '"' || ch === '`') { inS = ch; continue; }
+    if (ch === '{') depth++;
+    else if (ch === '}') { depth--; if (depth === 0) { let end = i + 1; while (src[end] === ')') end++; return src.slice(start, end) + ';'; } }
+  }
+  throw new Error('unbalanced braces in ' + name);
+}
 function loadConsts(sandbox) {
   for (const name of CONST_NAMES) {
     const m = game.match(new RegExp('const ' + name + ' = ([^;]+);'));
@@ -125,11 +154,13 @@ try {
     bots: [{ brawler: 'junk', hp: 1 }],
     destructibleWalls: [{ hp: 1 }], waterZones: [1], bushZones: [1], powerups: [1], cubes: [1],
     tombstoneBossRuntime: null,
+    activeTombstoneBossDifficulty: 'normal',
     placeProp: (type, x, y) => { placeCalls.push({ type, x, y }); return null; },
     spawnFloatingText: (x, y, text, color) => { floatTexts.push({ text, color }); },
   };
   loadConsts(sandbox);
   vm.createContext(sandbox);
+  vm.runInContext(extractConstBlock(game, 'TOMBSTONE_BOSS_DIFFICULTIES') + '\n' + extractFn(game, 'getTombstoneBossDifficulty'), sandbox);
   vm.runInContext(extractFn(game, 'initTombstoneBossMatch'), sandbox);
   sandbox.initTombstoneBossMatch();
   check('init: arena arrays cleared except the boss', sandbox.bots.length === 1 && sandbox.waterZones.length === 0 && sandbox.bushZones.length === 0 && sandbox.powerups.length === 0 && sandbox.cubes.length === 0);
@@ -143,11 +174,13 @@ try {
   check('init: runtime points at boss', sandbox.tombstoneBossRuntime && sandbox.tombstoneBossRuntime.bossId === boss.id);
   check('init: 8 tombstone covers placed', placeCalls.length === 8 && placeCalls.every((c) => c.type === 'tombstone'));
   check('init: covers clear of spawns', placeCalls.every((c) => Math.hypot(c.x - 1200, c.y - 1940) > 235 && Math.hypot(c.x - 1200, c.y - 360) > 235));
-  check('init: banner text', floatTexts.some((f) => f.text === 'TOMBSTONE TYCOON • SOLO BOSS'));
+  check('init: banner text shows Normal', floatTexts.some((f) => f.text === 'TOMBSTONE TYCOON • Normal • SOLO BOSS'));
 } catch (e) { failures.push('init vm block threw: ' + e.message); }
 
 function makeUpdaterSandbox(boss, runtime) {
   const floatTexts = [];
+  const aoeCalls = [];
+  const hitCalls = [];
   const sandbox = {
     Math, performance: { now: () => 100000 },
     clamp: (v, a, b) => Math.min(b, Math.max(a, v)),
@@ -157,16 +190,23 @@ function makeUpdaterSandbox(boss, runtime) {
     bots: [boss],
     destructibleWalls: [], explosions: [],
     tombstoneBossRuntime: runtime,
+    activeTombstoneBossDifficulty: 'normal',
+    AOEDamage: (x, y, radius, damage) => { aoeCalls.push({ x, y, radius, damage }); },
+    checkHit: (entity, info) => { hitCalls.push({ entity, info }); },
+    areAlliedEntities: (a, b) => a.team === b.team,
     spawnFloatingText: (x, y, text, color) => { floatTexts.push({ text, color }); },
   };
   loadConsts(sandbox);
   vm.createContext(sandbox);
   vm.runInContext(
+    extractConstBlock(game, 'TOMBSTONE_BOSS_DIFFICULTIES') + '\n' +
+    extractFn(game, 'getTombstoneBossDifficulty') + '\n' +
     extractFn(game, 'spawnTombstoneMinion') + '\n' +
     extractFn(game, 'spawnTombstoneShieldRing') + '\n' +
+    extractFn(game, 'updateTombstoneBossAttacks') + '\n' +
     extractFn(game, 'updateTombstoneBossEvent'),
     sandbox);
-  return { sandbox, floatTexts };
+  return { sandbox, floatTexts, aoeCalls, hitCalls };
 }
 
 // --- executed: phase 2 ring + phase 3 wave + ring follow ---
@@ -239,16 +279,19 @@ try {
   const sandbox = {
     Math, performance: { now: () => 100000 },
     isTombstoneBossEvent: true,
+    activeTombstoneBossDifficulty: 'normal',
     tombstoneBossRuntime: { bossId: 5 },
     bots: [{ id: 5, x: 400, y: 400, radius: 40, bossStage: 2 }],
     ctx: s.proxy,
   };
   vm.createContext(sandbox);
+  loadConsts(sandbox);
+  vm.runInContext(extractConstBlock(game, 'TOMBSTONE_BOSS_DIFFICULTIES') + '\n' + extractFn(game, 'getTombstoneBossDifficulty'), sandbox);
   vm.runInContext(extractFn(game, 'renderTombstoneBossEvent'), sandbox);
   sandbox.renderTombstoneBossEvent();
   check('render: grave-green ring stroke', s.sets.some((x) => x.p === 'strokeStyle' && x.v === '#7dffb0'));
   check('render: ring radius is boss radius + 12', s.calls.some((c) => c.m === 'arc' && Math.abs(c.args[2] - 52) < 0.01));
-  check('render: phase label', s.calls.some((c) => c.m === 'fillText' && String(c.args[0]).includes('TOMBSTONE TYCOON • PHASE 2')));
+  check('render: phase label shows difficulty', s.calls.some((c) => c.m === 'fillText' && String(c.args[0]).includes('TOMBSTONE TYCOON • Normal • PHASE 2')));
 } catch (e) { failures.push('render vm block threw: ' + e.message); }
 
 console.log(`tombstone-boss-regression: ${passed} passed, ${failures.length} failed`);
