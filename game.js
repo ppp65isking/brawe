@@ -271,6 +271,10 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             const scale = 0.55 + (level - 1) * 0.045;
             return { hp: Math.round(6800 * scale), dmg: Math.round(320 * scale), speed: 270 };
         }
+        if (brawlerId === 'nightshade') {
+            const scale = 0.55 + (level - 1) * 0.045;
+            return { hp: Math.round(6400 * scale), dmg: Math.round(800 * scale), speed: 300 };
+        }
         if (brawlerId === 'looma') {
             const scale = 0.55 + (level - 1) * 0.045;
             return { hp: Math.round(6600 * scale), dmg: Math.round(1450 * scale), speed: 270 };
@@ -4827,6 +4831,7 @@ const bolznstienPendingStrikes = [];
             spikey: 1350,
             electrostien: 1100,
             mallow: 1500,
+            nightshade: 1600,
             carmela_fudge: 1400,
             oil_maker: 90,
             magnatar: 1450,
@@ -4888,6 +4893,7 @@ const bolznstienPendingStrikes = [];
             spikey: 240,
             electrostien: 260,
             mallow: 550,
+            nightshade: 300,
             carmela_fudge: 180,
             oil_maker: 56,
             magnatar: 200,
@@ -5129,7 +5135,7 @@ const bolznstienPendingStrikes = [];
         'boom_arang', 'teether', 'fuel', 'xray', 'angel', 'demon', 'warrior', 'relay',
         'upiedown', 'chickpig', 'jetpack', 'snapper', 'robber', 'rocketeer',
         'carmela_fudge', 'peter_pickle', 'unstable', 'homer', 'orbo', 'predator', 'fastpass', 'freestyle', 'portalo', 'ghoul', 'jacktrade', 'darkener', 'awakenator', 'adlof', 'cluster', 'witch', 'boomer', 'blade_vane', 'daggershard', 'ice_cream', 'swimmer', 'kage', 'drainbow', 'draflygon', 'axeywaxy', 'trampaheal', 'mageny', 'ramage', 'upgradart', 'cinderion', 'cursed', 'king', 'anti_royal', 'sir_cheeseburger', 'weefee', 'blinkeye', 'bolznstien', 'magnatar', 'oil_maker', 'rager', 'badbat', 'looma',
-        'feathers', 'spikey', 'electrostien', 'mallow'
+        'feathers', 'spikey', 'electrostien', 'mallow', 'nightshade'
     ];
     const registeredBrawlerModules = window.ArenaForgeModules?.brawlers || Object.create(null);
     for (const moduleId of Object.keys(registeredBrawlerModules)) {
@@ -5218,7 +5224,7 @@ const bolznstienPendingStrikes = [];
             unhitabble: 'Epic',
             mallow: 'Epic',
 
-            // Mythic (12)
+            // Mythic (13)
             dashaholic: 'Mythic',
             classy: 'Mythic',
             steamer: 'Mythic',
@@ -5234,6 +5240,7 @@ const bolznstienPendingStrikes = [];
             spikey: 'Mythic',
             electrostien: 'Mythic',
             freestyle: 'Mythic',
+            nightshade: 'Mythic',
 
             // Exotic (10)
             the_deleter: 'Exotic',
@@ -9758,7 +9765,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
 
     // V4 standardized primary-role organization: exactly one gameplay role per brawler.
     const PRIMARY_ROLE_BY_BRAWLER = {
-        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank', rager:'Controller', looma:'Controller', feathers:'Controller', spikey:'Damage Dealer', electrostien:'Assassin', mallow:'Controller',
+        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank', rager:'Controller', looma:'Controller', feathers:'Controller', spikey:'Damage Dealer', electrostien:'Assassin', mallow:'Controller', nightshade:'Assassin',
     carmela_fudge:'Damage Dealer', bolznstien:'Damage Dealer', badbat:'Damage Dealer', magnatar:'Controller', oil_maker:'Controller', sir_cheeseburger:'Tank',
         blade_vane:'Assassin', kage:'Assassin', drainbow:'Controller', bowlin_rida:'Assassin', dashaholic:'Assassin', demon:'Assassin', jetpack:'Assassin', malakor:'Assassin', predator:'Assassin', swimmer:'Assassin', teether:'Assassin',
         boom_arang:'Marksman', cheseypuff:'Marksman', crystila:'Marksman', homer:'Marksman', hunter:'Marksman', orbo:'Marksman', snapper:'Marksman', xray:'Marksman',
@@ -9782,6 +9789,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
             spikey: '🦔',
             electrostien: '⚡👊',
             mallow: '🍡',
+            nightshade: '🗡️',
     looma: '🪡🧵',
         sir_cheeseburger: '🛡️',
         anti_royal: '🏴‍☠️',
@@ -10610,6 +10618,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
       spikey: { g1: 14000, g2: 12000 },
       electrostien: { g1: 11000, g2: 13000 },
       mallow: { g1: 12000, g2: 12000 },
+      nightshade: { g1: 16000, g2: 18000 },
       carmela_fudge: { g1: 8000, g2: 8000 },
       bolznstien: { g1: 14000, g2: 15000 },
       sir_cheeseburger: { g1: 13000, g2: 14000 },
@@ -17372,6 +17381,7 @@ let heistFeverActive = false;
           shortDesc: 'Arm the Family Circuit with the Signature button (R): while Electrostien is inside the Electric Realm, every punch he lands echoes as a Bolznstien-style sky strike (500 damage) on the realm victim. His Pieces are EARNED, never bought: win 3 battles with Electrostien (1 Piece per win). No Core Piece cost.'
       },
       'mallow': { name: 'Mallow', role: 'Controller', desc: 'A puffy marshmallow Controller who sprays sticky-slow fans and dashes through Overheated marshmallow trails that burn and burst.', color: '#ffdfb0', attack: 'Marshmallow Spray', attackDesc: 'Fires 8 marshmallows in a wide Pam-style fan (320 damage each). Each hit slows by 4% for 1s, stacking to 32%. Cannot attack again until the volley finishes.', super: 'Overheated', superDesc: 'Aim and dash smoothly forward, leaving 6 marshmallow trail puffs. Enemies on the trail burn, and each puff explodes 1.32s after placement for 400 damage. Holds 2 charges — aim each dash separately.', hyper: 'Hyper Marshmallows: visuals turn purple; main attack marshmallows explode at the end of flight for burn damage. Overheated dashes faster and further, dashes twice, leaves a wider trail, and hyper trail explosions release 4 mini-mallows in a + shape that explode again for 150 damage each.', g1: 'Sticky Volley (Next volley applies 6% slow per hit instead of 4%)', g2: 'Second Tool coming soon.', sp1: 'Toasted Haste (Move 5% faster while an enemy is slowed by your marshmallows)', sp2: 'Second Talent coming soon.' },
+      'nightshade': { name: 'Nightshade', role: 'Assassin', desc: 'A hooded Assassin who fans poisoned daggers in a short cone. Every dagger stacks venom that melts enemies over time, and her spinning blades return for a second cut.', color: '#9b5cff', attack: 'Viper Fan', attackDesc: 'Throws 4 daggers in a super-short cone (800 damage each). Each dagger applies 1 poison stack: 120 damage per second for 8 seconds, stacking up to 4 times.', super: 'Boomerang Blades', superDesc: 'Throws 2 spinning dagger blades that fly out 8 tiles and return to Nightshade. Each blade deals 1,100 damage on the way out and 1,100 on the way back.', hyper: 'Toxic Tempest: Super blades pierce walls, leave a poison puddle along their path that deals 120 damage per second for 4 seconds, and home toward the nearest poisoned enemy on the return path.', g1: 'Backstab Dash (Dash 3 tiles forward. Passing through an enemy applies 2 poison stacks to them.)', g2: 'Purge Vial (Detonate all poison stacks on enemies within 5 tiles, dealing their remaining poison damage instantly, and heal 200 HP per stack detonated.)', sp1: 'Lingering Toxin (Poison lasts 10 seconds instead of 8 seconds.)', sp2: 'Fresh Wounds (Daggers deal +20% damage to enemies that are already poisoned.)' },
       fightnfire: {
           type: 'instinct',
           name: 'Flash Freeze',
@@ -20861,6 +20871,343 @@ let heistFeverActive = false;
                 ctx.arc(e.x + Math.cos(a) * p * 60, e.y + Math.sin(a) * p * 60, 4, 0, Math.PI * 2);
                 ctx.fill();
             }
+            ctx.restore();
+        }
+    }
+
+    // ===== Nightshade systems (Viper Fan + Boomerang Blades) =====
+    // Anthony design (2026-10-27, delegated 2026-10-28): a hooded Mythic
+    // Assassin. Main attack fans 4 poison daggers in a super-short cone;
+    // each dagger stacks venom (120 damage/s for 8s, up to 4 stacks).
+    // Super throws 2 boomerang blades that cut on the way out and back.
+    // Hypercharge: blades pierce walls, leave poison puddles along their
+    // whole flight path, and home toward poisoned enemies on return.
+    // Kill switches are `let` so regression tests can flip them.
+    // Dedicated art lives in its OWN branches below: Nightshade daggers
+    // are drawn before the universal skin renderer call, never through it
+    // (PR #48 lesson: generic renderers intercept dedicated art).
+    let NIGHTSHADE_ENABLED = true;
+    let NIGHTSHADE_VISUALS_ENABLED = true;
+    const NIGHTSHADE_DAGGER_COUNT = 4;
+    const NIGHTSHADE_DAGGER_RANGE = 560;
+    const NIGHTSHADE_DAGGER_SPEED = 1000;
+    const NIGHTSHADE_DAGGER_FAN_ARC = 0.72;
+    const NIGHTSHADE_POISON_DPS = 120;
+    const NIGHTSHADE_POISON_TICK_MS = 250;
+    const NIGHTSHADE_POISON_DURATION_MS = 8000;
+    const NIGHTSHADE_POISON_DURATION_SP1_MS = 10000;
+    const NIGHTSHADE_POISON_MAX_STACKS = 4;
+    const NIGHTSHADE_BLADE_COUNT = 2;
+    const NIGHTSHADE_BLADE_RANGE = 640;
+    const NIGHTSHADE_BLADE_SPEED = 900;
+    const NIGHTSHADE_BLADE_DAMAGE = 1100;
+    const NIGHTSHADE_BLADE_RADIUS = 18;
+    const NIGHTSHADE_BLADE_HOME_RANGE = 500;
+    const NIGHTSHADE_PUDDLE_RADIUS = 55;
+    const NIGHTSHADE_PUDDLE_DURATION_MS = 4000;
+    const NIGHTSHADE_PUDDLE_SPACING = 60;
+    const NIGHTSHADE_GADGET1_DASH_DISTANCE = 240;
+    const NIGHTSHADE_GADGET1_DASH_DURATION_MS = 200;
+    const NIGHTSHADE_GADGET1_PASS_RADIUS = 48;
+    const NIGHTSHADE_GADGET2_RADIUS = 400;
+    const NIGHTSHADE_GADGET2_HEAL_PER_STACK = 200;
+    let nightshadeBlades = [];
+    let nightshadePuddles = [];
+    function isNightshadeEntity(entity) {
+        return !!entity && (entity.brawler === 'nightshade' || (!!player && entity.id === player.id && selectedBrawler === 'nightshade'));
+    }
+    function nightshadeStarChoice(entity) { try { return getEntityStarChoice(entity); } catch (_) { return entity ? entity.selectedStar : null; } }
+    function nightshadeHasSP1(entity) { const c = nightshadeStarChoice(entity); return c === 'sp1' || c === 'toxin'; }
+    function nightshadeHasSP2(entity) { const c = nightshadeStarChoice(entity); return c === 'sp2' || c === 'wounds'; }
+    function nightshadePoisonDurationMs(owner) {
+        return nightshadeHasSP1(owner) ? NIGHTSHADE_POISON_DURATION_SP1_MS : NIGHTSHADE_POISON_DURATION_MS;
+    }
+    function nightshadeActiveStacks(target, now) {
+        if (!target || !Array.isArray(target.nightshadePoisonStacks)) return [];
+        return target.nightshadePoisonStacks.filter((s) => s && now < s.endsAt);
+    }
+    function applyNightshadePoisonStacks(target, owner, count) {
+        if (!NIGHTSHADE_ENABLED || !target || target.hp <= 0 || target.isStructure) return 0;
+        const now = performance.now();
+        if (!Array.isArray(target.nightshadePoisonStacks)) target.nightshadePoisonStacks = [];
+        target.nightshadePoisonStacks = nightshadeActiveStacks(target, now);
+        const duration = nightshadePoisonDurationMs(owner);
+        let applied = 0;
+        for (let k = 0; k < count; k++) {
+            if (target.nightshadePoisonStacks.length >= NIGHTSHADE_POISON_MAX_STACKS) {
+                let oldest = target.nightshadePoisonStacks[0];
+                for (const s of target.nightshadePoisonStacks) if (s.endsAt < oldest.endsAt) oldest = s;
+                oldest.endsAt = now + duration;
+            } else {
+                target.nightshadePoisonStacks.push({ endsAt: now + duration, nextTickAt: now + NIGHTSHADE_POISON_TICK_MS, ownerId: owner ? owner.id : null });
+            }
+            applied++;
+        }
+        return applied;
+    }
+    function applyNightshadePoisonHit(target, owner, b) {
+        applyNightshadePoisonStacks(target, owner, 1);
+    }
+    function nightshadePurgeDamage(target, now) {
+        const stacks = nightshadeActiveStacks(target, now);
+        let total = 0;
+        for (const s of stacks) total += NIGHTSHADE_POISON_DPS * Math.max(0, (s.endsAt - now) / 1000);
+        return Math.round(total);
+    }
+    function nightshadeBladeLevelDamage(owner) {
+        const level = owner ? (owner.id === player.id ? getSelectedBrawlerLevel() : (owner.level || 11)) : 11;
+        const scale = 0.55 + (level - 1) * 0.045;
+        return Math.round(NIGHTSHADE_BLADE_DAMAGE * scale);
+    }
+    function nightshadeOwnerById(id) {
+        if (player && player.id === id) return player;
+        return bots.find((b) => b && b.id === id) || null;
+    }
+    function nightshadeEnemyCandidates(owner) {
+        const pool = (typeof aliveBots !== 'undefined' && Array.isArray(aliveBots)) ? aliveBots : bots.filter((t) => t && t.hp > 0);
+        const list = owner.id === player.id ? pool : [player, ...pool];
+        return list.filter((t) => t && t.hp > 0 && t.id !== owner.id && !t.isStructure && !(owner && areAlliedEntities(owner, t)));
+    }
+    function nightshadeHitsWall(x, y, r) {
+        if (typeof cubes !== 'undefined' && Array.isArray(cubes)) {
+            for (const c of cubes) if (rectCircleCollides(c.x, c.y, c.w, c.h, x, y, r)) return true;
+        }
+        if (typeof destructibleWalls !== 'undefined' && Array.isArray(destructibleWalls)) {
+            for (const dw of destructibleWalls) if (rectCircleCollides(dw.x, dw.y, dw.w, dw.h, x, y, r)) return true;
+        }
+        return false;
+    }
+    function createNightshadeBladeState(owner, x, y, angle, hyper) {
+        return {
+            x: x, y: y,
+            vx: Math.cos(angle) * NIGHTSHADE_BLADE_SPEED,
+            vy: Math.sin(angle) * NIGHTSHADE_BLADE_SPEED,
+            ownerId: owner.id, ownerBrawler: 'nightshade',
+            hyper: !!hyper, outbound: true, traveled: 0,
+            distSincePuddle: 0, hitOut: {}, hitBack: {},
+            spin: Math.random() * Math.PI * 2
+        };
+    }
+    function castNightshadeSuper(entity, isHyper, targetX, targetY) {
+        if (!NIGHTSHADE_ENABLED || !entity || entity.hp <= 0) return false;
+        const angle = Math.atan2(targetY - entity.y, targetX - entity.x);
+        for (let k = 0; k < NIGHTSHADE_BLADE_COUNT; k++) {
+            const bladeAngle = angle + (k - (NIGHTSHADE_BLADE_COUNT - 1) / 2) * 0.24;
+            nightshadeBlades.push(createNightshadeBladeState(entity, entity.x, entity.y, bladeAngle, isHyper));
+        }
+        spawnFloatingText(entity.x, entity.y - 40, '🗡️ BOOMERANG BLADES!', isHyper ? '#e056fd' : '#9b5cff');
+        return true;
+    }
+    function createNightshadeDashState(entity, angle) {
+        const r = entity.radius || 14;
+        return {
+            startX: entity.x, startY: entity.y,
+            targetX: clamp(entity.x + Math.cos(angle) * NIGHTSHADE_GADGET1_DASH_DISTANCE, r, WORLD_W - r),
+            targetY: clamp(entity.y + Math.sin(angle) * NIGHTSHADE_GADGET1_DASH_DISTANCE, r, WORLD_H - r),
+            startAt: performance.now(), durationMs: NIGHTSHADE_GADGET1_DASH_DURATION_MS,
+            angle: angle, hitIds: {}
+        };
+    }
+    function executeNightshadeG1(entity, targetX, targetY) {
+        if (!NIGHTSHADE_ENABLED || !entity || entity.hp <= 0) return;
+        const tx = (typeof targetX === 'number' ? targetX : entity.x + 240);
+        const ty = (typeof targetY === 'number' ? targetY : entity.y);
+        const angle = Math.atan2(ty - entity.y, tx - entity.x);
+        entity.nightshadeDash = createNightshadeDashState(entity, angle);
+        spawnFloatingText(entity.x, entity.y - 36, 'BACKSTAB DASH', '#9b5cff');
+    }
+    function executeNightshadeG2(entity) {
+        if (!NIGHTSHADE_ENABLED || !entity || entity.hp <= 0) return;
+        const now = performance.now();
+        let totalStacks = 0;
+        for (const target of nightshadeEnemyCandidates(entity)) {
+            if (Math.hypot(target.x - entity.x, target.y - entity.y) > NIGHTSHADE_GADGET2_RADIUS) continue;
+            const stacks = nightshadeActiveStacks(target, now);
+            if (stacks.length === 0) continue;
+            const dmg = nightshadePurgeDamage(target, now);
+            target.nightshadePoisonStacks = [];
+            totalStacks += stacks.length;
+            if (dmg >= 1) checkHit(target, { ownerBrawler: 'nightshade', ownerId: entity.id, damage: dmg, pierce: true, super: true, hitIds: {}, nightshadePurge: true }, -1);
+        }
+        if (totalStacks > 0) {
+            doHeal(entity, NIGHTSHADE_GADGET2_HEAL_PER_STACK * totalStacks);
+            spawnFloatingText(entity.x, entity.y - 36, 'PURGE +' + (NIGHTSHADE_GADGET2_HEAL_PER_STACK * totalStacks) + ' HP', '#7be495');
+        }
+    }
+    function updateNightshadeDash(entity, now) {
+        const dash = entity.nightshadeDash;
+        if (!dash) return;
+        if (entity.hp <= 0) { entity.nightshadeDash = null; return; }
+        const p = Math.min(1, (now - dash.startAt) / dash.durationMs);
+        entity.x = dash.startX + (dash.targetX - dash.startX) * p;
+        entity.y = dash.startY + (dash.targetY - dash.startY) * p;
+        for (const target of nightshadeEnemyCandidates(entity)) {
+            if (dash.hitIds[target.id]) continue;
+            if (Math.hypot(target.x - entity.x, target.y - entity.y) <= NIGHTSHADE_GADGET1_PASS_RADIUS + (target.radius || 14)) {
+                dash.hitIds[target.id] = true;
+                applyNightshadePoisonStacks(target, entity, 2);
+            }
+        }
+        if (p >= 1) entity.nightshadeDash = null;
+    }
+    function updateNightshadeBlades(dt, now) {
+        for (let i = nightshadeBlades.length - 1; i >= 0; i--) {
+            const blade = nightshadeBlades[i];
+            const owner = nightshadeOwnerById(blade.ownerId);
+            if (!owner || owner.hp <= 0) { nightshadeBlades.splice(i, 1); continue; }
+            const speed = NIGHTSHADE_BLADE_SPEED;
+            if (blade.outbound) {
+                blade.x += blade.vx * dt;
+                blade.y += blade.vy * dt;
+                blade.traveled += speed * dt;
+                if (blade.traveled >= NIGHTSHADE_BLADE_RANGE) blade.outbound = false;
+            } else {
+                let tx = owner.x, ty = owner.y;
+                if (blade.hyper) {
+                    let best = null, bestD = NIGHTSHADE_BLADE_HOME_RANGE;
+                    for (const t of nightshadeEnemyCandidates(owner)) {
+                        if (nightshadeActiveStacks(t, now).length === 0) continue;
+                        const d = Math.hypot(t.x - blade.x, t.y - blade.y);
+                        if (d < bestD) { bestD = d; best = t; }
+                    }
+                    if (best) { tx = best.x; ty = best.y; }
+                }
+                const ang = Math.atan2(ty - blade.y, tx - blade.x);
+                blade.vx = Math.cos(ang) * speed;
+                blade.vy = Math.sin(ang) * speed;
+                blade.x += blade.vx * dt;
+                blade.y += blade.vy * dt;
+                if (Math.hypot(owner.x - blade.x, owner.y - blade.y) <= (owner.radius || 14) + 24) { nightshadeBlades.splice(i, 1); continue; }
+            }
+            blade.x = clamp(blade.x, 14, WORLD_W - 14);
+            blade.y = clamp(blade.y, 14, WORLD_H - 14);
+            if (blade.hyper) {
+                blade.distSincePuddle += speed * dt;
+                if (blade.distSincePuddle >= NIGHTSHADE_PUDDLE_SPACING) {
+                    blade.distSincePuddle = 0;
+                    nightshadePuddles.push({ x: blade.x, y: blade.y, ownerId: blade.ownerId, endsAt: now + NIGHTSHADE_PUDDLE_DURATION_MS, radius: NIGHTSHADE_PUDDLE_RADIUS, nextTickAt: now + NIGHTSHADE_POISON_TICK_MS });
+                }
+            }
+            if (!blade.hyper && nightshadeHitsWall(blade.x, blade.y, NIGHTSHADE_BLADE_RADIUS)) {
+                explosions.push({ x: blade.x, y: blade.y, radius: 26, life: 0, maxLife: 0.2, color: 'rgba(155, 92, 255, 0.6)' });
+                nightshadeBlades.splice(i, 1);
+                continue;
+            }
+            const dmg = nightshadeBladeLevelDamage(owner);
+            for (const target of nightshadeEnemyCandidates(owner)) {
+                if (Math.hypot(target.x - blade.x, target.y - blade.y) > (target.radius || 14) + NIGHTSHADE_BLADE_RADIUS) continue;
+                if (blade.outbound) {
+                    if (blade.hitOut[target.id]) continue;
+                    blade.hitOut[target.id] = true;
+                    checkHit(target, { ownerBrawler: 'nightshade', ownerId: blade.ownerId, damage: dmg, pierce: true, super: true, hitIds: {}, nightshadeBlade: true }, -1);
+                } else {
+                    if (blade.hitBack[target.id]) continue;
+                    blade.hitBack[target.id] = true;
+                    checkHit(target, { ownerBrawler: 'nightshade', ownerId: blade.ownerId, damage: dmg, pierce: true, super: true, hitIds: {}, nightshadeBlade: true }, -1);
+                }
+            }
+        }
+    }
+    function updateNightshadePuddles(now) {
+        for (let i = nightshadePuddles.length - 1; i >= 0; i--) {
+            const puddle = nightshadePuddles[i];
+            if (now >= puddle.endsAt) { nightshadePuddles.splice(i, 1); continue; }
+            if (now < puddle.nextTickAt) continue;
+            puddle.nextTickAt += NIGHTSHADE_POISON_TICK_MS;
+            const owner = nightshadeOwnerById(puddle.ownerId);
+            if (!owner || owner.hp <= 0) { nightshadePuddles.splice(i, 1); continue; }
+            for (const target of nightshadeEnemyCandidates(owner)) {
+                if (Math.hypot(target.x - puddle.x, target.y - puddle.y) > puddle.radius + (target.radius || 14)) continue;
+                checkHit(target, { ownerBrawler: 'nightshade', ownerId: puddle.ownerId, damage: Math.round(NIGHTSHADE_POISON_DPS * NIGHTSHADE_POISON_TICK_MS / 1000), pierce: true, super: true, hitIds: {}, nightshadePuddleTick: true }, -1);
+            }
+        }
+    }
+    function updateNightshadePoisonTicks(now) {
+        for (const target of [player, ...bots]) {
+            if (!target || target.hp <= 0 || target.isStructure) continue;
+            if (!Array.isArray(target.nightshadePoisonStacks) || target.nightshadePoisonStacks.length === 0) continue;
+            const stacks = nightshadeActiveStacks(target, now);
+            target.nightshadePoisonStacks = stacks;
+            for (const s of stacks) {
+                if (now < s.nextTickAt) continue;
+                s.nextTickAt += NIGHTSHADE_POISON_TICK_MS;
+                checkHit(target, { ownerBrawler: 'nightshade', ownerId: s.ownerId, damage: Math.round(NIGHTSHADE_POISON_DPS * NIGHTSHADE_POISON_TICK_MS / 1000), pierce: true, super: true, hitIds: {}, nightshadePoisonTick: true }, -1);
+                if (target.hp <= 0) break;
+            }
+        }
+    }
+    function updateNightshadeSystems(dt) {
+        if (!NIGHTSHADE_ENABLED) return;
+        const now = performance.now();
+        for (const entity of [player, ...bots]) {
+            if (entity && entity.hp > 0) updateNightshadeDash(entity, now);
+        }
+        updateNightshadeBlades(dt, now);
+        updateNightshadePuddles(now);
+        updateNightshadePoisonTicks(now);
+    }
+    function drawNightshadeDagger(ctx, b) {
+        if (!NIGHTSHADE_VISUALS_ENABLED) return;
+        const a = Math.atan2(b.vy, b.vx);
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        ctx.rotate(a);
+        ctx.shadowColor = b.hyperVisual ? '#e056fd' : '#9b5cff';
+        ctx.shadowBlur = 12;
+        ctx.strokeStyle = b.hyperVisual ? '#e056fd' : '#7be495';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(-14, 0); ctx.lineTo(-2, 0); ctx.stroke();
+        ctx.fillStyle = b.hyperVisual ? '#f3e8ff' : '#e8e1ff';
+        ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(-2, -5); ctx.lineTo(-6, 0); ctx.lineTo(-2, 5); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = '#1c1030'; ctx.lineWidth = 1.5; ctx.stroke();
+        ctx.fillStyle = '#7be495';
+        ctx.beginPath(); ctx.arc(-4, 0, 2.2, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+    }
+    function renderNightshadeEffects() {
+        if (!NIGHTSHADE_VISUALS_ENABLED) return;
+        const now = performance.now();
+        for (const puddle of nightshadePuddles) {
+            const p = Math.max(0, Math.min(1, 1 - (puddle.endsAt - now) / NIGHTSHADE_PUDDLE_DURATION_MS));
+            ctx.save();
+            ctx.globalAlpha = 0.5 * (1 - p) + 0.15;
+            ctx.fillStyle = '#3d7a4e';
+            ctx.beginPath(); ctx.arc(puddle.x, puddle.y, puddle.radius, 0, Math.PI * 2); ctx.fill();
+            ctx.globalAlpha = 0.8 * (1 - p) + 0.1;
+            ctx.fillStyle = '#7be495';
+            for (let k = 0; k < 5; k++) {
+                const a = k * (Math.PI * 2 / 5) + now / 900;
+                ctx.beginPath(); ctx.arc(puddle.x + Math.cos(a) * puddle.radius * 0.6, puddle.y + Math.sin(a) * puddle.radius * 0.6, 3, 0, Math.PI * 2); ctx.fill();
+            }
+            ctx.restore();
+        }
+        for (const blade of nightshadeBlades) {
+            ctx.save();
+            ctx.translate(blade.x, blade.y);
+            ctx.rotate(now / 90 + (blade.spin || 0));
+            ctx.shadowColor = blade.hyper ? '#e056fd' : '#9b5cff';
+            ctx.shadowBlur = 16;
+            ctx.strokeStyle = blade.hyper ? '#e056fd' : '#c4b5fd';
+            ctx.lineWidth = 3;
+            for (const side of [0, Math.PI]) {
+                ctx.beginPath(); ctx.moveTo(Math.cos(side) * 20, Math.sin(side) * 20); ctx.lineTo(Math.cos(side) * -8, Math.sin(side) * -8); ctx.stroke();
+            }
+            ctx.fillStyle = blade.hyper ? '#f3e8ff' : '#e8e1ff';
+            ctx.beginPath(); ctx.arc(0, 0, 6, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#7be495';
+            ctx.beginPath(); ctx.arc(0, 0, 2.5, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+        }
+        for (const target of [player, ...bots]) {
+            if (!target || target.hp <= 0) continue;
+            const stacks = nightshadeActiveStacks(target, now);
+            if (stacks.length === 0) continue;
+            ctx.save();
+            ctx.globalAlpha = 0.9;
+            ctx.fillStyle = '#7be495';
+            ctx.font = 'bold 11px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('☠️×' + stacks.length, target.x, target.y - (target.radius || 14) - 18);
             ctx.restore();
         }
     }
@@ -26485,7 +26832,7 @@ let heistFeverActive = false;
       beam:8, fuser:24, heater_miser:20, minigunnin:72, money_and_tax:24, outlit:30, steamer:8,
       bouncin_balls:6, chickpig:12, classy:6, copyphase:6, goonbob:6, hoop:5, hyperorigin:5, robber:42,
       portalo:7, ghoul:6, jacktrade:18, darkener:6, awakenator:8, trampaheal:6, axeywaxy:6, mageny:6, draflygon:6, ramage:6, upgradart:10, cinderion:10, cursed:7, king:6, anti_royal:6, weefee:6, rager:4,
-    carmela_fudge:5, bolznstien:5, sir_cheeseburger:4, blinkeye:4, magnatar:6, oil_maker:16, badbat:5, looma:7, feathers:5, spikey:6, electrostien:14, mallow:12
+    carmela_fudge:5, bolznstien:5, sir_cheeseburger:4, blinkeye:4, magnatar:6, oil_maker:16, badbat:5, looma:7, feathers:5, spikey:6, electrostien:14, mallow:12, nightshade: 6
   });
   let nextMainAttackActivationId = 1;
   function getSuperChargeHitsForBrawler(brawler) {
@@ -34972,6 +35319,16 @@ let heistFeverActive = false;
             bullets.push({ ownerBrawler: 'mallow', isMallow: true, isPrimaryChargeProjectile: true, mallowSlowPerHit: mallowSlowPerHit, mallowHyper: mallowHyper, x: fromEntity.x + Math.cos(mallowAng) * (fromEntity.radius + 7), y: fromEntity.y + Math.sin(mallowAng) * (fromEntity.radius + 7), vx: Math.cos(mallowAng) * MALLOW_VOLLEY_SPEED, vy: Math.sin(mallowAng) * MALLOW_VOLLEY_SPEED, life: 0, maxLife: MALLOW_VOLLEY_RANGE / MALLOW_VOLLEY_SPEED, damage: mallowStats.dmg, pierce: false, ownerId: fromEntity.id, hitIds: {}, hitboxMod: 1.3, hyperVisual: mallowHyper });
         }
         return;
+    } else if (brawler === 'nightshade') {
+        if (!NIGHTSHADE_ENABLED) return;
+        const nightshadeHyper = isEntityHyperchargedNow(fromEntity, now);
+        const nightshadeLevel = fromEntity.id === player.id ? getSelectedBrawlerLevel() : (fromEntity.level || 11);
+        const nightshadeStats = getScaledStats('nightshade', nightshadeLevel);
+        for (let di = 0; di < NIGHTSHADE_DAGGER_COUNT; di++) {
+            const daggerAng = ang + (di - (NIGHTSHADE_DAGGER_COUNT - 1) / 2) * (NIGHTSHADE_DAGGER_FAN_ARC / (NIGHTSHADE_DAGGER_COUNT - 1));
+            bullets.push({ ownerBrawler: 'nightshade', isNightshadeDagger: true, x: fromEntity.x + Math.cos(daggerAng) * (fromEntity.radius + 7), y: fromEntity.y + Math.sin(daggerAng) * (fromEntity.radius + 7), vx: Math.cos(daggerAng) * NIGHTSHADE_DAGGER_SPEED, vy: Math.sin(daggerAng) * NIGHTSHADE_DAGGER_SPEED, life: 0, maxLife: NIGHTSHADE_DAGGER_RANGE / NIGHTSHADE_DAGGER_SPEED, damage: nightshadeStats.dmg, pierce: false, ownerId: fromEntity.id, hitIds: {}, hitboxMod: 1.2, hyperVisual: nightshadeHyper });
+        }
+        return;
     }
   }
 
@@ -37192,6 +37549,7 @@ let heistFeverActive = false;
     if (combatBrawler === 'spikey') { castSpikeySuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'electrostien') { castElectrostienSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'mallow') { castMallowSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
+    if (combatBrawler === 'nightshade') { castNightshadeSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'ramage') { castRamageSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
         if (combatBrawler === 'upgradart') { castUpgradartSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'axeywaxy') { castAxeyWaxySuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
@@ -38451,6 +38809,10 @@ let heistFeverActive = false;
       executeElectrostienG2(bot);
     } else if (bot.brawler === 'mallow' && g === 'g1') {
       executeMallowG1(bot);
+    } else if (bot.brawler === 'nightshade' && g === 'g1') {
+      executeNightshadeG1(bot, target?.x ?? (bot.x + Math.cos(ang) * 200), target?.y ?? (bot.y + Math.sin(ang) * 200));
+    } else if (bot.brawler === 'nightshade' && g === 'g2') {
+      executeNightshadeG2(bot);
     } else if (bot.brawler === 'rager' && g === 'g1') {
       executeRagerG1(bot);
     } else if (bot.brawler === 'rager' && g === 'g2') {
@@ -38982,6 +39344,7 @@ let heistFeverActive = false;
     if (botCombatBrawler === 'spikey') { castSpikeySuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'electrostien') { castElectrostienSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'mallow') { castMallowSuper(bot, isHyper, targetX, targetY); return; }
+    if (botCombatBrawler === 'nightshade') { castNightshadeSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'ramage') { castRamageSuper(bot, isHyper, targetX, targetY); return; }
             if (botCombatBrawler === 'upgradart') { castUpgradartSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'axeywaxy') { castAxeyWaxySuper(bot, isHyper, targetX, targetY); return; }
@@ -40548,6 +40911,18 @@ let heistFeverActive = false;
     } else if (curBrawler === 'mallow' && curGadget === 'g1') {
         executeMallowG1(player);
         gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
+        updateGadgetButton();
+        return;
+    } else if (curBrawler === 'nightshade' && curGadget === 'g1') {
+        executeNightshadeG1(player, gadgetWorld.x, gadgetWorld.y);
+        gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
+        setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
+        updateGadgetButton();
+        return;
+    } else if (curBrawler === 'nightshade' && curGadget === 'g2') {
+        executeNightshadeG2(player);
+        gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
+        setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
         updateGadgetButton();
         return;
     } else if (curBrawler === 'rager' && curGadget === 'g1') {
@@ -48625,6 +49000,15 @@ function checkHit(target, b, i){
             b.damage = Math.round((b.damage || 0) * 0.80);
         }
 
+        // Nightshade SP2 Fresh Wounds: daggers deal +20% to already-poisoned enemies.
+        if (b && b.isNightshadeDagger && target && !b.nightshadeSp2Applied) {
+            const daggerOwner = b.ownerId === player.id ? player : (typeof bots !== 'undefined' ? bots.find((bt) => bt && bt.id === b.ownerId) : null);
+            if (daggerOwner && nightshadeHasSP2(daggerOwner) && nightshadeActiveStacks(target, performance.now()).length > 0) {
+                b.damage = Math.round((b.damage || 0) * 1.2);
+                b.nightshadeSp2Applied = true;
+            }
+        }
+
         // Ramage Power Play 90% Damage Reduction during Super Dash
         if (target && target.ramageIsDashing && isPowerPlayModifierActive(target) && (target.brawler === 'ramage' || target.id === player.id)) {
             b.damage = Math.round((b.damage || 0) * 0.10);
@@ -49899,6 +50283,7 @@ function checkHit(target, b, i){
     if(!b.super && !b.isSuperDash && !b.isMinigunninMutationFire && !target.isPet && !(areAlliedEntities(owner, target) && isFriendlyFireActive())) grantMainAttackCharge(owner, b);
     if(!b.super && !b.isSuperDash && !b.isMinigunninMutationFire && !target.isPet && areAlliedEntities(owner, target) && isFriendlyFirePlusActive()) grantMainAttackCharge(owner, b);
     if (b.isMallow && owner && target) applyMallowSlowHit(target, owner, b);
+    if (b.isNightshadeDagger && owner && target) applyNightshadePoisonHit(target, owner, b);
     if (b.ownerBrawler === 'rager' && b.isRagerTimber && b.hasSp1) {
             // SP1: burst into 4 cardinal splinter darts
             const dartDirs = [0, Math.PI / 2, Math.PI, Math.PI * 1.5];
@@ -51676,6 +52061,7 @@ function checkHit(target, b, i){
     if (playing && !gameOver) updateSpikeySystems(dt);
     if (playing && !gameOver) updateElectrostienSystems(dt);
     if (playing && !gameOver) updateMallowSystems(dt);
+    if (playing && !gameOver) updateNightshadeSystems(dt);
     if (playing && !gameOver) updatePropPads();
     if (playing && !gameOver) updateChristmasShowdown(dt);
     if (playing && !gameOver) updatePropHuntMode(dt, now);
@@ -61274,6 +61660,26 @@ function checkHit(target, b, i){
                 }
                 ctx.restore();
             }
+            if (brawlerId === 'nightshade') {
+                ctx.save();
+                ctx.shadowColor = '#9b5cff';
+                ctx.shadowBlur = 10;
+                ctx.strokeStyle = '#7be495';
+                ctx.lineWidth = 2.2;
+                const nsT = performance.now() / 300;
+                for (let k = 0; k < 2; k++) {
+                    const da = -Math.PI / 2 + (k === 0 ? -0.5 : 0.5) + Math.sin(nsT + k) * 0.05;
+                    ctx.beginPath();
+                    ctx.moveTo(entity.x + Math.cos(da) * size * 0.3, drawY + Math.sin(da) * size * 0.3);
+                    ctx.lineTo(entity.x + Math.cos(da) * size * 0.62, drawY + Math.sin(da) * size * 0.62);
+                    ctx.stroke();
+                }
+                ctx.fillStyle = '#2a1840';
+                ctx.beginPath(); ctx.arc(entity.x, drawY, size * 0.34, Math.PI, 0); ctx.fill();
+                ctx.fillStyle = '#7be495';
+                ctx.beginPath(); ctx.arc(entity.x - size * 0.14, drawY - size * 0.05, 2.5, 0, Math.PI * 2); ctx.arc(entity.x + size * 0.14, drawY - size * 0.05, 2.5, 0, Math.PI * 2); ctx.fill();
+                ctx.restore();
+            }
             if (brawlerId === 'spikey') {
                 ctx.save();
                 ctx.strokeStyle = '#a6e34d';
@@ -61856,6 +62262,7 @@ function checkHit(target, b, i){
     renderSpikeyEffects();
     renderElectrostienEffects();
     renderMallowEffects();
+    renderNightshadeEffects();
     if (typeof renderBouncinBossEvent === 'function') renderBouncinBossEvent('ground');
     if (isBraweBallMode) renderBraweBallWorld(ctx);
     if (isKnockoutMode) renderKnockoutWorld(ctx);
@@ -69029,6 +69436,10 @@ function checkHit(target, b, i){
       }
       if (b.isMallow) {
         drawMallowProjectile(ctx, b);
+        continue;
+      }
+      if (b.isNightshadeDagger) {
+        drawNightshadeDagger(ctx, b);
         continue;
       }
       const earlyProjectileBrawler = b.ownerBrawler || (b.ownerId === player.id ? selectedBrawler : '');
