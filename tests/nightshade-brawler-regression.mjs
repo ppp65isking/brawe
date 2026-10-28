@@ -57,7 +57,7 @@ check('dagger branch sits BEFORE the universal skin call (no interception)',
 check('dagger branch draws dedicated art then continues', game.includes('drawNightshadeDagger(ctx, b);'));
 check('checkHit poison hook on landed dagger hits', game.includes('if (b.isNightshadeDagger && owner && target) applyNightshadePoisonHit(target, owner, b);'));
 check('checkHit SP2 hook exists', game.includes('Nightshade SP2 Fresh Wounds') && game.includes('b.nightshadeSp2Applied'));
-check('poison application refuses structures', game.includes('target.isStructure'));
+check('poison: structures use poison candidates; blades still exclude structures (2026-10-28 order: Nightshade poison affects structures)', game.includes('function nightshadePoisonCandidates(owner)') && game.includes('!t.isStructure'));
 check('enemy candidate pool excludes structures', game.includes('!t.isStructure'));
 check('player super dispatch', game.includes("if (combatBrawler === 'nightshade') { castNightshadeSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }"));
 check('bot super dispatch', game.includes("if (botCombatBrawler === 'nightshade') { castNightshadeSuper(bot, isHyper, targetX, targetY); return; }"));
@@ -182,7 +182,7 @@ try {
   ] };
   check('purge: 2 stacks with 4s left = 480 remaining damage', sandbox.nightshadePurgeDamage(purgeTarget, 101000) === 480);
   const structure = { id: 6, hp: 72000, isStructure: true };
-  check('poison: structures take 0 stacks', sandbox.applyNightshadePoisonStacks(structure, owner, 4) === 0);
+  check('poison: structures take stacks (Nightshade-only exception, 2026-10-28 order)', sandbox.applyNightshadePoisonStacks(structure, owner, 4) === 4);
   const dead = { id: 7, hp: 0 };
   check('poison: dead targets take 0 stacks', sandbox.applyNightshadePoisonStacks(dead, owner, 1) === 0);
   nowValue = 200000;

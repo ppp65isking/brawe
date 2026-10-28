@@ -574,6 +574,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         if (mode === 'knock_donate') return 'Knock n Donate 3v3';
         if (mode === 'brick_vault') return 'Vault Siege 3v3';
         if (mode === 'arena_forge') return 'Arena Forge';
+        if (mode === 'arena_forge_hyper') return 'Hyper Forge';
         if (mode === 'marked_mayhem') return 'Target Rush';
         if (mode === 'trio') return 'Trio Showdown';
         if (mode === 'mirror') return 'Mirror 5v5';
@@ -603,7 +604,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         return Math.min(11, Math.max(1, playerPower)) >= getBrickMinimumPlayerPower(progress);
     }
     function isBrickPowerGateExempt() {
-        return isRankedMatch || showdownMode === 'slop_sushi' || showdownMode === 'slop_sushi_plus' || showdownMode === 'arena_forge' || showdownMode === 'arena_forge_overclocked' || showdownMode === 'arena_forge_minion_surge';
+        return isRankedMatch || showdownMode === 'slop_sushi' || showdownMode === 'slop_sushi_plus' || showdownMode === 'arena_forge' || showdownMode === 'arena_forge_overclocked' || showdownMode === 'arena_forge_minion_surge' || showdownMode === 'arena_forge_hyper';
     }
     function getSelectedBrickPowerGate() {
         const progress = playerData.brawlers?.[selectedBrawler] || getOrCreateProgress(selectedBrawler);
@@ -9755,11 +9756,11 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
       'nightshade': {
           name: 'Nightshade', role: 'Assassin', rarity: 'Mythic', color: '#9b5cff',
           desc: 'A hooded Assassin who fans poisoned daggers in a short cone. Every dagger stacks venom that melts enemies over time, and her spinning blades return for a second cut.',
-          attack: 'Viper Fan', attackDesc: 'Throws 4 daggers in a tight super-short cone (640 damage each). Each dagger applies 1 poison stack: 60 damage per second for 8 seconds, stacking up to 4 times (no limit while Hypercharged).',
+          attack: 'Viper Fan', attackDesc: 'Throws 4 daggers in a tight super-short cone (640 damage each). Each dagger applies 1 poison stack: 60 damage per second for 8 seconds, stacking up to 4 times (no limit while Hypercharged). Poison affects structures too: towers, the Core and camps take poison damage.',
           super: 'Boomerang Blades', superDesc: 'Nightshade spins in place and releases a ring of 12 daggers in all directions. Each dagger flies out 8 tiles and returns to her, dealing 1,100 damage on the way out and 1,100 on the way back, at most once per target each way.',
           hyper: 'Toxic Tempest: Super blades pierce walls, and while her Hypercharged Super blades are out, a shield zone around Nightshade blocks enemy projectiles until the daggers return. While Hypercharged, Viper Fan daggers stack poison without limit.',
-          g1: 'Backstab Dash (Dash 3 tiles forward. Passing through an enemy applies 2 poison stacks to them.)',
-          g2: 'Purge Vial (Detonate all poison stacks on enemies within 5 tiles, dealing their remaining poison damage instantly, and heal 200 HP per stack detonated.)',
+          g1: 'Backstab Dash (Dash 3 tiles forward. Passing through an enemy or structure applies 2 poison stacks.)',
+          g2: 'Purge Vial (Detonate all poison stacks on enemies and structures within 5 tiles, dealing their remaining poison damage instantly, and heal 200 HP per stack detonated.)',
           sp1: 'Lingering Toxin (Poison lasts 10 seconds instead of 8 seconds.)',
           sp2: 'Fresh Wounds (Daggers deal +20% damage to enemies that are already poisoned.)'
       }
@@ -10906,6 +10907,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
     let soloTdCurrency = 150;
     let soloTdPending = true;
     let isArenaForgeMode = false;
+    let isHyperForgeLTM = false;
     let isTrioShowdownMode = false;
     let isMarkedMayhemMode = false;
     let isTugZoneMode = false;
@@ -13110,7 +13112,7 @@ function isPowerPlayModifierActive(entity = player) {
         } else {
             entity.hp = Math.max(1, Number(entity.maxHp) || 1);
         }
-        if ((isRankedMatch || isCustomMutatorMatch) && (activeRankedModifier === 'always_hyper' || activeRankedModifierSecondary === 'always_hyper' || activeRankedModifierTertiary === 'always_hyper')) {
+        if (((isRankedMatch || isCustomMutatorMatch) && (activeRankedModifier === 'always_hyper' || activeRankedModifierSecondary === 'always_hyper' || activeRankedModifierTertiary === 'always_hyper')) || isHyperForgeLTM) {
             entity.isHypercharged = true;
             entity.hyperchargeUntil = now + 999999999;
             entity.hyperChargeCharge = 100;
@@ -20955,7 +20957,7 @@ let heistFeverActive = false;
         return target.nightshadePoisonStacks.filter((s) => s && now < s.endsAt);
     }
     function applyNightshadePoisonStacks(target, owner, count, uncapped) {
-        if (!NIGHTSHADE_ENABLED || !target || target.hp <= 0 || target.isStructure) return 0;
+        if (!NIGHTSHADE_ENABLED || !target || target.hp <= 0) return 0;
         const now = performance.now();
         if (!Array.isArray(target.nightshadePoisonStacks)) target.nightshadePoisonStacks = [];
         target.nightshadePoisonStacks = nightshadeActiveStacks(target, now);
@@ -20999,6 +21001,15 @@ let heistFeverActive = false;
         const pool = (typeof aliveBots !== 'undefined' && Array.isArray(aliveBots)) ? aliveBots : bots.filter((t) => t && t.hp > 0);
         const list = owner.id === player.id ? pool : [player, ...pool];
         return list.filter((t) => t && t.hp > 0 && t.id !== owner.id && !t.isStructure && !(owner && areAlliedEntities(owner, t)));
+    }
+    // Nightshade-only exception to the poison-never-damages-structures
+    // rule: her poison DOES affect structures (Forge towers, the Core,
+    // camps). Dash pass-through and Purge Vial use this list; super
+    // blades keep nightshadeEnemyCandidates and still never hit structures.
+    function nightshadePoisonCandidates(owner) {
+        const pool = (typeof aliveBots !== 'undefined' && Array.isArray(aliveBots)) ? aliveBots : bots.filter((t) => t && t.hp > 0);
+        const list = owner.id === player.id ? pool : [player, ...pool];
+        return list.filter((t) => t && t.hp > 0 && t.id !== owner.id && !(owner && areAlliedEntities(owner, t)));
     }
     function nightshadeHitsWall(x, y, r) {
         if (typeof cubes !== 'undefined' && Array.isArray(cubes)) {
@@ -21055,7 +21066,7 @@ let heistFeverActive = false;
         if (!NIGHTSHADE_ENABLED || !entity || entity.hp <= 0) return;
         const now = performance.now();
         let totalStacks = 0;
-        for (const target of nightshadeEnemyCandidates(entity)) {
+        for (const target of nightshadePoisonCandidates(entity)) {
             if (Math.hypot(target.x - entity.x, target.y - entity.y) > NIGHTSHADE_GADGET2_RADIUS) continue;
             const stacks = nightshadeActiveStacks(target, now);
             if (stacks.length === 0) continue;
@@ -21076,7 +21087,7 @@ let heistFeverActive = false;
         const p = Math.min(1, (now - dash.startAt) / dash.durationMs);
         entity.x = dash.startX + (dash.targetX - dash.startX) * p;
         entity.y = dash.startY + (dash.targetY - dash.startY) * p;
-        for (const target of nightshadeEnemyCandidates(entity)) {
+        for (const target of nightshadePoisonCandidates(entity)) {
             if (dash.hitIds[target.id]) continue;
             if (Math.hypot(target.x - entity.x, target.y - entity.y) <= NIGHTSHADE_GADGET1_PASS_RADIUS + (target.radius || 14)) {
                 dash.hitIds[target.id] = true;
@@ -21153,7 +21164,7 @@ let heistFeverActive = false;
     }
     function updateNightshadePoisonTicks(now) {
         for (const target of [player, ...bots]) {
-            if (!target || target.hp <= 0 || target.isStructure) continue;
+            if (!target || target.hp <= 0) continue;
             if (!Array.isArray(target.nightshadePoisonStacks) || target.nightshadePoisonStacks.length === 0) continue;
             const stacks = nightshadeActiveStacks(target, now);
             target.nightshadePoisonStacks = stacks;
@@ -23155,7 +23166,7 @@ let heistFeverActive = false;
         const prepSeconds = Math.max(0, Math.ceil((arenaForgePrepUntil - performance.now()) / 1000));
         const boonSeconds = Math.max(0, Math.ceil((arenaForgeNextAutoUpgradeAt - performance.now()) / 1000));
         const breachSeconds = arenaForgeOvertime ? 0 : Math.max(0, Math.ceil((arenaForgeNextBreachWaveAt - performance.now()) / 1000));
-        if (stats) stats.innerHTML = `<b>ARENA FORGE ${showdownMode === 'arena_forge_minion_surge' ? '• MINION SURGE' : showdownMode === 'arena_forge_overclocked' ? '• OVERCLOCKED' : '3v3'}</b><br>` +
+        if (stats) stats.innerHTML = `<b>ARENA FORGE ${showdownMode === 'arena_forge_hyper' ? '• HYPER FORGE' : showdownMode === 'arena_forge_minion_surge' ? '• MINION SURGE' : showdownMode === 'arena_forge_overclocked' ? '• OVERCLOCKED' : '3v3'}</b><br>` +
             `<strong style="color:#7cecff">${arenaForgeOvertime ? 'OVERTIME' : `${Math.max(0,Math.ceil(ARENA_FORGE_MATCH_SECONDS-arenaForgeTimer))}s REMAINING`}</strong><br>` +
             (arenaForgeBeacon ? `<strong style="color:#ffe18a">${arenaForgeBeacon.label}: ${Math.round(Math.abs(arenaForgeBeacon.progress)*100)}% ${arenaForgeBeacon.contested?'CONTESTED':arenaForgeBeacon.progress<0?'ENEMY':'YOUR TEAM'}</strong><br>` : `<span>Next capture: ${Math.max(0,Math.ceil(arenaForgeNextCaptureAt-arenaForgeTimer))}s</span><br>`) +
             `<span style="color:#b8a5ff">Captured engines: ${[...arenaForgeCapturedAttackPowers.player].join(' • ') || 'None — hold capture rings'}</span><br>` +
@@ -26855,6 +26866,8 @@ let heistFeverActive = false;
         if (brawler === 'robber' && selectedStar === 'long' && maxAmmo > 3) base *= 0.75;
         if (brawler === 'fastpass' && selectedStar === 'long' && (player.fastpassMomentum || 0) >= .64) base /= 1.15;
         if (brawler === 'freestyle' && performance.now() < (player.freestyleRemixUntil || 0)) base /= 1.18;
+        // Hyper Forge LTM: reload speed 3x faster (reload time divided by 3).
+        if (isHyperForgeLTM) base /= 3;
         return (isSlopSushiMode && brawler === selectedBrawler)
             ? base * Math.max(0.4, 1 - getSlopEffectTotal('reloadPct'))
             : base;
@@ -41073,6 +41086,7 @@ let heistFeverActive = false;
       ['arena_forge', 'AF2', 'Arena Forge 2.0', '3v3 • three weapon towers • new map • expanded Blueprint deck'],
       ['arena_forge_overclocked', 'AFO', 'Arena Forge: Overclocked', '3v3 • all four engines from spawn • four-direction bonus volleys'],
       ['arena_forge_minion_surge', '👾', 'Arena Forge: Minion Surge', '3v3 • fighter KOs rally armored reinforcements • protect your lanes'],
+      ['arena_forge_hyper', '⚡', 'Hyper Forge', '3v3 • everyone always Hypercharged • 3x reload speed'],
       ['damage_filler', '💥', 'Damage Filler', 'Pure DPS race'],
       ['mirror', '🪞', 'Mirror 5v5', 'One brawler for all'],
       ['power_gods', '⚡', 'Power of the Gods', 'Solo LTM'],
@@ -41083,6 +41097,7 @@ let heistFeverActive = false;
   const POWER_PLAY_BRAWLERS = new Set(['blinkeye', 'fuser', 'rocketeer', 'bouncin_balls', 'echo', 'orbo', 'decayer', 'money_and_tax', 'ramage']);
   const HOME_PERMANENT_MODE_IDS = ['blink_eye_dodge', 'headless_boss_s4', 'tombstone_boss', 'orbo_boss', 'ramage_boss', 'weefee_boss', 'demon_villains_boss', 'custom_clash', 'brawe_ball', 'knockout_3v3', 'duels', 'power_play_showdown', 'corrupted_showdown', 'slop_sushi', 'slop_sushi_gauntlet', 'chaos_crown', 'arena_forge', 'arena_forge_overclocked', 'tug_zone', 'construction', 'knock_donate', 'damage_filler', 'capture_turkey', 'prop_hunt'];
   HOME_PERMANENT_MODE_IDS.push('arena_forge_minion_surge');
+  HOME_PERMANENT_MODE_IDS.push('arena_forge_hyper');
   const HOME_ROTATING_MODE_IDS = ['marked_mayhem', 'objective', 'brick_vault', 'mirror', 'power_gods', 'solo_td', 'impossible'];
   const WEEKLY_FEATURED_MODE_IDS = ['brick_vault', 'power_gods'];
   const WEEKLY_FEATURED_START = new Date(2026, 7, 9, 0, 0, 0).getTime();
@@ -41126,6 +41141,7 @@ let heistFeverActive = false;
       arena_forge: { type:'coins', amount:40, label:'+40 Coins' },
       arena_forge_overclocked: { type:'coins', amount:50, label:'+50 Coins' },
       arena_forge_minion_surge: { type:'coins', amount:40, label:'+40 Coins' },
+      arena_forge_hyper: { type:'coins', amount:50, label:'+50 Coins' },
       marked_mayhem: { type:'souls', amount:14, label:'+14 Souls' },
       capture_turkey: { type:'coins', amount:60, label:'+60 Coins' },
       christmas_showdown: { type:'coins', amount:60, label:'+60 Coins' },
@@ -41168,6 +41184,7 @@ let heistFeverActive = false;
       trio: ['15 teams of three', '12-second Rally Beacon respawns', 'A full squad wipe eliminates the team'],
       arena_forge: ['3v3 lanes', 'Destroy the enemy Forge Core', 'About 4 minutes'],
       arena_forge_minion_surge: ['3v3 lanes', 'Fighter KOs summon up to 5 armored minions', '12-second team reinforcement cooldown', 'Minion kills never create another surge', 'Destroy both towers, then the Core'],
+      arena_forge_hyper: ['3v3 lanes', 'Everyone is Hypercharged for the whole match', 'Reload speed 3x faster', 'Destroy both towers, then the Core'],
       marked_mayhem: ['3v3 hunt', 'Marked targets award bonus score', 'First team to the score goal'],
       objective: ['3v3 control', 'Hold the center zone', 'Reach the control goal first'],
       tug_zone: ['3v3 moving control zone', 'Outnumber enemies to pull it toward your goal', 'Center hazards and 25/50/75% chaos checkpoints'],
@@ -44747,7 +44764,7 @@ let heistFeverActive = false;
           setModeBtnState(brickVaultBtn, false);
           if (startBtn) startBtn.textContent = 'Start 1 vs The Eyes Boss Battle';
       }
-      if (showdownMode === 'arena_forge' || showdownMode === 'arena_forge_overclocked' || showdownMode === 'arena_forge_minion_surge' || showdownMode === 'marked_mayhem' || showdownMode === 'tug_zone') {
+      if (showdownMode === 'arena_forge' || showdownMode === 'arena_forge_overclocked' || showdownMode === 'arena_forge_minion_surge' || showdownMode === 'arena_forge_hyper' || showdownMode === 'marked_mayhem' || showdownMode === 'tug_zone') {
           setModeBtnState(soloShowdownBtn, false);
           setModeBtnState(duoShowdownBtn, false);
           setModeBtnState(objectiveShowdownBtn, false);
@@ -44758,7 +44775,7 @@ let heistFeverActive = false;
           setModeBtnState(trioShowdownBtn, false);
           setModeBtnState(knockDonateBtn, false);
           setModeBtnState(brickVaultBtn, false);
-          if (startBtn) startBtn.textContent = showdownMode.startsWith('arena_forge') ? (showdownMode === 'arena_forge_overclocked' ? 'Start Overclocked 3v3' : 'Start Arena Forge 3v3') : (showdownMode === 'tug_zone' ? 'Start Tug Zone 3v3' : 'Start Target Rush 3v3');
+          if (startBtn) startBtn.textContent = showdownMode.startsWith('arena_forge') ? (showdownMode === 'arena_forge_hyper' ? 'Start Hyper Forge 3v3' : showdownMode === 'arena_forge_overclocked' ? 'Start Overclocked 3v3' : 'Start Arena Forge 3v3') : (showdownMode === 'tug_zone' ? 'Start Tug Zone 3v3' : 'Start Target Rush 3v3');
       }
       if (homeModeSelect && homeModeSelect.value !== showdownMode) {
           homeModeSelect.value = showdownMode;
@@ -44912,9 +44929,13 @@ let heistFeverActive = false;
       if (typeof isGiantProjectilesActive === 'function' && isGiantProjectilesActive()) {
           spawnFloatingText(player.x, player.y - 105, '🔮 150% BIGGER PROJECTILES ACTIVE!', '#ff70a6');
       }
+      if (isHyperForgeLTM) {
+          spawnFloatingText(player.x, player.y - 125, '⚡ HYPER FORGE: ALWAYS HYPERCHARGED • 3x RELOAD SPEED!', '#e056fd');
+      }
       isBrickVaultMode = showdownMode === 'brick_vault';
       isSoloTdMode = showdownMode === 'solo_td';
-      isArenaForgeMode = showdownMode === 'arena_forge' || showdownMode === 'arena_forge_overclocked' || showdownMode === 'arena_forge_minion_surge';
+      isArenaForgeMode = showdownMode === 'arena_forge' || showdownMode === 'arena_forge_overclocked' || showdownMode === 'arena_forge_minion_surge' || showdownMode === 'arena_forge_hyper';
+      isHyperForgeLTM = showdownMode === 'arena_forge_hyper';
       isMarkedMayhemMode = showdownMode === 'marked_mayhem';
       isTugZoneMode = showdownMode === 'tug_zone';
       isTrioShowdownMode = showdownMode === 'trio';
@@ -45144,7 +45165,7 @@ let heistFeverActive = false;
                   }
               }
           }
-          if (activeRankedModifier === 'always_hyper' || activeRankedModifierSecondary === 'always_hyper' || activeRankedModifierTertiary === 'always_hyper') {
+          if (activeRankedModifier === 'always_hyper' || activeRankedModifierSecondary === 'always_hyper' || activeRankedModifierTertiary === 'always_hyper' || isHyperForgeLTM) {
               isHypercharged = true;
               hyperchargeUntil = performance.now() + 999999999;
               hyperChargeCharge = 100;
@@ -45229,6 +45250,7 @@ let heistFeverActive = false;
       isKnockDonateMode = false;
       isBrickVaultMode = false;
       isArenaForgeMode = false;
+      isHyperForgeLTM = false;
       isMarkedMayhemMode = false;
       isTugZoneMode = false;
       isTrioShowdownMode = false;
@@ -45418,6 +45440,7 @@ let heistFeverActive = false;
                           isKnockDonateMode = false;
                           isBrickVaultMode = false;
                           isArenaForgeMode = false;
+                          isHyperForgeLTM = false;
                           isMarkedMayhemMode = false;
                           isTugZoneMode = false;
                           isTrioShowdownMode = false;
@@ -46310,6 +46333,7 @@ isBrawlerLabMode = false;
       isKnockDonateMode = false;
       isBrickVaultMode = false;
       isArenaForgeMode = false;
+      isHyperForgeLTM = false;
       isMarkedMayhemMode = false;
       isTugZoneMode = false;
       isSoloTdMode = false;
@@ -46447,6 +46471,7 @@ isBrawlerLabMode = false;
       isKnockDonateMode = false;
       isBrickVaultMode = false;
       isArenaForgeMode = false;
+      isHyperForgeLTM = false;
       isMarkedMayhemMode = false;
       isTugZoneMode = false;
       isSoloTdMode = false;
@@ -52039,8 +52064,8 @@ function checkHit(target, b, i){
     }
     updateBeastBossEvent(now);
     if (isWarperEvent) updateWarperEvent(now);
-    if ((isRankedMatch || isCustomMutatorMatch) && playing && !gameOver) {
-        if (activeRankedModifier === 'always_hyper' || activeRankedModifierSecondary === 'always_hyper' || activeRankedModifierTertiary === 'always_hyper') {
+    if ((isRankedMatch || isCustomMutatorMatch || isHyperForgeLTM) && playing && !gameOver) {
+        if (activeRankedModifier === 'always_hyper' || activeRankedModifierSecondary === 'always_hyper' || activeRankedModifierTertiary === 'always_hyper' || isHyperForgeLTM) {
             if (player.hp > 0) {
                 isHypercharged = true;
                 hyperchargeUntil = now + 999999999;
@@ -52747,7 +52772,7 @@ function checkHit(target, b, i){
     // Update gadget button every frame to handle cooldown expiration
     updateGadgetButton();
 
-    if(isHypercharged && performance.now() > hyperchargeUntil && !(isRankedMatch && activeRankedModifier === 'always_hyper') && !(isRankedMatch && activeRankedModifierSecondary === 'always_hyper') && !((isRankedMatch || isCustomMutatorMatch) && (activeRankedModifier === 'always_hyper' || activeRankedModifierSecondary === 'always_hyper' || activeRankedModifierTertiary === 'always_hyper'))){
+    if(isHypercharged && performance.now() > hyperchargeUntil && !(isRankedMatch && activeRankedModifier === 'always_hyper') && !(isRankedMatch && activeRankedModifierSecondary === 'always_hyper') && !((isRankedMatch || isCustomMutatorMatch) && (activeRankedModifier === 'always_hyper' || activeRankedModifierSecondary === 'always_hyper' || activeRankedModifierTertiary === 'always_hyper')) && !isHyperForgeLTM){
         isHypercharged = false;
         hyperChargeCharge = 0;
         updateHyperButton();
@@ -58056,7 +58081,7 @@ function checkHit(target, b, i){
           }
       }
 
-      if(t.isHypercharged && !t.isBoss && performance.now() > (t.hyperchargeUntil || 0) && !(isRankedMatch && activeRankedModifier === 'always_hyper') && !(isRankedMatch && activeRankedModifierSecondary === 'always_hyper') && !((isRankedMatch || isCustomMutatorMatch) && (activeRankedModifier === 'always_hyper' || activeRankedModifierSecondary === 'always_hyper' || activeRankedModifierTertiary === 'always_hyper'))) {
+      if(t.isHypercharged && !t.isBoss && performance.now() > (t.hyperchargeUntil || 0) && !(isRankedMatch && activeRankedModifier === 'always_hyper') && !(isRankedMatch && activeRankedModifierSecondary === 'always_hyper') && !((isRankedMatch || isCustomMutatorMatch) && (activeRankedModifier === 'always_hyper' || activeRankedModifierSecondary === 'always_hyper' || activeRankedModifierTertiary === 'always_hyper')) && !isHyperForgeLTM) {
           t.isHypercharged = false; t.hyperChargeCharge = 0;
       }
 
