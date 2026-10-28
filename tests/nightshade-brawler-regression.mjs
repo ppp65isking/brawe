@@ -1,12 +1,13 @@
 // Nightshade regression — Anthony's hooded poison Assassin, ordered 2026-10-28
 // (design fully delegated: name, rarity, numbers, 2 Gadgets, 2 Star Powers).
 // Locked design: Mythic Assassin, 6400 HP / 300 speed, Viper Fan main
-// (4 daggers, super-short cone, 800 each, 1 poison stack per dagger:
-// 120 damage/s for 8s, stacking to 4, 30 damage per 250ms tick).
-// Super Boomerang Blades: 2 blades fly out 8 tiles and return, 1100
-// damage each way per blade. Hypercharge Toxic Tempest: blades pierce
-// walls, leave poison puddles along the whole flight path (120 dps, 4s),
-// and home toward the nearest poisoned enemy on return. Gadgets:
+// (4 daggers, tight super-short cone, 800 each, 1 poison stack per dagger:
+// 60 damage/s for 8s, stacking to 4, 15 damage per 250ms tick; uncapped
+// while Hypercharged). Super Boomerang Blades: Nightshade spins in place
+// and releases a ring of 12 daggers that fly out 8 tiles and return, 1100
+// damage each way per dagger, once per target per pass. Hypercharge Toxic
+// Tempest: blades pierce walls and home toward the nearest poisoned enemy
+// on return (lifetime-capped); poison puddles REMOVED 2026-10-28. Gadgets:
 // Backstab Dash (16s) and Purge Vial (18s). Star Powers: Lingering Toxin
 // (8s -> 10s) and Fresh Wounds (+20% dagger damage vs poisoned enemies).
 // Poison NEVER damages Arena Forge structures. Dagger art is a DEDICATED
@@ -42,11 +43,12 @@ check('kit def has finished star power text (no placeholders)', game.includes("s
 check('kit def hyper text is Toxic Tempest', game.includes("hyper: 'Toxic Tempest:"));
 check('gadget cooldown map entry 16s/18s', game.includes('nightshade: { g1: 16000, g2: 18000 },'));
 check('fire branch exists with 4-dagger fan + poison flag', game.includes("brawler === 'nightshade'") && game.includes('NIGHTSHADE_DAGGER_COUNT') && game.includes('isNightshadeDagger: true'));
-check('dagger constants 4 / 560px / 1000px-s / 0.72 rad', game.includes('const NIGHTSHADE_DAGGER_COUNT = 4;') && game.includes('const NIGHTSHADE_DAGGER_RANGE = 560;') && game.includes('const NIGHTSHADE_DAGGER_SPEED = 1000;') && game.includes('const NIGHTSHADE_DAGGER_FAN_ARC = 0.72;'));
-check('poison constants 120 dps / 250ms tick / 8s / cap 4', game.includes('const NIGHTSHADE_POISON_DPS = 120;') && game.includes('const NIGHTSHADE_POISON_TICK_MS = 250;') && game.includes('const NIGHTSHADE_POISON_DURATION_MS = 8000;') && game.includes('const NIGHTSHADE_POISON_MAX_STACKS = 4;'));
+check('dagger constants 4 / 560px / 1000px-s / 0.36 rad', game.includes('const NIGHTSHADE_DAGGER_COUNT = 4;') && game.includes('const NIGHTSHADE_DAGGER_RANGE = 560;') && game.includes('const NIGHTSHADE_DAGGER_SPEED = 1000;') && game.includes('const NIGHTSHADE_DAGGER_FAN_ARC = 0.36;'));
+check('poison constants 60 dps / 250ms tick / 8s / cap 4', game.includes('const NIGHTSHADE_POISON_DPS = 60;') && game.includes('const NIGHTSHADE_POISON_TICK_MS = 250;') && game.includes('const NIGHTSHADE_POISON_DURATION_MS = 8000;') && game.includes('const NIGHTSHADE_POISON_MAX_STACKS = 4;'));
 check('SP1 poison duration is 10s', game.includes('const NIGHTSHADE_POISON_DURATION_SP1_MS = 10000;'));
-check('blade constants 2 / 640px / 900px-s / 1100 dmg', game.includes('const NIGHTSHADE_BLADE_COUNT = 2;') && game.includes('const NIGHTSHADE_BLADE_RANGE = 640;') && game.includes('const NIGHTSHADE_BLADE_SPEED = 900;') && game.includes('const NIGHTSHADE_BLADE_DAMAGE = 1100;'));
-check('hyper puddle constants 55px / 4s / 60px spacing', game.includes('const NIGHTSHADE_PUDDLE_RADIUS = 55;') && game.includes('const NIGHTSHADE_PUDDLE_DURATION_MS = 4000;') && game.includes('const NIGHTSHADE_PUDDLE_SPACING = 60;'));
+check('blade constants 12 / 640px / 900px-s / 1100 dmg', game.includes('const NIGHTSHADE_BLADE_COUNT = 12;') && game.includes('const NIGHTSHADE_BLADE_RANGE = 640;') && game.includes('const NIGHTSHADE_BLADE_SPEED = 900;') && game.includes('const NIGHTSHADE_BLADE_DAMAGE = 1100;'));
+check('blade lifetime cap constant 4000ms', game.includes('const NIGHTSHADE_BLADE_MAX_LIFE_MS = 4000;'));
+check('hyper puddles removed (no puddle constants, state, or updater)', !game.includes('NIGHTSHADE_PUDDLE') && !game.includes('nightshadePuddles') && !game.includes('updateNightshadePuddles') && !game.includes('nightshadePuddleTick'));
 check('gadget constants dash 240px/200ms, purge 400px/200hp', game.includes('const NIGHTSHADE_GADGET1_DASH_DISTANCE = 240;') && game.includes('const NIGHTSHADE_GADGET1_DASH_DURATION_MS = 200;') && game.includes('const NIGHTSHADE_GADGET2_RADIUS = 400;') && game.includes('const NIGHTSHADE_GADGET2_HEAL_PER_STACK = 200;'));
 check('dagger branch sits BEFORE the universal skin call (no interception)',
   game.indexOf('if (b.isNightshadeDagger) {') > 0 &&
@@ -140,7 +142,7 @@ try {
     performance: { now: () => nowValue },
     getEntityStarChoice: (e) => (e && e.selectedStar) || 'none',
     NIGHTSHADE_ENABLED: true,
-    NIGHTSHADE_POISON_DPS: 120,
+    NIGHTSHADE_POISON_DPS: 60,
     NIGHTSHADE_POISON_TICK_MS: 250,
     NIGHTSHADE_POISON_DURATION_MS: 8000,
     NIGHTSHADE_POISON_DURATION_SP1_MS: 10000,
@@ -161,11 +163,11 @@ try {
   check('poison: 1 dagger applies 1 stack', sandbox.applyNightshadePoisonStacks(target, owner, 1) === 1 && target.nightshadePoisonStacks.length === 1);
   check('poison: stack lasts 8000ms', target.nightshadePoisonStacks[0].endsAt === 108000);
   check('poison: first tick at +250ms', target.nightshadePoisonStacks[0].nextTickAt === 100250);
-  check('poison: tick damage is 30 (120 dps x 0.25s)', Math.round(120 * 250 / 1000) === 30);
+  check('poison: tick damage is 15 (60 dps x 0.25s)', Math.round(60 * 250 / 1000) === 15);
   sandbox.applyNightshadePoisonStacks(target, owner, 3);
   check('poison: 4 daggers stack to 4', target.nightshadePoisonStacks.length === 4);
-  check('poison: 4 stacks is 480 dps', 4 * 120 === 480);
-  check('poison: 4 stacks over 8s is 3840 total', 4 * 120 * 8 === 3840);
+  check('poison: 4 stacks is 240 dps', 4 * 60 === 240);
+  check('poison: 4 stacks over 8s is 1920 total', 4 * 60 * 8 === 1920);
   nowValue = 101000;
   sandbox.applyNightshadePoisonStacks(target, owner, 1);
   check('poison: 5th stack at cap refreshes oldest, still 4 stacks', target.nightshadePoisonStacks.length === 4 && target.nightshadePoisonStacks.some((s) => s.endsAt === 109000));
@@ -177,7 +179,7 @@ try {
     { endsAt: 105000, nextTickAt: 101250, ownerId: 1 },
     { endsAt: 105000, nextTickAt: 101250, ownerId: 1 },
   ] };
-  check('purge: 2 stacks with 4s left = 960 remaining damage', sandbox.nightshadePurgeDamage(purgeTarget, 101000) === 960);
+  check('purge: 2 stacks with 4s left = 480 remaining damage', sandbox.nightshadePurgeDamage(purgeTarget, 101000) === 480);
   const structure = { id: 6, hp: 72000, isStructure: true };
   check('poison: structures take 0 stacks', sandbox.applyNightshadePoisonStacks(structure, owner, 4) === 0);
   const dead = { id: 7, hp: 0 };
@@ -206,6 +208,7 @@ try {
   const blade = sandbox.createNightshadeBladeState(owner, 100, 100, 0, false);
   check('blade: starts outbound at 900px/s', blade.outbound === true && near(blade.vx, 900) && near(blade.vy, 0));
   check('blade: traveled starts at 0', blade.traveled === 0);
+  check('blade: bornAt set for lifetime cap', blade.bornAt === 100000);
   check('blade: hyper flag false by default', blade.hyper === false);
   const hyperBlade = sandbox.createNightshadeBladeState(owner, 100, 100, 0, true);
   check('blade: hyper flag carries through', hyperBlade.hyper === true);

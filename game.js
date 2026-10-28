@@ -15636,6 +15636,13 @@ let heistFeverActive = false;
    }
   
   loadProgress();
+    // Roster fix (2026-10-28): the HUD brawler dropdown ships as static
+    // HTML and was only rebuilt on a Soul Summoner auto-unlock, so the
+    // newest brawlers never appeared until that flow ran. Rebuild once
+    // at startup so the dropdown always mirrors allBrawlers. The Option
+    // guard keeps this browser-only: vm/test sandboxes stub document but
+    // provide no Option constructor, and the rebuild needs it.
+    if (typeof Option === 'function' && typeof rebuildBrawlerSelectOptions === 'function') rebuildBrawlerSelectOptions();
     // One-time grant for non-TypeScript runs: give 3 super tappers if not already granted
     try {
         if (!localStorage.getItem('super_granted')) {
@@ -17381,7 +17388,7 @@ let heistFeverActive = false;
           shortDesc: 'Arm the Family Circuit with the Signature button (R): while Electrostien is inside the Electric Realm, every punch he lands echoes as a Bolznstien-style sky strike (500 damage) on the realm victim. His Pieces are EARNED, never bought: win 3 battles with Electrostien (1 Piece per win). No Core Piece cost.'
       },
       'mallow': { name: 'Mallow', role: 'Controller', desc: 'A puffy marshmallow Controller who sprays sticky-slow fans and dashes through Overheated marshmallow trails that burn and burst.', color: '#ffdfb0', attack: 'Marshmallow Spray', attackDesc: 'Fires 8 marshmallows in a wide Pam-style fan (320 damage each). Each hit slows by 4% for 1s, stacking to 32%. Cannot attack again until the volley finishes.', super: 'Overheated', superDesc: 'Aim and dash smoothly forward, leaving 6 marshmallow trail puffs. Enemies on the trail burn, and each puff explodes 1.32s after placement for 400 damage. Holds 2 charges — aim each dash separately.', hyper: 'Hyper Marshmallows: visuals turn purple; main attack marshmallows explode at the end of flight for burn damage. Overheated dashes faster and further, dashes twice, leaves a wider trail, and hyper trail explosions release 4 mini-mallows in a + shape that explode again for 150 damage each.', g1: 'Sticky Volley (Next volley applies 6% slow per hit instead of 4%)', g2: 'Second Tool coming soon.', sp1: 'Toasted Haste (Move 5% faster while an enemy is slowed by your marshmallows)', sp2: 'Second Talent coming soon.' },
-      'nightshade': { name: 'Nightshade', role: 'Assassin', desc: 'A hooded Assassin who fans poisoned daggers in a short cone. Every dagger stacks venom that melts enemies over time, and her spinning blades return for a second cut.', color: '#9b5cff', attack: 'Viper Fan', attackDesc: 'Throws 4 daggers in a super-short cone (800 damage each). Each dagger applies 1 poison stack: 120 damage per second for 8 seconds, stacking up to 4 times.', super: 'Boomerang Blades', superDesc: 'Throws 2 spinning dagger blades that fly out 8 tiles and return to Nightshade. Each blade deals 1,100 damage on the way out and 1,100 on the way back.', hyper: 'Toxic Tempest: Super blades pierce walls, leave a poison puddle along their path that deals 120 damage per second for 4 seconds, and home toward the nearest poisoned enemy on the return path.', g1: 'Backstab Dash (Dash 3 tiles forward. Passing through an enemy applies 2 poison stacks to them.)', g2: 'Purge Vial (Detonate all poison stacks on enemies within 5 tiles, dealing their remaining poison damage instantly, and heal 200 HP per stack detonated.)', sp1: 'Lingering Toxin (Poison lasts 10 seconds instead of 8 seconds.)', sp2: 'Fresh Wounds (Daggers deal +20% damage to enemies that are already poisoned.)' },
+      'nightshade': { name: 'Nightshade', role: 'Assassin', desc: 'A hooded Assassin who fans poisoned daggers in a short cone. Every dagger stacks venom that melts enemies over time, and her spinning blades return for a second cut.', color: '#9b5cff', attack: 'Viper Fan', attackDesc: 'Throws 4 daggers in a tight super-short cone (800 damage each). Each dagger applies 1 poison stack: 60 damage per second for 8 seconds, stacking up to 4 times (no limit while Hypercharged).', super: 'Boomerang Blades', superDesc: 'Nightshade spins in place and releases a ring of 12 daggers in all directions. Each dagger flies out 8 tiles and returns to her, dealing 1,100 damage on the way out and 1,100 on the way back, at most once per target each way.', hyper: 'Toxic Tempest: Super blades pierce walls and home toward the nearest poisoned enemy on the return path. While Hypercharged, Viper Fan daggers stack poison without limit.', g1: 'Backstab Dash (Dash 3 tiles forward. Passing through an enemy applies 2 poison stacks to them.)', g2: 'Purge Vial (Detonate all poison stacks on enemies within 5 tiles, dealing their remaining poison damage instantly, and heal 200 HP per stack detonated.)', sp1: 'Lingering Toxin (Poison lasts 10 seconds instead of 8 seconds.)', sp2: 'Fresh Wounds (Daggers deal +20% damage to enemies that are already poisoned.)' },
       fightnfire: {
           type: 'instinct',
           name: 'Flash Freeze',
@@ -20877,11 +20884,13 @@ let heistFeverActive = false;
 
     // ===== Nightshade systems (Viper Fan + Boomerang Blades) =====
     // Anthony design (2026-10-27, delegated 2026-10-28): a hooded Mythic
-    // Assassin. Main attack fans 4 poison daggers in a super-short cone;
-    // each dagger stacks venom (120 damage/s for 8s, up to 4 stacks).
-    // Super throws 2 boomerang blades that cut on the way out and back.
-    // Hypercharge: blades pierce walls, leave poison puddles along their
-    // whole flight path, and home toward poisoned enemies on return.
+    // Assassin. Main attack fans 4 poison daggers in a tight super-short
+    // cone; each dagger stacks venom (60 damage/s for 8s, up to 4 stacks,
+    // uncapped while Hypercharged). Super: Nightshade spins in place and
+    // releases a ring of 12 daggers that fly out and return, cutting on
+    // each pass (once per target per pass). Hypercharge: blades pierce
+    // walls and home toward poisoned enemies on return (lifetime-capped
+    // so a homing blade can never orbit forever); no poison puddles.
     // Kill switches are `let` so regression tests can flip them.
     // Dedicated art lives in its OWN branches below: Nightshade daggers
     // are drawn before the universal skin renderer call, never through it
@@ -20891,28 +20900,26 @@ let heistFeverActive = false;
     const NIGHTSHADE_DAGGER_COUNT = 4;
     const NIGHTSHADE_DAGGER_RANGE = 560;
     const NIGHTSHADE_DAGGER_SPEED = 1000;
-    const NIGHTSHADE_DAGGER_FAN_ARC = 0.72;
-    const NIGHTSHADE_POISON_DPS = 120;
+    const NIGHTSHADE_DAGGER_FAN_ARC = 0.36;
+    const NIGHTSHADE_POISON_DPS = 60;
     const NIGHTSHADE_POISON_TICK_MS = 250;
     const NIGHTSHADE_POISON_DURATION_MS = 8000;
     const NIGHTSHADE_POISON_DURATION_SP1_MS = 10000;
     const NIGHTSHADE_POISON_MAX_STACKS = 4;
-    const NIGHTSHADE_BLADE_COUNT = 2;
+    const NIGHTSHADE_BLADE_COUNT = 12;
     const NIGHTSHADE_BLADE_RANGE = 640;
     const NIGHTSHADE_BLADE_SPEED = 900;
     const NIGHTSHADE_BLADE_DAMAGE = 1100;
     const NIGHTSHADE_BLADE_RADIUS = 18;
     const NIGHTSHADE_BLADE_HOME_RANGE = 500;
-    const NIGHTSHADE_PUDDLE_RADIUS = 55;
-    const NIGHTSHADE_PUDDLE_DURATION_MS = 4000;
-    const NIGHTSHADE_PUDDLE_SPACING = 60;
+    const NIGHTSHADE_BLADE_MAX_LIFE_MS = 4000;
     const NIGHTSHADE_GADGET1_DASH_DISTANCE = 240;
     const NIGHTSHADE_GADGET1_DASH_DURATION_MS = 200;
     const NIGHTSHADE_GADGET1_PASS_RADIUS = 48;
     const NIGHTSHADE_GADGET2_RADIUS = 400;
     const NIGHTSHADE_GADGET2_HEAL_PER_STACK = 200;
     let nightshadeBlades = [];
-    let nightshadePuddles = [];
+    let nightshadeSpinFx = [];
     function isNightshadeEntity(entity) {
         return !!entity && (entity.brawler === 'nightshade' || (!!player && entity.id === player.id && selectedBrawler === 'nightshade'));
     }
@@ -20926,7 +20933,7 @@ let heistFeverActive = false;
         if (!target || !Array.isArray(target.nightshadePoisonStacks)) return [];
         return target.nightshadePoisonStacks.filter((s) => s && now < s.endsAt);
     }
-    function applyNightshadePoisonStacks(target, owner, count) {
+    function applyNightshadePoisonStacks(target, owner, count, uncapped) {
         if (!NIGHTSHADE_ENABLED || !target || target.hp <= 0 || target.isStructure) return 0;
         const now = performance.now();
         if (!Array.isArray(target.nightshadePoisonStacks)) target.nightshadePoisonStacks = [];
@@ -20934,7 +20941,9 @@ let heistFeverActive = false;
         const duration = nightshadePoisonDurationMs(owner);
         let applied = 0;
         for (let k = 0; k < count; k++) {
-            if (target.nightshadePoisonStacks.length >= NIGHTSHADE_POISON_MAX_STACKS) {
+            // Hypercharged main attacks stack poison without limit; every
+            // other source still caps at 4 (oldest stack refreshes at cap).
+            if (!uncapped && target.nightshadePoisonStacks.length >= NIGHTSHADE_POISON_MAX_STACKS) {
                 let oldest = target.nightshadePoisonStacks[0];
                 for (const s of target.nightshadePoisonStacks) if (s.endsAt < oldest.endsAt) oldest = s;
                 oldest.endsAt = now + duration;
@@ -20946,7 +20955,9 @@ let heistFeverActive = false;
         return applied;
     }
     function applyNightshadePoisonHit(target, owner, b) {
-        applyNightshadePoisonStacks(target, owner, 1);
+        // Daggers fired while Hypercharged carry hyperVisual and stack
+        // poison without the 4-stack cap; normal daggers stay capped.
+        applyNightshadePoisonStacks(target, owner, 1, !!(b && b.hyperVisual));
     }
     function nightshadePurgeDamage(target, now) {
         const stacks = nightshadeActiveStacks(target, now);
@@ -20984,18 +20995,21 @@ let heistFeverActive = false;
             vy: Math.sin(angle) * NIGHTSHADE_BLADE_SPEED,
             ownerId: owner.id, ownerBrawler: 'nightshade',
             hyper: !!hyper, outbound: true, traveled: 0,
-            distSincePuddle: 0, hitOut: {}, hitBack: {},
+            bornAt: performance.now(), hitOut: {}, hitBack: {},
             spin: Math.random() * Math.PI * 2
         };
     }
     function castNightshadeSuper(entity, isHyper, targetX, targetY) {
         if (!NIGHTSHADE_ENABLED || !entity || entity.hp <= 0) return false;
-        const angle = Math.atan2(targetY - entity.y, targetX - entity.x);
+        // Grounded spin: no jump, no aim — a ring of 12 daggers bursts in
+        // all directions (30 degrees apart) and every blade returns to her.
+        // targetX/targetY are ignored; the dispatch signature is unchanged.
         for (let k = 0; k < NIGHTSHADE_BLADE_COUNT; k++) {
-            const bladeAngle = angle + (k - (NIGHTSHADE_BLADE_COUNT - 1) / 2) * 0.24;
+            const bladeAngle = k * (Math.PI * 2 / NIGHTSHADE_BLADE_COUNT);
             nightshadeBlades.push(createNightshadeBladeState(entity, entity.x, entity.y, bladeAngle, isHyper));
         }
-        spawnFloatingText(entity.x, entity.y - 40, '🗡️ BOOMERANG BLADES!', isHyper ? '#e056fd' : '#9b5cff');
+        nightshadeSpinFx.push({ x: entity.x, y: entity.y, until: performance.now() + 350 });
+        spawnFloatingText(entity.x, entity.y - 40, '🌀 BOOMERANG BLADES!', isHyper ? '#e056fd' : '#9b5cff');
         return true;
     }
     function createNightshadeDashState(entity, angle) {
@@ -21055,6 +21069,11 @@ let heistFeverActive = false;
             const blade = nightshadeBlades[i];
             const owner = nightshadeOwnerById(blade.ownerId);
             if (!owner || owner.hp <= 0) { nightshadeBlades.splice(i, 1); continue; }
+            // Lifetime cap: a homing blade chasing a kiting poisoned enemy
+            // could otherwise orbit forever and never return to its owner.
+            // Every blade expires, even while homing; the per-pass hit maps
+            // (hitOut/hitBack) already cap damage at once per target per pass.
+            if (now - blade.bornAt > NIGHTSHADE_BLADE_MAX_LIFE_MS) { nightshadeBlades.splice(i, 1); continue; }
             const speed = NIGHTSHADE_BLADE_SPEED;
             if (blade.outbound) {
                 blade.x += blade.vx * dt;
@@ -21081,13 +21100,6 @@ let heistFeverActive = false;
             }
             blade.x = clamp(blade.x, 14, WORLD_W - 14);
             blade.y = clamp(blade.y, 14, WORLD_H - 14);
-            if (blade.hyper) {
-                blade.distSincePuddle += speed * dt;
-                if (blade.distSincePuddle >= NIGHTSHADE_PUDDLE_SPACING) {
-                    blade.distSincePuddle = 0;
-                    nightshadePuddles.push({ x: blade.x, y: blade.y, ownerId: blade.ownerId, endsAt: now + NIGHTSHADE_PUDDLE_DURATION_MS, radius: NIGHTSHADE_PUDDLE_RADIUS, nextTickAt: now + NIGHTSHADE_POISON_TICK_MS });
-                }
-            }
             if (!blade.hyper && nightshadeHitsWall(blade.x, blade.y, NIGHTSHADE_BLADE_RADIUS)) {
                 explosions.push({ x: blade.x, y: blade.y, radius: 26, life: 0, maxLife: 0.2, color: 'rgba(155, 92, 255, 0.6)' });
                 nightshadeBlades.splice(i, 1);
@@ -21105,20 +21117,6 @@ let heistFeverActive = false;
                     blade.hitBack[target.id] = true;
                     checkHit(target, { ownerBrawler: 'nightshade', ownerId: blade.ownerId, damage: dmg, pierce: true, super: true, hitIds: {}, nightshadeBlade: true }, -1);
                 }
-            }
-        }
-    }
-    function updateNightshadePuddles(now) {
-        for (let i = nightshadePuddles.length - 1; i >= 0; i--) {
-            const puddle = nightshadePuddles[i];
-            if (now >= puddle.endsAt) { nightshadePuddles.splice(i, 1); continue; }
-            if (now < puddle.nextTickAt) continue;
-            puddle.nextTickAt += NIGHTSHADE_POISON_TICK_MS;
-            const owner = nightshadeOwnerById(puddle.ownerId);
-            if (!owner || owner.hp <= 0) { nightshadePuddles.splice(i, 1); continue; }
-            for (const target of nightshadeEnemyCandidates(owner)) {
-                if (Math.hypot(target.x - puddle.x, target.y - puddle.y) > puddle.radius + (target.radius || 14)) continue;
-                checkHit(target, { ownerBrawler: 'nightshade', ownerId: puddle.ownerId, damage: Math.round(NIGHTSHADE_POISON_DPS * NIGHTSHADE_POISON_TICK_MS / 1000), pierce: true, super: true, hitIds: {}, nightshadePuddleTick: true }, -1);
             }
         }
     }
@@ -21143,7 +21141,6 @@ let heistFeverActive = false;
             if (entity && entity.hp > 0) updateNightshadeDash(entity, now);
         }
         updateNightshadeBlades(dt, now);
-        updateNightshadePuddles(now);
         updateNightshadePoisonTicks(now);
     }
     function drawNightshadeDagger(ctx, b) {
@@ -21167,17 +21164,18 @@ let heistFeverActive = false;
     function renderNightshadeEffects() {
         if (!NIGHTSHADE_VISUALS_ENABLED) return;
         const now = performance.now();
-        for (const puddle of nightshadePuddles) {
-            const p = Math.max(0, Math.min(1, 1 - (puddle.endsAt - now) / NIGHTSHADE_PUDDLE_DURATION_MS));
+        // Spin-cast ring: three rotating arcs around the caster for 350ms
+        // after a Super, so the grounded spin reads on screen.
+        nightshadeSpinFx = nightshadeSpinFx.filter((fx) => now < fx.until);
+        for (const fx of nightshadeSpinFx) {
+            const p = Math.max(0, Math.min(1, 1 - (fx.until - now) / 350));
             ctx.save();
-            ctx.globalAlpha = 0.5 * (1 - p) + 0.15;
-            ctx.fillStyle = '#3d7a4e';
-            ctx.beginPath(); ctx.arc(puddle.x, puddle.y, puddle.radius, 0, Math.PI * 2); ctx.fill();
-            ctx.globalAlpha = 0.8 * (1 - p) + 0.1;
-            ctx.fillStyle = '#7be495';
-            for (let k = 0; k < 5; k++) {
-                const a = k * (Math.PI * 2 / 5) + now / 900;
-                ctx.beginPath(); ctx.arc(puddle.x + Math.cos(a) * puddle.radius * 0.6, puddle.y + Math.sin(a) * puddle.radius * 0.6, 3, 0, Math.PI * 2); ctx.fill();
+            ctx.globalAlpha = 0.9 * (1 - p) + 0.1;
+            ctx.strokeStyle = '#9b5cff';
+            ctx.lineWidth = 3;
+            for (let k = 0; k < 3; k++) {
+                const a0 = now / 60 + k * (Math.PI * 2 / 3);
+                ctx.beginPath(); ctx.arc(fx.x, fx.y, 26, a0, a0 + Math.PI / 2); ctx.stroke();
             }
             ctx.restore();
         }
