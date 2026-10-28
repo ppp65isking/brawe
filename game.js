@@ -21237,8 +21237,8 @@ let heistFeverActive = false;
         updateNightshadePoisonTicks(now);
     }
     function aegisStarChoice(entity) { try { return getEntityStarChoice(entity); } catch (_) { return entity ? entity.selectedStar : null; } }
-    function aegisHasSP1(entity) { return aegisStarChoice(entity) === 'sp1'; }
-    function aegisHasSP2(entity) { return aegisStarChoice(entity) === 'sp2'; }
+    function aegisHasSP1(entity) { const c = aegisStarChoice(entity); return c === 'sp1' || c === 'slow'; }
+    function aegisHasSP2(entity) { const c = aegisStarChoice(entity); return c === 'sp2' || c === 'long'; }
     function aegisIsFighterTarget(target) {
         // Dummies ARE allowed: they are fighter stand-ins for training, and
         // they respawn through restoreRespawningEntity, so the shred reset
@@ -21440,6 +21440,10 @@ let heistFeverActive = false;
             ctx.fillStyle = bubble.hyper ? '#ffe08a' : '#f0b429';
             ctx.beginPath(); ctx.arc(0, 0, bubble.radius * pulse, 0, Math.PI * 2); ctx.fill();
             ctx.globalAlpha = 1;
+            // Regrowth cue source: Wound Weave (SP1) is what lets segments
+            // refill, so partial segments glow brighter while it is active.
+            const bubbleOwner = (player && bubble.ownerId === player.id) ? player : bots.find((bt) => bt && bt.id === bubble.ownerId);
+            const bubbleRegrowing = !!(bubbleOwner && bubbleOwner.hp > 0 && aegisHasSP1(bubbleOwner));
             for (let l = 0; l < bubble.layers.length; l++) {
                 const layer = bubble.layers[l];
                 const lr = bubble.radius - l * 14;
@@ -21449,10 +21453,13 @@ let heistFeverActive = false;
                     const a0 = (s / AEGIS_BUBBLE_SEGMENTS) * Math.PI * 2;
                     const a1 = ((s + 1) / AEGIS_BUBBLE_SEGMENTS) * Math.PI * 2;
                     ctx.save();
-                    ctx.globalAlpha = 0.35 + 0.65 * (hp / AEGIS_BUBBLE_SEGMENT_HP);
+                    // Regrowing segments read brighter so the slow refill
+                    // is visible as it happens, not just once full.
+                    const regrowingSeg = bubbleRegrowing && hp < AEGIS_BUBBLE_SEGMENT_HP;
+                    ctx.globalAlpha = regrowingSeg ? 0.55 + 0.45 * (hp / AEGIS_BUBBLE_SEGMENT_HP) : 0.35 + 0.65 * (hp / AEGIS_BUBBLE_SEGMENT_HP);
                     ctx.strokeStyle = bubble.hyper ? '#ffe08a' : '#f0b429';
                     ctx.lineWidth = l === 0 ? 4 : 3;
-                    ctx.shadowColor = '#f0b429'; ctx.shadowBlur = 8;
+                    ctx.shadowColor = '#f0b429'; ctx.shadowBlur = regrowingSeg ? 16 : 8;
                     ctx.beginPath(); ctx.arc(0, 0, lr * pulse, a0 + 0.03, a1 - 0.03); ctx.stroke();
                     ctx.restore();
                 }
@@ -21464,6 +21471,20 @@ let heistFeverActive = false;
             ctx.fillStyle = '#f0b429';
             ctx.beginPath();
             ctx.moveTo(0, -10); ctx.lineTo(8, 0); ctx.lineTo(0, 10); ctx.lineTo(-8, 0); ctx.closePath(); ctx.fill();
+            ctx.restore();
+            // Device HP bar (game's deployable-bar style: dark track, gold
+            // fill, white border), always drawn so the device's health
+            // reads even at full HP. This is device HP only — segment HP
+            // still reads on the bubble arcs, never mixed into this bar.
+            ctx.save();
+            const devicePct = clamp((bubble.deviceHp || 0) / (bubble.deviceMaxHp || AEGIS_DEVICE_HP), 0, 1);
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+            ctx.fillRect(-36, -AEGIS_DEVICE_RADIUS - 14, 72, 6);
+            ctx.fillStyle = '#f0b429';
+            ctx.fillRect(-36, -AEGIS_DEVICE_RADIUS - 14, 72 * devicePct, 6);
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(-36, -AEGIS_DEVICE_RADIUS - 14, 72, 6);
             ctx.restore();
             ctx.restore();
         }
@@ -45867,13 +45888,6 @@ isBrawlerLabMode = false;
   let trainingGridBotsActiveAI = false;
   let trainingCaveCustomEnemyId = 'king';
   let trainingCaveDeckCollapsed = false;
-  let trainingSparringActive = false;
-  let trainingSparringOpponentId = 'king';
-  let trainingSparringPlayerScore = 0;
-  let trainingSparringOpponentScore = 0;
-  let trainingSparringBotRespawnTimer = 0;
-  let trainingSparringBotDeathCounted = false;
-  let trainingSparringPlayerDeathCounted = false;
 
   let trainingGadgetNoCooldown = true;
   let trainingGadgetPanelKey = '';
@@ -46019,7 +46033,6 @@ isBrawlerLabMode = false;
 
   function exitTrainingModeToHome() {
       isTraining = false;
-      resetTrainingSparringState();
       isTutorialMode = false;
       playing = false;
       closeTrainingCaveUI();
@@ -46300,110 +46313,6 @@ isBrawlerLabMode = false;
       updateTrainingCaveUI();
   }
 
-  // 1v1 sparring: a full-kit AI opponent the player picks, with rounds and
-  // automatic respawns. Built on the existing duel-spawner path
-  // (spawnTrainingCustomEnemy with AI on), so the bot runs the standard
-  // Bots 3.0 combat AI: main attack, Super, gadgets, Hypercharge.
-  // Dummies, the 15-bot grid, and allies are untouched by sparring.
-  function resetTrainingSparringState() {
-      trainingSparringActive = false;
-      trainingSparringPlayerScore = 0;
-      trainingSparringOpponentScore = 0;
-      trainingSparringBotRespawnTimer = 0;
-      trainingSparringBotDeathCounted = false;
-      trainingSparringPlayerDeathCounted = false;
-      for (let i = bots.length - 1; i >= 0; i--) {
-          if (bots[i].isTrainingSparringBot) bots.splice(i, 1);
-      }
-  }
-
-  function refreshTrainingSparringUI() {
-      const el = document.getElementById('tcSparScore');
-      if (el) {
-          el.textContent = trainingSparringActive
-              ? `YOU ${trainingSparringPlayerScore} – ${trainingSparringOpponentScore} ${(brawlerData[trainingSparringOpponentId] || { name: trainingSparringOpponentId }).name.toUpperCase()}`
-              : 'No spar running — pick an opponent and press START SPAR.';
-      }
-      const btn = document.getElementById('tcStartSparBtn');
-      if (btn) btn.textContent = trainingSparringActive ? '🔄 RESTART SPAR' : '⚔️ START SPAR';
-  }
-
-  function spawnTrainingSparringBot(brawlerId) {
-      const prevCustomId = trainingCaveCustomEnemyId;
-      const bot = spawnTrainingCustomEnemy(brawlerId, true);
-      trainingCaveCustomEnemyId = prevCustomId;
-      if (!bot) return null;
-      bot.isTrainingSparringBot = true;
-      bot.gadgetUnlocked = true;
-      bot.hyperchargeUnlocked = true;
-      bot.selectedGadget = 'g1';
-      if (typeof getScaledStats === 'function') {
-          try { const st = getScaledStats(brawlerId, 11); if (st && st.speed) bot.speed = st.speed; } catch (_) {}
-      }
-      bot.baseX = 3100; bot.baseY = 1300; bot.x = 3100; bot.y = 1300;
-      return bot;
-  }
-
-  function startTrainingSparring(brawlerId) {
-      if (!isTraining || isTutorialMode || !player) return null;
-      if (brawlerId && allBrawlers.includes(brawlerId) && !disabledBrawlers.has(brawlerId)) trainingSparringOpponentId = brawlerId;
-      clearTrainingCustomEnemies();
-      resetTrainingSparringState();
-      trainingSparringActive = true;
-      player.x = 2950; player.y = 1300; player.vx = 0; player.vy = 0;
-      const bot = spawnTrainingSparringBot(trainingSparringOpponentId);
-      const bName = (brawlerData[trainingSparringOpponentId] || { name: trainingSparringOpponentId }).name;
-      spawnFloatingText(player.x, player.y - 48, `SPARRING START: YOU vs ${bName.toUpperCase()}!`, '#ff4d6d');
-      refreshTrainingSparringUI();
-      updateTrainingCaveUI();
-      return bot;
-  }
-
-  function stopTrainingSparring() {
-      resetTrainingSparringState();
-      if (player) spawnFloatingText(player.x, player.y - 48, 'SPARRING STOPPED', '#b0c6df');
-      refreshTrainingSparringUI();
-      updateTrainingCaveUI();
-  }
-
-  function updateTrainingSparring(dt) {
-      if (!trainingSparringActive) return;
-      const sparBot = bots.find(b => b.isTrainingSparringBot);
-      if (!sparBot) {
-          trainingSparringBotRespawnTimer += dt;
-          if (trainingSparringBotRespawnTimer >= 1.5) {
-              trainingSparringBotRespawnTimer = 0;
-              trainingSparringBotDeathCounted = false;
-              spawnTrainingSparringBot(trainingSparringOpponentId);
-          }
-      } else if (sparBot.hp <= 0 || sparBot.isDead) {
-          if (!trainingSparringBotDeathCounted) {
-              trainingSparringBotDeathCounted = true;
-              trainingSparringPlayerScore++;
-              spawnFloatingText(sparBot.x, sparBot.y - 36, 'YOU WIN THE ROUND!', '#5df2c2');
-              refreshTrainingSparringUI();
-          }
-          trainingSparringBotRespawnTimer += dt;
-          if (trainingSparringBotRespawnTimer >= 1.5) {
-              trainingSparringBotRespawnTimer = 0;
-              trainingSparringBotDeathCounted = false;
-              restoreRespawningEntity(sparBot, { x: 3100, y: 1300 }, false, 1000);
-              sparBot.baseX = 3100; sparBot.baseY = 1300;
-          }
-      } else {
-          trainingSparringBotRespawnTimer = 0;
-      }
-      if (player.hp <= 0 && !trainingSparringPlayerDeathCounted) {
-          trainingSparringPlayerDeathCounted = true;
-          trainingSparringOpponentScore++;
-          spawnFloatingText(player.x, player.y - 36, 'OPPONENT WINS THE ROUND!', '#ff4d6d');
-          refreshTrainingSparringUI();
-      } else if (player.hp > 0 && trainingSparringPlayerDeathCounted) {
-          trainingSparringPlayerDeathCounted = false;
-          player.x = 2950; player.y = 1300; player.vx = 0; player.vy = 0;
-      }
-  }
-
   function initTrainingCaveUI() {
       closeTrainingCaveUI();
       if (!isTraining || isTutorialMode) return;
@@ -46466,18 +46375,6 @@ isBrawlerLabMode = false;
               <button id="tcSpawnEnemyDummyBtn" style="flex:1;min-width:72px;padding:6px 8px;border-radius:7px;border:1px solid #a29bfe;background:rgba(162,155,254,0.2);color:#dcd6ff;font-size:11px;font-weight:800;cursor:pointer;">🎯 Dummy</button>
               <button id="tcClearEnemyBtn" style="padding:6px 8px;border-radius:7px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.06);color:#b0c6df;font-size:11px;font-weight:800;cursor:pointer;">❌ Clear</button>
             </div>
-          </div>
-
-          <!-- 3b. 1v1 Sparring (Shoots Back) -->
-          <div style="background:rgba(10,24,42,0.7);padding:8px 10px;border-radius:10px;border:1px solid rgba(255,77,109,0.45);">
-            <div style="font-size:11px;font-weight:900;color:#ff8fa3;letter-spacing:0.5px;margin-bottom:6px;">🥊 1V1 SPARRING (SHOOTS BACK)</div>
-            <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;">
-              <select id="tcSparSelect" style="flex:2;min-width:110px;height:30px;background:#051020;border:1px solid rgba(255,107,129,0.4);border-radius:7px;color:#fff;font-size:11px;font-weight:800;padding:0 6px;outline:none;"></select>
-              <button id="tcStartSparBtn" style="flex:1;min-width:80px;padding:6px 8px;border-radius:7px;border:1px solid #ff4d6d;background:rgba(255,77,109,0.25);color:#ff8fa3;font-size:11px;font-weight:800;cursor:pointer;">⚔️ START SPAR</button>
-              <button id="tcStopSparBtn" style="padding:6px 8px;border-radius:7px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.06);color:#b0c6df;font-size:11px;font-weight:800;cursor:pointer;">❌ STOP</button>
-            </div>
-            <p id="tcSparScore" role="status" style="margin:6px 0 0;font-size:11px;color:#ffd166;">No spar running — pick an opponent and press START SPAR.</p>
-            <p style="margin:4px 0 0;font-size:10px;color:#9bc8e6;">Full-kit AI opponent: main attack, Super, gadgets, Hypercharge. Rounds respawn automatically. Dummies stay available.</p>
           </div>
 
           <!-- 4. Quick Powers & Teleport -->
@@ -46557,29 +46454,6 @@ isBrawlerLabMode = false;
       };
       deck.querySelector('#tcClearEnemyBtn').onclick = () => clearTrainingCustomEnemies();
 
-      const sparSelect = deck.querySelector('#tcSparSelect');
-      if (sparSelect) {
-          const sortedSparBrawlers = allBrawlers.filter(b => !disabledBrawlers.has(b)).slice().sort((a, b) => {
-              const na = (brawlerData[a] || { name: a }).name;
-              const nb = (brawlerData[b] || { name: b }).name;
-              return na.localeCompare(nb);
-          });
-          for (const b of sortedSparBrawlers) {
-              const opt = document.createElement('option');
-              opt.value = b;
-              const def = brawlerData[b] || { name: b };
-              opt.textContent = `${def.name} (${def.role || 'Fighter'})`;
-              if (b === trainingSparringOpponentId) opt.selected = true;
-              sparSelect.appendChild(opt);
-          }
-          sparSelect.onchange = () => { trainingSparringOpponentId = sparSelect.value; };
-      }
-      deck.querySelector('#tcStartSparBtn').onclick = () => {
-          const bId = sparSelect ? sparSelect.value : trainingSparringOpponentId;
-          startTrainingSparring(bId);
-      };
-      deck.querySelector('#tcStopSparBtn').onclick = () => stopTrainingSparring();
-
       deck.querySelector('#tcRefillSuperBtn').onclick = () => {
           superCharge = 100;
           player.superCharge = 100;
@@ -46627,12 +46501,10 @@ isBrawlerLabMode = false;
       const allyCount = bots.filter(b => b.isTrainingAlly && b.hp > 0).length;
       const countEl = trainingCaveDeckPanel.querySelector('#tcAllyCountLabel');
       if (countEl) countEl.textContent = `${allyCount} Active ${allyCount === 1 ? 'Ally' : 'Allies'}`;
-      refreshTrainingSparringUI();
   }
 
   function updateTrainingCaveMode(dt, now) {
       if (!isTraining || isTutorialMode) return;
-      updateTrainingSparring(dt);
       if (isBrawlerLabMode) {
           if (player.hp <= 1 || player.isDead) {
               player.hp = player.maxHp;
@@ -46788,7 +46660,6 @@ isBrawlerLabMode = false;
       selectedBrawler = allBrawlers.includes(targetBrawler) ? targetBrawler : 'outlit';
       if (brawlerSelect) brawlerSelect.value = selectedBrawler;
       isTraining = true;
-      resetTrainingSparringState();
       clearShowdownModifier();
       isTutorialMode = false;
       isDuoShowdown = false;
