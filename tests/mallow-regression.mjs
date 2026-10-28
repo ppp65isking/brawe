@@ -32,7 +32,7 @@ check('stats branch 6800/320/270', game.includes("if (brawlerId === 'mallow') {"
 check('super charge 12 hits', game.includes('mallow:12'));
 check('reload 1500ms', game.includes('mallow: 1500,'));
 check('fire delay 550ms', game.includes('mallow: 550,'));
-check('brawlerData entry present', game.includes("'mallow': { name: 'Mallow'") && game.includes("attack: 'Marshmallow Spray'") && game.includes("super: 'Overheated'"));
+check('brawlerData entry present (multi-line table entry, strays deleted 2026-10-28)', game.includes("'mallow': {") && game.includes("name: 'Mallow'") && game.includes("attack: 'Marshmallow Spray'") && game.includes("super: 'Overheated'"));
 check('brawlerData has one real gadget + one real star', game.includes("g1: 'Sticky Volley") && game.includes("sp1: 'Toasted Haste"));
 check('gadget cooldown map entry', game.includes('mallow: { g1: 12000, g2: 12000 },'));
 check('fire branch exists with 8-volley + per-hit charge + channel lock',

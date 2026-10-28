@@ -7,9 +7,11 @@
 //  * Super reworked: grounded spin, NO jump, ring of 12 daggers 30 deg
 //    apart, 640px out + return, 1100 damage each way, at most once per
 //    target per pass. Name 'Boomerang Blades' kept (blades still return).
-//  * Hyper homing kept, stuck-blade bug patched: blades expire on a
-//    4000ms lifetime cap even while homing; per-pass hit maps cap damage
-//    at once per target per pass. Hyper poison puddles REMOVED entirely.
+//  * Hyper REWORKED 2026-10-28: homing REMOVED, replaced by a shield zone
+//    around Nightshade that blocks enemy projectiles while a Hypercharged
+//    Super's blades are out (until they return). Blades still expire on a
+//    4000ms lifetime cap; per-pass hit maps cap damage at once per target
+//    per pass. Hyper poison puddles REMOVED entirely.
 //  * Roster bug: the HUD brawler dropdown shipped as static HTML with
 //    only 29 options and was only rebuilt on a Soul Summoner auto-unlock,
 //    so the newest brawlers never appeared. Fixed by rebuilding once at
@@ -70,15 +72,15 @@ check('fan half-spread is now 0.18 rad (was 0.36)', near(0.36 / 2, 0.18));
 check('poison dps halved 120 -> 60', game.includes('const NIGHTSHADE_POISON_DPS = 60;') && !game.includes('NIGHTSHADE_POISON_DPS = 120'));
 check('poison cap 4 kept for non-hyper attacks', game.includes('const NIGHTSHADE_POISON_MAX_STACKS = 4;'));
 check('blade count 2 -> 12', game.includes('const NIGHTSHADE_BLADE_COUNT = 12;') && !game.includes('NIGHTSHADE_BLADE_COUNT = 2;'));
-check('blade range/speed/damage unchanged 640/900/1100', game.includes('const NIGHTSHADE_BLADE_RANGE = 640;') && game.includes('const NIGHTSHADE_BLADE_SPEED = 900;') && game.includes('const NIGHTSHADE_BLADE_DAMAGE = 1100;'));
+check('blade range/damage kept 640/1100, speed nerfed 900 -> 630 (-30%)', game.includes('const NIGHTSHADE_BLADE_RANGE = 640;') && game.includes('const NIGHTSHADE_BLADE_SPEED = 630;') && game.includes('const NIGHTSHADE_BLADE_DAMAGE = 1100;'));
 check('blade lifetime cap 4000ms exists', game.includes('const NIGHTSHADE_BLADE_MAX_LIFE_MS = 4000;'));
-check('blade lifetime cap enforced in update loop (even while homing)', game.includes('if (now - blade.bornAt > NIGHTSHADE_BLADE_MAX_LIFE_MS) { nightshadeBlades.splice(i, 1); continue; }'));
-check('lifetime budget covers legit flights (640 out + 500 home detour + 640 back = 1780px ~ 2.0s < 4.0s)', 4000 > (640 + 500 + 640) / 900 * 1000);
+check('blade lifetime cap enforced in update loop', game.includes('if (now - blade.bornAt > NIGHTSHADE_BLADE_MAX_LIFE_MS) { nightshadeBlades.splice(i, 1); continue; }'));
+check('lifetime budget covers legit flights (640 out + 640 back = 1280px at 630px/s ~ 2.1s < 4.0s)', 4000 > (640 + 640) / 630 * 1000);
 check('blade state carries bornAt (no distSincePuddle)', game.includes('bornAt: performance.now(), hitOut: {}, hitBack: {},') && !game.includes('distSincePuddle'));
 check('per-pass damage caps kept (hitOut/hitBack)', game.includes('if (blade.hitOut[target.id]) continue;') && game.includes('if (blade.hitBack[target.id]) continue;'));
 check('hyper uncapped stacks: apply fn takes uncapped flag', game.includes('function applyNightshadePoisonStacks(target, owner, count, uncapped)') && game.includes('if (!uncapped && target.nightshadePoisonStacks.length >= NIGHTSHADE_POISON_MAX_STACKS)'));
 check('hyper uncapped stacks: dagger hit passes hyperVisual', game.includes('applyNightshadePoisonStacks(target, owner, 1, !!(b && b.hyperVisual))'));
-check('hyper homing kept (500px poisoned-enemy home range)', game.includes('const NIGHTSHADE_BLADE_HOME_RANGE = 500;') && game.includes('if (blade.hyper) {'));
+check('hyper homing REMOVED (no HOME_RANGE, no hyper homing branch)', !game.includes('NIGHTSHADE_BLADE_HOME_RANGE') && !game.includes('home toward the nearest poisoned') && game.includes('const NIGHTSHADE_SHIELD_RADIUS = 120;') && game.includes('function nightshadeHyperShieldBlocks(b)'));
 check('hyper wall-pierce kept (non-hyper blades stop on walls)', game.includes('if (!blade.hyper && nightshadeHitsWall(blade.x, blade.y, NIGHTSHADE_BLADE_RADIUS))'));
 check('puddles fully removed (constants, state, updater, tick flag, render)', !game.includes('NIGHTSHADE_PUDDLE') && !game.includes('nightshadePuddles') && !game.includes('updateNightshadePuddles') && !game.includes('nightshadePuddleTick'));
 check('super ring: 30-degree steps, no aim', extractFn(game, 'castNightshadeSuper').includes('k * (Math.PI * 2 / NIGHTSHADE_BLADE_COUNT)') && !extractFn(game, 'castNightshadeSuper').includes('atan2'));
@@ -87,12 +89,17 @@ check('super ring: spin FX rendered', game.includes('nightshadeSpinFx = nightsha
 check('super keeps name Boomerang Blades + spin floating text', game.includes("super: 'Boomerang Blades'") && game.includes('🌀 BOOMERANG BLADES!'));
 
 // ---------------------------------------------------------- 2. kit-def text
-const kitLine = game.split('\n').find((l) => l.includes("'nightshade': { name: 'Nightshade'"));
-check('kit def line found', !!kitLine);
+// Kit entries are multi-line in brawlerData now (moved out of the stray
+// SPECIAL_ABILITY_DEFS lines 2026-10-28), so pin against a window of the
+// nightshade entry inside the brawlerData block instead of one line.
+const brawlerDataIdx = game.indexOf('const brawlerData = {');
+const nightshadeIdx = game.indexOf("'nightshade': {", brawlerDataIdx);
+const kitLine = nightshadeIdx > 0 ? game.slice(nightshadeIdx, nightshadeIdx + 2500) : '';
+check('kit def entry found in brawlerData', !!kitLine);
 if (kitLine) {
-  check('attackDesc: tight cone, 800 each, 60/s, cap 4, hyper uncapped note', kitLine.includes('Throws 4 daggers in a tight super-short cone (800 damage each)') && kitLine.includes('60 damage per second for 8 seconds, stacking up to 4 times (no limit while Hypercharged)'));
+  check('attackDesc: tight cone, 640 each (-20%), 60/s, cap 4, hyper uncapped note', kitLine.includes('Throws 4 daggers in a tight super-short cone (640 damage each)') && kitLine.includes('60 damage per second for 8 seconds, stacking up to 4 times (no limit while Hypercharged)'));
   check('superDesc: spin in place, ring of 12, out + return, 1100 each way, once per target each way', kitLine.includes('spins in place and releases a ring of 12 daggers in all directions') && kitLine.includes('flies out 8 tiles and returns to her, dealing 1,100 damage on the way out and 1,100 on the way back, at most once per target each way'));
-  check('hyper text: pierce + homing + infinite stacks, NO puddle mention', kitLine.includes('Super blades pierce walls and home toward the nearest poisoned enemy on the return path') && kitLine.includes('stack poison without limit') && !kitLine.toLowerCase().includes('puddle'));
+  check('hyper text: pierce + shield zone + infinite stacks, NO homing/puddle mention', kitLine.includes('Super blades pierce walls') && kitLine.includes('shield zone around Nightshade blocks enemy projectiles until the daggers return') && kitLine.includes('stack poison without limit') && !kitLine.toLowerCase().includes('puddle') && !kitLine.includes('home toward'));
   check('gadgets unchanged (Backstab Dash / Purge Vial, 200 HP per stack)', kitLine.includes("g1: 'Backstab Dash") && kitLine.includes("g2: 'Purge Vial") && kitLine.includes('heal 200 HP per stack detonated'));
   check('star powers unchanged (Lingering Toxin 10s / Fresh Wounds +20%)', kitLine.includes("sp1: 'Lingering Toxin (Poison lasts 10 seconds instead of 8 seconds.)") && kitLine.includes("sp2: 'Fresh Wounds (Daggers deal +20% damage to enemies that are already poisoned.)"));
   check('no stale 120/s or 2-blade text in nightshade kit line', !kitLine.includes('120 damage per second') && !kitLine.includes('Throws 2 spinning'));
@@ -180,7 +187,7 @@ try {
     performance: { now: () => 100000 },
     NIGHTSHADE_ENABLED: true,
     NIGHTSHADE_BLADE_COUNT: 12,
-    NIGHTSHADE_BLADE_SPEED: 900,
+    NIGHTSHADE_BLADE_SPEED: 630,
     nightshadeBlades: [],
     nightshadeSpinFx: [],
     spawnFloatingText: () => {},
@@ -205,7 +212,7 @@ try {
   }
   check('ring vm: blades 30 deg apart (k x 30 deg), ignoring aim', anglesOk);
   check('ring vm: all blades start at caster, outbound, non-hyper', originsOk);
-  check('ring vm: blade speed is 900px/s', sandbox.nightshadeBlades.every((b) => near(Math.hypot(b.vx, b.vy), 900)));
+  check('ring vm: blade speed is 630px/s (-30%)', sandbox.nightshadeBlades.every((b) => near(Math.hypot(b.vx, b.vy), 630)));
   check('ring vm: spin FX pushed at caster for 350ms', sandbox.nightshadeSpinFx.length === 1 && sandbox.nightshadeSpinFx[0].x === 100 && sandbox.nightshadeSpinFx[0].until === 100350);
   sandbox.nightshadeBlades.length = 0;
   sandbox.nightshadeSpinFx.length = 0;

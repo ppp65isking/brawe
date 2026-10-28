@@ -1,13 +1,14 @@
 // Nightshade regression — Anthony's hooded poison Assassin, ordered 2026-10-28
 // (design fully delegated: name, rarity, numbers, 2 Gadgets, 2 Star Powers).
 // Locked design: Mythic Assassin, 6400 HP / 300 speed, Viper Fan main
-// (4 daggers, tight super-short cone, 800 each, 1 poison stack per dagger:
+// (4 daggers, tight super-short cone, 640 each, 1 poison stack per dagger:
 // 60 damage/s for 8s, stacking to 4, 15 damage per 250ms tick; uncapped
 // while Hypercharged). Super Boomerang Blades: Nightshade spins in place
 // and releases a ring of 12 daggers that fly out 8 tiles and return, 1100
 // damage each way per dagger, once per target per pass. Hypercharge Toxic
-// Tempest: blades pierce walls and home toward the nearest poisoned enemy
-// on return (lifetime-capped); poison puddles REMOVED 2026-10-28. Gadgets:
+// Tempest: blades pierce walls; while a Hypercharged Super's blades are out,
+// a shield zone around Nightshade blocks enemy projectiles until the daggers
+// return (homing REMOVED 2026-10-28); poison puddles REMOVED 2026-10-28. Gadgets:
 // Backstab Dash (16s) and Purge Vial (18s). Star Powers: Lingering Toxin
 // (8s -> 10s) and Fresh Wounds (+20% dagger damage vs poisoned enemies).
 // Poison NEVER damages Arena Forge structures. Dagger art is a DEDICATED
@@ -33,20 +34,20 @@ check('roster includes nightshade after mallow', game.includes("'feathers', 'spi
 check('rarity Mythic (count bumped 12 -> 13)', game.includes('// Mythic (13)') && game.includes("nightshade: 'Mythic',"));
 check('role Assassin', game.includes("nightshade:'Assassin',"));
 check('portrait icon present', game.includes("nightshade: '🗡️',"));
-check('stats branch 6400/800/300', game.includes("if (brawlerId === 'nightshade') {") && game.includes('hp: Math.round(6400 * scale), dmg: Math.round(800 * scale), speed: 300'));
+check('stats branch 6400/640/300 (main dmg -20% 2026-10-28)', game.includes("if (brawlerId === 'nightshade') {") && game.includes('hp: Math.round(6400 * scale), dmg: Math.round(640 * scale), speed: 300'));
 check('super charge 6 hits', game.includes('nightshade: 6'));
 check('reload 1600ms', game.includes('nightshade: 1600,'));
 check('fire delay 300ms', game.includes('nightshade: 300,'));
-check('kit def present with Viper Fan + Boomerang Blades', game.includes("'nightshade': { name: 'Nightshade'") && game.includes("attack: 'Viper Fan'") && game.includes("super: 'Boomerang Blades'"));
+check('kit def present with Viper Fan + Boomerang Blades', game.includes("'nightshade': {") && game.includes("attack: 'Viper Fan'") && game.includes("super: 'Boomerang Blades'"));
 check('kit def has finished gadget text (no placeholders)', game.includes("g1: 'Backstab Dash") && game.includes("g2: 'Purge Vial") && !game.includes('Nightshade gadget coming soon') && !game.includes('Nightshade star coming soon'));
 check('kit def has finished star power text (no placeholders)', game.includes("sp1: 'Lingering Toxin") && game.includes("sp2: 'Fresh Wounds"));
 check('kit def hyper text is Toxic Tempest', game.includes("hyper: 'Toxic Tempest:"));
 check('gadget cooldown map entry 16s/18s', game.includes('nightshade: { g1: 16000, g2: 18000 },'));
 check('fire branch exists with 4-dagger fan + poison flag', game.includes("brawler === 'nightshade'") && game.includes('NIGHTSHADE_DAGGER_COUNT') && game.includes('isNightshadeDagger: true'));
-check('dagger constants 4 / 560px / 1000px-s / 0.36 rad', game.includes('const NIGHTSHADE_DAGGER_COUNT = 4;') && game.includes('const NIGHTSHADE_DAGGER_RANGE = 560;') && game.includes('const NIGHTSHADE_DAGGER_SPEED = 1000;') && game.includes('const NIGHTSHADE_DAGGER_FAN_ARC = 0.36;'));
+check('dagger constants 4 / 560px / 700px-s (-30%) / 0.36 rad', game.includes('const NIGHTSHADE_DAGGER_COUNT = 4;') && game.includes('const NIGHTSHADE_DAGGER_RANGE = 560;') && game.includes('const NIGHTSHADE_DAGGER_SPEED = 700;') && game.includes('const NIGHTSHADE_DAGGER_FAN_ARC = 0.36;'));
 check('poison constants 60 dps / 250ms tick / 8s / cap 4', game.includes('const NIGHTSHADE_POISON_DPS = 60;') && game.includes('const NIGHTSHADE_POISON_TICK_MS = 250;') && game.includes('const NIGHTSHADE_POISON_DURATION_MS = 8000;') && game.includes('const NIGHTSHADE_POISON_MAX_STACKS = 4;'));
 check('SP1 poison duration is 10s', game.includes('const NIGHTSHADE_POISON_DURATION_SP1_MS = 10000;'));
-check('blade constants 12 / 640px / 900px-s / 1100 dmg', game.includes('const NIGHTSHADE_BLADE_COUNT = 12;') && game.includes('const NIGHTSHADE_BLADE_RANGE = 640;') && game.includes('const NIGHTSHADE_BLADE_SPEED = 900;') && game.includes('const NIGHTSHADE_BLADE_DAMAGE = 1100;'));
+check('blade constants 12 / 640px / 630px-s (-30%) / 1100 dmg', game.includes('const NIGHTSHADE_BLADE_COUNT = 12;') && game.includes('const NIGHTSHADE_BLADE_RANGE = 640;') && game.includes('const NIGHTSHADE_BLADE_SPEED = 630;') && game.includes('const NIGHTSHADE_BLADE_DAMAGE = 1100;'));
 check('blade lifetime cap constant 4000ms', game.includes('const NIGHTSHADE_BLADE_MAX_LIFE_MS = 4000;'));
 check('hyper puddles removed (no puddle constants, state, or updater)', !game.includes('NIGHTSHADE_PUDDLE') && !game.includes('nightshadePuddles') && !game.includes('updateNightshadePuddles') && !game.includes('nightshadePuddleTick'));
 check('gadget constants dash 240px/200ms, purge 400px/200hp', game.includes('const NIGHTSHADE_GADGET1_DASH_DISTANCE = 240;') && game.includes('const NIGHTSHADE_GADGET1_DASH_DURATION_MS = 200;') && game.includes('const NIGHTSHADE_GADGET2_RADIUS = 400;') && game.includes('const NIGHTSHADE_GADGET2_HEAL_PER_STACK = 200;'));
@@ -195,7 +196,7 @@ try {
     performance: { now: () => 100000 },
     clamp: (v, a, b) => Math.min(b, Math.max(a, v)),
     WORLD_W: 4000, WORLD_H: 4000,
-    NIGHTSHADE_BLADE_SPEED: 900,
+    NIGHTSHADE_BLADE_SPEED: 630,
     NIGHTSHADE_GADGET1_DASH_DISTANCE: 240,
     NIGHTSHADE_GADGET1_DASH_DURATION_MS: 200,
   };
@@ -206,7 +207,7 @@ try {
     sandbox);
   const owner = { id: 9, x: 100, y: 100 };
   const blade = sandbox.createNightshadeBladeState(owner, 100, 100, 0, false);
-  check('blade: starts outbound at 900px/s', blade.outbound === true && near(blade.vx, 900) && near(blade.vy, 0));
+  check('blade: starts outbound at 630px/s (-30%)', blade.outbound === true && near(blade.vx, 630) && near(blade.vy, 0));
   check('blade: traveled starts at 0', blade.traveled === 0);
   check('blade: bornAt set for lifetime cap', blade.bornAt === 100000);
   check('blade: hyper flag false by default', blade.hyper === false);

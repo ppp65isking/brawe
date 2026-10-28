@@ -273,7 +273,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         }
         if (brawlerId === 'nightshade') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp: Math.round(6400 * scale), dmg: Math.round(800 * scale), speed: 300 };
+            return { hp: Math.round(6400 * scale), dmg: Math.round(640 * scale), speed: 300 };
         }
         if (brawlerId === 'looma') {
             const scale = 0.55 + (level - 1) * 0.045;
@@ -9740,7 +9740,29 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
             'tower_core': { name: 'The Core', color: '#ffea00', role: 'Objective' },
             'turret': { name: 'Defensive Turret', color: '#00ffff', role: 'Defense' },
             'wall_structure': { name: 'Reinforced Wall', color: '#a8b8c8', role: 'Barrier' },
-            'decoy_healer': { name: 'Decoy Healer', color: '#39ff14', role: 'Support' }
+            'decoy_healer': { name: 'Decoy Healer', color: '#39ff14', role: 'Support' },
+      'mallow': {
+          name: 'Mallow', role: 'Controller', rarity: 'Epic', color: '#ffdfb0',
+          desc: 'A puffy marshmallow Controller who sprays sticky-slow fans and dashes through Overheated marshmallow trails that burn and burst.',
+          attack: 'Marshmallow Spray', attackDesc: 'Fires 8 marshmallows in a wide Pam-style fan (320 damage each). Each hit slows by 4% for 1s, stacking to 32%. Cannot attack again until the volley finishes.',
+          super: 'Overheated', superDesc: 'Aim and dash smoothly forward, leaving 6 marshmallow trail puffs. Enemies on the trail burn, and each puff explodes 1.32s after placement for 400 damage. Holds 2 charges — aim each dash separately.',
+          hyper: 'Hyper Marshmallows: visuals turn purple; main attack marshmallows explode at the end of flight for burn damage. Overheated dashes faster and further, dashes twice, leaves a wider trail, and hyper trail explosions release 4 mini-mallows in a + shape that explode again for 150 damage each.',
+          g1: 'Sticky Volley (Next volley applies 6% slow per hit instead of 4%)',
+          g2: 'Second Tool coming soon.',
+          sp1: 'Toasted Haste (Move 5% faster while an enemy is slowed by your marshmallows)',
+          sp2: 'Second Talent coming soon.'
+      },
+      'nightshade': {
+          name: 'Nightshade', role: 'Assassin', rarity: 'Mythic', color: '#9b5cff',
+          desc: 'A hooded Assassin who fans poisoned daggers in a short cone. Every dagger stacks venom that melts enemies over time, and her spinning blades return for a second cut.',
+          attack: 'Viper Fan', attackDesc: 'Throws 4 daggers in a tight super-short cone (640 damage each). Each dagger applies 1 poison stack: 60 damage per second for 8 seconds, stacking up to 4 times (no limit while Hypercharged).',
+          super: 'Boomerang Blades', superDesc: 'Nightshade spins in place and releases a ring of 12 daggers in all directions. Each dagger flies out 8 tiles and returns to her, dealing 1,100 damage on the way out and 1,100 on the way back, at most once per target each way.',
+          hyper: 'Toxic Tempest: Super blades pierce walls, and while her Hypercharged Super blades are out, a shield zone around Nightshade blocks enemy projectiles until the daggers return. While Hypercharged, Viper Fan daggers stack poison without limit.',
+          g1: 'Backstab Dash (Dash 3 tiles forward. Passing through an enemy applies 2 poison stacks to them.)',
+          g2: 'Purge Vial (Detonate all poison stacks on enemies within 5 tiles, dealing their remaining poison damage instantly, and heal 200 HP per stack detonated.)',
+          sp1: 'Lingering Toxin (Poison lasts 10 seconds instead of 8 seconds.)',
+          sp2: 'Fresh Wounds (Daggers deal +20% damage to enemies that are already poisoned.)'
+      }
   };
 
     // Player-facing BRAWE vocabulary. Legacy save keys and combat identifiers
@@ -17387,8 +17409,6 @@ let heistFeverActive = false;
           pieceName: 'Electrostien Signature Piece',
           shortDesc: 'Arm the Family Circuit with the Signature button (R): while Electrostien is inside the Electric Realm, every punch he lands echoes as a Bolznstien-style sky strike (500 damage) on the realm victim. His Pieces are EARNED, never bought: win 3 battles with Electrostien (1 Piece per win). No Core Piece cost.'
       },
-      'mallow': { name: 'Mallow', role: 'Controller', desc: 'A puffy marshmallow Controller who sprays sticky-slow fans and dashes through Overheated marshmallow trails that burn and burst.', color: '#ffdfb0', attack: 'Marshmallow Spray', attackDesc: 'Fires 8 marshmallows in a wide Pam-style fan (320 damage each). Each hit slows by 4% for 1s, stacking to 32%. Cannot attack again until the volley finishes.', super: 'Overheated', superDesc: 'Aim and dash smoothly forward, leaving 6 marshmallow trail puffs. Enemies on the trail burn, and each puff explodes 1.32s after placement for 400 damage. Holds 2 charges — aim each dash separately.', hyper: 'Hyper Marshmallows: visuals turn purple; main attack marshmallows explode at the end of flight for burn damage. Overheated dashes faster and further, dashes twice, leaves a wider trail, and hyper trail explosions release 4 mini-mallows in a + shape that explode again for 150 damage each.', g1: 'Sticky Volley (Next volley applies 6% slow per hit instead of 4%)', g2: 'Second Tool coming soon.', sp1: 'Toasted Haste (Move 5% faster while an enemy is slowed by your marshmallows)', sp2: 'Second Talent coming soon.' },
-      'nightshade': { name: 'Nightshade', role: 'Assassin', desc: 'A hooded Assassin who fans poisoned daggers in a short cone. Every dagger stacks venom that melts enemies over time, and her spinning blades return for a second cut.', color: '#9b5cff', attack: 'Viper Fan', attackDesc: 'Throws 4 daggers in a tight super-short cone (800 damage each). Each dagger applies 1 poison stack: 60 damage per second for 8 seconds, stacking up to 4 times (no limit while Hypercharged).', super: 'Boomerang Blades', superDesc: 'Nightshade spins in place and releases a ring of 12 daggers in all directions. Each dagger flies out 8 tiles and returns to her, dealing 1,100 damage on the way out and 1,100 on the way back, at most once per target each way.', hyper: 'Toxic Tempest: Super blades pierce walls and home toward the nearest poisoned enemy on the return path. While Hypercharged, Viper Fan daggers stack poison without limit.', g1: 'Backstab Dash (Dash 3 tiles forward. Passing through an enemy applies 2 poison stacks to them.)', g2: 'Purge Vial (Detonate all poison stacks on enemies within 5 tiles, dealing their remaining poison damage instantly, and heal 200 HP per stack detonated.)', sp1: 'Lingering Toxin (Poison lasts 10 seconds instead of 8 seconds.)', sp2: 'Fresh Wounds (Daggers deal +20% damage to enemies that are already poisoned.)' },
       fightnfire: {
           type: 'instinct',
           name: 'Flash Freeze',
@@ -20889,8 +20909,9 @@ let heistFeverActive = false;
     // uncapped while Hypercharged). Super: Nightshade spins in place and
     // releases a ring of 12 daggers that fly out and return, cutting on
     // each pass (once per target per pass). Hypercharge: blades pierce
-    // walls and home toward poisoned enemies on return (lifetime-capped
-    // so a homing blade can never orbit forever); no poison puddles.
+    // walls, and while a Hypercharged Super's blades are out, a shield
+    // zone around Nightshade blocks enemy projectiles until the daggers
+    // return to her (blades still cut on both passes); no poison puddles.
     // Kill switches are `let` so regression tests can flip them.
     // Dedicated art lives in its OWN branches below: Nightshade daggers
     // are drawn before the universal skin renderer call, never through it
@@ -20899,7 +20920,7 @@ let heistFeverActive = false;
     let NIGHTSHADE_VISUALS_ENABLED = true;
     const NIGHTSHADE_DAGGER_COUNT = 4;
     const NIGHTSHADE_DAGGER_RANGE = 560;
-    const NIGHTSHADE_DAGGER_SPEED = 1000;
+    const NIGHTSHADE_DAGGER_SPEED = 700;
     const NIGHTSHADE_DAGGER_FAN_ARC = 0.36;
     const NIGHTSHADE_POISON_DPS = 60;
     const NIGHTSHADE_POISON_TICK_MS = 250;
@@ -20908,10 +20929,10 @@ let heistFeverActive = false;
     const NIGHTSHADE_POISON_MAX_STACKS = 4;
     const NIGHTSHADE_BLADE_COUNT = 12;
     const NIGHTSHADE_BLADE_RANGE = 640;
-    const NIGHTSHADE_BLADE_SPEED = 900;
+    const NIGHTSHADE_BLADE_SPEED = 630;
     const NIGHTSHADE_BLADE_DAMAGE = 1100;
     const NIGHTSHADE_BLADE_RADIUS = 18;
-    const NIGHTSHADE_BLADE_HOME_RANGE = 500;
+    const NIGHTSHADE_SHIELD_RADIUS = 120;
     const NIGHTSHADE_BLADE_MAX_LIFE_MS = 4000;
     const NIGHTSHADE_GADGET1_DASH_DISTANCE = 240;
     const NIGHTSHADE_GADGET1_DASH_DURATION_MS = 200;
@@ -21069,10 +21090,10 @@ let heistFeverActive = false;
             const blade = nightshadeBlades[i];
             const owner = nightshadeOwnerById(blade.ownerId);
             if (!owner || owner.hp <= 0) { nightshadeBlades.splice(i, 1); continue; }
-            // Lifetime cap: a homing blade chasing a kiting poisoned enemy
-            // could otherwise orbit forever and never return to its owner.
-            // Every blade expires, even while homing; the per-pass hit maps
-            // (hitOut/hitBack) already cap damage at once per target per pass.
+            // Lifetime cap: a blade whose owner keeps moving could
+            // otherwise chase forever and never return. Every blade
+            // expires; the per-pass hit maps (hitOut/hitBack) already cap
+            // damage at once per target per pass.
             if (now - blade.bornAt > NIGHTSHADE_BLADE_MAX_LIFE_MS) { nightshadeBlades.splice(i, 1); continue; }
             const speed = NIGHTSHADE_BLADE_SPEED;
             if (blade.outbound) {
@@ -21081,17 +21102,10 @@ let heistFeverActive = false;
                 blade.traveled += speed * dt;
                 if (blade.traveled >= NIGHTSHADE_BLADE_RANGE) blade.outbound = false;
             } else {
-                let tx = owner.x, ty = owner.y;
-                if (blade.hyper) {
-                    let best = null, bestD = NIGHTSHADE_BLADE_HOME_RANGE;
-                    for (const t of nightshadeEnemyCandidates(owner)) {
-                        if (nightshadeActiveStacks(t, now).length === 0) continue;
-                        const d = Math.hypot(t.x - blade.x, t.y - blade.y);
-                        if (d < bestD) { bestD = d; best = t; }
-                    }
-                    if (best) { tx = best.x; ty = best.y; }
-                }
-                const ang = Math.atan2(ty - blade.y, tx - blade.x);
+                // Return path: straight back to the owner. Hypercharge no
+                // longer homes — it raises the projectile shield instead
+                // (see nightshadeHyperShieldBlocks); wall-pierce stays.
+                const ang = Math.atan2(owner.y - blade.y, owner.x - blade.x);
                 blade.vx = Math.cos(ang) * speed;
                 blade.vy = Math.sin(ang) * speed;
                 blade.x += blade.vx * dt;
@@ -21119,6 +21133,23 @@ let heistFeverActive = false;
                 }
             }
         }
+    }
+    // Nightshade Hyper shield (Toxic Tempest rework 2026-10-28): while a
+    // Hypercharged Super's blades are out, a zone around Nightshade
+    // blocks enemy projectiles. The zone lives exactly as long as at
+    // least one of her Hyper blades is live — it drops the moment the
+    // last blade returns, expires, or is destroyed. Her own and allied
+    // projectiles pass through untouched.
+    function nightshadeHyperShieldBlocks(b) {
+        if (!b || !nightshadeBlades.some((bl) => bl.hyper)) return false;
+        const owner = b.ownerId === player.id ? player : bots.find((bt) => bt.id === b.ownerId);
+        for (const entity of [player, ...bots]) {
+            if (!entity || entity.hp <= 0 || !isNightshadeEntity(entity)) continue;
+            if (!nightshadeBlades.some((bl) => bl.hyper && bl.ownerId === entity.id)) continue;
+            if (owner && (owner.id === entity.id || areAlliedEntities(owner, entity))) continue;
+            if (Math.hypot(b.x - entity.x, b.y - entity.y) <= NIGHTSHADE_SHIELD_RADIUS) return true;
+        }
+        return false;
     }
     function updateNightshadePoisonTicks(now) {
         for (const target of [player, ...bots]) {
@@ -21194,6 +21225,19 @@ let heistFeverActive = false;
             ctx.beginPath(); ctx.arc(0, 0, 6, 0, Math.PI * 2); ctx.fill();
             ctx.fillStyle = '#7be495';
             ctx.beginPath(); ctx.arc(0, 0, 2.5, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+        }
+        for (const entity of [player, ...bots]) {
+            if (!entity || entity.hp <= 0 || !isNightshadeEntity(entity)) continue;
+            if (!nightshadeBlades.some((bl) => bl.hyper && bl.ownerId === entity.id)) continue;
+            ctx.save();
+            ctx.globalAlpha = 0.22;
+            ctx.fillStyle = '#e056fd';
+            ctx.beginPath(); ctx.arc(entity.x, entity.y, NIGHTSHADE_SHIELD_RADIUS, 0, Math.PI * 2); ctx.fill();
+            ctx.globalAlpha = 0.85;
+            ctx.strokeStyle = '#e056fd';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(entity.x, entity.y, NIGHTSHADE_SHIELD_RADIUS, 0, Math.PI * 2); ctx.stroke();
             ctx.restore();
         }
         for (const target of [player, ...bots]) {
@@ -55052,6 +55096,13 @@ function checkHit(target, b, i){
       }
       b.x += b.vx * dt;
       b.y += b.vy * dt;
+      // Nightshade Hyper shield: enemy projectiles die on the zone edge
+      // before hit detection runs later in this same iteration.
+      if (nightshadeHyperShieldBlocks(b)) {
+          explosions.push({ x: b.x, y: b.y, radius: 14, life: 0, maxLife: 0.25, color: 'rgba(224, 86, 253, 0.7)' });
+          bullets.splice(i, 1);
+          continue;
+      }
       if (isPowerPlayShowdownMode && b.ownerBrawler === 'echo' && b.isEchoRingProj && !b.super) {
           b.lastEchoRingPulse = b.lastEchoRingPulse || b.createdAt || now;
           if (now - b.lastEchoRingPulse >= 600) {
