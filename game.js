@@ -275,6 +275,10 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             const scale = 0.55 + (level - 1) * 0.045;
             return { hp: Math.round(6400 * scale), dmg: Math.round(640 * scale), speed: 300 };
         }
+        if (brawlerId === 'aegis') {
+            const scale = 0.55 + (level - 1) * 0.045;
+            return { hp: Math.round(7400 * scale), dmg: Math.round(900 * scale), speed: 270 };
+        }
         if (brawlerId === 'looma') {
             const scale = 0.55 + (level - 1) * 0.045;
             return { hp: Math.round(6600 * scale), dmg: Math.round(1450 * scale), speed: 270 };
@@ -5136,7 +5140,7 @@ const bolznstienPendingStrikes = [];
         'boom_arang', 'teether', 'fuel', 'xray', 'angel', 'demon', 'warrior', 'relay',
         'upiedown', 'chickpig', 'jetpack', 'snapper', 'robber', 'rocketeer',
         'carmela_fudge', 'peter_pickle', 'unstable', 'homer', 'orbo', 'predator', 'fastpass', 'freestyle', 'portalo', 'ghoul', 'jacktrade', 'darkener', 'awakenator', 'adlof', 'cluster', 'witch', 'boomer', 'blade_vane', 'daggershard', 'ice_cream', 'swimmer', 'kage', 'drainbow', 'draflygon', 'axeywaxy', 'trampaheal', 'mageny', 'ramage', 'upgradart', 'cinderion', 'cursed', 'king', 'anti_royal', 'sir_cheeseburger', 'weefee', 'blinkeye', 'bolznstien', 'magnatar', 'oil_maker', 'rager', 'badbat', 'looma',
-        'feathers', 'spikey', 'electrostien', 'mallow', 'nightshade'
+        'feathers', 'spikey', 'electrostien', 'mallow', 'nightshade', 'aegis'
     ];
     const registeredBrawlerModules = window.ArenaForgeModules?.brawlers || Object.create(null);
     for (const moduleId of Object.keys(registeredBrawlerModules)) {
@@ -5242,6 +5246,7 @@ const bolznstienPendingStrikes = [];
             electrostien: 'Mythic',
             freestyle: 'Mythic',
             nightshade: 'Mythic',
+            aegis: 'Mythic',
 
             // Exotic (10)
             the_deleter: 'Exotic',
@@ -9763,6 +9768,17 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           g2: 'Purge Vial (Detonate all poison stacks on enemies and structures within 5 tiles, dealing their remaining poison damage instantly, and heal 200 HP per stack detonated.)',
           sp1: 'Lingering Toxin (Poison lasts 10 seconds instead of 8 seconds.)',
           sp2: 'Fresh Wounds (Daggers deal +20% damage to enemies that are already poisoned.)'
+      },
+      'aegis': {
+          name: 'Aegis', role: 'Controller', rarity: 'Mythic', color: '#f0b429',
+          desc: 'A golden shield-bearer who hurls a wide bulwark that shreds max HP, and drops a bubble fortress no projectile can crack without a fight.',
+          attack: 'Bulwark Throw', attackDesc: 'Hurls a wide shield projectile at medium range (900 damage). On hit, the enemy LOSES 300 max HP until they respawn.',
+          super: 'Blockshot', superDesc: 'Deploys a device inside a wide bubble (180px). No projectile can get in unless it tears that bubble segment open — and then it still has to destroy the 2,200 HP device. The device can be damaged by everyone except its owner, friend or foe.',
+          hyper: 'Aegis Glass: While Hypercharged, Bulwark Throw gains Crystila\'s reflective glass — the flying shield reflects incoming projectiles. Blockshot gains a second bubble layer.',
+          g1: 'Shield Charge (Dash 3 tiles forward, dealing 900 damage to enemies in the path and gaining a 1,500 shield.)',
+          g2: 'Sunder Plate (Your next Bulwark Throw deals +50% damage and shreds 600 max HP instead of 300.)',
+          sp1: 'Wound Weave (Your Blockshot bubble regrows 40 HP per segment per second.)',
+          sp2: 'Sundered Guard (Enemies shredded by Aegis deal 10% less damage until they respawn.)'
       }
   };
 
@@ -10642,6 +10658,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
       electrostien: { g1: 11000, g2: 13000 },
       mallow: { g1: 12000, g2: 12000 },
       nightshade: { g1: 16000, g2: 18000 },
+      aegis: { g1: 16000, g2: 14000 },
       carmela_fudge: { g1: 8000, g2: 8000 },
       bolznstien: { g1: 14000, g2: 15000 },
       sir_cheeseburger: { g1: 13000, g2: 14000 },
@@ -13100,6 +13117,10 @@ function isPowerPlayModifierActive(entity = player) {
 
     function restoreRespawningEntity(entity, spawn, playerControlled = false, invulnerabilityMs = 900) {
         if (!entity) return;
+        // Aegis max-HP shred resets on death (user-confirmed 2026-10-28).
+        if (entity.aegisBaseMaxHp) { entity.maxHp = entity.aegisBaseMaxHp; entity.aegisBaseMaxHp = null; }
+        entity.aegisShredded = false;
+        entity.aegisShredSp2 = false;
         const now = performance.now();
         const fallbackX = entity.team === 'enemy' ? WORLD_W * 0.5 : WORLD_W * 0.5;
         const fallbackY = entity.team === 'enemy' ? 190 : WORLD_H - 190;
@@ -20943,6 +20964,36 @@ let heistFeverActive = false;
     const NIGHTSHADE_GADGET2_HEAL_PER_STACK = 200;
     let nightshadeBlades = [];
     let nightshadeSpinFx = [];
+
+    // ===== Aegis systems (Bulwark Throw + Blockshot) =====
+    // Anthony design (2026-10-28, "Make it"): wide shield projectile at
+    // medium range; on hit the enemy LOSES 300 max HP, resetting on death.
+    // Super Blockshot: a damageable device inside a wide bubble — no
+    // projectile gets in unless it tears that bubble segment, and then it
+    // still has to destroy the device. Star Power: the bubble regrows
+    // slowly like a wound healing. Hypercharge: the shield gains
+    // Crystila's reflective glass, and Blockshot gains a second bubble
+    // layer. Builder picks (flagged for Anthony): name, rarity, role,
+    // stats, device/bubble numbers, gadgets, SP2 — see report.
+    let AEGIS_ENABLED = true;
+    const AEGIS_SHIELD_RANGE = 480;
+    const AEGIS_SHIELD_SPEED = 800;
+    const AEGIS_SHIELD_HITBOX_MOD = 2.2;
+    const AEGIS_MAX_HP_SHRED = 300;
+    const AEGIS_MAX_HP_SHRED_EMPOWERED = 600;
+    const AEGIS_BUBBLE_RADIUS = 180;
+    const AEGIS_BUBBLE_SEGMENTS = 8;
+    const AEGIS_BUBBLE_SEGMENT_HP = 250;
+    const AEGIS_DEVICE_HP = 2200;
+    const AEGIS_DEVICE_RADIUS = 26;
+    const AEGIS_BUBBLE_REGEN_PER_SEC = 40;
+    const AEGIS_GADGET1_DASH_DISTANCE = 240;
+    const AEGIS_GADGET1_DASH_DURATION_MS = 200;
+    const AEGIS_GADGET1_DAMAGE = 900;
+    const AEGIS_GADGET1_SHIELD = 1500;
+    const AEGIS_GADGET2_DAMAGE_MULT = 1.5;
+    const AEGIS_SP2_DAMAGE_MULT = 0.9;
+    let aegisBubbles = [];
     function isNightshadeEntity(entity) {
         return !!entity && (entity.brawler === 'nightshade' || (!!player && entity.id === player.id && selectedBrawler === 'nightshade'));
     }
@@ -21184,6 +21235,238 @@ let heistFeverActive = false;
         }
         updateNightshadeBlades(dt, now);
         updateNightshadePoisonTicks(now);
+    }
+    function aegisStarChoice(entity) { try { return getEntityStarChoice(entity); } catch (_) { return entity ? entity.selectedStar : null; } }
+    function aegisHasSP1(entity) { return aegisStarChoice(entity) === 'sp1'; }
+    function aegisHasSP2(entity) { return aegisStarChoice(entity) === 'sp2'; }
+    function aegisIsFighterTarget(target) {
+        // Dummies ARE allowed: they are fighter stand-ins for training, and
+        // they respawn through restoreRespawningEntity, so the shred reset
+        // hook covers them. Structures, pets, Forge minions/camps/colossi
+        // are excluded (brawlers only).
+        return !!target && !target.isStructure && !target.isPet && !target.isArenaForgeMinion && !target.isArenaForgeCamp && !target.isArenaForgeColossus;
+    }
+    function applyAegisMaxHpShred(target, owner, b) {
+        if (!AEGIS_ENABLED || !target || target.hp <= 0 || !aegisIsFighterTarget(target)) return false;
+        const shred = (b && b.aegisEmpowered) ? AEGIS_MAX_HP_SHRED_EMPOWERED : AEGIS_MAX_HP_SHRED;
+        if (!target.aegisBaseMaxHp) target.aegisBaseMaxHp = target.maxHp;
+        target.maxHp = Math.max(1, (target.maxHp || 1) - shred);
+        if (target.hp > target.maxHp) target.hp = target.maxHp;
+        target.aegisShredded = true;
+        target.aegisShredSp2 = owner ? aegisHasSP2(owner) : false;
+        return true;
+    }
+    function aegisBubbleSegmentIndex(bubble, angle) {
+        const twoPi = Math.PI * 2;
+        let a = angle % twoPi;
+        if (a < 0) a += twoPi;
+        return Math.min(AEGIS_BUBBLE_SEGMENTS - 1, Math.floor(a / twoPi * AEGIS_BUBBLE_SEGMENTS));
+    }
+    function aegisMakeLayer() {
+        const layer = [];
+        for (let s = 0; s < AEGIS_BUBBLE_SEGMENTS; s++) layer.push(AEGIS_BUBBLE_SEGMENT_HP);
+        return layer;
+    }
+    function createAegisBubble(owner, x, y, hyper) {
+        return {
+            ownerId: owner.id, x, y, radius: AEGIS_BUBBLE_RADIUS,
+            layers: hyper ? [aegisMakeLayer(), aegisMakeLayer()] : [aegisMakeLayer()],
+            deviceHp: AEGIS_DEVICE_HP, deviceMaxHp: AEGIS_DEVICE_HP,
+            hyper: !!hyper, bornAt: performance.now()
+        };
+    }
+    function castAegisSuper(entity, isHyper, targetX, targetY) {
+        if (!AEGIS_ENABLED || !entity || entity.hp <= 0) return false;
+        const isPlayer = entity.id === player.id;
+        const tx = (isPlayer && typeof targetX === 'number') ? targetX : entity.x;
+        const ty = (isPlayer && typeof targetY === 'number') ? targetY : entity.y;
+        const place = (typeof findNearestOpenSpot === 'function') ? findNearestOpenSpot(tx, ty, AEGIS_BUBBLE_RADIUS + 4, 360) : { x: tx, y: ty };
+        // Only one Blockshot per Aegis: a fresh cast replaces the old one.
+        for (let i = aegisBubbles.length - 1; i >= 0; i--) if (aegisBubbles[i].ownerId === entity.id) aegisBubbles.splice(i, 1);
+        aegisBubbles.push(createAegisBubble(entity, place.x, place.y, isHyper));
+        spawnFloatingText(entity.x, entity.y - 40, '🛡️ BLOCKSHOT!', isHyper ? '#ffe08a' : '#f0b429');
+        return true;
+    }
+    function aegisBubbleSegmentAt(bubble, angle) {
+        // Outermost layer index with HP left at this angle, or -1 if all torn.
+        for (let l = 0; l < bubble.layers.length; l++) {
+            if (bubble.layers[l][aegisBubbleSegmentIndex(bubble, angle)] > 0) return l;
+        }
+        return -1;
+    }
+    // Bullet-loop hook: returns true when the bullet was consumed by a
+    // bubble segment or the device. Bullets fired from INSIDE a bubble pass
+    // freely (free exit); only entry is blocked. The device takes damage
+    // from any source except its own owner, and only once the bullet has
+    // traveled a little (so a shot spawned on top of the device does not
+    // instantly self-hit).
+    function aegisBubbleBlocks(b) {
+        if (!AEGIS_ENABLED || !b) return false;
+        for (let bi = aegisBubbles.length - 1; bi >= 0; bi--) {
+            const bubble = aegisBubbles[bi];
+            const dx = b.x - bubble.x, dy = b.y - bubble.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist <= bubble.radius) {
+                const ang = Math.atan2(dy, dx);
+                if (b.ownerId !== bubble.ownerId && (b.life || 0) > 0.05 && aegisBubbleSegmentAt(bubble, ang) === -1 && dist <= AEGIS_DEVICE_RADIUS + 6) {
+                    bubble.deviceHp -= Math.max(0, b.damage || 0);
+                    explosions.push({ x: b.x, y: b.y, radius: 12, life: 0, maxLife: 0.2, color: 'rgba(240,180,41,.8)' });
+                    if (bubble.deviceHp <= 0) {
+                        explosions.push({ x: bubble.x, y: bubble.y, radius: bubble.radius, life: 0, maxLife: 0.4, color: 'rgba(240,180,41,.5)' });
+                        spawnFloatingText(bubble.x, bubble.y - bubble.radius - 10, 'DEVICE DOWN!', '#f0b429');
+                        aegisBubbles.splice(bi, 1);
+                    }
+                    return true;
+                }
+                continue;
+            }
+            const speed = Math.hypot(b.vx || 0, b.vy || 0);
+            if (dist > bubble.radius + speed * 0.05 + 8) continue;
+            const toward = (b.vx || 0) * (-dx) + (b.vy || 0) * (-dy);
+            if (toward <= 0) continue;
+            const ang = Math.atan2(dy, dx);
+            const layer = aegisBubbleSegmentAt(bubble, ang);
+            if (layer === -1) continue; // torn here: bullet passes, device check next frame
+            const seg = aegisBubbleSegmentIndex(bubble, ang);
+            bubble.layers[layer][seg] = Math.max(0, bubble.layers[layer][seg] - Math.max(0, b.damage || 0));
+            explosions.push({ x: bubble.x + Math.cos(ang) * bubble.radius, y: bubble.y + Math.sin(ang) * bubble.radius, radius: 12, life: 0, maxLife: 0.2, color: 'rgba(240,180,41,.8)' });
+            return true;
+        }
+        return false;
+    }
+    // Hyper shield reflection (Crystila-glass behavior on a traveling
+    // projectile): enemy bullets near the flying shield are turned around
+    // and handed to the shield's owner.
+    function aegisReflectEnemyBullets(shield) {
+        if (!AEGIS_ENABLED || !shield || !shield.aegisHyperReflect) return;
+        const owner = (typeof getEntityById === 'function') ? getEntityById(shield.ownerId) : null;
+        for (const other of bullets) {
+            if (!other || other === shield || other.ownerId === shield.ownerId) continue;
+            if (other.aegisReflected) continue;
+            const otherOwner = (typeof getEntityById === 'function') ? getEntityById(other.ownerId) : null;
+            if (owner && otherOwner && areAlliedEntities(owner, otherOwner)) continue;
+            const d = Math.hypot(other.x - shield.x, other.y - shield.y);
+            if (d > (shield.aegisReflectRadius || 30) + (other.radius || 10)) continue;
+            const ang = Math.atan2(other.y - shield.y, other.x - shield.x);
+            const speed = Math.max(420, Math.hypot(other.vx || 0, other.vy || 0));
+            other.ownerId = shield.ownerId;
+            other.ownerBrawler = 'aegis';
+            other.vx = Math.cos(ang) * speed;
+            other.vy = Math.sin(ang) * speed;
+            other.x = shield.x + Math.cos(ang) * ((shield.aegisReflectRadius || 30) + 12);
+            other.y = shield.y + Math.sin(ang) * ((shield.aegisReflectRadius || 30) + 12);
+            other.hitIds = {};
+            other.hitIds[shield.ownerId] = true;
+            other.aegisReflected = true;
+            other.hyperVisual = true;
+        }
+    }
+    function executeAegisG1(entity, targetX, targetY) {
+        if (!AEGIS_ENABLED || !entity || entity.hp <= 0) return;
+        const r = entity.radius || 14;
+        const ang = Math.atan2((typeof targetY === 'number' ? targetY : entity.y) - entity.y, (typeof targetX === 'number' ? targetX : entity.x + 240) - entity.x);
+        entity.aegisDash = {
+            startX: entity.x, startY: entity.y,
+            targetX: clamp(entity.x + Math.cos(ang) * AEGIS_GADGET1_DASH_DISTANCE, r, WORLD_W - r),
+            targetY: clamp(entity.y + Math.sin(ang) * AEGIS_GADGET1_DASH_DISTANCE, r, WORLD_H - r),
+            startAt: performance.now(), durationMs: AEGIS_GADGET1_DASH_DURATION_MS, angle: ang, hitIds: {}
+        };
+        spawnFloatingText(entity.x, entity.y - 36, 'SHIELD CHARGE', '#f0b429');
+    }
+    function updateAegisDash(entity, now) {
+        const dash = entity.aegisDash;
+        if (!dash) return;
+        if (entity.hp <= 0) { entity.aegisDash = null; return; }
+        const p = Math.min(1, (now - dash.startAt) / dash.durationMs);
+        entity.x = dash.startX + (dash.targetX - dash.startX) * p;
+        entity.y = dash.startY + (dash.targetY - dash.startY) * p;
+        for (const target of [player, ...bots]) {
+            if (!target || target.hp <= 0 || target.id === entity.id || dash.hitIds[target.id]) continue;
+            if (areAlliedEntities(entity, target)) continue;
+            if (target.isStructure || target.isPet || target.isDummy) continue;
+            if (Math.hypot(target.x - entity.x, target.y - entity.y) <= 48 + (target.radius || 14)) {
+                dash.hitIds[target.id] = true;
+                checkHit(target, { ownerBrawler: 'aegis', ownerId: entity.id, damage: AEGIS_GADGET1_DAMAGE, pierce: true, super: false, isSuperDash: true, hitIds: {} }, -1);
+            }
+        }
+        if (p >= 1) { entity.aegisDash = null; grantShield(entity, AEGIS_GADGET1_SHIELD, AEGIS_GADGET1_SHIELD); }
+    }
+    function executeAegisG2(entity) {
+        if (!AEGIS_ENABLED || !entity || entity.hp <= 0) return;
+        entity.aegisNextShieldEmpowered = true;
+        spawnFloatingText(entity.x, entity.y - 36, 'SUNDER PLATE', '#f0b429');
+    }
+    function updateAegisSystems(dt) {
+        if (!AEGIS_ENABLED) return;
+        const now = performance.now();
+        for (const entity of [player, ...bots]) {
+            if (entity && entity.hp > 0) updateAegisDash(entity, now);
+        }
+        for (let i = aegisBubbles.length - 1; i >= 0; i--) {
+            const bubble = aegisBubbles[i];
+            const owner = bubble.ownerId === player.id ? player : bots.find((bt) => bt && bt.id === bubble.ownerId);
+            if (owner && owner.hp > 0 && aegisHasSP1(owner)) {
+                for (const layer of bubble.layers) {
+                    for (let s = 0; s < layer.length; s++) {
+                        if (layer[s] < AEGIS_BUBBLE_SEGMENT_HP) layer[s] = Math.min(AEGIS_BUBBLE_SEGMENT_HP, layer[s] + AEGIS_BUBBLE_REGEN_PER_SEC * dt);
+                    }
+                }
+            }
+        }
+    }
+    function drawAegisShield(ctx, b) {
+        const a = Math.atan2(b.vy, b.vx);
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        ctx.rotate(a);
+        ctx.shadowColor = b.hyperVisual ? '#ffe08a' : '#f0b429';
+        ctx.shadowBlur = b.hyperVisual ? 20 : 12;
+        ctx.strokeStyle = b.hyperVisual ? '#fff3c4' : '#ffe08a';
+        ctx.lineWidth = 3;
+        ctx.fillStyle = b.hyperVisual ? '#fff7d6' : '#f0b429';
+        ctx.beginPath();
+        ctx.moveTo(16, 0); ctx.lineTo(4, -16); ctx.lineTo(-12, -16); ctx.lineTo(-12, 16); ctx.lineTo(4, 16); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#7a5b00';
+        ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+    }
+    function drawAegisBubbles(ctx) {
+        const now = performance.now();
+        for (const bubble of aegisBubbles) {
+            const pulse = 1 + Math.sin(now / 240) * 0.02;
+            ctx.save();
+            ctx.translate(bubble.x, bubble.y);
+            ctx.globalAlpha = 0.16;
+            ctx.fillStyle = bubble.hyper ? '#ffe08a' : '#f0b429';
+            ctx.beginPath(); ctx.arc(0, 0, bubble.radius * pulse, 0, Math.PI * 2); ctx.fill();
+            ctx.globalAlpha = 1;
+            for (let l = 0; l < bubble.layers.length; l++) {
+                const layer = bubble.layers[l];
+                const lr = bubble.radius - l * 14;
+                for (let s = 0; s < AEGIS_BUBBLE_SEGMENTS; s++) {
+                    const hp = layer[s];
+                    if (hp <= 0) continue;
+                    const a0 = (s / AEGIS_BUBBLE_SEGMENTS) * Math.PI * 2;
+                    const a1 = ((s + 1) / AEGIS_BUBBLE_SEGMENTS) * Math.PI * 2;
+                    ctx.save();
+                    ctx.globalAlpha = 0.35 + 0.65 * (hp / AEGIS_BUBBLE_SEGMENT_HP);
+                    ctx.strokeStyle = bubble.hyper ? '#ffe08a' : '#f0b429';
+                    ctx.lineWidth = l === 0 ? 4 : 3;
+                    ctx.shadowColor = '#f0b429'; ctx.shadowBlur = 8;
+                    ctx.beginPath(); ctx.arc(0, 0, lr * pulse, a0 + 0.03, a1 - 0.03); ctx.stroke();
+                    ctx.restore();
+                }
+            }
+            ctx.save();
+            ctx.fillStyle = '#3a2c00'; ctx.strokeStyle = '#f0b429'; ctx.lineWidth = 2.5;
+            ctx.shadowColor = '#f0b429'; ctx.shadowBlur = 10;
+            ctx.beginPath(); ctx.arc(0, 0, AEGIS_DEVICE_RADIUS, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#f0b429';
+            ctx.beginPath();
+            ctx.moveTo(0, -10); ctx.lineTo(8, 0); ctx.lineTo(0, 10); ctx.lineTo(-8, 0); ctx.closePath(); ctx.fill();
+            ctx.restore();
+            ctx.restore();
+        }
     }
     function drawNightshadeDagger(ctx, b) {
         if (!NIGHTSHADE_VISUALS_ENABLED) return;
@@ -22083,6 +22366,9 @@ let heistFeverActive = false;
 
     function resetEntityForRound(entity, spawn) {
         if (!entity) return;
+        if (entity.aegisBaseMaxHp) { entity.maxHp = entity.aegisBaseMaxHp; entity.aegisBaseMaxHp = null; }
+        entity.aegisShredded = false;
+        entity.aegisShredSp2 = false;
         entity.hp = entity.maxHp;
         entity.x = spawn.x;
         entity.y = spawn.y;
@@ -35384,6 +35670,16 @@ let heistFeverActive = false;
             bullets.push({ ownerBrawler: 'nightshade', isNightshadeDagger: true, x: fromEntity.x + Math.cos(daggerAng) * (fromEntity.radius + 7), y: fromEntity.y + Math.sin(daggerAng) * (fromEntity.radius + 7), vx: Math.cos(daggerAng) * NIGHTSHADE_DAGGER_SPEED, vy: Math.sin(daggerAng) * NIGHTSHADE_DAGGER_SPEED, life: 0, maxLife: NIGHTSHADE_DAGGER_RANGE / NIGHTSHADE_DAGGER_SPEED, damage: nightshadeStats.dmg, pierce: false, ownerId: fromEntity.id, hitIds: {}, hitboxMod: 1.2, hyperVisual: nightshadeHyper });
         }
         return;
+    } else if (brawler === 'aegis') {
+        if (!AEGIS_ENABLED) return;
+        const aegisHyper = isEntityHyperchargedNow(fromEntity, now);
+        const aegisLevel = fromEntity.id === player.id ? getSelectedBrawlerLevel() : (fromEntity.level || 11);
+        const aegisStats = getScaledStats('aegis', aegisLevel);
+        const empowered = !!fromEntity.aegisNextShieldEmpowered;
+        if (fromEntity.aegisNextShieldEmpowered) fromEntity.aegisNextShieldEmpowered = false;
+        const dmg = empowered ? Math.round(aegisStats.dmg * AEGIS_GADGET2_DAMAGE_MULT) : aegisStats.dmg;
+        bullets.push({ ownerBrawler: 'aegis', isAegisShield: true, aegisEmpowered: empowered, aegisHyperReflect: aegisHyper, aegisReflectRadius: 30, x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 7), y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 7), vx: Math.cos(ang) * AEGIS_SHIELD_SPEED, vy: Math.sin(ang) * AEGIS_SHIELD_SPEED, life: 0, maxLife: AEGIS_SHIELD_RANGE / AEGIS_SHIELD_SPEED, damage: dmg, pierce: false, ownerId: fromEntity.id, team: fromEntity.team || 'player', hitIds: {}, hitboxMod: AEGIS_SHIELD_HITBOX_MOD, hyperVisual: aegisHyper });
+        return;
     }
   }
 
@@ -37605,6 +37901,7 @@ let heistFeverActive = false;
     if (combatBrawler === 'electrostien') { castElectrostienSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'mallow') { castMallowSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'nightshade') { castNightshadeSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
+    if (combatBrawler === 'aegis') { castAegisSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'ramage') { castRamageSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
         if (combatBrawler === 'upgradart') { castUpgradartSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'axeywaxy') { castAxeyWaxySuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
@@ -38868,6 +39165,10 @@ let heistFeverActive = false;
       executeNightshadeG1(bot, target?.x ?? (bot.x + Math.cos(ang) * 200), target?.y ?? (bot.y + Math.sin(ang) * 200));
     } else if (bot.brawler === 'nightshade' && g === 'g2') {
       executeNightshadeG2(bot);
+    } else if (bot.brawler === 'aegis' && g === 'g1') {
+      executeAegisG1(bot, target?.x ?? (bot.x + Math.cos(ang) * 200), target?.y ?? (bot.y + Math.sin(ang) * 200));
+    } else if (bot.brawler === 'aegis' && g === 'g2') {
+      executeAegisG2(bot);
     } else if (bot.brawler === 'rager' && g === 'g1') {
       executeRagerG1(bot);
     } else if (bot.brawler === 'rager' && g === 'g2') {
@@ -39400,6 +39701,7 @@ let heistFeverActive = false;
     if (botCombatBrawler === 'electrostien') { castElectrostienSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'mallow') { castMallowSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'nightshade') { castNightshadeSuper(bot, isHyper, targetX, targetY); return; }
+    if (botCombatBrawler === 'aegis') { castAegisSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'ramage') { castRamageSuper(bot, isHyper, targetX, targetY); return; }
             if (botCombatBrawler === 'upgradart') { castUpgradartSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'axeywaxy') { castAxeyWaxySuper(bot, isHyper, targetX, targetY); return; }
@@ -40976,6 +41278,18 @@ let heistFeverActive = false;
         return;
     } else if (curBrawler === 'nightshade' && curGadget === 'g2') {
         executeNightshadeG2(player);
+        gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
+        setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
+        updateGadgetButton();
+        return;
+    } else if (curBrawler === 'aegis' && curGadget === 'g1') {
+        executeAegisG1(player, gadgetWorld.x, gadgetWorld.y);
+        gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
+        setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
+        updateGadgetButton();
+        return;
+    } else if (curBrawler === 'aegis' && curGadget === 'g2') {
+        executeAegisG2(player);
         gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
         setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
         updateGadgetButton();
@@ -49067,6 +49381,12 @@ function checkHit(target, b, i){
             b.damage = Math.round((b.damage || 0) * 0.80);
         }
 
+        // Aegis SP2 Sundered Guard: a fighter shredded by an SP2 Aegis deals
+        // 10% less damage until they respawn.
+        if (projectileOwner && projectileOwner.aegisShredded && projectileOwner.aegisShredSp2) {
+            b.damage = Math.round((b.damage || 0) * AEGIS_SP2_DAMAGE_MULT);
+        }
+
         // Nightshade SP2 Fresh Wounds: daggers deal +20% to already-poisoned enemies.
         if (b && b.isNightshadeDagger && target && !b.nightshadeSp2Applied) {
             const daggerOwner = b.ownerId === player.id ? player : (typeof bots !== 'undefined' ? bots.find((bt) => bt && bt.id === b.ownerId) : null);
@@ -50351,6 +50671,7 @@ function checkHit(target, b, i){
     if(!b.super && !b.isSuperDash && !b.isMinigunninMutationFire && !target.isPet && areAlliedEntities(owner, target) && isFriendlyFirePlusActive()) grantMainAttackCharge(owner, b);
     if (b.isMallow && owner && target) applyMallowSlowHit(target, owner, b);
     if (b.isNightshadeDagger && owner && target) applyNightshadePoisonHit(target, owner, b);
+    if (b.isAegisShield && owner && target) applyAegisMaxHpShred(target, owner, b);
     if (b.ownerBrawler === 'rager' && b.isRagerTimber && b.hasSp1) {
             // SP1: burst into 4 cardinal splinter darts
             const dartDirs = [0, Math.PI / 2, Math.PI, Math.PI * 1.5];
@@ -52129,6 +52450,7 @@ function checkHit(target, b, i){
     if (playing && !gameOver) updateElectrostienSystems(dt);
     if (playing && !gameOver) updateMallowSystems(dt);
     if (playing && !gameOver) updateNightshadeSystems(dt);
+    if (playing && !gameOver) updateAegisSystems(dt);
     if (playing && !gameOver) updatePropPads();
     if (playing && !gameOver) updateChristmasShowdown(dt);
     if (playing && !gameOver) updatePropHuntMode(dt, now);
@@ -55128,6 +55450,13 @@ function checkHit(target, b, i){
           bullets.splice(i, 1);
           continue;
       }
+      // Aegis Blockshot: bubbles eat outside projectiles, devices take hits.
+      if (aegisBubbleBlocks(b)) {
+          bullets.splice(i, 1);
+          continue;
+      }
+      // Aegis Hyper: the flying shield reflects enemy projectiles.
+      if (b.isAegisShield && b.aegisHyperReflect) aegisReflectEnemyBullets(b);
       if (isPowerPlayShowdownMode && b.ownerBrawler === 'echo' && b.isEchoRingProj && !b.super) {
           b.lastEchoRingPulse = b.lastEchoRingPulse || b.createdAt || now;
           if (now - b.lastEchoRingPulse >= 600) {
@@ -61752,6 +62081,23 @@ function checkHit(target, b, i){
                 ctx.beginPath(); ctx.arc(entity.x, drawY, size * 0.34, Math.PI, 0); ctx.fill();
                 ctx.fillStyle = '#7be495';
                 ctx.beginPath(); ctx.arc(entity.x - size * 0.14, drawY - size * 0.05, 2.5, 0, Math.PI * 2); ctx.arc(entity.x + size * 0.14, drawY - size * 0.05, 2.5, 0, Math.PI * 2); ctx.fill();
+                ctx.restore();
+            }
+            if (brawlerId === 'aegis') {
+                ctx.save();
+                ctx.fillStyle = '#f0b429';
+                ctx.strokeStyle = '#7a5b00';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(entity.x, drawY - size * 0.28);
+                ctx.lineTo(entity.x + size * 0.2, drawY - size * 0.1);
+                ctx.lineTo(entity.x + size * 0.16, drawY + size * 0.22);
+                ctx.lineTo(entity.x, drawY + size * 0.34);
+                ctx.lineTo(entity.x - size * 0.16, drawY + size * 0.22);
+                ctx.lineTo(entity.x - size * 0.2, drawY - size * 0.1);
+                ctx.closePath(); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = '#fff3c4';
+                ctx.beginPath(); ctx.arc(entity.x, drawY + size * 0.02, size * 0.07, 0, Math.PI * 2); ctx.fill();
                 ctx.restore();
             }
             if (brawlerId === 'spikey') {
@@ -69256,6 +69602,7 @@ function checkHit(target, b, i){
         }
         ctx.restore();ctx.textAlign='left';ctx.textBaseline='alphabetic';
     }
+    drawAegisBubbles(ctx);
     for (const pair of portaloPortalPairs) {
         const now=performance.now(),life=clamp((pair.expiresAt-now)/Math.max(1,pair.expiresAt-pair.createdAt),0,1),spin=now/260;
         ctx.save();ctx.globalAlpha=.18+.72*life;ctx.setLineDash([8,12]);ctx.lineDashOffset=-now/32;ctx.strokeStyle='rgba(132,201,255,.42)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(pair.ax,pair.ay);ctx.lineTo(pair.bx,pair.by);ctx.stroke();ctx.setLineDash([]);
@@ -69514,6 +69861,10 @@ function checkHit(target, b, i){
       }
       if (b.isNightshadeDagger) {
         drawNightshadeDagger(ctx, b);
+        continue;
+      }
+      if (b.isAegisShield) {
+        drawAegisShield(ctx, b);
         continue;
       }
       const earlyProjectileBrawler = b.ownerBrawler || (b.ownerId === player.id ? selectedBrawler : '');
@@ -79329,6 +79680,7 @@ function buildWeeFeeBossMap() {
     weefeePoles.length = 0;
     weefeeShockwaves.length = 0;
     bullets.length = 0;
+    aegisBubbles.length = 0;
     powerups.length = 0;
     cubes.length = 0;
     explosions.length = 0;
