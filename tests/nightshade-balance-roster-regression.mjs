@@ -107,9 +107,10 @@ if (kitLine) {
 check('mallow kit untouched (attack text still 8 x 320 Pam fan)', game.includes("attackDesc: 'Fires 8 marshmallows in a wide Pam-style fan (320 damage each)"));
 check('no stale 120/s nightshade text anywhere', !game.includes('120 damage per second for 8 seconds, stacking'));
 
-// ---------------------------------------------------------- 3. structure guards
-check('poison application refuses structures', extractFn(game, 'applyNightshadePoisonStacks').includes('target.isStructure'));
-check('poison ticks skip structures', extractFn(game, 'updateNightshadePoisonTicks').includes('target.isStructure'));
+// ---------------------------------------------------------- 3. structure guards (2026-10-28 order: Nightshade poison is the
+// one exception — it DOES affect structures; blades still never hit them)
+check('poison application accepts structures (Nightshade-only exception)', !extractFn(game, 'applyNightshadePoisonStacks').includes('target.isStructure'));
+check('poison ticks damage structures (Nightshade-only exception)', !extractFn(game, 'updateNightshadePoisonTicks').includes('target.isStructure'));
 check('enemy candidate pool excludes structures', extractFn(game, 'nightshadeEnemyCandidates').includes('!t.isStructure'));
 
 // ---------------------------------------------------------- 4. roster fix
@@ -177,7 +178,7 @@ try {
   ] };
   check('poison vm: purge 2 stacks with 4s left = 480 (60/s math)', sandbox.nightshadePurgeDamage(purgeTarget, 101000) === 480);
   const structure = { id: 7, hp: 72000, isStructure: true };
-  check('poison vm: structures take 0 stacks even uncapped', sandbox.applyNightshadePoisonStacks(structure, owner, 6, true) === 0);
+  check('poison vm: structures take stacks even uncapped (6 stacks)', sandbox.applyNightshadePoisonStacks(structure, owner, 6, true) === 6);
 } catch (e) { failures.push('poison vm block threw: ' + e.message); }
 
 // ---------------------------------------------------------- 6. vm: super ring
