@@ -9525,7 +9525,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
             'hope': { name: 'Hope', role: 'Marksman', desc: 'An emotional brawler whose attacks scale with her own HP — the more hope she has, the harder she hits.', color: '#ffd6ec', attack: 'Hopeful Shot', attackDesc: "Fires a glowing orb that deals damage equal to a % of the enemy's max HP based on your current HP. At full HP it deals 16% of enemy max HP; less HP means less damage.", super: 'You Broke My Hope', superDesc: 'Unleashes a piercing cry in a cone, stunning all enemies caught in it for 1.5s.', hyper: 'Hope Never Dies! Main attack always deals the Hyper maximum of 18% regardless of current HP. Super cone expands to 180° and stuns for 2s.', g1: 'Rally Cry (Next attack deals damage as if at full HP)', g2: 'Desperate Shield (Gain a shield equal to 25% of your missing HP)', sp1: 'Minimum Hope (Attack always deals at least 7% of enemy max HP)', sp2: 'Hopeful Voice (Super stun lasts +0.5s longer)' },
             'evil_doctor': { name: 'Evil Doctor', role: 'Specialist', desc: 'To infect or not to infect? Hit enemies to poison them or miss to heal yourself.', color: '#00cc66', attack: 'Infectious Shot', attackDesc: 'Fires a syringe. Hit: 600 poison damage ×3 ticks, with 30% less time between ticks. Miss: heal 220 ×4 ticks.', super: 'Spread My Virus!', superDesc: 'Release 6 DNA strands that home onto enemies. Each deals 500 on hit plus fast poison, then disappears.', hyper: 'Main attack applies both effects: poison on hit and heal. Hyper DNA kills release 6 more hyper DNA.', g1: 'Antidote (Cleanse debuffs + heal 1200)', g2: 'Overdose (Next shot adds +1 poison tick)', sp1: 'Chain Reaction (Every kill releases DNA. If it kills, spawn full DNA burst)', sp2: 'Adrenaline Miss (Missed shots give a short speed boost)' },
             'splitter': { name: 'The Splitter', role: 'Thrower', desc: 'A fractal artillery brawler whose shots multiply into precise projectile trees.', color: '#ffd166', attack: 'Fivecracker', attackDesc: 'Fire one non-piercing core that bursts into 5 side fragments on impact or at maximum range.', super: 'Infinite Division', superDesc: 'The core travels only 10% of its old distance before dividing into the immense-range 1 > 2 > 4 > 8 > 16 tree.', hyper: 'Tri-Split: Infinite Division fires in 3 directions around Splitter. Fivecracker opens into a huge five-way side fan.', g1: 'Short Fuse (Next grenade splits faster and blasts wider)', g2: 'Ring Burst (Throw 3 mini split grenades around you)', sp1: 'Heavy Fragments (Split grenades deal +12% damage)', sp2: 'Chain Lob (Main attack range +20%)' },
-            'scuba_diver': { name: 'Scuba Diver', role: 'Epic Specialist', desc: 'Dual-mode diver: starts in submarine mode, can switch to scuba mode mid-match.', color: '#4fc3f7', attack: 'Bubble Barrage / Push Current', attackDesc: 'Submarine mode: fires 4 delayed bubbles in a left-to-right cone (520 close -> 320 far each; Hyper keeps at least 75% close damage). Scuba mode: pushes a rectangular bubble wave for 420 each.', super: 'Dash Underwater! / Transform', superDesc: 'Submarine mode: dash 5 tiles underwater, untargetable, and light post damages enemies hit. Scuba mode: transform back into submarine mode.', hyper: 'Under the Sea!: Main attacks keep at least 75% close-range damage and travel +30% farther. Super light post marks and slows. Scuba→Submarine transform grants a persistent 3000 shield.', g1: 'Depth Charge (Next main attack slows enemies)', g2: 'Emergency Oxygen (Heal and force scuba mode with speed burst)', sp1: 'Pressure Hull (Submarine death-swap grants extra shield)', sp2: 'Rip Current (Scuba mode attack is wider and lightly slows)' },
+            'scuba_diver': { name: 'Scuba Diver', role: 'Epic Specialist', desc: 'Dual-mode diver: starts in submarine mode, can switch to scuba mode mid-match.', color: '#4fc3f7', attack: 'Bubble Barrage / Push Current', attackDesc: 'Submarine mode: fires 4 delayed bubbles in a left-to-right cone (800 close -> 490 far each; Hyper keeps at least 90% close damage). Scuba mode: pushes a rectangular bubble wave for 420 each.', super: 'Dash Underwater! / Transform', superDesc: 'Submarine mode: dash 5 tiles underwater, untargetable, and light post damages enemies hit — the dash leaves water on the ground for 4s that Scuba Diver can swim in, and walking through it spreads 1s water. Scuba mode: transform back into submarine mode.', hyper: 'Under the Sea!: Main attacks keep at least 90% close-range damage and travel +30% farther. Super light post marks and slows. Scuba→Submarine transform grants a persistent 3000 shield. While hypercharged, standing in own water heals and holds a shield while submerged.', g1: 'Depth Charge (Next main attack slows enemies)', g2: 'Emergency Oxygen (Heal and force scuba mode with speed burst)', sp1: 'Pressure Hull (Submarine death-swap grants extra shield)', sp2: 'Rip Current (Scuba mode attack is wider and lightly slows)' },
             'hoop': { name: 'Hoop', role: 'Controller', desc: 'Streetball playmaker with a SWISH/Bank-shot rhythm: direct hits power your next shot, wall bounces charge Heat Check.', color: '#ff9f43', attack: 'Bounce Breaker', attackDesc: 'Shoots a bouncing basketball that explodes in a small area on each impact. Direct hit before first bounce grants SWISH buff. Wall bounces build Bank Stacks; at 3 stacks your next shot becomes Heat Check.', super: 'Full-Court Crash', superDesc: 'Launches a giant slam ball that bounces multiple times, each bounce creating a heavy area blast.', hyper: 'Main attack throws an extra angle ball and first impact spawns mini-balls. Super gains extra bounce count, bigger blast radius, and stuns enemies in the blast.', g1: 'Backboard Bank (Next ball gets larger splash and extra bounce)', g2: 'Crossover Drive (Dash forward, gain shield, and speed burst)', sp1: 'Ankle Breaker (Main splash slows enemies briefly)', sp2: 'Deep Range (Main and super travel farther with faster arc)' },
             'screener': { name: 'Screener', role: 'Controller', desc: 'Battery-based projector brawler. Starts at 100% battery that drains over time; recharge by landing screen hits.', color: '#7ec8ff', attack: 'Projected Sweep', attackDesc: 'Fires a 360-degree radial burst of screen projectors around you. Each hit recharges battery.', super: 'Projected Charge', superDesc: 'Activates a static projector field for 4s. Incoming shots that touch the field are converted into projector blasts fired out at that angle.', hyper: 'Main attack spins with multiple rotating sweeps. Super gains an extra projector layer and stronger conversions.', g1: 'Power Cell (Instant battery refill + heal)', g2: 'Overclock Grid (Temporarily boost projector output and battery gain)', sp1: 'Efficient Panel (Battery decays slower)', sp2: 'Capacitor Bank (Larger battery capacity and stronger low-battery safety)' },
             'malakor': { name: 'Malakor', role: 'Controller', desc: 'The fallen red-staff child who commands infernal terrain and demon hands.', color: '#ff4a4a', attack: 'Putting You Down', attackDesc: 'Slams his staff and corrupts the ground into Hell around him. Enemies standing in Hell take constant damage. Hell zones last 9 seconds, spreading wider as they burn before decaying near the end. Malakor can sustain up to 5 Hell zones at once.', super: 'Hell Is Forever!', superDesc: 'Slam to create a huge Hell zone that lasts 12.5 seconds and summon demon hands that punish enemies standing in Hell.', hyper: 'UPSIDE DOWN!: Super corrupts the whole map into Hell and summons many more demon hands. Main attack corrupts a larger area.', g1: 'Crimson Surge (Create a bonus Hell pulse and heal)', g2: 'Damnation Mark (Next main attack also summons a demon hand)', sp1: 'Infernal Dominion (Hell terrain deals more damage)', sp2: 'Abyssal Grip (Demon hands strike wider and stun longer)' },
@@ -19526,6 +19526,10 @@ let heistFeverActive = false;
 
     function getBotSteeredStep(entity, dx, dy, speed, dt) {
         const now = performance.now();
+        // Scuba rework: swimming in own water is 40% faster (Inkling-style).
+        if (isScubaDiverEntity(entity) && scubaWaterPatchAt(scubaWaterPatches, entity.x, entity.y, entity.id, now)) {
+            speed *= SCUBA_WATER_SWIM_SPEED_MULT;
+        }
         let goalX = entity.x + dx, goalY = entity.y + dy;
 
         // Anti-stuck watchdog: detect if bot has been trapped against a wall edge/corner
@@ -20994,6 +20998,73 @@ let heistFeverActive = false;
     const AEGIS_GADGET2_DAMAGE_MULT = 1.5;
     const AEGIS_SP2_DAMAGE_MULT = 0.9;
     let aegisBubbles = [];
+    // Scuba Diver rework (2026-10-29): water left by the Super dash.
+    // Dash patches last 4s; patches spread by walking last 1s. The owner
+    // swims in their own water (+40% move speed, Inkling-style); while
+    // Hypercharged, their water also heals 400 HP/s and holds a 1500 shield.
+    let scubaWaterPatches = [];
+    const SCUBA_WATER_DASH_RADIUS = 60;
+    const SCUBA_WATER_DASH_LIFE_MS = 4000;
+    const SCUBA_WATER_SPREAD_RADIUS = 30;
+    const SCUBA_WATER_SPREAD_LIFE_MS = 1000;
+    const SCUBA_WATER_SWIM_SPEED_MULT = 1.4;
+    const SCUBA_WATER_HYPER_HEAL_PER_SEC = 400;
+    const SCUBA_WATER_HYPER_SHIELD = 1500;
+    function isScubaDiverEntity(entity) {
+        return !!entity && (entity.brawler === 'scuba_diver' || (!!player && entity.id === player.id && selectedBrawler === 'scuba_diver'));
+    }
+    function scubaWaterPatchAt(patches, x, y, ownerId, now) {
+        for (const p of patches) {
+            if (p.ownerId !== ownerId || now >= p.until) continue;
+            if (Math.hypot(x - p.x, y - p.y) < p.r) return p;
+        }
+        return null;
+    }
+    function spawnScubaWaterPatch(x, y, r, lifeMs, ownerId, hyper, now) {
+        scubaWaterPatches.push({ x, y, r, until: now + lifeMs, ownerId, hyper: !!hyper });
+    }
+    function pruneScubaWaterPatches(now) {
+        for (let i = scubaWaterPatches.length - 1; i >= 0; i--) {
+            if (now >= scubaWaterPatches[i].until) scubaWaterPatches.splice(i, 1);
+        }
+    }
+    function updateScubaWaterForEntity(e, dt, now) {
+        if (!e || e.hp <= 0 || !isScubaDiverEntity(e)) return;
+        if (e.id === player.id) pruneScubaWaterPatches(now);
+        const isHyper = e.id === player.id ? !!isHypercharged : !!e.isHypercharged;
+        // Dash trail: while underwater-dashing, leave 4s water along the path.
+        if (e.scubaDiverDash && e.isDashing) {
+            const lx = e.scubaWaterLastDashX, ly = e.scubaWaterLastDashY;
+            if (!Number.isFinite(lx) || Math.hypot(e.x - lx, e.y - ly) >= 40) {
+                spawnScubaWaterPatch(e.x, e.y, SCUBA_WATER_DASH_RADIUS, SCUBA_WATER_DASH_LIFE_MS, e.id, isHyper, now);
+                e.scubaWaterLastDashX = e.x;
+                e.scubaWaterLastDashY = e.y;
+            }
+        }
+        const patch = scubaWaterPatchAt(scubaWaterPatches, e.x, e.y, e.id, now);
+        e.scubaSwimming = !!patch;
+        if (!patch) return;
+        // Walking through own water spreads small 1s patches behind.
+        if (!e.isDashing) {
+            const sx = e.scubaWaterLastSpreadX, sy = e.scubaWaterLastSpreadY;
+            if (!Number.isFinite(sx)) {
+                e.scubaWaterLastSpreadX = e.x;
+                e.scubaWaterLastSpreadY = e.y;
+            } else if (Math.hypot(e.x - sx, e.y - sy) >= 24) {
+                spawnScubaWaterPatch(e.x, e.y, SCUBA_WATER_SPREAD_RADIUS, SCUBA_WATER_SPREAD_LIFE_MS, e.id, isHyper, now);
+                e.scubaWaterLastSpreadX = e.x;
+                e.scubaWaterLastSpreadY = e.y;
+            }
+        }
+        // Hypercharged water: heal over time + hold a shield while submerged.
+        if (isHyper) {
+            const heal = Math.round(SCUBA_WATER_HYPER_HEAL_PER_SEC * dt);
+            if (heal > 0) doHeal(e, heal, e.id);
+            if ((e.shield || 0) < SCUBA_WATER_HYPER_SHIELD) {
+                grantShield(e, SCUBA_WATER_HYPER_SHIELD - (e.shield || 0), Math.max(5000, e.shieldMax || 0));
+            }
+        }
+    }
     function isNightshadeEntity(entity) {
         return !!entity && (entity.brawler === 'nightshade' || (!!player && entity.id === player.id && selectedBrawler === 'nightshade'));
     }
@@ -21429,6 +21500,19 @@ let heistFeverActive = false;
         ctx.fillStyle = '#7a5b00';
         ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI * 2); ctx.fill();
         ctx.restore();
+    }
+    function drawScubaWaterPatches(ctx) {
+        const now = performance.now();
+        for (const p of scubaWaterPatches) {
+            if (now >= p.until) continue;
+            const life = Math.max(0, Math.min(1, (p.until - now) / 1000));
+            ctx.save();
+            ctx.globalAlpha = 0.35 * life + 0.1;
+            ctx.fillStyle = p.hyper ? '#b26bff' : '#4fc3f7';
+            if (p.hyper) { ctx.shadowColor = '#b26bff'; ctx.shadowBlur = 14; }
+            ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+        }
     }
     function drawAegisBubbles(ctx) {
         const now = performance.now();
@@ -34789,11 +34873,11 @@ let heistFeverActive = false;
             const volleyId = registerScubaDiverSubVolley(fromEntity.id, 4);
             const bubbleCount = 4;
             const coneHalfAngle = 0.2;
-            const volleyDelayMs = 22.5; // +25% delay between volley bubbles
+            const volleyDelayMs = 29.25; // +30% longer delay between volley bubbles (rework nerf)
             const subBubbleSpeed = 880 * 0.6 * 0.875; // +25% projectile speed vs the old 0.7 factor
             const subBubbleHitbox = 1.2 * 1.2; // +20% bubble size
-            const closeDamage = isBot ? 310 : 520;
-            const farDamage = isBot ? 190 : 320;
+            const closeDamage = isBot ? 477 : 800;
+            const farDamage = isBot ? 291 : 490;
             const slowMs = depthCharge ? 1200 : 0;
             lockMainAttackSequence(fromEntity,(bubbleCount-1)*volleyDelayMs,now);
             for (let lane = 0; lane < bubbleCount; lane++) {
@@ -34827,7 +34911,7 @@ let heistFeverActive = false;
                         damage: closeDamage,
                         scubaCloseDamage: closeDamage,
                         scubaFarDamage: farDamage,
-                        scubaMinClosePct: isHyper ? 0.75 : 0.52,
+                        scubaMinClosePct: isHyper ? 0.90 : 0.52,
                         scubaSlowMs: slowMs,
                         scubaOriginX: sx,
                         scubaOriginY: sy,
@@ -54388,8 +54472,10 @@ function checkHit(target, b, i){
       }
     const playerHasFastpassBoost=selectedBrawler==='fastpass'||now<(player.fastpassLaneUntil||0)||now<(player.fastpassCheckpointBuffUntil||0);
     const cappedPlayerSpeed=playerHasFastpassBoost?Math.min(player.speed*2.35,activeSpeed*hcSpd):activeSpeed*hcSpd;
-    let nextX = player.x + (vx/len) * cappedPlayerSpeed * playerSlowMult * dt;
-    let nextY = player.y + (vy/len) * cappedPlayerSpeed * playerSlowMult * dt;
+    // Scuba rework: swimming in own water is 40% faster (Inkling-style).
+    const scubaSwimMult = (selectedBrawler === 'scuba_diver' && scubaWaterPatchAt(scubaWaterPatches, player.x, player.y, player.id, now)) ? SCUBA_WATER_SWIM_SPEED_MULT : 1;
+    let nextX = player.x + (vx/len) * cappedPlayerSpeed * playerSlowMult * scubaSwimMult * dt;
+    let nextY = player.y + (vy/len) * cappedPlayerSpeed * playerSlowMult * scubaSwimMult * dt;
       nextX = clamp(nextX, player.radius, WORLD_W - player.radius);
       nextY = clamp(nextY, player.radius, WORLD_H - player.radius);
       if (!canMoveToPosition(player, nextX, nextY)) {
@@ -57780,6 +57866,7 @@ function checkHit(target, b, i){
     // Jump Mechanics
     const entities = [player, ...aliveBots];
     for(const e of entities){
+        updateScubaWaterForEntity(e, dt, performance.now());
         if(e.isJumping){
             if (e.id === player.id && e.isTeetherSuper) {
                 // Use the cursor relative to screen center. World-space mouse
@@ -69624,6 +69711,7 @@ function checkHit(target, b, i){
         ctx.restore();ctx.textAlign='left';ctx.textBaseline='alphabetic';
     }
     drawAegisBubbles(ctx);
+    drawScubaWaterPatches(ctx);
     for (const pair of portaloPortalPairs) {
         const now=performance.now(),life=clamp((pair.expiresAt-now)/Math.max(1,pair.expiresAt-pair.createdAt),0,1),spin=now/260;
         ctx.save();ctx.globalAlpha=.18+.72*life;ctx.setLineDash([8,12]);ctx.lineDashOffset=-now/32;ctx.strokeStyle='rgba(132,201,255,.42)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(pair.ax,pair.ay);ctx.lineTo(pair.bx,pair.by);ctx.stroke();ctx.setLineDash([]);
