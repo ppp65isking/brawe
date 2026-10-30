@@ -13359,6 +13359,7 @@ let heistFeverActive = false;
         let currentMapOverride = null; // null or mapType index
     let isBossFight = false;
         let isBeastBossEvent = false;
+        let isTowerDefenseEvent = false;
         let isLavaBossEvent = false;
     let isHeadlessBossEvent = false;
     let isTombstoneBossEvent = false;
@@ -13461,6 +13462,123 @@ let heistFeverActive = false;
       bots.push(boss);
       beastCrystalNextSpawn = performance.now() + 1500;
       spawnFloatingText(player.x, player.y - 70, `💀 GOD MODE • BEAST BOSS • ${getBeastBossDifficultyName(diffIndex).toUpperCase()}`, '#ff2d78');
+  }
+
+  // ---- Tower Defense (solo Arena Forge mode, ordered 2026-10-30) ----
+  // Solo defend-the-tower: minion waves every 30s, win by hitting a kill
+  // target, lose if the tower falls. Difficulty is picked in the pre-match
+  // picker (openTowerDefenseEvent); God Mode is a no-unlock toggle there.
+  const TOWER_DEFENSE_TOWER_HP = 20000;
+  const TOWER_DEFENSE_WAVE_INTERVAL_MS = 30000;
+  const TOWER_DEFENSE_FIRST_WAVE_DELAY_MS = 3000;
+  const TOWER_DEFENSE_MINION_BASE_HP = 900;
+  const TOWER_DEFENSE_MINION_BASE_SPEED = 175;
+  const TOWER_DEFENSE_MINION_BASE_DAMAGE = 220;
+  const TOWER_DEFENSE_MINION_HIT_COOLDOWN_MS = 900;
+  const TOWER_DEFENSE_PLAYER_RESPAWN_MS = 3000;
+  const TOWER_DEFENSE_DIFFICULTIES = Object.freeze({
+      easy: Object.freeze({ id: 'easy', name: 'Easy', killTarget: 50, baseWaveSize: 4, hpMult: 0.7, speedMult: 0.85, damageMult: 0.7, rewardCoins: 60 }),
+      normal: Object.freeze({ id: 'normal', name: 'Normal', killTarget: 100, baseWaveSize: 6, hpMult: 1.0, speedMult: 1.0, damageMult: 1.0, rewardCoins: 100 }),
+      hard: Object.freeze({ id: 'hard', name: 'Hard', killTarget: 150, baseWaveSize: 9, hpMult: 1.4, speedMult: 1.1, damageMult: 1.4, rewardCoins: 150 }),
+      extreme: Object.freeze({ id: 'extreme', name: 'Extreme', killTarget: 250, baseWaveSize: 14, hpMult: 2.0, speedMult: 1.25, damageMult: 2.0, rewardCoins: 250 }),
+  });
+  let towerDefenseDifficulty = 'normal';
+  let towerDefenseGodMode = false;
+  let towerDefenseRuntime = null;
+  function getTowerDefenseDifficulty(id) {
+      return TOWER_DEFENSE_DIFFICULTIES[id] || TOWER_DEFENSE_DIFFICULTIES.normal;
+  }
+  function getTowerDefenseWaveSize(cfg, wave) {
+      return cfg.baseWaveSize + Math.max(0, wave - 1);
+  }
+  function getTowerDefenseRewardCoins() {
+      const cfg = getTowerDefenseDifficulty(towerDefenseRuntime?.difficulty);
+      const base = cfg.rewardCoins;
+      return towerDefenseRuntime?.godMode ? Math.floor(base / 2) : base;
+  }
+  function openTowerDefenseEvent() {
+      const overlay = document.createElement('div'); overlay.className = 'season3-overlay';
+      const panel = document.createElement('section'); panel.className = 'season3-panel lava-boss-panel';
+      panel.innerHTML = `<header><div><small>SOLO TOWER DEFENSE</small><h1>TOWER DEFENSE</h1><p>Defend your tower &bull; a minion wave every 30 seconds &bull; hit the kill target to win &bull; if the tower falls, you lose &bull; pick a difficulty, then GO</p></div><button aria-label="Close">X</button></header>`;
+      const godRow = document.createElement('button'); godRow.className = 'lava-boss-tier';
+      const paintGod = () => { godRow.innerHTML = `<span><b>\u{1F451} GOD MODE ${towerDefenseGodMode ? 'ON' : 'OFF'}</b><small>${towerDefenseGodMode ? 'You + tower invulnerable &bull; kills still count &bull; HALF coins' : 'Tap to toggle &bull; no unlock needed &bull; available right out of the box'}</small></span><em>${towerDefenseGodMode ? 'HALF REWARDS' : 'FULL REWARDS'}</em>`; };
+      paintGod();
+      godRow.onclick = () => { towerDefenseGodMode = !towerDefenseGodMode; paintGod(); };
+      panel.appendChild(godRow);
+      const ladder = document.createElement('div'); ladder.className = 'lava-boss-ladder';
+      for (const cfg of Object.values(TOWER_DEFENSE_DIFFICULTIES)) {
+          const row = document.createElement('button'); row.className = 'lava-boss-tier';
+          row.innerHTML = `<span><b>${cfg.name}</b><small>SOLO &bull; ${cfg.baseWaveSize}+ minions per wave &bull; kill ${cfg.killTarget} to win</small></span><em>+${cfg.rewardCoins} Coins &bull; GOD MODE +${Math.floor(cfg.rewardCoins / 2)} Coins</em>`;
+          row.onclick = () => { towerDefenseDifficulty = cfg.id; overlay.remove(); showdownMode = 'tower_defense'; launchShowdownMatch(); }; ladder.appendChild(row);
+      }
+      panel.appendChild(ladder); panel.querySelector('header button').onclick = () => overlay.remove(); overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); }; overlay.appendChild(panel); document.body.appendChild(overlay);
+  }
+  function initTowerDefenseMatch() {
+      const cfg = getTowerDefenseDifficulty(towerDefenseDifficulty);
+      bots.length = 0; destructibleWalls.length = 0; waterZones.length = 0; bushZones.length = 0; powerups.length = 0; cubes.length = 0;
+      player.team = 'player'; player.x = WORLD_W * 0.5; player.y = WORLD_H - 260; player.bossLives = 999; player.respawnTimer = 0; player.defenseUntil = performance.now() + 1500; player.invulnerableUntil = performance.now() + 1500;
+      const now = performance.now();
+      bots.push({ id: nextId++, x: WORLD_W * 0.5, y: WORLD_H * 0.5, baseX: WORLD_W * 0.5, baseY: WORLD_H * 0.5, z: 0, vx: 0, vy: 0, hp: TOWER_DEFENSE_TOWER_HP, maxHp: TOWER_DEFENSE_TOWER_HP, radius: 30, speed: 0, brawler: 'tower_core', isDead: false, isStructure: true, isTowerDefenseTower: true, team: 'player', lastShot: 0 });
+      towerDefenseRuntime = { difficulty: cfg.id, godMode: towerDefenseGodMode, wave: 0, kills: 0, won: false, nextWaveAt: now + TOWER_DEFENSE_FIRST_WAVE_DELAY_MS, playerRespawnAt: 0, startedAt: now };
+      spawnFloatingText(player.x, player.y - 70, `\u{1F9F1} TOWER DEFENSE \u2022 ${cfg.name.toUpperCase()}${towerDefenseGodMode ? ' \u2022 \u{1F451} GOD MODE' : ''} \u2022 KILL ${cfg.killTarget} MINIONS`, '#f5a623');
+  }
+  function spawnTowerDefenseWave(rt, now) {
+      const cfg = getTowerDefenseDifficulty(rt.difficulty);
+      const count = getTowerDefenseWaveSize(cfg, rt.wave);
+      const corners = [{ x: 120, y: 120 }, { x: WORLD_W - 120, y: 120 }, { x: 120, y: WORLD_H - 120 }, { x: WORLD_W - 120, y: WORLD_H - 120 }];
+      for (let i = 0; i < count; i++) {
+          const c = corners[Math.floor(Math.random() * corners.length)];
+          const hp = Math.round(TOWER_DEFENSE_MINION_BASE_HP * cfg.hpMult);
+          bots.push({ id: `tower_defense_minion_${rt.wave}_${i}_${Math.floor(now)}_${Math.floor(Math.random() * 99999)}`, brawler: 'skeletrooper', x: clamp(c.x + (Math.random() - 0.5) * 80, 18, WORLD_W - 18), y: clamp(c.y + (Math.random() - 0.5) * 80, 18, WORLD_H - 18), z: 0, radius: 13, hp, maxHp: hp, speed: Math.round(TOWER_DEFENSE_MINION_BASE_SPEED * cfg.speedMult), team: 'tower_defense_enemy', isPet: true, isSummon: true, isTowerDefenseMinion: true, noRespawn: true, noPowerupDrop: true, selectedStar: 'none', selectedGadget: 'g1', lastShot: 0, towerDefenseHitAt: 0, towerDefenseCounted: false });
+      }
+  }
+  function updateTowerDefenseEvent(now, dt) {
+      const rt = towerDefenseRuntime;
+      if (!isTowerDefenseEvent || !rt || !playing || gameOver) return;
+      const cfg = getTowerDefenseDifficulty(rt.difficulty);
+      const tower = bots.find((b) => b && b.isTowerDefenseTower);
+      if (rt.godMode) {
+          player.invulnerableUntil = now + 1000;
+          if (player.hp < player.maxHp) { player.hp = player.maxHp; player.isDead = false; }
+      }
+      if (player.hp <= 0 && tower && tower.hp > 0 && !rt.won) {
+          if (!rt.playerRespawnAt) rt.playerRespawnAt = now + TOWER_DEFENSE_PLAYER_RESPAWN_MS;
+          if (now >= rt.playerRespawnAt) {
+              player.x = WORLD_W * 0.5; player.y = WORLD_H - 260; player.hp = player.maxHp; player.isDead = false; player.z = 0; player.stunUntil = 0; player.slowUntil = 0; player.shield = 0; player.defenseUntil = now + 1500; player.invulnerableUntil = now + 1500; player.respawnTimer = 0; rt.playerRespawnAt = 0;
+              spawnFloatingText(player.x, player.y - 70, 'BACK IN THE FIGHT!', '#f5a623');
+          }
+      }
+      if (!rt.won && tower && tower.hp > 0 && now >= rt.nextWaveAt) {
+          rt.wave += 1;
+          spawnTowerDefenseWave(rt, now);
+          rt.nextWaveAt = now + TOWER_DEFENSE_WAVE_INTERVAL_MS;
+          spawnFloatingText(player.x, player.y - 70, `WAVE ${rt.wave} INCOMING!`, '#f5a623');
+      }
+      if (tower) {
+          for (const m of bots) {
+              if (!m || !m.isTowerDefenseMinion) continue;
+              if (m.hp <= 0) {
+                  if (!m.towerDefenseCounted) { m.towerDefenseCounted = true; m.isDead = true; rt.kills += 1; }
+                  continue;
+              }
+              if (tower.hp <= 0) continue;
+              const dx = tower.x - m.x;
+              const dy = tower.y - m.y;
+              const dist = Math.hypot(dx, dy);
+              if (dist <= tower.radius + m.radius + 4) {
+                  m.vx = 0; m.vy = 0;
+                  if (!rt.godMode && now >= (m.towerDefenseHitAt || 0)) {
+                      m.towerDefenseHitAt = now + TOWER_DEFENSE_MINION_HIT_COOLDOWN_MS;
+                      tower.hp = Math.max(0, tower.hp - Math.round(TOWER_DEFENSE_MINION_BASE_DAMAGE * cfg.damageMult));
+                  }
+              } else {
+                  const steered = getBotSteeredStep(m, dx, dy, m.speed, dt);
+                  if (steered.moved) { m.x = steered.x; m.y = steered.y; m.vx = steered.vx; m.vy = steered.vy; }
+              }
+          }
+      }
+      if (!rt.won && rt.kills >= cfg.killTarget) { rt.won = true; gameOver = true; return; }
+      if (tower && tower.hp <= 0 && !rt.won) { tower.isDead = true; rt.won = false; gameOver = true; }
   }
 
   function getLavaRaidTargets(){return [player,...bots].filter(e=>e&&e.hp>0&&(e===player||e.isLavaRaidAlly));}
@@ -41506,6 +41624,7 @@ let heistFeverActive = false;
       ['corrupted_showdown', 'CS', 'Corrupted Showdown', 'Season 3 unstable Packet signals'],
       ['headless_boss_s4', '🎃', 'Headless Bolznstien Boss', 'Season 4 co-op ladder • Hard to Impossible XV • Spooky Boxes + free skin'],
       ['tombstone_boss', '🪦', 'Boss Battle: Tombstone Tycoon', 'Solo boss fight • 4 difficulties • skull coins, death-tax notes & a tombstone shield ring • up to +350 Coins'],
+      ['tower_defense', '🧱', 'Tower Defense', 'Solo • defend your tower • waves every 30s • kill them all to win'],
       ['beast_boss_god_mode', '💀', 'Beast Boss: God Mode', 'FEATURED • 5v1 vs the Overlord with God Mode active • Oct 30 only'],
       ['capture_turkey', '🦃', 'Capture the Turkey', '3v3 CTF • grab the turkey, haul it home • first to 3 captures • LIVE EARLY'],
       ['christmas_showdown', '🎄', 'Christmas Showdown', 'Season 6 Event • Solo Showdown • grab DMG, Speed and Double HP buffs'],
@@ -41609,6 +41728,7 @@ let heistFeverActive = false;
       knock_donate: ['Ring-out 3v3 battles with friendly fire', 'Friendly Fire Active'],
       headless_boss_s4: ['3v1 Co-op vs the Headless Bolznstien!', 'Dodge pumpkin bombs, anvil rain and the Ecto Nova', 'First clears pay coins, souls and up to 3 Spooky Boxes', 'Clear Impossible XV to earn his skin FREE'],
       tombstone_boss: ['Solo Boss Battle: 1 vs Tombstone Tycoon!', 'Zero Power Cubes — Pure skill showdown', 'Survive 4 phases: coin fans, death-tax notes, a tombstone shield ring, a graveyard frenzy, then a LAST STAND under 15% HP', 'Defeat him to claim Coins — Normal +60, Hard +120, Extreme +200, Impossible +350!'],
+      tower_defense: ['Solo tower defense — just you and your tower vs the horde!', 'A minion wave spawns every 30 seconds from the arena edges', 'Win by hitting the kill target: Easy 50, Normal 100, Hard 150, Extreme 250 minions', 'Lose if your tower falls — God Mode toggle available right out of the box, no unlock needed'],
       beast_boss_god_mode: ['5v1 vs the Overlord with GOD MODE active — featured today only, Oct 30, 2026!', 'God Mode means faster, harder-hitting pulse bursts and warp slashes', 'Collect Overlord crystals to empower your team for 5 seconds', 'Win for the standard Beast Boss rewards — a Beast Boss Token and +150 Coins'],
       capture_turkey: ['3v3 Capture the Flag — with a live turkey!', 'Grab the turkey at mid and haul it back to YOUR base', 'Carriers drop the turkey when defeated • it respawns at mid after a capture', 'First team to 3 captures wins • 3:00 match • Released early! Turkey Trouble season quests start Nov 1'],
       christmas_showdown: ['Solo Showdown — with presents under fire!', 'Buff pickups rain down: DMG +30%, Speed +20%, Double HP', 'Buffs last the whole match and stack with Power Cubes', 'First to survive the blizzard wins • Season 6: Xplodemis event (Dec 1-31)'],
@@ -43280,6 +43400,7 @@ let heistFeverActive = false;
           christmas_showdown: '#ff5d73',
           prop_hunt: '#ffd166',
           tombstone_boss: '#7dffb0',
+          tower_defense: '#f5a623',
           beast_boss_god_mode: '#ff2d78',
           objective: '#389eff',
           construction: '#f2a25d',
@@ -43329,7 +43450,7 @@ let heistFeverActive = false;
           else if(id==='tower_duels_weekend') tag='5F';
           else if (id === 'duo') tag = 'DUO';
           else if (id === 'trio') tag = 'TRIO';
-          else if (id === 'orbo_boss' || id === 'ramage_boss' || id === 'demon_villains_boss' || id === 'weefee_boss' || id === 'blink_eye_dodge' || id === 'power_gods' || id === 'damage_filler' || id === 'solo_td' || id === 'tombstone_boss') tag = 'SOLO';
+          else if (id === 'orbo_boss' || id === 'ramage_boss' || id === 'demon_villains_boss' || id === 'weefee_boss' || id === 'blink_eye_dodge' || id === 'power_gods' || id === 'damage_filler' || id === 'solo_td' || id === 'tombstone_boss' || id === 'tower_defense') tag = 'SOLO';
           else if (id === 'beast_boss_god_mode') tag = '5V1';
           else if (id === 'duels' || id === 'impossible') tag = '1V1';
           else if (id === 'arena_forge') tag = '3V3';
@@ -43365,6 +43486,10 @@ let heistFeverActive = false;
               }
               if (id === 'tombstone_boss') {
                   openTombstoneBossEvent();
+                  return;
+              }
+              if (id === 'tower_defense') {
+                  openTowerDefenseEvent();
                   return;
               }
               showdownMode = id;
@@ -45304,6 +45429,7 @@ let heistFeverActive = false;
       matchHomeEventReward = isRankedMatch ? null : getHomeEventRewardForMode(showdownMode);
       isBossFight = false;
       isBeastBossEvent = showdownMode === 'beast_boss_god_mode';
+      isTowerDefenseEvent = showdownMode === 'tower_defense';
       isBouncinBossEvent = showdownMode === 'bouncin_boss_s3';
       isLavaBossEvent = showdownMode === 'lava_boss_s3';
       isHeadlessBossEvent = showdownMode === 'headless_boss_s4';
@@ -45476,7 +45602,7 @@ let heistFeverActive = false;
           showdownMapIndex=(floor-1)%TOWER_TROUBLE_FLOORS;
       }
     constructionMapIndex = getRotatingConstructionMapIndex();
-      if (isLavaBossEvent || isHeadlessBossEvent || isTombstoneBossEvent) {
+      if (isLavaBossEvent || isHeadlessBossEvent || isTombstoneBossEvent || isTowerDefenseEvent) {
           WORLD_W = 2400;
           WORLD_H = 2200;
       } else if (isTurkeyCaptureMode) {
@@ -45669,6 +45795,7 @@ let heistFeverActive = false;
       if (isHeadlessBossEvent) initHeadlessBossMatch();
       if (isTombstoneBossEvent) initTombstoneBossMatch();
       if (isBeastBossEvent) initBeastBossGodModeMatch();
+      if (isTowerDefenseEvent) initTowerDefenseMatch();
       if (isBrickVaultMode) initBrickVaultModeState();
       if (isArenaForgeMode) {
           spawnArenaForgeStructures();
@@ -52530,6 +52657,7 @@ function checkHit(target, b, i){
         }
     }
     updateBeastBossEvent(now);
+    if (isTowerDefenseEvent) updateTowerDefenseEvent(now, dt);
     if (isWarperEvent) updateWarperEvent(now);
     if ((isRankedMatch || isCustomMutatorMatch || isHyperForgeLTM) && playing && !gameOver) {
         if (activeRankedModifier === 'always_hyper' || activeRankedModifierSecondary === 'always_hyper' || activeRankedModifierTertiary === 'always_hyper' || isHyperForgeLTM) {
@@ -59587,7 +59715,7 @@ function checkHit(target, b, i){
         aliveCount = hostileAlive + (teamAlive ? 1 : 0);
     } else {
         aliveCount = aliveBots.length + (player.hp > 0 ? 1 : 0);
-        if (!isCoreBreachIntroMode && !isWeeFeeBossMode && !isBraweBallMode && !isKnockoutMode && !isBlinkEyeDodgeMode && !isObjectiveMode && !isConstructionMode && !isDamageFillerMode && !isMirrorMode && !isBrickVaultMode && !isArenaForgeMode && !isMarkedMayhemMode && !isTugZoneMode && !isPropHuntMode && !isKnockDonateMode && !isTrioShowdownMode && !isTraining && !isDuels && !isBossFight && !isSoloTrial && (player.hp <= 0 || aliveBots.length === 0)) {
+        if (!isCoreBreachIntroMode && !isWeeFeeBossMode && !isBraweBallMode && !isKnockoutMode && !isBlinkEyeDodgeMode && !isObjectiveMode && !isConstructionMode && !isDamageFillerMode && !isMirrorMode && !isBrickVaultMode && !isArenaForgeMode && !isMarkedMayhemMode && !isTugZoneMode && !isPropHuntMode && !isKnockDonateMode && !isTrioShowdownMode && !isTraining && !isDuels && !isBossFight && !isSoloTrial && !isTowerDefenseEvent && (player.hp <= 0 || aliveBots.length === 0)) {
             gameOver = true;
         }
     }
@@ -76590,6 +76718,30 @@ function checkHit(target, b, i){
         }
     }
 
+    if (isTowerDefenseEvent && towerDefenseRuntime) {
+        const tdRt = towerDefenseRuntime;
+        const tdCfg = getTowerDefenseDifficulty(tdRt.difficulty);
+        const tdTower = bots.find((b) => b && b.isTowerDefenseTower);
+        const tdTowerPct = tdTower ? Math.max(0, Math.min(1, tdTower.hp / Math.max(1, tdTower.maxHp))) : 0;
+        const tdNextIn = Math.max(0, Math.ceil((tdRt.nextWaveAt - performance.now()) / 1000));
+        ctx.fillStyle = '#f5a623';
+        ctx.font = '900 18px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`🧱 TOWER DEFENSE • ${tdCfg.name.toUpperCase()}${tdRt.godMode ? ' • 👑 GOD MODE' : ''}`, innerWidth / 2, 74);
+        ctx.fillStyle = '#f4fbff';
+        ctx.font = 'bold 16px sans-serif';
+        ctx.fillText(`KILLS ${tdRt.kills}/${tdCfg.killTarget} • WAVE ${tdRt.wave}${player.hp <= 0 && tdRt.playerRespawnAt ? ` • BACK IN ${Math.max(0, Math.ceil((tdRt.playerRespawnAt - performance.now()) / 1000))}s` : ''} • NEXT WAVE ${tdNextIn}s`, innerWidth / 2, 96);
+        const tdBarW = 260, tdBarH = 12, tdBx = innerWidth / 2 - tdBarW / 2, tdBy = 106;
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(tdBx - 1, tdBy - 1, tdBarW + 2, tdBarH + 2);
+        ctx.fillStyle = tdTowerPct > 0.3 ? '#5cf296' : '#ff4d4d';
+        ctx.fillRect(tdBx, tdBy, Math.round(tdBarW * tdTowerPct), tdBarH);
+        ctx.fillStyle = '#cfeef7';
+        ctx.font = '12px sans-serif';
+        ctx.fillText(`TOWER ${tdTower ? Math.max(0, Math.ceil(tdTower.hp)) : 0}/${TOWER_DEFENSE_TOWER_HP} HP`, tdBx + tdBarW + 8, tdBy + tdBarH);
+        ctx.textAlign = 'left';
+    }
+
     if (player.hp > 0) {
         const hpPct = Math.max(0, Math.min(1, player.hp / Math.max(1, player.maxHp)));
         if (hpPct <= BALANCE_PROFILE.lowHpWarningPct) {
@@ -77419,6 +77571,11 @@ function checkHit(target, b, i){
                     rankText = `Difficulty: ${diffName}`;
                 }
                 if(!isLavaBossEvent&&!isHeadlessBossEvent&&!isTombstoneBossEvent)matchText = won ? (isBeastBossEvent ? "BEAST BOSS DEFEATED!" : "BOSS DEFEATED!") : "TEAM WIPED OUT!";
+            } else if (isTowerDefenseEvent) {
+                const tdCfg = getTowerDefenseDifficulty(towerDefenseRuntime?.difficulty);
+                won = towerDefenseRuntime?.won === true;
+                matchText = won ? 'TOWER DEFENDED!' : 'YOUR TOWER FELL!';
+                rankText = `Difficulty: ${tdCfg.name} • Kills ${towerDefenseRuntime?.kills || 0}/${tdCfg.killTarget} • Wave ${towerDefenseRuntime?.wave || 0}${towerDefenseRuntime?.godMode ? ' • GOD MODE' : ''}`;
             } else if (isSoloTrial) {
                 won = player.hp > 0 && soloTrialWave >= SOLO_TRIAL_MAX_WAVES && bots.every(b => b.hp <= 0 || b.isDead);
                 matchText = won ? "SOLO TRIAL COMPLETE!" : "SOLO TRIAL FAILED!";
@@ -77738,6 +77895,7 @@ function checkHit(target, b, i){
 
             let rewardCoins = won ? 30 : 10;
             if (isBossFight && won) rewardCoins = isBeastBossEvent ? 150 : (isTombstoneBossEvent ? getTombstoneBossDifficulty(tombstoneBossRuntime?.difficulty).rewardCoins : 100);
+            if (isTowerDefenseEvent && won) rewardCoins = getTowerDefenseRewardCoins();
             if (isSoloTrial && won) rewardCoins = 80;
             if (isDuels && won) rewardCoins = 50;
 
