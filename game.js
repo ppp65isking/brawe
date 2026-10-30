@@ -41692,6 +41692,8 @@ let heistFeverActive = false;
   }
   const HOME_EVENT_ROTATION_KEY = 'arenaForgeHomeEventRotationV4';
   const HOME_SHOWDOWN_CHOICE_KEY = 'arenaForgeLastShowdownChoice';
+  const HOME_LAST_EVENT_CHOICE_KEY = 'arenaForgeLastEventChoice';
+  const HOME_LAST_TAB_KEY = 'arenaForgeLastHomeTab';
   const HOME_EVENT_REWARDS = {
       orbo_boss: { type:'coins', amount:85, label:'+85 Coins & +30 Souls' },
       blink_eye_dodge: { type:'coins', amount:75, label:'+75 Coins & +25 Souls' },
@@ -43286,6 +43288,11 @@ let heistFeverActive = false;
   }
 
   function syncHomeModeCards() {
+      // Events persistence: every card sync reflects the current selection, so
+      // saving here covers every selection path (card clicks, variant picks,
+      // season-panel actions, info-modal Play). Runs on home UI only, never
+      // in-match, and rewrites the same value at boot — never a stale write.
+      try { localStorage.setItem(HOME_LAST_EVENT_CHOICE_KEY, showdownMode); } catch (_) {}
       Object.keys(homeModeCardMap).forEach((modeId) => {
           const card = homeModeCardMap[modeId];
           if (!card) return;
@@ -43356,6 +43363,9 @@ let heistFeverActive = false;
 
   function setHomeTab(tab = 'home') {
       const safeTab = tab === 'events' ? 'events' : 'home';
+      // Events persistence: remember which home tab was open so a reload
+      // returns to the Events tab instead of always landing on the lobby.
+      try { localStorage.setItem(HOME_LAST_TAB_KEY, safeTab); } catch (_) {}
       document.getElementById('homeLobbyView')?.classList.toggle('is-active', safeTab === 'home');
       document.getElementById('homeEventsView')?.classList.toggle('is-active', safeTab === 'events');
       const navMap = {
@@ -43588,6 +43598,17 @@ let heistFeverActive = false;
       });
 
       const availableIds = new Set(['solo', 'duo', 'trio', ...activeEventIds, ...allEventIds]);
+      // Events persistence: on a fresh boot showdownMode is still the 'solo'
+      // default, so adopt the last saved event if it is still available. The
+      // 'solo' guard keeps mid-session rotation rebuilds from ever clobbering
+      // the player's current selection, and an expired/removed saved id falls
+      // through to the existing fallback below — never a blank page or crash.
+      if (showdownMode === 'solo') {
+          try {
+              const lastEvent = localStorage.getItem(HOME_LAST_EVENT_CHOICE_KEY);
+              if (lastEvent && availableIds.has(lastEvent)) showdownMode = lastEvent;
+          } catch (_) {}
+      }
       if (!availableIds.has(showdownMode)) {
           let remembered = 'solo';
           try { remembered = localStorage.getItem(HOME_SHOWDOWN_CHOICE_KEY) || 'solo'; } catch (_) {}
@@ -45061,6 +45082,10 @@ let heistFeverActive = false;
   
     rankedBtn.onclick = openRankedQueueUI;
   setupCompactHomeModeSelector();
+  // Events persistence (boot only): return to the Events tab if that was the
+  // tab open at last save. Kept out of setupCompactHomeModeSelector so
+  // rotation rebuilds never yank the player between tabs mid-session.
+  try { if (localStorage.getItem(HOME_LAST_TAB_KEY) === 'events') setHomeTab('events'); } catch (_) {}
   let lastSushiRotationHour = Math.floor(Date.now() / 3600000);
   setInterval(() => {
       const currentHour = Math.floor(Date.now() / 3600000);
