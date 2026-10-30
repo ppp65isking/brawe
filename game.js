@@ -21462,7 +21462,7 @@ let heistFeverActive = false;
         // they respawn through restoreRespawningEntity, so the shred reset
         // hook covers them. Structures, pets, Forge minions/camps/colossi
         // are excluded (brawlers only).
-        return !!target && !target.isStructure && !target.isPet && !target.isArenaForgeMinion && !target.isArenaForgeCamp && !target.isArenaForgeColossus;
+        return !!target && !target.isStructure && (!target.isPet || target.isTowerDefenseMinion) && !target.isArenaForgeMinion && !target.isArenaForgeCamp && !target.isArenaForgeColossus;
     }
     function applyAegisMaxHpShred(target, owner, b) {
         if (!AEGIS_ENABLED || !target || target.hp <= 0 || !aegisIsFighterTarget(target)) return false;
@@ -21601,7 +21601,7 @@ let heistFeverActive = false;
         for (const target of [player, ...bots]) {
             if (!target || target.hp <= 0 || target.id === entity.id || dash.hitIds[target.id]) continue;
             if (areAlliedEntities(entity, target)) continue;
-            if (target.isStructure || target.isPet || target.isDummy) continue;
+            if (target.isStructure || (target.isPet && !target.isTowerDefenseMinion) || target.isDummy) continue;
             if (Math.hypot(target.x - entity.x, target.y - entity.y) <= 48 + (target.radius || 14)) {
                 dash.hitIds[target.id] = true;
                 checkHit(target, { ownerBrawler: 'aegis', ownerId: entity.id, damage: AEGIS_GADGET1_DAMAGE, pierce: true, super: false, isSuperDash: true, hitIds: {} }, -1);
@@ -30886,8 +30886,8 @@ let heistFeverActive = false;
                 bot.lastDamagerId = ownerId;
             }
             if (dealt > 0) registerConstructionCartDamage(ownerId, dealt);
-            if(!isSuper && !bot.isPet && !(areAlliedEntities(owner, bot) && isFriendlyFireActive())) grantMainAttackCharge(owner, {ownerBrawler:owner?.currentMainAttackBrawler,mainAttackActivationId:owner?.currentMainAttackActivationId});
-            if(!isSuper && !bot.isPet && areAlliedEntities(owner, bot) && isFriendlyFirePlusActive()) grantMainAttackCharge(owner, {ownerBrawler:owner?.currentMainAttackBrawler,mainAttackActivationId:owner?.currentMainAttackActivationId});
+            if(!isSuper && (!bot.isPet || bot.isTowerDefenseMinion) && !(areAlliedEntities(owner, bot) && isFriendlyFireActive())) grantMainAttackCharge(owner, {ownerBrawler:owner?.currentMainAttackBrawler,mainAttackActivationId:owner?.currentMainAttackActivationId});
+            if(!isSuper && (!bot.isPet || bot.isTowerDefenseMinion) && areAlliedEntities(owner, bot) && isFriendlyFirePlusActive()) grantMainAttackCharge(owner, {ownerBrawler:owner?.currentMainAttackBrawler,mainAttackActivationId:owner?.currentMainAttackActivationId});
             if (owner && areAlliedEntities(owner, bot) && isFriendlyFirePlusActive() && bot.id !== ownerId && dealt > 0) {
                 grantFriendlyFirePlusBonus(owner);
             }
@@ -50664,7 +50664,7 @@ function checkHit(target, b, i){
         if (ownerStar === 'long') target.slowUntil = Math.max(target.slowUntil || 0, performance.now() + 1200);
         // Each real enemy hit restores a flat 20% Super charge. Piercing rewards
         // every enemy connected with, while Hypercharge builds at a safer 25% rate.
-        if (!target.isPet && !target.isSummon) {
+        if ((!target.isPet || target.isTowerDefenseMinion) && (!target.isSummon || target.isTowerDefenseMinion)) {
             const recharge = 20 * getAttackChargeMultiplier(owner);
             const hyperRecharge = recharge * .25;
             if (owner.id === player.id) {
@@ -50940,8 +50940,8 @@ function checkHit(target, b, i){
     }
     // One connected main-attack activation grants one charge step, regardless
     // of pellet count, fragments, repeated damage, or raw damage dealt.
-    if(!b.super && !b.isSuperDash && !b.isMinigunninMutationFire && !target.isPet && !(areAlliedEntities(owner, target) && isFriendlyFireActive())) grantMainAttackCharge(owner, b);
-    if(!b.super && !b.isSuperDash && !b.isMinigunninMutationFire && !target.isPet && areAlliedEntities(owner, target) && isFriendlyFirePlusActive()) grantMainAttackCharge(owner, b);
+    if(!b.super && !b.isSuperDash && !b.isMinigunninMutationFire && (!target.isPet || target.isTowerDefenseMinion) && !(areAlliedEntities(owner, target) && isFriendlyFireActive())) grantMainAttackCharge(owner, b);
+    if(!b.super && !b.isSuperDash && !b.isMinigunninMutationFire && (!target.isPet || target.isTowerDefenseMinion) && areAlliedEntities(owner, target) && isFriendlyFirePlusActive()) grantMainAttackCharge(owner, b);
     if (b.isMallow && owner && target) applyMallowSlowHit(target, owner, b);
     if (b.isNightshadeDagger && owner && target) applyNightshadePoisonHit(target, owner, b);
     if (b.isAegisShield && owner && target) applyAegisMaxHpShred(target, owner, b);
@@ -53017,7 +53017,7 @@ function checkHit(target, b, i){
 
     // Check hit flash and handle movement
     
-    if (!isBraweBallMode && !isKnockoutMode && !isWeeFeeBossMode && !isDemonVillainsBossMode && !isRamageBossMode && !isOrboBossMode && !isBlinkEyeDodgeMode && !isObjectiveMode && !isConstructionMode && !isDamageFillerMode && !isMirrorMode && !isImpossibleMode && !isKnockDonateMode && !isBrickVaultMode && !isArenaForgeMode && !isMarkedMayhemMode && !isTugZoneMode && !isPropHuntMode && !isTraining && !isBossFight && !isSoloTrial && !gameOver) {
+    if (!isBraweBallMode && !isKnockoutMode && !isWeeFeeBossMode && !isDemonVillainsBossMode && !isRamageBossMode && !isOrboBossMode && !isBlinkEyeDodgeMode && !isObjectiveMode && !isConstructionMode && !isDamageFillerMode && !isMirrorMode && !isImpossibleMode && !isKnockDonateMode && !isBrickVaultMode && !isArenaForgeMode && !isMarkedMayhemMode && !isTugZoneMode && !isPropHuntMode && !isTraining && !isBossFight && !isSoloTrial && !isTowerDefenseEvent && !gameOver) {
         stormTimer += dt;
         const stormDuration = getModeStormDurationSeconds();
         stormRadius = Math.max(0, (WORLD_W * 0.8) - (stormTimer / stormDuration) * (WORLD_W * 0.8));
@@ -76494,7 +76494,7 @@ function checkHit(target, b, i){
     }
 
     // draw storm
-    if (!isTraining && !isBossFight && !isSoloTrial && !isObjectiveMode && !isConstructionMode && !isDamageFillerMode && !isMirrorMode && !isKnockDonateMode && !isBrickVaultMode && !isArenaForgeMode && !isMarkedMayhemMode && !isTugZoneMode) {
+    if (!isTraining && !isBossFight && !isSoloTrial && !isTowerDefenseEvent && !isObjectiveMode && !isConstructionMode && !isDamageFillerMode && !isMirrorMode && !isKnockDonateMode && !isBrickVaultMode && !isArenaForgeMode && !isMarkedMayhemMode && !isTugZoneMode) {
         ctx.fillStyle = 'rgba(39, 174, 96, 0.35)'; // Poison green
         ctx.beginPath();
         ctx.arc(WORLD_W/2, WORLD_H/2, WORLD_W*2, 0, Math.PI*2);
