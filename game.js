@@ -7520,6 +7520,11 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
       function getActiveSeasonQuestDefs() { return getActiveSeasonProfile().quests; }
       function isTurkeyTroubleSeasonActive(now = Date.now()) { return now >= TURKEY_TROUBLE_START_UTC && now < TURKEY_TROUBLE_END_UTC; }
       function isXplodemisSeasonActive(now = Date.now()) { return now >= XPLODEMIS_START_UTC && now < XPLODEMIS_END_UTC; }
+      // Beast Boss: God Mode featured event — available ONLY on the player's local date of October 30, 2026.
+      function isBeastBossGodModeDay(now = new Date()) {
+          const d = now instanceof Date ? now : new Date(now);
+          return d.getFullYear() === 2026 && d.getMonth() === 9 && d.getDate() === 30;
+      }
       function ensureXplodemisDaily() {
           const today = new Date();
           const dayKey = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`;
@@ -13432,6 +13437,30 @@ let heistFeverActive = false;
       bots.push(boss);
       const now=performance.now();lavaBossRuntime={difficulty:cfg.id,bossId:boss.id,startedAt:now,timeLimitMs:180000,nextAttackAt:now+1800,nextSuperAt:now+9000,nextCoreSurgeAt:now+cfg.coreSurgeFrequency,coreSurgeUntil:0,telegraphs:[],pools:[],projectiles:[],beams:[],lastAttackIndex:-1,moveAngle:Math.PI*.5,nextMoveAt:now+900,dash:null,superName:'',pedestalPairCursor:0,presentation:{kind:'intro',startedAt:now,until:now+1800}};
       spawnFloatingText(player.x,player.y-70,`${cfg.name.toUpperCase()} • LAVA VILLAIN`,'#ff9a3d');
+  }
+
+  function createBeastBossGodModeAlly(slot) {
+      const choices = getBotBrawlerPool({ exclude: [selectedBrawler] });
+      const brawler = choices[(slot * 7 + Math.floor(Math.random() * Math.max(1, choices.length))) % Math.max(1, choices.length)] || 'outlit';
+      const tier = getHPTier(brawler, 11);
+      const unlocks = getUnlocksForLevel(11);
+      return { id: nextId++, x: WORLD_W * .5 + (slot - 1.5) * 120, y: WORLD_H - 250, z: 0, vx: 0, vy: 0, hp: tier.hp, maxHp: tier.hp, powerCubes: 0, isDead: false, shield: 0, shieldMax: 0, shieldDecayTimer: 0, reloadBuffUntil: 0, radius: 14, speed: (tier.speed * .43) + 18, slowUntil: 0, brawler, level: 11, gadgetUnlocked: unlocks.gadgetUnlocked, starPowerUnlocked: unlocks.starPowerUnlocked, hyperchargeUnlocked: unlocks.hyperchargeUnlocked, lastTargetId: null, targetLockUntil: 0, lastShot: Math.random() * 1000, superCharge: 0, hyperChargeCharge: 0, isHypercharged: false, hyperchargeUntil: 0, gadgetArmed: false, gadgetCooldownUntil: 0, selectedStar: 'slow', selectedGadget: 'g1', unopcolocoCycle: 0, minigunAmmo: 100, minigunPierceShots: 0, ridaSpeedMult: 1, ridaHitCooldowns: {}, isFlying: false, moneyAndTaxMode: 'money', team: 'player', isTeammate: true, isBeastBossAlly: true, respawnTimer: 0 };
+  }
+
+  // Featured one-day event (Oct 30, 2026 only): a Beast Boss fight with the
+  // boss's dormant God Mode flag switched on. Rewards flow through the normal
+  // Beast Boss win path unchanged (token + 150 Coins).
+  function initBeastBossGodModeMatch() {
+      const diffIndex = getBeastBossDifficultyIndex();
+      const cfg = getBeastBossDifficultySettings(diffIndex);
+      const fightHp = Math.round(getHPTier('overlord', 11).hp * cfg.hpMult);
+      bots.length = 0; destructibleWalls.length = 0; waterZones.length = 0; bushZones.length = 0; powerups.length = 0; cubes.length = 0;
+      player.team = 'player'; player.x = WORLD_W * .5; player.y = WORLD_H - 260; player.bossLives = 999; player.respawnTimer = 0; player.defenseUntil = performance.now() + 1500;
+      for (let i = 0; i < 4; i++) bots.push(createBeastBossGodModeAlly(i));
+      const boss = { id: nextId++, x: WORLD_W * .5, y: 360, z: 20, vx: 0, vy: 0, hp: fightHp, maxHp: fightHp, shield: 0, shieldMax: 0, radius: 66, speed: Math.round(118 * cfg.speedMult), brawler: 'overlord', level: 11, team: 'beast_enemy', isBoss: true, isGodMode: true, beastBossDifficulty: diffIndex, noRespawn: true, noPowerupDrop: true, lastShot: 0, superCharge: 0, hyperChargeCharge: 0, isHypercharged: false, gadgetArmed: false, selectedStar: 'none', selectedGadget: 'g1' };
+      bots.push(boss);
+      beastCrystalNextSpawn = performance.now() + 1500;
+      spawnFloatingText(player.x, player.y - 70, `💀 GOD MODE • BEAST BOSS • ${getBeastBossDifficultyName(diffIndex).toUpperCase()}`, '#ff2d78');
   }
 
   function getLavaRaidTargets(){return [player,...bots].filter(e=>e&&e.hp>0&&(e===player||e.isLavaRaidAlly));}
@@ -41477,6 +41506,7 @@ let heistFeverActive = false;
       ['corrupted_showdown', 'CS', 'Corrupted Showdown', 'Season 3 unstable Packet signals'],
       ['headless_boss_s4', '🎃', 'Headless Bolznstien Boss', 'Season 4 co-op ladder • Hard to Impossible XV • Spooky Boxes + free skin'],
       ['tombstone_boss', '🪦', 'Boss Battle: Tombstone Tycoon', 'Solo boss fight • 4 difficulties • skull coins, death-tax notes & a tombstone shield ring • up to +350 Coins'],
+      ['beast_boss_god_mode', '💀', 'Beast Boss: God Mode', 'FEATURED • 5v1 vs the Overlord with God Mode active • Oct 30 only'],
       ['capture_turkey', '🦃', 'Capture the Turkey', '3v3 CTF • grab the turkey, haul it home • first to 3 captures • LIVE EARLY'],
       ['christmas_showdown', '🎄', 'Christmas Showdown', 'Season 6 Event • Solo Showdown • grab DMG, Speed and Double HP buffs'],
       ['prop_hunt', '🫣', 'Prop Hunt', 'Hide & seek on Crown Collapse • hiders morph into props • wrong guesses cost seekers 400 HP'],
@@ -41579,6 +41609,7 @@ let heistFeverActive = false;
       knock_donate: ['Ring-out 3v3 battles with friendly fire', 'Friendly Fire Active'],
       headless_boss_s4: ['3v1 Co-op vs the Headless Bolznstien!', 'Dodge pumpkin bombs, anvil rain and the Ecto Nova', 'First clears pay coins, souls and up to 3 Spooky Boxes', 'Clear Impossible XV to earn his skin FREE'],
       tombstone_boss: ['Solo Boss Battle: 1 vs Tombstone Tycoon!', 'Zero Power Cubes — Pure skill showdown', 'Survive 4 phases: coin fans, death-tax notes, a tombstone shield ring, a graveyard frenzy, then a LAST STAND under 15% HP', 'Defeat him to claim Coins — Normal +60, Hard +120, Extreme +200, Impossible +350!'],
+      beast_boss_god_mode: ['5v1 vs the Overlord with GOD MODE active — featured today only, Oct 30, 2026!', 'God Mode means faster, harder-hitting pulse bursts and warp slashes', 'Collect Overlord crystals to empower your team for 5 seconds', 'Win for the standard Beast Boss rewards — a Beast Boss Token and +150 Coins'],
       capture_turkey: ['3v3 Capture the Flag — with a live turkey!', 'Grab the turkey at mid and haul it back to YOUR base', 'Carriers drop the turkey when defeated • it respawns at mid after a capture', 'First team to 3 captures wins • 3:00 match • Released early! Turkey Trouble season quests start Nov 1'],
       christmas_showdown: ['Solo Showdown — with presents under fire!', 'Buff pickups rain down: DMG +30%, Speed +20%, Double HP', 'Buffs last the whole match and stack with Power Cubes', 'First to survive the blizzard wins • Season 6: Xplodemis event (Dec 1-31)'],
       prop_hunt: ['Hide & seek on Crown Collapse: 2 seekers vs 6 hiders', 'Hiders morph into props (barrel, crate, plant pot, sign post) and win by surviving the 2:30 seek timer', 'Every hit on a REAL prop costs the seeker 400 HP — wrong guesses hurt!', 'A destroyed morph shell reveals the hider for 500 damage • re-morphing takes 10 seconds'],
@@ -43249,6 +43280,7 @@ let heistFeverActive = false;
           christmas_showdown: '#ff5d73',
           prop_hunt: '#ffd166',
           tombstone_boss: '#7dffb0',
+          beast_boss_god_mode: '#ff2d78',
           objective: '#389eff',
           construction: '#f2a25d',
           knock_donate: '#ff7bd1',
@@ -43298,6 +43330,7 @@ let heistFeverActive = false;
           else if (id === 'duo') tag = 'DUO';
           else if (id === 'trio') tag = 'TRIO';
           else if (id === 'orbo_boss' || id === 'ramage_boss' || id === 'demon_villains_boss' || id === 'weefee_boss' || id === 'blink_eye_dodge' || id === 'power_gods' || id === 'damage_filler' || id === 'solo_td' || id === 'tombstone_boss') tag = 'SOLO';
+          else if (id === 'beast_boss_god_mode') tag = '5V1';
           else if (id === 'duels' || id === 'impossible') tag = '1V1';
           else if (id === 'arena_forge') tag = '3V3';
           else if (id === 'marked_mayhem') tag = '3V3';
@@ -43421,10 +43454,11 @@ let heistFeverActive = false;
           }
       });
 
-      const allEventIds = [...new Set(HOME_MODE_CARDS.map((entry) => entry[0]))].filter((id) => HOME_MODE_DATA[id] && !isRetiredTowerMode(id) && (id !== 'slop_sushi_plus' || isSlopSushiLive()) && (id !== 'brick_vault' || TOWER_POWER_SYSTEM_ENABLED) && (id !== 'tower_duels_weekend' || TOWER_EVENT_MODES_ENABLED) && (id !== 'prop_hunt' || PROP_HUNT_ENABLED) && (id !== 'tombstone_boss' || TOMBSTONE_BOSS_ENABLED));
+      const allEventIds = [...new Set(HOME_MODE_CARDS.map((entry) => entry[0]))].filter((id) => HOME_MODE_DATA[id] && !isRetiredTowerMode(id) && (id !== 'slop_sushi_plus' || isSlopSushiLive()) && (id !== 'brick_vault' || TOWER_POWER_SYSTEM_ENABLED) && (id !== 'tower_duels_weekend' || TOWER_EVENT_MODES_ENABLED) && (id !== 'prop_hunt' || PROP_HUNT_ENABLED) && (id !== 'tombstone_boss' || TOMBSTONE_BOSS_ENABLED) && (id !== 'beast_boss_god_mode' || isBeastBossGodModeDay()));
       const allEvents = createSection('ALL EVENTS', 'EVERY EVENT - ALWAYS AVAILABLE. NO WAITING ON THE ROTATION.', 'all-events-section');
       allEventIds.forEach((id) => {
           const card = createModeCard(id, false);
+          if (id === 'beast_boss_god_mode' && card) card.classList.add('featured-event-card');
           if (card) allEvents.grid.appendChild(card);
       });
 
@@ -45258,17 +45292,23 @@ let heistFeverActive = false;
           updateShowdownModeUI();
           return;
       }
+      if (showdownMode === 'beast_boss_god_mode' && !isBeastBossGodModeDay()) {
+          alert('💀 Beast Boss: God Mode is a one-day featured event — it runs October 30, 2026 only!');
+          showdownMode = 'solo';
+          updateShowdownModeUI();
+          return;
+      }
       const brickGate = getSelectedBrickPowerGate();
       if (brickGate.locked) { updateBrickPowerGateUI(); return; }
       if (showdownMode === 'splitter_powered') showdownMode = 'power_gods';
       matchHomeEventReward = isRankedMatch ? null : getHomeEventRewardForMode(showdownMode);
       isBossFight = false;
-      isBeastBossEvent = false;
+      isBeastBossEvent = showdownMode === 'beast_boss_god_mode';
       isBouncinBossEvent = showdownMode === 'bouncin_boss_s3';
       isLavaBossEvent = showdownMode === 'lava_boss_s3';
       isHeadlessBossEvent = showdownMode === 'headless_boss_s4';
       isTombstoneBossEvent = showdownMode === 'tombstone_boss';
-      isBossFight = isLavaBossEvent || isBouncinBossEvent || isHeadlessBossEvent || isTombstoneBossEvent;
+      isBossFight = isLavaBossEvent || isBouncinBossEvent || isHeadlessBossEvent || isTombstoneBossEvent || isBeastBossEvent;
       activeSkinTrial = null; // real matches never use trial skins
       feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = [];
       if (isBouncinBossEvent) {
@@ -45628,6 +45668,7 @@ let heistFeverActive = false;
       if (isLavaBossEvent) initLavaBossMatch();
       if (isHeadlessBossEvent) initHeadlessBossMatch();
       if (isTombstoneBossEvent) initTombstoneBossMatch();
+      if (isBeastBossEvent) initBeastBossGodModeMatch();
       if (isBrickVaultMode) initBrickVaultModeState();
       if (isArenaForgeMode) {
           spawnArenaForgeStructures();
@@ -76522,6 +76563,12 @@ function checkHit(target, b, i){
         ctx.fillStyle = '#d9a7ff';
         ctx.font = 'bold 16px sans-serif';
         ctx.fillText(`Trial crystals on map: Overlord ${overlordCrystals} | Balls ${ballCrystals}`, innerWidth/2 - 140, 74);
+        const godBoss = bots.find(b => b.isBoss && b.isGodMode && b.hp > 0);
+        if (godBoss) {
+            ctx.fillStyle = '#ff2d78';
+            ctx.font = '900 18px sans-serif';
+            ctx.fillText('💀 GOD MODE ACTIVE', innerWidth/2 - 110, 108);
+        }
         // Draw Bouncin' Balls crystal duration bar for player when active
         if (player.bouncyBallsCrystalActive && player.bouncyBallsCrystalStartedAt && player.bouncyBallsCrystalUntil) {
             const now = performance.now();
