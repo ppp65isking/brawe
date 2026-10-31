@@ -50,9 +50,9 @@ for (const b of ['crystila', 'darkener', 'awakenator', 'carmela_fudge']) {
 assert.match(game, /function getBrawlerRarityRank[\s\S]*?Starter:\s*1,\s*Rare:\s*2,\s*Epic:\s*3,\s*Mythic:\s*4,\s*Exotic:\s*5,\s*Unique:\s*6,\s*Anomaly:\s*7/, 'getBrawlerRarityRank uses updated tiers');
 assert.match(game, /function getBrawlerSortOrder[\s\S]*?Starter:\s*0,\s*Rare:\s*1,\s*Epic:\s*2,\s*Mythic:\s*3,\s*Exotic:\s*4,\s*Unique:\s*5,\s*Anomaly:\s*6/, 'getBrawlerSortOrder uses updated tiers');
 
-// 6. Soul summoner auto-spend excludes Starter and loops in correct tier order
+// 6. Soul summoner auto-spend excludes Starter and picks a random locked brawler (master update)
 assert.match(game, /allBrawlers\.filter\(\s*b\s*=>\s*getBrawlerRarity\(b\)\s*!==\s*'Starter'/, 'autoSpendSoulsOnTarget excludes Starter brawlers');
-assert.match(game, /\['Starter',\s*'Rare',\s*'Epic',\s*'Mythic',\s*'Exotic',\s*'Unique',\s*'Anomaly'\]/, 'rarity order array includes all 7 tiers');
+assert.match(game, /ss\.targetBrawler = locked\[Math\.floor\(Math\.random\(\) \* locked\.length\)\];/, 'autoSpendSoulsOnTarget picks a uniform random locked brawler');
 
 // 7. Fighter browser options & colors
 assert.match(game, /<option value="Starter">Starter<\/option>[\s\S]*?<option value="Rare">Rare<\/option>[\s\S]*?<option value="Epic">Epic<\/option>[\s\S]*?<option value="Mythic">Mythic<\/option>[\s\S]*?<option value="Exotic">Exotic<\/option>[\s\S]*?<option value="Unique">Unique<\/option>[\s\S]*?<option value="Anomaly">Anomaly<\/option>/, 'Fighter browser dropdown has all 7 tiers in order');

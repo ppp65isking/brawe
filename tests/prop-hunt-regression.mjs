@@ -16,7 +16,7 @@ assert.match(game, /PROP_HUNT_HEAD_START_MS = 15000/, 'Head start must be 15 sec
 assert.match(game, /PROP_HUNT_MATCH_SECONDS = 150/, 'Seek timer must be 150 seconds');
 assert.match(game, /applyPropHuntWrongGuessTax\(owner, dw\)/, 'Bullet-vs-wall code must apply the tax');
 assert.match(game, /revealPropHuntHiderFromShell\(dw\)/, 'Bullet-vs-wall code must reveal on shell break');
-assert.match(game, /!isPropHuntMode && !isTraining && !isBossFight && !isSoloTrial && !gameOver/, 'Storm must exclude Prop Hunt');
+assert.match(game, /!isPropHuntMode && !isTraining && !isBossFight && !isSoloTrial && !isTowerDefenseEvent && !gameOver\) \{\s*stormTimer \+= dt;/, 'Storm must exclude Prop Hunt');
 assert.match(game, /if \(isPropHuntMode && t\.propHuntRole\) \{ updatePropHuntBot\(t, dt, now\); continue; \}/, 'Bot loop must route Prop Hunt bots to their controller');
 assert.match(game, /if \(isPropHuntMode && t\.propHuntMorphed\) continue;/, 'Render must skip morphed hiders (they render as the prop wall only)');
 assert.match(game, /function canDetectMorphedHider/, 'Morph detection predicate must exist');

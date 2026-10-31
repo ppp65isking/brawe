@@ -1580,3 +1580,17 @@ html,body{overflow-x:hidden !important}
   .rotating-section .home-event-grid { grid-template-columns:1fr !important; }
   .rotating-section .home-mode-card.featured-event-card { grid-column:auto; }
 }
+
+/* Match-start profile cards (master update) */
+.match-intro{position:fixed;inset:0;z-index:90;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:16px;pointer-events:none;background:linear-gradient(180deg,rgba(3,8,18,.55),rgba(3,8,18,.15) 40%,rgba(3,8,18,.55));font-family:'Trebuchet MS','Gill Sans',sans-serif}
+.match-intro__row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;max-width:min(1060px,96vw)}
+.match-intro__label{font-size:11px;font-weight:1000;letter-spacing:.14em;color:#9cc3e9}
+.match-intro__more{font-size:12px;font-weight:900;color:#cfe3ff}
+.match-card{width:132px;padding:10px;border:2px solid var(--match-card-color,#8aa3c4);border-radius:14px;background:rgba(7,15,31,.92);color:#fff;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.match-card.is-player{width:160px;border-color:#ffd44f;box-shadow:0 0 26px rgba(255,212,79,.35)}
+.match-card__portrait{width:64px;height:64px;margin:0 auto 6px;display:grid;place-items:center;border-radius:50%;background:#07111d;overflow:hidden;font-size:30px}
+.match-card__portrait .fighter-portrait-art{width:100%;height:100%}
+.match-card__name{font-weight:1000;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.match-card__title{font-size:10px;font-weight:900;letter-spacing:.08em;color:#ffd763}
+.match-card__fighter{font-size:11px;color:#9cc3e9}
+.match-card__tag{display:inline-block;margin-top:5px;padding:2px 8px;border-radius:999px;background:#22345c;font-size:9px;font-weight:1000;letter-spacing:.1em}

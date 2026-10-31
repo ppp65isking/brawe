@@ -46,7 +46,20 @@ const checks = [
   // 5. Public Game Debug Exports
   ['window.__pureHTMLGame exports activeRankedModifierSecondary', /get activeRankedModifierSecondary\(\)\s*\{\s*return activeRankedModifierSecondary;\s*\}/.test(game)],
   ['window.__pureHTMLGame exports isRankedAboveBrickFume', /get isRankedAboveBrickFume\(\)\s*\{\s*return isRankedAboveBrickFume;\s*\}/.test(game)],
-  ['window.__pureHTMLGame exports RANKED_DIVISIONS', /get RANKED_DIVISIONS\(\)\s*\{\s*return RANKED_DIVISIONS;\s*\}/.test(game)]
+  ['window.__pureHTMLGame exports RANKED_DIVISIONS', /get RANKED_DIVISIONS\(\)\s*\{\s*return RANKED_DIVISIONS;\s*\}/.test(game)],
+
+  // 6. Master update: prestige ladder, 2400 floor, weekly cap, queue pool, pin packs
+  ['Division safety floor adds the 2400 RP rung above 2200', /if\s*\(points\s*>=\s*2400\)\s*return 2400;[\s\S]*?if\s*\(points\s*>=\s*2200\)\s*return 2200;/.test(game)],
+  ['Ranked weekly pass-XP cap is 2000', /const RANKED_WEEKLY_PASS_XP_CAP = 2000;/.test(game)],
+  ['Ranked weekly overflow converts at 1 coin per 5 XP', /const RANKED_WEEKLY_OVERFLOW_COINS_PER_XP = 1 \/ 5;/.test(game)],
+  ['Ranked weekly max bonus is 300 coins', /const RANKED_WEEKLY_MAX_BONUS_COINS = 300;/.test(game)],
+  ['Prestige ladder steps 500 RP to a max of 5 above 2400', /const RANKED_PRESTIGE_STEP_RP = 500;/.test(game) && /const RANKED_PRESTIGE_MAX = 5;/.test(game) && /function getRankedPrestige\(pointsRaw\)[\s\S]*?if \(points < 2400\) return 0;/.test(game)],
+  ['Prestige display label appends Prestige N above 2400', /function getRankedDisplayLabel\(pointsRaw\)[\s\S]*?Prestige \$\{prestige\}/.test(game)],
+  ['super_rate_plus excluded from the ranked queue pool but still defined', /k !== 'super_rate_plus'/.test(game) && /'super_rate_plus':\s*\{/.test(game)],
+  ['dead colossal_projectiles alternative removed from giant-projectiles predicate', /const isGP = \(m\) => m === 'giant_projectiles' \|\| m === 'projectiles_150';/.test(game) && !game.includes('colossal_projectiles')],
+  ['ranked-pass pinpack claim branch grants via grantPinPack', /reward\.type === 'pinpack'/.test(game) && /grantPinPack\(reward\.amount \|\| 3\);/.test(game)],
+  ['MVP rule requires 3000 damage on a win or 6000 on a loss', /isRankedMVP = \(won && fullOnDamageEarned >= 3000\) \|\| \(!won && fullOnDamageEarned >= 6000\);/.test(game)],
+  ['draft state machine no longer uses complete', !game.includes("draftState = 'complete'") && !game.includes("draftState === 'complete'") && !game.includes("draftState !== 'complete'")]
 ];
 
 let failed = 0;

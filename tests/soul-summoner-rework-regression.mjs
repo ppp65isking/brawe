@@ -16,8 +16,8 @@ assert.match(game, /function getConstellationProgress/, 'getConstellationProgres
 assert.match(game, /function getActiveConstellationTier/, 'getActiveConstellationTier helper exists');
 
 // 3. UI Title & Choice Options
-assert.match(game, /SOUL SUMMONER · STARR ROAD/, 'Soul Summoner Starr Road title rendered');
-assert.match(game, /CURRENT STARR ROAD STEP/, 'Current Starr Road step rendered');
+assert.match(game, /SOUL SUMMONER · SOUL ROAD/, 'Soul Summoner Soul Road title rendered');
+assert.match(game, /CURRENT SOUL ROAD STEP/, 'Current Soul Road step rendered');
 assert.match(game, /RANDOM PICK/, 'Random Pick button exists');
 assert.match(game, /REROLL OPTIONS/, 'Reroll Options button exists');
 

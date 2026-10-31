@@ -1,0 +1,27 @@
+/* Master update UI overhaul (Arena Forge) — loaded after styles.css; wins ties. */
+/* U-1 dialog title scale */
+.dialog-title { margin: 0; font-size: 28px; font-weight: 900; letter-spacing: 0.02em; line-height: 1.1; }
+.dialog-subtitle { margin: 4px 0 0; font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #95b8d4; }
+.dialog-section-title { margin: 0 0 12px; font-size: 13px; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; }
+/* U-2 shared dialog panel */
+.dialog-panel { border-width: 2px; border-style: solid; border-radius: 16px; padding: 18px; box-sizing: border-box; }
+.dialog-panel-inner { border: 1px solid #2f4f70; border-radius: 12px; padding: 12px; background: rgba(6, 13, 24, 0.88); }
+/* U-3 dialog action buttons */
+.dialog-btn { padding: 10px 14px; border: none; border-radius: 8px; font-weight: 900; cursor: pointer; min-height: 40px; }
+.dialog-btn-primary { background: #5ec4ff; color: #00111f; }
+.dialog-btn-disabled { background: #5f6f82; color: #dbe8ff; cursor: default; }
+.dialog-btn-small { padding: 7px 10px; min-height: 34px; }
+/* U-4 home buttons: one size (beats the styles.css radius override) */
+.home-action-btn { padding: 11px 16px !important; border-radius: 15px !important; font-size: 13px !important; }
+.home-utility-btn { padding: 11px 16px !important; border-radius: 15px !important; font-size: 13px !important; }
+/* U-5 profile section headers */
+.profile-section h3 { font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; }
+/* U-3 training deck body buttons: one size (nav bar buttons live outside #tcDeckBody and keep their size) */
+#tcDeckBody button { padding: 8px 12px !important; font-size: 12px !important; }
+/* U-9 pins showcase (profile section 5; pins.css has no .profile-pin-tile) */
+.profile-pins-equipped { display: flex; gap: 9px; flex-wrap: wrap; }
+.profile-pins-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 9px; }
+.profile-pin-tile { min-width: 90px; padding: 10px; text-align: center; border: 2px solid #6a82b8; border-radius: 12px; background: #071a39; cursor: pointer; }
+.profile-pin-tile.equipped { border-color: #ffd44f; }
+.profile-pin-tile b { display: block; font-size: 22px; }
+.profile-pin-tile small { font-size: 10px; }
