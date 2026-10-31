@@ -533,6 +533,19 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     const RANKED_POINTS_PER_DIVISION = 100;
     const RANKED_GOLD_MIN_DIVISION_INDEX = 7;
 
+    const RANKED_PRESTIGE_STEP_RP = 500;
+    const RANKED_PRESTIGE_MAX = 5;
+    function getRankedPrestige(pointsRaw) {
+        const points = Math.max(0, Math.floor(pointsRaw || 0));
+        if (points < 2400) return 0;
+        return Math.min(RANKED_PRESTIGE_MAX, 1 + Math.floor((points - 2400) / RANKED_PRESTIGE_STEP_RP));
+    }
+    function getRankedDisplayLabel(pointsRaw) {
+        const info = getRankedTierInfo(pointsRaw);
+        const prestige = getRankedPrestige(pointsRaw);
+        return prestige > 0 ? `${info.label} • Prestige ${prestige}` : info.label;
+    }
+
     function getRankedTierInfo(pointsRaw) {
         const points = Math.max(0, Math.floor(pointsRaw || 0));
         const maxIdx = Math.max(0, RANKED_DIVISIONS.length - 1);
@@ -550,6 +563,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     }
 
     function getRankedDivisionFloor(points) {
+        if (points >= 2400) return 2400;
         if (points >= 2200) return 2200;
         if (points >= 1900) return 1900;
         if (points >= 1800) return 1800;
@@ -580,12 +594,23 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         if (mode === 'arena_forge') return 'Arena Forge';
         if (mode === 'arena_forge_hyper') return 'Hyper Forge';
         if (mode === 'marked_mayhem') return 'Target Rush';
-        if (mode === 'trio') return 'Trio Showdown';
-        if (mode === 'mirror') return 'Mirror 5v5';
+        if (mode === 'trio') return 'Quad Showdown';
+        if (mode === 'mirror') return 'Mirror 4v4';
         if (mode === 'splitter_powered') return 'Splitter Powered 10v10';
         if (mode === 'objective') return 'Control Clash';
         if (mode === 'duo') return 'Duo Showdown';
         if (mode === 'solo_td') return 'Solo Tower Defense';
+        if (mode === 'tug_zone') return 'Tug Zone';
+        if (mode === 'capture_turkey') return 'Capture the Turkey';
+        if (mode === 'prop_hunt') return 'Prop Hunt';
+        if (mode === 'tower_defense') return 'Tower Defense';
+        if (mode === 'duels') return 'Duels';
+        if (mode === 'power_play_showdown') return 'Power Play Showdown';
+        if (mode === 'corrupted_showdown') return 'Corrupted Showdown';
+        if (mode === 'chaos_crown') return 'Chaos Crown';
+        if (mode === 'impossible') return 'Impossible Showdown';
+        if (mode === 'arena_forge_overclocked') return 'Arena Forge: Overclocked';
+        if (mode === 'arena_forge_minion_surge') return 'Arena Forge: Minion Surge';
         return 'Solo Showdown';
     }
     function getBrickOpponentLevel(progress, playerPower = progress?.level || getSelectedBrawlerLevel()) {
@@ -1318,6 +1343,152 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         const top=document.createElement('section');top.className='profile-section';top.innerHTML='<div class="profile-section-head"><h3>TOP BRAWLERS BY LIFETIME BRICKS</h3></div><div class="profile-top-list"></div>';const list=top.querySelector('.profile-top-list');getTopProfileBrawlers().forEach((b,i)=>{const row=document.createElement('div');row.className=i<3?`podium-${i+1}`:'';row.innerHTML=`<b>#${i+1}</b><span><i class="fighter-inline-portrait">${getBrawlerPortraitMarkup(b.id)}</i>${b.name}</span><small>${b.bricks} Bricks</small><small>Prestige ${b.prestige}</small>`;list.appendChild(row)});container.appendChild(top);
         const career=document.createElement('section');career.className='profile-section';const c=profile.careerStats;career.innerHTML=`<h3>CAREER STATS</h3><div class="career-grid"><span><b>${s.totalBricks}</b>Lifetime Bricks</span><span><b>${s.highestPrestige}</b>Highest Prestige</span><span><b>${s.prestiged}</b>Prestiged Brawlers</span><span><b>${playerData.bestWinStreak||0}</b>Highest Win Streak</span><span><b>${c.matchesPlayed}</b>Matches Played*</span><span><b>${c.soloWins}</b>Solo Wins*</span><span><b>${c.teamWins}</b>Team Wins*</span><span><b>${c.rankedWins}</b>Ranked Wins*</span><span><b>${c.eliminations}</b>Eliminations*</span></div><p>* Tracked since Profile Update</p>`;container.appendChild(career);
     }
+    function openPlayerProfile() {
+        ensureProfileProgressionState();
+        const { profile } = ensureProfileProgressionState();
+        const s = getProfileProgressSummary();
+        const title = PROFILE_TITLE_DEFS[profile.equippedTitle]?.name || 'NO TITLE';
+        const previousFocus = document.activeElement;
+        const overlay = document.createElement('div');
+        overlay.className = 'brick-bon-v2-overlay';
+        const panel = document.createElement('div');
+        panel.className = 'brick-bon-v2';
+        const close = () => { overlay.remove(); document.removeEventListener('keydown', onKey); previousFocus?.focus?.(); };
+        const onKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } };
+        document.addEventListener('keydown', onKey);
+        panel.innerHTML = `<header><div><small>PLAYER PROFILE</small><h1>${profile.playerName}</h1><p>${title} · ${s.totalBricks.toLocaleString()} lifetime Bricks</p></div><button class="brick-bon-close">X</button></header>`;
+        panel.querySelector('.brick-bon-close').onclick = close;
+        overlay.onclick = (e) => { if (e.target === overlay) close(); };
+        const main = document.createElement('main');
+        panel.appendChild(main);
+        overlay.appendChild(panel);
+        document.body.appendChild(overlay);
+        const getProfilePins = () => {
+            if (typeof ensurePinsState === 'function') {
+                try { return ensurePinsState(); } catch (err) {}
+            }
+            if (!playerData.pins || typeof playerData.pins !== 'object') playerData.pins = { owned: [], equipped: [] };
+            if (!Array.isArray(playerData.pins.owned)) playerData.pins.owned = [];
+            if (!Array.isArray(playerData.pins.equipped)) playerData.pins.equipped = [];
+            return playerData.pins;
+        };
+        const pinDefs = (typeof PIN_DEFS !== 'undefined' && PIN_DEFS) ? PIN_DEFS : {};
+        const pinMax = (typeof PIN_EQUIP_MAX !== 'undefined' && PIN_EQUIP_MAX) ? PIN_EQUIP_MAX : 6;
+        const prettyPin = (id) => String(id).replaceAll('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+        const pinLabel = (id) => (pinDefs[id] && pinDefs[id].name) || prettyPin(id);
+        const pinGlyph = (id) => (pinDefs[id] && pinDefs[id].glyph) || '📌';
+        const hero = document.createElement('section');
+        hero.className = `profile-hero ${profile.equippedProfileFrame || ''} ${profile.equippedProfileBackground || ''}`;
+        hero.innerHTML = `<div><small>PLAYER PROFILE</small><h2>${profile.playerName}</h2><strong>${title}</strong></div><div class="profile-summary"><span><b>${s.totalBricks}</b>LIFETIME BRICKS</span><span><b>${s.prestiged}</b>PRESTIGED BRAWLERS</span><span><b>P${s.highestPrestige}</b>HIGHEST PRESTIGE</span></div>`;
+        const edit = document.createElement('button');
+        edit.textContent = 'EDIT PROFILE';
+        edit.onclick = () => openProfileEditor(() => { close(); openPlayerProfile(); });
+        hero.appendChild(edit);
+        main.appendChild(hero);
+        const fightersUnlocked = (() => {
+            const pool = allBrawlers.filter((bid) => playerData.unlockedBrawlers && playerData.unlockedBrawlers[bid] && !disabledBrawlers.has(bid) && !brawlerData?.[bid]?.disabled);
+            return pool.length > 0 ? pool.length : 1;
+        })();
+        const career = document.createElement('section');
+        career.className = 'profile-section';
+        const c = profile.careerStats;
+        career.innerHTML = `<h3>CAREER STATS</h3><div class="career-grid"><span><b>${s.totalBricks}</b>Lifetime Bricks</span><span><b>${s.highestPrestige}</b>Highest Prestige</span><span><b>${s.prestiged}</b>Prestiged Brawlers</span><span><b>${playerData.bestWinStreak || 0}</b>Highest Win Streak</span><span><b>${c.matchesPlayed}</b>Matches Played*</span><span><b>${c.soloWins}</b>Solo Wins*</span><span><b>${c.teamWins}</b>Team Wins*</span><span><b>${c.rankedWins}</b>Ranked Wins*</span><span><b>${c.eliminations}</b>Eliminations*</span><span><b>${fightersUnlocked}</b>Fighters Unlocked</span><span><b>${playerData.winStreak || 0}</b>Current Win Streak</span></div><p>* Tracked since Profile Update</p>`;
+        main.appendChild(career);
+        const favorites = document.createElement('section');
+        favorites.className = 'profile-section';
+        favorites.innerHTML = '<h3>FAVORITE BRAWLERS</h3>';
+        const favrow = document.createElement('div');
+        favrow.className = 'profile-favorites';
+        profile.favorites.forEach((id, i) => favrow.appendChild(createProfileBrawlerCard(id, i === 0)));
+        if (!profile.favorites.length) favrow.innerHTML = '<p>No favorites yet — set them in Edit Profile.</p>';
+        favorites.appendChild(favrow);
+        main.appendChild(favorites);
+        const showcase = document.createElement('section');
+        showcase.className = 'profile-section';
+        showcase.innerHTML = '<h3>BADGE SHOWCASE</h3>';
+        const badgeRow = document.createElement('div');
+        badgeRow.className = 'profile-badges';
+        profile.showcaseBadges.forEach((id) => { const d = PROFILE_BADGE_DEFS[id]; if (d) { const badge = document.createElement('div'); badge.innerHTML = `<b>${d.icon}</b><small>${d.name}</small>`; badgeRow.appendChild(badge); } });
+        if (!badgeRow.children.length) badgeRow.innerHTML = '<p>No badges showcased yet.</p>';
+        showcase.appendChild(badgeRow);
+        main.appendChild(showcase);
+        const pinsSection = document.createElement('section');
+        pinsSection.className = 'profile-section';
+        const renderPins = () => {
+            const pins = getProfilePins();
+            const owned = pins.owned;
+            const equipped = pins.equipped;
+            pinsSection.innerHTML = '<h3>PINS SHOWCASE</h3>';
+            const eqRow = document.createElement('div');
+            eqRow.className = 'profile-pins-equipped';
+            if (!equipped.length) eqRow.innerHTML = '<p>No pins equipped — tap an owned pin below.</p>';
+            for (const id of equipped) {
+                const tile = document.createElement('div');
+                tile.className = 'profile-pin-tile equipped';
+                tile.innerHTML = `<b>${pinGlyph(id)}</b><small>${pinLabel(id)}</small>`;
+                tile.onclick = () => { pins.equipped = pins.equipped.filter((x) => x !== id); saveProgress(); renderPins(); };
+                eqRow.appendChild(tile);
+            }
+            pinsSection.appendChild(eqRow);
+            if (!owned.length) {
+                const empty = document.createElement('p');
+                empty.textContent = 'No pins yet — earn pin packs from the Ember Forge Pass.';
+                pinsSection.appendChild(empty);
+            } else {
+                const grid = document.createElement('div');
+                grid.className = 'profile-pins-grid';
+                for (const id of owned) {
+                    const tile = document.createElement('div');
+                    tile.className = 'profile-pin-tile' + (equipped.includes(id) ? ' equipped' : '');
+                    tile.innerHTML = `<b>${pinGlyph(id)}</b><small>${pinLabel(id)}</small>`;
+                    tile.onclick = () => {
+                        if (pins.equipped.includes(id)) pins.equipped = pins.equipped.filter((x) => x !== id);
+                        else if (pins.equipped.length < pinMax) pins.equipped = [...pins.equipped, id];
+                        else return;
+                        saveProgress();
+                        renderPins();
+                    };
+                    grid.appendChild(tile);
+                }
+                pinsSection.appendChild(grid);
+            }
+        };
+        renderPins();
+        main.appendChild(pinsSection);
+        const totalBricks = getTotalAccountBricks();
+        const league = getBrickRoadLeague(totalBricks);
+        const milestones = BRICK_ROAD_MILESTONES;
+        const prior = milestones.filter((m) => m.bricks <= totalBricks).map((m) => m.bricks).pop() || 0;
+        const next = milestones.find((m) => m.bricks > totalBricks) || null;
+        const pct = next ? Math.min(100, (totalBricks - prior) / Math.max(1, next.bricks - prior) * 100) : 100;
+        const unclaimedCount = getUnclaimedBrickRoadMilestonesCount();
+        const road = document.createElement('section');
+        road.className = 'profile-section';
+        road.innerHTML = `<h3>BRICK ROAD</h3><div><b>${league.icon} ${league.name} LEAGUE</b><span> · ${totalBricks.toLocaleString()} Total Bricks</span></div><div>${next ? `Next Milestone at ${next.bricks.toLocaleString()} Bricks (${(next.bricks - totalBricks).toLocaleString()} needed)` : 'All Brick Road milestones reached.'}</div><div style="margin-top:8px;height:7px;background:#0b192b;border-radius:999px;overflow:hidden;"><div style="height:100%;width:${pct}%;background:#ffd166;"></div></div>${unclaimedCount > 0 ? `<div style="margin-top:8px;"><span style="padding:4px 10px;border-radius:999px;background:linear-gradient(90deg,#5df2c2,#58e4b6);color:#07111d;font-weight:900;font-size:11px;">${unclaimedCount} rewards waiting</span></div>` : ''}`;
+        const roadBtn = document.createElement('button');
+        roadBtn.textContent = 'OPEN BRICK ROAD';
+        roadBtn.onclick = () => { close(); openBrickRoadModal(); };
+        road.appendChild(roadBtn);
+        main.appendChild(road);
+        const rankedPoints = (playerData.ranked && playerData.ranked.points) || 0;
+        const rankedInfo = (typeof getRankedTierInfo === 'function') ? getRankedTierInfo(rankedPoints) : { label: 'Brick Bronze I', color: '#b97845', nextLabel: 'Brick Bronze II', nextThreshold: 100 };
+        const rankedStreak = (playerData.ranked && playerData.ranked.winStreak) || 0;
+        const ranked = document.createElement('section');
+        ranked.className = 'profile-section';
+        ranked.innerHTML = `<h3>RANKED</h3><div><b style="color:${rankedInfo.color};">${rankedInfo.label}</b><span> · ${rankedPoints} RP</span></div><div>${rankedInfo.nextLabel ? `Next: ${rankedInfo.nextLabel} at ${rankedInfo.nextThreshold} RP` : 'Top division reached.'}</div><div>Ranked Win Streak: ${rankedStreak}</div>`;
+        const rankedBtn2 = document.createElement('button');
+        rankedBtn2.textContent = 'PLAY RANKED';
+        rankedBtn2.onclick = () => { close(); if (typeof openRankedQueueUI === 'function') openRankedQueueUI(); };
+        ranked.appendChild(rankedBtn2);
+        main.appendChild(ranked);
+        const top = document.createElement('section');
+        top.className = 'profile-section';
+        top.innerHTML = '<div class="profile-section-head"><h3>TOP BRAWLERS BY LIFETIME BRICKS</h3></div><div class="profile-top-list"></div>';
+        const list = top.querySelector('.profile-top-list');
+        getTopProfileBrawlers().forEach((b, i) => { const row = document.createElement('div'); row.className = i < 3 ? `podium-${i + 1}` : ''; row.innerHTML = `<b>#${i + 1}</b><span><i class="fighter-inline-portrait">${getBrawlerPortraitMarkup(b.id)}</i>${b.name}</span><small>${b.bricks} Bricks</small><small>Prestige ${b.prestige}</small>`; list.appendChild(row); });
+        main.appendChild(top);
+    }
+
     function openBrickBonV2(initialTab='road'){
         ensureProfileProgressionState();const overlay=document.createElement('div');overlay.className='brick-bon-v2-overlay';const panel=document.createElement('div');panel.className='brick-bon-v2';
         const total=getTotalBrickBonBricks(),allRoad=[...BRICK_BON_V2_ROAD,...getVeteranBrickMilestones(total)],next=allRoad.find(m=>m.threshold>total)||allRoad[allRoad.length-1];
@@ -1325,7 +1496,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         const main=panel.querySelector('main'),{bon}=ensureProfileProgressionState();
         const renderRoad=()=>{main.innerHTML='';const progress=document.createElement('div');progress.className='bon-overall-progress';const prior=[0,...allRoad.filter(m=>m.threshold<=total).map(m=>m.threshold)].pop(),pct=Math.min(100,(total-prior)/Math.max(1,next.threshold-prior)*100),toGo=Math.max(0,next.threshold-total);progress.innerHTML=`<div><b>CURRENT: ${total.toLocaleString()}</b><span>${toGo.toLocaleString()} BRICKS TO GO</span></div><div class="bon-progress-track"><i style="width:${pct}%"></i></div>`;main.appendChild(progress);const road=document.createElement('div');road.className='bon-road';allRoad.forEach(m=>{const claimed=bon.claimedRoad.includes(m.threshold),earned=total>=m.threshold,major=isMajorBrickReward(m),node=document.createElement('article');node.className=`bon-node ${claimed?'claimed':earned?'claimable':'locked'} ${m.veteran?'veteran':''} ${major?'major':''} ${m.prestige?'architect':''}`;node.innerHTML=`<div class="bon-threshold">${m.threshold.toLocaleString()}</div><div class="bon-node-icon">${claimed?'OK':m.veteran?'V':major?'M':'B'}</div><h3>${m.veteran?'VETERAN MILESTONE':m.label}</h3><p>${m.rewards.map(formatProfileReward).join(' + ')}</p>`;const btn=document.createElement('button');btn.textContent=claimed?'CLAIMED':earned?'CLAIM':'LOCKED';btn.disabled=claimed||!earned;btn.onclick=()=>{if(total<m.threshold||!claimProfileProgressionReward('road',m.threshold,m.rewards))return;showBrickBonClaimCelebration(m);renderRoad();};node.appendChild(btn);road.appendChild(node)});main.appendChild(road);};
         const renderChallenges=()=>{main.innerHTML='<div class="bon-challenge-grid"></div>';const grid=main.firstElementChild;BRICK_CHALLENGES.forEach(ch=>{const value=getBrickChallengeProgress(ch),done=value>=ch.target,claimed=bon.claimedChallenges.includes(ch.id),card=document.createElement('article');card.className=`bon-challenge ${done?'complete':''}`;card.innerHTML=`<small>${ch.kind==='depth'?'ROSTER DEPTH':'PRESTIGE'}</small><h3>${ch.name}</h3><p>${ch.description}</p><div class="bon-progress-track"><i style="width:${Math.min(100,value/ch.target*100)}%"></i></div><strong>${Math.min(value,ch.target)} / ${ch.target}</strong><em>${ch.rewards.map(formatProfileReward).join(' + ')}</em>`;const btn=document.createElement('button');btn.textContent=claimed?'CLAIMED':done?'CLAIM':'IN PROGRESS';btn.disabled=claimed||!done;btn.onclick=()=>{if(!done||!claimProfileProgressionReward('challenge',ch.id,ch.rewards))return;if(ch.rewards.some(([type])=>type==='badge'))showBrickBonClaimCelebration({...ch,label:ch.name});renderChallenges();};card.appendChild(btn);grid.appendChild(card)});};
-        const selectTab=tab=>{panel.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));if(tab==='road')renderRoad();else if(tab==='challenges')renderChallenges();else renderProfileCareer(main)};panel.querySelectorAll('nav button').forEach(btn=>btn.onclick=()=>selectTab(btn.dataset.tab));panel.querySelector('.brick-bon-close').onclick=()=>overlay.remove();overlay.onclick=e=>{if(e.target===overlay)overlay.remove()};overlay.appendChild(panel);document.body.appendChild(overlay);selectTab(initialTab);
+        const selectTab=tab=>{panel.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));if(tab==='road')renderRoad();else if(tab==='challenges')renderChallenges();else renderProfileCareer(main)};panel.querySelectorAll('nav button').forEach(btn=>btn.onclick=()=>selectTab(btn.dataset.tab));const previousFocusBrickBon = document.activeElement; const closeBrickBon = () => { overlay.remove(); document.removeEventListener('keydown', brickBonEscape); previousFocusBrickBon?.focus?.(); }; const brickBonEscape = (event) => { if (event.key === 'Escape') { event.stopPropagation(); closeBrickBon(); } }; document.addEventListener('keydown', brickBonEscape); panel.querySelector('.brick-bon-close').onclick = closeBrickBon; overlay.onclick = (e) => { if (e.target === overlay) closeBrickBon(); };overlay.appendChild(panel);document.body.appendChild(overlay);selectTab(initialTab);
     }
 
     const balanceBlogEntries = [
@@ -5582,15 +5753,14 @@ const bolznstienPendingStrikes = [];
             if (ss.targetBrawler && (isBrawlerUnlocked(ss.targetBrawler) || !locked.includes(ss.targetBrawler))) {
                 ss.targetBrawler = null;
             }
-            // Auto-assign target if none
+            // Auto-assign target if none: master update — random order.
+            // The auto-target is a uniform random pick among locked brawlers
+            // (same pool as before: non-Starter, not unlocked, not disabled).
+            // Explicit player picks are never overridden: this only runs when
+            // no target is set, and the UI picker path still returns early.
             if (!ss.targetBrawler) {
                 if (calledFromUI) return; // let the picker handle it
-                const rarityOrder = ['Starter','Rare','Epic','Mythic','Exotic','Unique','Anomaly'];
-                for (const r of rarityOrder) {
-                    const inR = locked.filter(b => getBrawlerRarity(b) === r);
-                    if (inR.length > 0) { ss.targetBrawler = inR[0]; break; }
-                }
-                if (!ss.targetBrawler) ss.targetBrawler = locked[0];
+                ss.targetBrawler = locked[Math.floor(Math.random() * locked.length)];
             }
             if (!ss.targetBrawler) return;
             const cost = getSoulUnlockCostForRarity(getBrawlerRarity(ss.targetBrawler));
@@ -5662,7 +5832,7 @@ const bolznstienPendingStrikes = [];
                 nextSection.style.cssText = 'width:100%;background:rgba(8,14,28,0.7);border:1px solid rgba(138,92,255,0.25);border-radius:16px;padding:12px;box-sizing:border-box;margin-top:4px;';
                 nextSection.innerHTML = `
                     <div style="font-size:11px;font-weight:900;color:#caa6ff;text-transform:uppercase;letter-spacing:0.06em;">
-                        🛤️ NEXT ON STARR ROAD · ${activeTier.toUpperCase()} CHOICE
+                        🛤️ NEXT ON SOUL ROAD · ${activeTier.toUpperCase()} CHOICE
                     </div>
                     <div style="font-size:12px;color:#dbe8ff;margin-top:2px;">
                         Choose your next target or let random decide (${curCost} Souls):
@@ -7287,6 +7457,9 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
       const XPLODEMIS_SEASON_ID = 'xplodemis-arena-forge-2026-s6';
       const XPLODEMIS_START_UTC = Date.UTC(2026, 11, 1, 0, 0, 0); // Season 6 starts Dec 1, 2026
       const XPLODEMIS_END_UTC = Date.UTC(2027, 0, 1, 0, 0, 0); // Season 6 runs through Dec 31, 2026
+      const EMBER_FORGE_SEASON_ID = 'ember-forge-arena-forge-2027-s7';
+      const EMBER_FORGE_START_UTC = Date.UTC(2027, 0, 1, 0, 0, 0); // Season 7 starts Jan 1, 2027
+      const EMBER_FORGE_END_UTC = Date.UTC(2027, 1, 1, 0, 0, 0); // Season 7 runs through Jan 31, 2027
       const SEASON_PASS_MAX_LEVEL = 25;
       const SEASON_PASS_XP_PER_LEVEL = 100;
       const SEASON_2_ARCHIVE_TIERS = [
@@ -7484,6 +7657,34 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           {tier:24,title:'Present Storm',free:{type:'present',amount:2},premium:{type:'present',amount:2}},
           {tier:25,title:'XPLODER',free:{type:'present',amount:2},premium:{type:'skin',id:'xploder-rocketeer',name:'Xploder Rocketeer'}}
       ];
+      const EMBER_FORGE_PASS_TIERS = [
+          {tier:1,title:'First Spark',free:{type:'coins',amount:250},premium:{type:'souls',amount:30}},
+          {tier:2,title:'Kindling Stash',free:{type:'souls',amount:25},premium:{type:'corePieces',amount:10}},
+          {tier:3,title:'Ember Cache',free:{type:'present',amount:1},premium:{type:'coins',amount:450}},
+          {tier:4,title:'Forge Shift',free:{type:'coins',amount:400},premium:{type:'superTapper',amount:1}},
+          {tier:5,title:'Spark Pin Pack',free:{type:'gems',amount:5},premium:{type:'pinPack',amount:3}},
+          {tier:6,title:'Coal Haul',free:{type:'coins',amount:450},premium:{type:'present',amount:1}},
+          {tier:7,title:'Bellows Surge',free:{type:'souls',amount:50},premium:{type:'coins',amount:600}},
+          {tier:8,title:'Anvil Tidings',free:{type:'tapper',amount:1},premium:{type:'corePieces',amount:15}},
+          {tier:9,title:'Ember Present',free:{type:'present',amount:1},premium:{type:'gems',amount:7}},
+          {tier:10,title:'Molten Hoard',free:{type:'coins',amount:600},premium:{type:'superTapper',amount:1}},
+          {tier:11,title:'Forge Pin Pack',free:{type:'pinPack',amount:3},premium:{type:'present',amount:1}},
+          {tier:12,title:"Smith's Core",free:{type:'corePieces',amount:15},premium:{type:'coins',amount:850}},
+          {tier:13,title:'Furnace Fortune',free:{type:'gems',amount:5},premium:{type:'present',amount:1}},
+          {tier:14,title:'Surge Sparks',free:{type:'coins',amount:750},premium:{type:'hyperTapper',amount:1}},
+          {tier:15,title:'Ember Present II',free:{type:'present',amount:1},premium:{type:'coins',amount:1100}},
+          {tier:16,title:'Full Forge Funds',free:{type:'souls',amount:85},premium:{type:'corePieces',amount:20}},
+          {tier:17,title:'Flame Pin Pack',free:{type:'coins',amount:900},premium:{type:'pinPack',amount:3}},
+          {tier:18,title:'Double Embers',free:{type:'superTapper',amount:1},premium:{type:'present',amount:2}},
+          {tier:19,title:'Iron Treasury',free:{type:'corePieces',amount:20},premium:{type:'coins',amount:1300}},
+          {tier:20,title:'Ember Forge Night',free:{type:'gems',amount:7},premium:{type:'present',amount:2}},
+          {tier:21,title:'Ember Present III',free:{type:'present',amount:1},premium:{type:'hyperTapper',amount:1}},
+          {tier:22,title:'Firework Riches',free:{type:'coins',amount:1100},premium:{type:'gems',amount:12}},
+          {tier:23,title:'Final Forge Funds',free:{type:'souls',amount:130},premium:{type:'pinPack',amount:3}},
+          {tier:24,title:'Present Storm',free:{type:'present',amount:2},premium:{type:'present',amount:2}},
+          {tier:25,title:'EMBERLORD',free:{type:'present',amount:2},premium:{type:'pinPack',amount:3,bonusGems:15}}
+      ];
+
       const XPLODEMIS_QUEST_DEFS = [
           {id:'xplodemis_01',stage:1,kind:'play_match',title:'First Snowfall',desc:'Play 3 battles.',target:3,rewards:{coins:200,souls:12},xpReward:100},
           {id:'xplodemis_02',stage:2,kind:'deal_damage',title:'Firework Warmup',desc:'Deal 25,000 damage.',target:25000,rewards:{coins:240,corePieces:5},xpReward:100},
@@ -7506,7 +7707,33 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           {id:'xplodemis_19',stage:19,kind:'boss_impossible_2',title:'Impossible Snowfall',desc:'Clear Impossible II in the Headless Bolznstien Boss Fight.',target:1,rewards:{presents:2,coins:1200},xpReward:100},
           {id:'xplodemis_20',stage:20,kind:'win_match',title:'XPLODEMIS MASTER',desc:'Win 20 battles this season.',target:20,rewards:{coins:1500,presents:2,hyperTappers:1},xpReward:100}
       ];
+      const EMBER_FORGE_QUEST_DEFS = [
+          {id:'ember_01',stage:1,kind:'play_match',title:'First Lighting',desc:'Play 3 battles.',target:3,rewards:{coins:200,souls:12},xpReward:100},
+          {id:'ember_02',stage:2,kind:'deal_damage',title:'Spark Warmup',desc:'Deal 25,000 damage.',target:25000,rewards:{coins:240,corePieces:5},xpReward:100},
+          {id:'ember_03',stage:3,kind:'win_match',title:'Forge Walk',desc:'Win 2 battles.',target:2,rewards:{souls:20},xpReward:100},
+          {id:'ember_04',stage:4,kind:'defeat_enemies',title:'Cinder Patrol',desc:'Defeat 15 enemies.',target:15,rewards:{coins:300,tappers:1},xpReward:100},
+          {id:'ember_05',stage:5,kind:'perform_supers',title:'Hammer Chorus',desc:'Activate 10 Power Moves.',target:10,rewards:{coins:340,souls:24},xpReward:100},
+          {id:'ember_06',stage:6,kind:'use_gadget',title:"Smith's Tools",desc:'Use 10 Tools.',target:10,rewards:{coins:380,corePieces:8},xpReward:100},
+          {id:'ember_07',stage:7,kind:'deal_damage',title:'Furnace Grind',desc:'Deal 150,000 damage.',target:150000,rewards:{souls:55,superTappers:1},xpReward:100},
+          {id:'ember_08',stage:8,kind:'different_fighters',title:'Forge Squad',desc:'Finish battles with 6 different Fighters.',target:6,rewards:{souls:65},xpReward:100},
+          {id:'ember_09',stage:9,kind:'win_match',title:'Halfway Heat',desc:'Win 8 battles.',target:8,rewards:{coins:500,tappers:1},xpReward:100},
+          {id:'ember_10',stage:10,kind:'defeat_enemies',title:'Ash Reaper',desc:'Defeat 75 enemies.',target:75,rewards:{superTappers:1,corePieces:12},xpReward:100},
+          {id:'ember_11',stage:11,kind:'boss_hard',title:'Still Burning',desc:'Clear Hard in a boss fight.',target:1,rewards:{coins:800},xpReward:100},
+          {id:'ember_12',stage:12,kind:'deal_damage',title:'Ember Bonanza',desc:'Deal 500,000 damage.',target:500000,rewards:{presents:2},xpReward:100},
+          {id:'ember_13',stage:13,kind:'perform_supers',title:'Super Smithing',desc:'Activate 40 Power Moves.',target:40,rewards:{hyperTappers:1,corePieces:15},xpReward:100},
+          {id:'ember_14',stage:14,kind:'win_match',title:'Forge Champion',desc:'Win 12 battles.',target:12,rewards:{souls:90,presents:1},xpReward:100},
+          {id:'ember_15',stage:15,kind:'collect_cubes',title:'Coal Harvest',desc:'Collect 25 Power Cubes.',target:25,rewards:{gems:4},xpReward:100},
+          {id:'ember_16',stage:16,kind:'deal_damage',title:'Damage Smith',desc:'Deal 1,000,000 damage.',target:1000000,rewards:{souls:120,gems:10},xpReward:100},
+          {id:'ember_17',stage:17,kind:'use_gadget',title:'Tool Master',desc:'Use 20 Tools.',target:20,rewards:{coins:1000},xpReward:100},
+          {id:'ember_18',stage:18,kind:'boss_impossible_2',title:'Impossible Forge',desc:'Clear Impossible II in a boss fight.',target:1,rewards:{presents:2,coins:1200},xpReward:100},
+          {id:'ember_19',stage:19,kind:'defeat_enemies',title:'Final Sweep',desc:'Defeat 100 enemies.',target:100,rewards:{souls:150},xpReward:100},
+          {id:'ember_20',stage:20,kind:'win_match',title:'EMBER FORGE MASTER',desc:'Win 20 battles this season.',target:20,rewards:{coins:1500,presents:2,hyperTappers:1},xpReward:100}
+      ];
+
       function getActiveSeasonProfile(now = Date.now()) {
+          if (now >= EMBER_FORGE_START_UTC) {
+              return { key:'ember', seasonNumber:7, id:EMBER_FORGE_SEASON_ID, name:'Ember Forge', upperName:'EMBER FORGE', tiers:EMBER_FORGE_PASS_TIERS, quests:EMBER_FORGE_QUEST_DEFS, startUtc:EMBER_FORGE_START_UTC, endUtc:EMBER_FORGE_END_UTC, endLabel:'January 31, 2027' };
+          }
           if (now >= XPLODEMIS_START_UTC) {
               return { key:'xplodemis', seasonNumber:6, id:XPLODEMIS_SEASON_ID, name:'Xplodemis', upperName:'XPLODEMIS', tiers:XPLODEMIS_PASS_TIERS, quests:XPLODEMIS_QUEST_DEFS, startUtc:XPLODEMIS_START_UTC, endUtc:XPLODEMIS_END_UTC, endLabel:'December 31, 2026' };
           }
@@ -7520,6 +7747,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
       function getActiveSeasonQuestDefs() { return getActiveSeasonProfile().quests; }
       function isTurkeyTroubleSeasonActive(now = Date.now()) { return now >= TURKEY_TROUBLE_START_UTC && now < TURKEY_TROUBLE_END_UTC; }
       function isXplodemisSeasonActive(now = Date.now()) { return now >= XPLODEMIS_START_UTC && now < XPLODEMIS_END_UTC; }
+      function isEmberForgeSeasonActive(now = Date.now()) { return now >= EMBER_FORGE_START_UTC && now < EMBER_FORGE_END_UTC; }
       // Beast Boss: God Mode featured event — available ONLY on the player's local date of October 30, 2026.
       function isBeastBossGodModeDay(now = new Date()) {
           const d = now instanceof Date ? now : new Date(now);
@@ -7644,7 +7872,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           }
       }
 
-      function isSeason3PassActive(now=Date.now()){return now<XPLODEMIS_END_UTC;} // Seasons 4-6 run back to back through Dec 31, 2026
+      function isSeason3PassActive(now=Date.now()){return now<EMBER_FORGE_END_UTC;} // Seasons 4-7 run back to back through January 31, 2027
 
       function resetSeasonPass() {
           resetSeasonPassForAll();
@@ -7728,6 +7956,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
               if (!playerData.ownedSkins[skin.brawler]) playerData.ownedSkins[skin.brawler] = [];
               if (!playerData.ownedSkins[skin.brawler].includes(skin.id)) playerData.ownedSkins[skin.brawler].push(skin.id);
               playerData.selectedSkins[skin.brawler] = skin.id;
+          } else if (reward.type === 'pinPack') { grantPinPack(reward.amount || 3); if (reward.bonusGems) playerData.gems = (playerData.gems || 0) + reward.bonusGems;
           } else return false;
           return true;
       }
@@ -8528,6 +8757,10 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           document.getElementById('questBoardOverlay')?.remove();
           overlay.setAttribute('role', 'dialog');
           overlay.setAttribute('aria-label', 'Quest Board');
+          const previousFocus = document.activeElement;
+          const closeBoard = () => { overlay.remove(); document.removeEventListener('keydown', questBoardEscape); previousFocus?.focus?.(); };
+          const questBoardEscape = (event) => { if (event.key === 'Escape') { event.stopPropagation(); closeBoard(); } };
+          document.addEventListener('keydown', questBoardEscape);
           overlay.style.position = 'fixed';
           overlay.style.inset = '0';
           overlay.style.background = 'rgba(8, 11, 20, 0.92)';
@@ -8558,8 +8791,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           top.style.alignItems = 'center';
           const title = document.createElement('h1');
           title.textContent = 'Contract Board';
-          title.style.margin = '0';
-          title.style.fontSize = '28px';
+          title.className = 'dialog-title';
           title.style.color = '#8fd8ff';
           const close = document.createElement('button');
           close.textContent = 'Close';
@@ -8570,7 +8802,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           close.style.fontWeight = '700';
           close.style.background = '#5ec4ff';
           close.style.color = '#00111f';
-          close.onclick = () => overlay.remove();
+          close.onclick = closeBoard;
           top.appendChild(title);
           top.appendChild(close);
 
@@ -8592,18 +8824,38 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
               column.style.borderRadius = '12px';
               column.style.padding = '12px';
               const header = document.createElement('div');
-              header.innerHTML = `<div style="font-size:18px;font-weight:900;color:#c8ecff;">${columnTitle}</div><div style="font-size:12px;color:#95b8d4;">${subtitle}</div>`;
+              header.innerHTML = `<div><div style="font-size:13px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;color:#c8ecff;">${columnTitle}</div><div style="font-size:12px;color:#95b8d4;">${subtitle}</div></div>`;
+              header.style.display = 'flex';
+              header.style.justifyContent = 'space-between';
+              header.style.alignItems = 'flex-start';
               column.appendChild(header);
 
               const orderedQuests = Object.values(bucket).filter((quest) => quest && typeof quest === 'object' && (!filterQuest || filterQuest(quest))).sort((a, b) => {
                   if (typeof a.stage === 'number' && typeof b.stage === 'number') return a.stage - b.stage;
                   return 0;
               });
+              const claimAllBtn = document.createElement('button');
+              claimAllBtn.textContent = 'CLAIM ALL';
+              const claimAllCount = orderedQuests.filter((q) => q.completed && !q.claimed).length;
+              claimAllBtn.disabled = claimAllCount === 0;
+              claimAllBtn.style.padding = '7px 10px';
+              claimAllBtn.style.border = 'none';
+              claimAllBtn.style.borderRadius = '8px';
+              claimAllBtn.style.fontWeight = '900';
+              claimAllBtn.style.cursor = claimAllCount > 0 ? 'pointer' : 'default';
+              claimAllBtn.style.background = claimAllCount > 0 ? '#5ec4ff' : '#5f6f82';
+              claimAllBtn.style.color = claimAllCount > 0 ? '#00111f' : '#dbe8ff';
+              claimAllBtn.onclick = () => {
+                  for (const q of orderedQuests) if (q.completed && !q.claimed) claimQuestReward(bucketName, q.id);
+                  closeBoard();
+                  openQuestBoard(activeQuestTab);
+                  refreshHomeUI();
+              };
+              header.appendChild(claimAllBtn);
               for (const quest of orderedQuests) {
                   const row = document.createElement('div');
                   const questUnlocked = isQuestStageUnlocked(bucketName, bucket, quest);
-                  const showInProgressLabel = bucketName === 'weekly' && typeof quest.stage === 'number';
-                  const actionText = quest.claimed ? 'Claimed' : (quest.completed ? 'Claim' : (showInProgressLabel ? (questUnlocked ? 'In Progress' : 'Locked') : 'Locked'));
+                  const actionText = quest.claimed ? 'Claimed' : (quest.completed ? 'Claim' : (!questUnlocked ? 'Locked' : 'In Progress'));
                   const claimable = quest.completed && !quest.claimed;
                   const rewardClaimed = !!quest.claimed;
                   const done = !!quest.completed;
@@ -8612,17 +8864,17 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
                   if (quest.rewards?.coins) rewardParts.push(`${quest.rewards.coins} Coins`);
                   if (quest.rewards?.gems) rewardParts.push(`${quest.rewards.gems} Gems`);
                   if (quest.rewards?.souls) rewardParts.push(`${quest.rewards.souls} Souls`);
-                  if (quest.rewards?.tappers) rewardParts.push(`${quest.rewards.tappers} Tapper Upper`);
-                  if (quest.rewards?.superTappers) rewardParts.push(`${quest.rewards.superTappers} Super Tapper`);
-                  if (quest.rewards?.hyperTappers) rewardParts.push(`${quest.rewards.hyperTappers} Surge Tapper`);
-                  if (quest.rewards?.spookyBoxes) rewardParts.push(`${quest.rewards.spookyBoxes} Spooky Box`);
+                  if (quest.rewards?.tappers) rewardParts.push(`${quest.rewards.tappers} Tapper Upper${quest.rewards.tappers > 1 ? 's' : ''}`);
+                  if (quest.rewards?.superTappers) rewardParts.push(`${quest.rewards.superTappers} Super Tapper${quest.rewards.superTappers > 1 ? 's' : ''}`);
+                  if (quest.rewards?.hyperTappers) rewardParts.push(`${quest.rewards.hyperTappers} Surge Tapper${quest.rewards.hyperTappers > 1 ? 's' : ''}`);
+                  if (quest.rewards?.spookyBoxes) rewardParts.push(`${quest.rewards.spookyBoxes} Spooky Box${quest.rewards.spookyBoxes > 1 ? 'es' : ''}`);
                   if (quest.rewards?.presents) rewardParts.push(`${quest.rewards.presents} Present${quest.rewards.presents > 1 ? 's' : ''}`);
                   if (quest.rewards?.corePieces) rewardParts.push(`${quest.rewards.corePieces} Core Pieces`);
-                  if (quest.rewards?.questXP) rewardParts.push(`${quest.rewards.questXP} Quest XP`);
+                  if (quest.rewards?.questXP) rewardParts.push(`${quest.rewards.questXP} Contract XP`);
                   if (quest.rewards?.brawlerUnlock) rewardParts.push(`Unlock ${brawlerData[quest.rewards.brawlerUnlock]?.name || quest.rewards.brawlerUnlock}`);
                   if (quest.rewards?.skin) rewardParts.push(`Unlock ${skinsDatabase[quest.rewards.skin]?.name || 'Exclusive Skin'}`);
                   const reward = rewardParts.join(' / ') || 'None';
-                  row.style.marginTop = '10px';
+                  row.style.marginTop = '12px';
                   row.style.padding = '10px';
                   row.style.borderRadius = '10px';
                   row.style.border = rewardClaimed ? '1px solid #4e6c85' : (done ? '1px solid #58e4b6' : '1px solid #27405b');
@@ -8632,9 +8884,10 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
                           <div>
                               <div style="font-weight:900;color:#e7dcff;">${quest.title}</div>
                               <div style="font-size:12px;color:#bcaee9;margin-top:2px;">${quest.desc}</div>
+                              ${!questUnlocked ? `<div style="font-size:11px;color:#ffda8f;margin-top:4px;">Unlocks after the previous stage is complete.</div>` : ''}
                               <div style="font-size:11px;color:#ffda8f;margin-top:4px;">Reward: ${reward}</div>
                           </div>
-                          <button style="padding:7px 10px;border:none;border-radius:8px;font-weight:900;cursor:${claimable ? 'pointer' : 'default'};background:${rewardClaimed ? '#5f6f82' : (claimable ? '#58e4b6' : '#4a3c73')};color:#07111d;">${actionText}</button>
+                          <button style="padding:10px 14px;min-height:40px;border:none;border-radius:8px;font-weight:900;cursor:${claimable ? 'pointer' : 'default'};background:${rewardClaimed ? '#5f6f82' : (claimable ? '#58e4b6' : '#4a3c73')};color:#07111d;">${actionText}</button>
                       </div>
                       <div style="margin-top:8px;height:7px;background:#0b192b;border-radius:999px;overflow:hidden;">
                           <div style="height:100%;width:${pct}%;background:${done ? '#58e4b6' : '#b089ff'};"></div>
@@ -8645,9 +8898,8 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
                   claimButton.onclick = () => {
                       if (!claimable) return;
                       if (claimQuestReward(bucketName, quest.id)) {
-                          const tab = 'core';
-                          if (overlay.isConnected) overlay.remove();
-                          openQuestBoard(tab);
+                          closeBoard();
+                          openQuestBoard(activeQuestTab);
                           refreshHomeUI();
                       }
                   };
@@ -8661,7 +8913,8 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
               const wrapper = document.createElement('div');
               wrapper.style.display = 'grid';
               wrapper.style.gridTemplateColumns = '0.95fr 1.25fr';
-              wrapper.style.gap = '14px';
+              if (window.matchMedia('(max-width: 700px)').matches) wrapper.style.gridTemplateColumns = '1fr';
+              wrapper.style.gap = '12px';
               wrapper.style.height = '100%';
               wrapper.style.minHeight = '0';
 
@@ -8678,6 +8931,10 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
               questTitle.style.fontWeight = '900';
               questTitle.style.color = '#8fd8ff';
               questTitle.style.marginBottom = '6px';
+              questTitle.style.position = 'sticky';
+              questTitle.style.top = '0';
+              questTitle.style.background = '#0b1628';
+              questTitle.style.zIndex = '1';
               const questHint = document.createElement('div');
               questHint.textContent = `${isSeason3PassActive() ? `Season ends ${seasonProfileForQuests.endLabel}.` : 'Season ended — progression and claims are closed.'} Complete and claim quests to push the ladder.`;
               questHint.style.fontSize = '11px';
@@ -8760,6 +9017,10 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
               ladderTitle.style.fontWeight = '900';
               ladderTitle.style.color = '#ffd39a';
               ladderTitle.style.fontSize = '16px';
+              ladderTitle.style.position = 'sticky';
+              ladderTitle.style.top = '0';
+              ladderTitle.style.background = '#211109';
+              ladderTitle.style.zIndex = '1';
               const ladderSub = document.createElement('div');
               ladderSub.style.fontSize = '12px';
               ladderSub.style.color = '#ffd9c0';
@@ -8917,7 +9178,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
               body.style.cssText='height:100%;overflow-y:auto;padding:2px 4px 18px';
               const hero=document.createElement('div');
               hero.style.cssText='padding:18px;border:2px solid #59f2d6;border-radius:16px;background:linear-gradient(120deg,#0b2b26,#12294d);margin-bottom:14px;color:#fff';
-              hero.innerHTML=`<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><div style="font-size:28px;font-weight:1000;letter-spacing:.04em">💠 CORE PIECES</div><b style="color:#7dfcd9;font-size:20px">${getCorePieces()} Core Pieces</b></div><div style="margin-top:5px;color:#c9f5ea">Spend Core Pieces to unlock Mutations, Signature Abilities and Instincts — no quests, no event windows. Buy single Pieces (40 Core Pieces each, 3 fill the triangle) or unlock an ability outright (100 Core Pieces). Earn Core Pieces from Tapper Uppers, Super Tappers, the Season Pass and Presents.</div>`;
+              hero.innerHTML=`<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><div style="font-size:28px;font-weight:1000;letter-spacing:.04em">💠 CORE PIECES</div><b style="color:#7dfcd9;font-size:20px">${getCorePieces()} Core Pieces</b></div><div style="margin-top:5px;color:#c9f5ea">Spend Core Pieces to unlock Mutations, Signature Abilities and Instincts — no quests, no event windows. Buy single Pieces (40 Core Pieces each, 3 Pieces complete one ability) or unlock an ability outright (100 Core Pieces). Earn Core Pieces from Tapper Uppers, Super Tappers, the Season Pass and Presents.</div>`;
               body.appendChild(hero);
               const grid=document.createElement('div');
               grid.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px';
@@ -8980,10 +9241,10 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
               grid.appendChild(createColumn('Daily Contracts', 'Refreshes every 24h', 'daily'));
               grid.appendChild(createColumn('Weekly Contracts', 'Refreshes every Thursday', 'weekly'));
               grid.appendChild(createColumn('Fighter Hunt', 'Weekly brawler recruitment', 'brawler'));
+              grid.appendChild(createColumn('Starter Journey', 'One-time onboarding — start here', 'starter'));
               grid.appendChild(createColumn('Awake Awakenator', 'Unlock Awakenator for free', 'awakenatorJourney'));
               grid.appendChild(createColumn('Boneless Boomarang', '4-stage Epic skin trial', 'bonelessBoomarang'));
               grid.appendChild(createColumn('Coin Ascent', '20-stage coin ladder (10,000 Coins)', 'coinAscent'));
-              grid.appendChild(createColumn('Starter Journey', 'One-time onboarding', 'starter'));
               return grid;
           }
 
@@ -9135,7 +9396,17 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
               season: createSeasonView
           };
 
+          let activeQuestTab = initialTab;
+          function countClaimableCoreQuests() {
+              let n = 0;
+              for (const b of ['daily', 'weekly', 'brawler', 'awakenatorJourney', 'bonelessBoomarang', 'coinAscent', 'starter']) {
+                  const bucket = playerData.questBoard[b] || {};
+                  for (const q of Object.values(bucket)) if (q && q.completed && !q.claimed) n++;
+              }
+              return n;
+          }
           function setActiveTab(tabId) {
+              activeQuestTab = tabId;
               content.innerHTML = '';
               content.appendChild(views[tabId] ? views[tabId]() : createCoreView());
               for (const btn of tabRow.querySelectorAll('button')) {
@@ -9149,6 +9420,8 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           function makeTab(id, label) {
               const btn = document.createElement('button');
               btn.dataset.tab = id;
+              if (id === 'core') { const n = countClaimableCoreQuests(); if (n > 0) label += ` (${n})`; }
+              if (id === 'season') { const n = getClaimableSeasonRewardCount(); if (n > 0) label += ` (${n})`; }
               btn.textContent = label;
               btn.style.padding = '8px 12px';
               btn.style.borderRadius = '8px';
@@ -9166,6 +9439,11 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           setActiveTab(views[initialTab] ? initialTab : 'core');
 
           panel.appendChild(top);
+          const boardSubtitle = document.createElement('div');
+          boardSubtitle.textContent = 'Complete contracts, claim rewards, and climb the Core Circuit Pass.';
+          boardSubtitle.style.fontSize = '12px';
+          boardSubtitle.style.color = '#95b8d4';
+          panel.appendChild(boardSubtitle);
           const questXP = playerData.questBoard.questXP || 0;
           const questLevel = playerData.questBoard.questLevel || 0;
           const xpBar = document.createElement('div');
@@ -9911,7 +10189,21 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
         evil_doctor_dna: '🧪',
         skeletrooper: '🗡️',
         parrot: '🦜',
-        egg: '🥚'
+        egg: '🥚',
+        beam: '🔦',
+        sera_eclipse: '🌑',
+        boom_arang: '🪃',
+        teether: '🦷',
+        fuel: '⛽',
+        xray: '🩻',
+        angel: '😇',
+        demon: '👹',
+        relay: '📡',
+        snapper: '🐊',
+        kage: '🥷',
+        drainbow: '🌈',
+        draflygon: '🐉',
+        aegis: '🛡️'
     };
 
     function getBrawlerPortraitIcon(brawlerId) {
@@ -9980,6 +10272,296 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
         return `<svg class="fighter-portrait-art ${className}" viewBox="0 0 100 100" aria-hidden="true">${art}</svg>`;
     }
 
+    // ---- EMOTE PINS (master update, brand new) ----
+    // Pins are cosmetic quick-chat emotes, account-wide on playerData.pins:
+    // { owned: [pinIds], equipped: [pinIds] }. Pin glyphs are emoji BY DESIGN
+    // (emote-style quick chat, like the existing taunt strings) — this is not
+    // a brawler portrait and does not conflict with the emoji-brawler migration.
+    const PIN_EQUIP_MAX = 6;
+    const PIN_SEND_COOLDOWN_MS = 3000;
+    const PIN_STARTER_IDS = Object.freeze(['forge_wave', 'good_game', 'ouch']);
+    const PIN_DEFS = Object.freeze({
+      forge_wave:        { id: 'forge_wave',        name: 'Forge Wave',        glyph: '👋', desc: 'A friendly wave straight off the arena floor.' },
+      good_game:         { id: 'good_game',         name: 'Good Game',         glyph: '🤝', desc: 'No hard feelings. That was a proper fight.' },
+      ouch:              { id: 'ouch',              name: 'Ouch!',             glyph: '💥', desc: 'That one left a mark.' },
+      nice_shot:         { id: 'nice_shot',         name: 'Nice Shot!',        glyph: '🎯', desc: 'Right on target. Respect where it is due.' },
+      heads_up:          { id: 'heads_up',          name: 'Heads Up!',         glyph: '👀', desc: 'Eyes open — something is coming your way.' },
+      lets_go:           { id: 'lets_go',           name: "Let's Go!",         glyph: '🚀', desc: 'Full speed ahead, no holding back.' },
+      so_close:          { id: 'so_close',          name: 'So Close!',         glyph: '😬', desc: 'One hit away from glory.' },
+      rematch:           { id: 'rematch',           name: 'Rematch?',          glyph: '🔁', desc: 'Run it back. I want another round.' },
+      on_fire:           { id: 'on_fire',           name: 'On Fire',           glyph: '🔥', desc: 'Unstoppable right now. Feel the heat.' },
+      ice_cold:          { id: 'ice_cold',          name: 'Ice Cold',          glyph: '🧊', desc: 'Calm, cool, and completely unbothered.' },
+      big_brain:         { id: 'big_brain',         name: 'Big Brain',         glyph: '🧠', desc: 'Outplayed, outsmarted, outclassed.' },
+      lucky_shot:        { id: 'lucky_shot',        name: 'Lucky Shot',        glyph: '🍀', desc: 'Total skill. Absolutely not luck. Mostly.' },
+      sneaky:            { id: 'sneaky',            name: 'Sneaky!',           glyph: '🥷', desc: 'You never saw me coming.' },
+      shield_up:         { id: 'shield_up',         name: 'Shield Up!',        glyph: '🛡️', desc: 'Nothing gets through this wall.' },
+      zap:               { id: 'zap',               name: 'Zap!',              glyph: '⚡', desc: 'A little lightning to brighten your day.' },
+      boom:              { id: 'boom',              name: 'Boom!',             glyph: '💣', desc: 'Loud, messy, and entirely on purpose.' },
+      sweet_treat:       { id: 'sweet_treat',       name: 'Sweet Treat',       glyph: '🍬', desc: 'A candy-coated victory lap.' },
+      marshmallow_hug:   { id: 'marshmallow_hug',   name: 'Marshmallow Hug',   glyph: '🍡', desc: 'Soft, squishy, and surprisingly dangerous.' },
+      venom_drop:        { id: 'venom_drop',        name: 'Venom Drop',        glyph: '☠️', desc: 'A tiny taste of something nasty.' },
+      thread_the_needle: { id: 'thread_the_needle', name: 'Thread the Needle', glyph: '🪡', desc: 'Sewn up tight. No escape.' },
+      storm_rider:       { id: 'storm_rider',       name: 'Storm Rider',       glyph: '🌪️', desc: 'Catch me if you can — the wind is mine.' },
+      spike_party:       { id: 'spike_party',       name: 'Spike Party',       glyph: '🦔', desc: 'Prickly, bouncy, and everywhere at once.' },
+      golden_guard:      { id: 'golden_guard',      name: 'Golden Guard',      glyph: '👑', desc: "The arena's finest stands ready." },
+      ghosted:           { id: 'ghosted',           name: 'Ghosted',           glyph: '👻', desc: 'Here one second, gone the next.' },
+      brick_by_brick:    { id: 'brick_by_brick',    name: 'Brick by Brick',    glyph: '🧱', desc: 'Built this win from the ground up.' },
+      core_surge:        { id: 'core_surge',        name: 'Core Surge',        glyph: '💜', desc: 'The Core is awake and it chose me.' },
+      victory_dance:     { id: 'victory_dance',     name: 'Victory Dance',     glyph: '🕺', desc: 'The win is mine, and so is this dance floor.' },
+      facepalm:          { id: 'facepalm',          name: 'Facepalm',          glyph: '🤦', desc: 'That did not go the way I planned.' },
+      heart_pop:         { id: 'heart_pop',         name: 'Heart Pop',         glyph: '💗', desc: 'Sending a little love across the arena.' },
+      arena_legend:      { id: 'arena_legend',      name: 'Arena Legend',      glyph: '🏆', desc: 'Not just a win — a legend in the making.' }
+    });
+    function ensurePinsState() {
+      if (!playerData.pins || typeof playerData.pins !== 'object') {
+        // First run only: seed the 3 starter pins, already equipped.
+        playerData.pins = { owned: [...PIN_STARTER_IDS], equipped: [...PIN_STARTER_IDS] };
+        return playerData.pins;
+      }
+      const pins = playerData.pins;
+      pins.owned = [...new Set((Array.isArray(pins.owned) ? pins.owned : []).filter(id => !!PIN_DEFS[id]))];
+      pins.equipped = [...new Set((Array.isArray(pins.equipped) ? pins.equipped : []).filter(id => pins.owned.includes(id)))].slice(0, PIN_EQUIP_MAX);
+      return pins;
+    }
+    function addPins(pinIds) {
+      const pins = ensurePinsState();
+      const newlyAdded = [];
+      for (const id of (Array.isArray(pinIds) ? pinIds : [])) {
+        if (!PIN_DEFS[id] || pins.owned.includes(id)) continue;
+        pins.owned.push(id);
+        newlyAdded.push(id);
+      }
+      if (newlyAdded.length) saveProgress();
+      return newlyAdded;
+    }
+    function grantPinPack(count = 3) {
+      const pins = ensurePinsState();
+      const unowned = Object.keys(PIN_DEFS).filter(id => !pins.owned.includes(id));
+      for (let i = unowned.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [unowned[i], unowned[j]] = [unowned[j], unowned[i]];
+      }
+      const granted = addPins(unowned.slice(0, count));
+      // [BUILDER PICK] Collection-complete fallback: fewer unowned pins left
+      // than the pack size → 250 coins per missing pin instead of duplicates.
+      const missing = count - granted.length;
+      if (missing > 0) { playerData.coins = (playerData.coins || 0) + missing * 250; saveProgress(); }
+      return { granted, coinsFallback: missing > 0 ? missing * 250 : 0 };
+    }
+    // ---- EMOTE PINS UI (master update) ----
+    function openPinsHub() {
+      document.querySelector('.pin-hub-overlay')?.remove();
+      const overlay = document.createElement('div');
+      overlay.className = 'pin-hub-overlay';
+      const panel = document.createElement('div');
+      panel.className = 'pin-hub';
+      const header = document.createElement('div');
+      header.className = 'pin-hub-header';
+      const title = document.createElement('h2');
+      title.textContent = 'EMOTE PINS';
+      const closeBtn = document.createElement('button');
+      closeBtn.className = 'pin-hub-close';
+      closeBtn.type = 'button';
+      closeBtn.textContent = '✕';
+      closeBtn.onclick = () => overlay.remove();
+      header.appendChild(title);
+      header.appendChild(closeBtn);
+      const countLine = document.createElement('div');
+      countLine.className = 'pin-hub-count';
+      const hint = document.createElement('div');
+      hint.className = 'pin-hub-hint';
+      const grid = document.createElement('div');
+      grid.className = 'pin-grid';
+      const refresh = () => {
+        const st = ensurePinsState();
+        countLine.textContent = `${st.owned.length} / ${Object.keys(PIN_DEFS).length} collected • ${st.equipped.length} / ${PIN_EQUIP_MAX} equipped`;
+        grid.querySelectorAll('.pin-tile').forEach(tile => {
+          const id = tile.dataset.pinId;
+          const owned = st.owned.includes(id);
+          const equipped = st.equipped.includes(id);
+          tile.classList.toggle('is-equipped', equipped);
+          tile.classList.toggle('is-locked', !owned);
+          tile.querySelector('.pin-tile-tag').textContent = equipped ? '✓ EQUIPPED' : (!owned ? '🔒 LOCKED' : '');
+        });
+      };
+      for (const id of Object.keys(PIN_DEFS)) {
+        const def = PIN_DEFS[id];
+        const tile = document.createElement('button');
+        tile.className = 'pin-tile';
+        tile.type = 'button';
+        tile.dataset.pinId = id;
+        const glyph = document.createElement('div');
+        glyph.className = 'pin-tile-glyph';
+        glyph.textContent = def.glyph;
+        const name = document.createElement('div');
+        name.className = 'pin-tile-name';
+        name.textContent = def.name;
+        const desc = document.createElement('div');
+        desc.className = 'pin-tile-desc';
+        desc.textContent = def.desc;
+        const tag = document.createElement('div');
+        tag.className = 'pin-tile-tag';
+        tile.appendChild(glyph); tile.appendChild(name); tile.appendChild(desc); tile.appendChild(tag);
+        tile.onclick = () => {
+          const st = ensurePinsState();
+          if (!st.owned.includes(id)) return;
+          if (st.equipped.includes(id)) {
+            st.equipped = st.equipped.filter(e => e !== id);
+          } else if (st.equipped.length < PIN_EQUIP_MAX) {
+            st.equipped.push(id);
+          } else {
+            hint.textContent = 'Pin tray is full — tap an equipped pin to swap it out.';
+            return;
+          }
+          hint.textContent = '';
+          saveProgress();
+          refresh();
+        };
+        grid.appendChild(tile);
+      }
+      panel.appendChild(header); panel.appendChild(countLine); panel.appendChild(hint); panel.appendChild(grid);
+      overlay.appendChild(panel);
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+      document.body.appendChild(overlay);
+      refresh();
+    }
+    let pinLastSentAt = 0;
+    function ensurePinButton() {
+      if (document.getElementById('pinBtn')) return;
+      const btn = document.createElement('button');
+      btn.id = 'pinBtn';
+      btn.className = 'pin-hud-btn';
+      btn.type = 'button';
+      btn.textContent = '📌';
+      btn.onclick = () => openPinPicker();
+      document.body.appendChild(btn);
+    }
+    function removePinButton() {
+      document.getElementById('pinBtn')?.remove();
+      document.querySelector('.pin-picker-backdrop')?.remove();
+    }
+    function openPinPicker() {
+      document.querySelector('.pin-picker-backdrop')?.remove();
+      const pins = ensurePinsState();
+      const backdrop = document.createElement('div');
+      backdrop.className = 'pin-picker-backdrop';
+      backdrop.addEventListener('click', (e) => { if (e.target === backdrop) backdrop.remove(); });
+      const popup = document.createElement('div');
+      popup.className = 'pin-picker-popup';
+      if (!pins.equipped.length) {
+        const empty = document.createElement('div');
+        empty.className = 'pin-picker-empty';
+        empty.textContent = 'No pins equipped — open Emote Pins from Home to equip up to 6.';
+        popup.appendChild(empty);
+      } else {
+        for (const id of pins.equipped) {
+          const def = PIN_DEFS[id];
+          if (!def) continue;
+          const b = document.createElement('button');
+          b.className = 'pin-picker-btn';
+          b.type = 'button';
+          b.textContent = def.glyph;
+          b.title = def.name;
+          b.onclick = () => sendPin(id);
+          popup.appendChild(b);
+        }
+      }
+      const close = document.createElement('button');
+      close.className = 'pin-picker-close';
+      close.type = 'button';
+      close.textContent = '✕';
+      close.onclick = () => backdrop.remove();
+      popup.appendChild(close);
+      backdrop.appendChild(popup);
+      document.body.appendChild(backdrop);
+    }
+    function sendPin(pinId) {
+      const pins = ensurePinsState();
+      if (!pins.equipped.includes(pinId)) return false;
+      const now = performance.now();
+      if (now - pinLastSentAt < PIN_SEND_COOLDOWN_MS) return false;
+      pinLastSentAt = now;
+      document.querySelector('.pin-picker-backdrop')?.remove();
+      spawnPinPopup(PIN_DEFS[pinId].glyph);
+      return true;
+    }
+    function spawnPinPopup(glyph) {
+      if (!player) return;
+      if (floatingTexts.length >= MAX_ACTIVE_FLOATING_TEXTS) floatingTexts.shift();
+      floatingTexts.push({ x: player.x, y: player.y - 70, text: glyph, color: '#ffffff', life: 0, maxLife: 1.8 });
+    }
+
+        // ---- MATCH-START PROFILE CARDS (master update) ----
+        function buildMatchCard(entry) {
+          // entry: { displayName, title (string|null), brawlerId, powerLevel, tag (string|null), isPlayer }
+          const data = brawlerData[entry.brawlerId] || {};
+          const card = document.createElement('article');
+          card.className = 'match-card' + (entry.isPlayer ? ' is-player' : '');
+          card.style.setProperty('--match-card-color', data.color || '#8aa3c4');
+          card.innerHTML =
+            `<div class="match-card__portrait${hasCustomBrawlerPortrait(entry.brawlerId) ? ' has-custom-portrait' : ''}">${getBrawlerPortraitMarkup(entry.brawlerId)}</div>` +
+            `<div class="match-card__name">${entry.displayName}</div>` +
+            (entry.title ? `<div class="match-card__title">${entry.title}</div>` : '') +
+            `<div class="match-card__fighter">${data.name || entry.brawlerId} · POWER ${entry.powerLevel || 1}</div>` +
+            (entry.tag ? `<div class="match-card__tag">${entry.tag}</div>` : '');
+          return card;
+        }
+        function getMatchCardRoster() {
+          const playerCard = { displayName: playerData.profile?.playerName || 'BRAWE PLAYER',
+            title: PROFILE_TITLE_DEFS[playerData.profile?.equippedTitle]?.name || null,
+            brawlerId: selectedBrawler,
+            powerLevel: playerData.brawlers[selectedBrawler]?.level || 1,
+            tag: 'YOU', isPlayer: true };
+          const fighters = bots.filter(b => b && !b.isStructure && !b.isPet && !b.isSummon
+            && !b.isTowerDefenseMinion && !b.isTombstoneMinion && !b.isPacketBeetle
+            && b.brawler && b.brawler !== 'tower_core' && b.brawler !== 'turret'
+            && b.brawler !== 'wall_structure' && !b.isLavaPedestal && !b.isLavaPup);
+          const toEntry = (b, tag) => ({ displayName: b.displayName || brawlerData[b.brawler]?.name || b.brawler,
+            title: null, brawlerId: b.brawler, powerLevel: b.level || 1, tag, isPlayer: false });
+          const teammates = fighters.filter(b => b.isTeammate === true || b.team === 'player').map(b => toEntry(b, 'TEAMMATE'));
+          const enemies = fighters.filter(b => !(b.isTeammate === true || b.team === 'player')).map(b => toEntry(b, 'ENEMY'));
+          return { playerCard, teammates, enemies };
+        }
+        let matchIntroCardsTimer = 0;
+        function showMatchIntroCards() {
+          document.getElementById('matchIntroCards')?.remove();
+          if (matchIntroCardsTimer) clearTimeout(matchIntroCardsTimer);
+          const roster = getMatchCardRoster();
+          const overlay = document.createElement('div');
+          overlay.id = 'matchIntroCards';
+          overlay.className = 'match-intro';
+          overlay.appendChild(buildMatchCard(roster.playerCard));
+          if (roster.teammates.length) {
+            const label = document.createElement('div');
+            label.className = 'match-intro__label';
+            label.textContent = 'TEAMMATES';
+            overlay.appendChild(label);
+            const row = document.createElement('div');
+            row.className = 'match-intro__row';
+            roster.teammates.forEach(entry => row.appendChild(buildMatchCard(entry)));
+            overlay.appendChild(row);
+          }
+          if (roster.enemies.length) {
+            const label = document.createElement('div');
+            label.className = 'match-intro__label';
+            label.textContent = 'OPPONENTS';
+            overlay.appendChild(label);
+            const row = document.createElement('div');
+            row.className = 'match-intro__row';
+            const shown = roster.enemies.slice(0, 9);
+            shown.forEach(entry => row.appendChild(buildMatchCard(entry)));
+            overlay.appendChild(row);
+            if (roster.enemies.length > 9) {
+              const more = document.createElement('div');
+              more.className = 'match-intro__more';
+              more.textContent = `+${roster.enemies.length - 9} MORE FIGHTERS IN THE ARENA`;
+              overlay.appendChild(more);
+            }
+          }
+          document.body.appendChild(overlay);
+          matchIntroCardsTimer = setTimeout(() => { document.getElementById('matchIntroCards')?.remove(); }, 2800);
+        }
+
     const ATTACHIE_PULL_COST = 350;
     function ensureAttachieState() {
         if (!playerData.attachies || typeof playerData.attachies !== 'object') playerData.attachies = {};
@@ -10025,7 +10607,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
         const infoByType = {
             hyper: { title:'Core Surge Attachie', tab:'CORE SURGE', color:'#d970ff', slots:['hyper'] }
         };
-        const slotLabel = { hyper:'Hyper Main', g1:'Gadget 1', g2:'Gadget 2', slow:'Star Power 1', long:'Star Power 2' };
+        const slotLabel = { hyper:'Core Surge', g1:'Tool 1', g2:'Tool 2', slow:'Talent 1', long:'Talent 2' };
         const slotDesc = {
             outlit: { g1:'Next Shot Pierce attacks return once.', g2:'Healing Pod gains +1500 HP and 30% larger heal range.', slow:'Boom Break restores 2 ammo.', long:'Scatter Pump gains +15% range.' },
                   fightnfire: { type: 'instinct', name: 'Flash Freeze', icon: '❄️', color: '#48dbfb',
@@ -10892,6 +11474,14 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
 
   // Duels Mode State
   let isDuels = false;
+  const DUELS_MAX_FIGHTERS = 4;
+  const DUELS_ROUND_OPTIONS = Object.freeze([7, 9, 15]);
+  const DUELS_ACTIVE_TOWER_POWERS = 5;
+  let duelsTargetWins = 9;
+  function getDuelsWinScore() {
+      if (isTowerDuelEvent) return 5;
+      return DUELS_ROUND_OPTIONS.includes(duelsTargetWins) ? duelsTargetWins : 9;
+  }
   let towerDuelOriginalBrawler = null;
   let towerDuelPowerLoadouts = {};
   let towerDuelBotPowerLoadouts = {};
@@ -11319,7 +11909,7 @@ function isPowerPlayModifierActive(entity = player) {
     }
 
     function isGiantProjectilesActive() {
-        const isGP = (m) => m === 'giant_projectiles' || m === 'projectiles_150' || m === 'colossal_projectiles';
+        const isGP = (m) => m === 'giant_projectiles' || m === 'projectiles_150';
         return (isRankedMatch || isCustomMutatorMatch) && (isGP(activeRankedModifier) || isGP(activeRankedModifierSecondary) || isGP(activeRankedModifierTertiary));
     }
 
@@ -12789,32 +13379,46 @@ function isPowerPlayModifierActive(entity = player) {
 
     const RANKED_PASS_TIERS = 50;
     const RANKED_PASS_XP_PER_TIER = 200;
+    const RANKED_WEEKLY_PASS_XP_CAP = 2000;
+    const RANKED_WEEKLY_OVERFLOW_COINS_PER_XP = 1 / 5;
+    const RANKED_WEEKLY_MAX_BONUS_COINS = 300;
+    function getRankedWeekKey(now = Date.now()) {
+        const d = new Date(now);
+        d.setHours(0, 0, 0, 0);
+        const day = (d.getDay() + 6) % 7;
+        d.setDate(d.getDate() - day + 3);
+        const firstThursday = new Date(d.getFullYear(), 0, 4);
+        const firstDay = (firstThursday.getDay() + 6) % 7;
+        firstThursday.setDate(firstThursday.getDate() - firstDay + 3);
+        const week = 1 + Math.round((d - firstThursday) / (7 * 24 * 60 * 60 * 1000));
+        return `${d.getFullYear()}-W${String(Math.max(1, week)).padStart(2, '0')}`;
+    }
     const RANKED_PASS_REWARDS = [
         { tier: 1, type: 'coins', amount: 250, label: '250 Coins', icon: '🪙', rarity: 'common' },
         { tier: 2, type: 'souls', amount: 30, label: '30 Souls', icon: '🔮', rarity: 'common' },
         { tier: 3, type: 'gems', amount: 5, label: '5 Gems', icon: '💎', rarity: 'rare' },
         { tier: 4, type: 'tapper', amount: 1, label: 'Tapper Upper', icon: '📦', rarity: 'rare' },
-        { tier: 5, type: 'coins', amount: 350, label: '350 Coins', icon: '🪙', rarity: 'common' },
-        { tier: 6, type: 'drop', dropRarity: 'rare', label: 'Rare Starr Drop', icon: '⭐', rarity: 'rare' },
+        { tier: 5, type: 'pinpack', amount: 3, label: 'Bronze Pin Pack (3 pins)', icon: '📌', rarity: 'rare' },
+        { tier: 6, type: 'coins', amount: 350, label: '350 Coins', icon: '🪙', rarity: 'common' },
         { tier: 7, type: 'title', titleId: 'Brick Scout', label: 'Title: "Brick Scout"', icon: '🏷️', rarity: 'rare' },
         { tier: 8, type: 'souls', amount: 40, label: '40 Souls', icon: '🔮', rarity: 'common' },
         { tier: 9, type: 'coins', amount: 450, label: '450 Coins', icon: '🪙', rarity: 'common' },
-        { tier: 10, type: 'tapper', amount: 1, label: 'Tapper Upper', icon: '📦', rarity: 'rare' },
+        { tier: 10, type: 'drop', dropRarity: 'rare', label: 'Rare Starr Drop', icon: '⭐', rarity: 'rare' },
         { tier: 11, type: 'gems', amount: 8, label: '8 Gems', icon: '💎', rarity: 'rare' },
         { tier: 12, type: 'coins', amount: 500, label: '500 Coins', icon: '🪙', rarity: 'common' },
         { tier: 13, type: 'souls', amount: 50, label: '50 Souls', icon: '🔮', rarity: 'common' },
         { tier: 14, type: 'drop', dropRarity: 'super-rare', label: 'Super Rare Starr Drop', icon: '⭐', rarity: 'super-rare' },
-        { tier: 15, type: 'frame', frameId: 'ranked_cyber', label: 'Ranked Cyber Frame', icon: '🖼️', rarity: 'epic' },
+        { tier: 15, type: 'pinpack', amount: 3, label: 'Silver Pin Pack (3 pins)', icon: '📌', rarity: 'epic' },
         { tier: 16, type: 'coins', amount: 600, label: '600 Coins', icon: '🪙', rarity: 'common' },
         { tier: 17, type: 'tapper', amount: 1, label: 'Tapper Upper', icon: '📦', rarity: 'rare' },
         { tier: 18, type: 'souls', amount: 60, label: '60 Souls', icon: '🔮', rarity: 'common' },
         { tier: 19, type: 'gems', amount: 10, label: '10 Gems', icon: '💎', rarity: 'epic' },
-        { tier: 20, type: 'drop', dropRarity: 'epic', label: 'Epic Starr Drop', icon: '⭐', rarity: 'epic' },
+        { tier: 20, type: 'frame', frameId: 'ranked_cyber', label: 'Ranked Cyber Frame', icon: '🖼️', rarity: 'epic' },
         { tier: 21, type: 'title', titleId: 'Point Vanguard', label: 'Title: "Point Vanguard"', icon: '🏷️', rarity: 'epic' },
         { tier: 22, type: 'coins', amount: 750, label: '750 Coins', icon: '🪙', rarity: 'common' },
         { tier: 23, type: 'souls', amount: 75, label: '75 Souls', icon: '🔮', rarity: 'common' },
         { tier: 24, type: 'tapper', amount: 2, label: '2x Tapper Upper', icon: '📦', rarity: 'epic' },
-        { tier: 25, type: 'drop', dropRarity: 'epic', label: 'Epic Starr Drop', icon: '⭐', rarity: 'epic' },
+        { tier: 25, type: 'pinpack', amount: 3, label: 'Gold Pin Pack (3 pins)', icon: '📌', rarity: 'epic' },
         { tier: 26, type: 'coins', amount: 850, label: '850 Coins', icon: '🪙', rarity: 'common' },
         { tier: 27, type: 'gems', amount: 12, label: '12 Gems', icon: '💎', rarity: 'epic' },
         { tier: 28, type: 'souls', amount: 80, label: '80 Souls', icon: '🔮', rarity: 'common' },
@@ -12824,7 +13428,7 @@ function isPowerPlayModifierActive(entity = player) {
         { tier: 32, type: 'souls', amount: 90, label: '90 Souls', icon: '🔮', rarity: 'common' },
         { tier: 33, type: 'drop', dropRarity: 'mythic', label: 'Mythic Starr Drop', icon: '⭐', rarity: 'mythic' },
         { tier: 34, type: 'gems', amount: 15, label: '15 Gems', icon: '💎', rarity: 'epic' },
-        { tier: 35, type: 'title', titleId: 'Apex Striker', label: 'Title: "Apex Striker"', icon: '🏷️', rarity: 'mythic' },
+        { tier: 35, type: 'pinpack', amount: 3, label: 'Fume Pin Pack (3 pins)', icon: '📌', rarity: 'mythic' },
         { tier: 36, type: 'coins', amount: 1100, label: '1,100 Coins', icon: '🪙', rarity: 'common' },
         { tier: 37, type: 'tapper', amount: 2, label: '2x Tapper Upper', icon: '📦', rarity: 'epic' },
         { tier: 38, type: 'souls', amount: 100, label: '100 Souls', icon: '🔮', rarity: 'epic' },
@@ -12834,7 +13438,7 @@ function isPowerPlayModifierActive(entity = player) {
         { tier: 42, type: 'gems', amount: 20, label: '20 Gems', icon: '💎', rarity: 'mythic' },
         { tier: 43, type: 'souls', amount: 120, label: '120 Souls', icon: '🔮', rarity: 'epic' },
         { tier: 44, type: 'tapper', amount: 3, label: '3x Tapper Upper', icon: '📦', rarity: 'mythic' },
-        { tier: 45, type: 'title', titleId: 'Grandmaster', label: 'Title: "Grandmaster"', icon: '🏷️', rarity: 'legendary' },
+        { tier: 45, type: 'pinpack', amount: 3, label: 'Legend Pin Pack (3 pins)', icon: '📌', rarity: 'legendary' },
         { tier: 46, type: 'coins', amount: 1600, label: '1,600 Coins', icon: '🪙', rarity: 'common' },
         { tier: 47, type: 'drop', dropRarity: 'legendary', label: 'Legendary Starr Drop', icon: '⭐', rarity: 'legendary' },
         { tier: 48, type: 'gems', amount: 30, label: '30 Gems', icon: '💎', rarity: 'legendary' },
@@ -12854,6 +13458,16 @@ function isPowerPlayModifierActive(entity = player) {
         if (!Array.isArray(playerData.ranked.rewardsClaimed)) playerData.ranked.rewardsClaimed = [];
         if (playerData.ranked.winStreak == null) playerData.ranked.winStreak = 0;
         if (playerData.ranked.seasonId == null) playerData.ranked.seasonId = 1;
+        if (playerData.ranked.weekKey == null) playerData.ranked.weekKey = getRankedWeekKey();
+        if (playerData.ranked.weekKey !== getRankedWeekKey()) {
+            playerData.ranked.weekKey = getRankedWeekKey();
+            playerData.ranked.weeklyPassXp = 0;
+            playerData.ranked.weeklyMaxed = false;
+            playerData.ranked.weeklyMaxClaimed = false;
+        }
+        if (playerData.ranked.weeklyPassXp == null) playerData.ranked.weeklyPassXp = 0;
+        if (playerData.ranked.weeklyMaxed == null) playerData.ranked.weeklyMaxed = false;
+        if (playerData.ranked.weeklyMaxClaimed == null) playerData.ranked.weeklyMaxClaimed = false;
         if (!playerData.ownedSkins) playerData.ownedSkins = {};
         if (!playerData.selectedSkins) playerData.selectedSkins = {};
     }
@@ -12877,6 +13491,7 @@ function isPowerPlayModifierActive(entity = player) {
         const progress = getRankedPassProgress();
         const reward = RANKED_PASS_REWARDS[tierIndex];
         if (!reward || tierIndex >= progress.unlockedTiers || progress.claimed.includes(tierIndex)) return false;
+        if (reward.type === 'pinpack' && typeof grantPinPack !== 'function') return false;
 
         playerData.ranked.passClaimed.push(tierIndex);
 
@@ -12899,6 +13514,8 @@ function isPowerPlayModifierActive(entity = player) {
             playerData.ownedSkins[reward.skinId] = true;
             if (!playerData.selectedSkins) playerData.selectedSkins = {};
             playerData.selectedSkins[reward.brawler] = reward.skinId;
+        } else if (reward.type === 'pinpack') {
+            grantPinPack(reward.amount || 3);
         } else if (reward.type === 'drop') {
             if (typeof openStarrDropModal === 'function') {
                 try { openStarrDropModal(reward.dropRarity || 'rare'); } catch (e) { /* ignore */ }
@@ -13790,7 +14407,7 @@ let heistFeverActive = false;
           if (selectedBrawler === 'outlit') return 'Land 3 main-attack hits to learn Outlit\'s spread.';
           return 'Land 3 main-attack hits to learn this attack pattern.';
       }
-      if (step.key === 'gadget') return touch ? 'Tap the green Gadget button.' : 'Press Q to use your Gadget.';
+      if (step.key === 'gadget') return touch ? 'Tap the green Tool button.' : 'Press Q to use your Tool.';
       if (step.key === 'super') return touch ? 'Drag and release the yellow Super stick onto the dummy.' : 'Aim at the dummy and press E for your Super.';
       if (step.key === 'hyper') return touch ? 'Tap the purple Hypercharge button.' : 'Press F to activate Hypercharge.';
       if (step.key === 'hyperAttack') return 'Hit the dummy once while Hypercharged.';
@@ -14052,11 +14669,11 @@ let heistFeverActive = false;
       const isSupport = role.includes('support');
       const attack = d.attack || `${d.name || brawler} Attack`;
       const superName = d.super || `${d.name || brawler} Super`;
-      const gadget = String(d.g1 || 'Gadget').split('(')[0].trim();
-      const gadgetTwo = String(d.g2 || 'Second Gadget').split('(')[0].trim();
-      const star = String(d.sp1 || 'Star Power').split('(')[0].trim();
-      const starTwo = String(d.sp2 || 'Second Star Power').split('(')[0].trim();
-      const hyper = String(d.hyper || 'Hypercharge').split(':')[0].trim();
+      const gadget = String(d.g1 || 'Tool').split('(')[0].trim();
+      const gadgetTwo = String(d.g2 || 'Second Tool').split('(')[0].trim();
+      const star = String(d.sp1 || 'Talent').split('(')[0].trim();
+      const starTwo = String(d.sp2 || 'Second Talent').split('(')[0].trim();
+      const hyper = String(d.hyper || 'Core Surge').split(':')[0].trim();
       const damage = isMarksman ? .16 : (isAssassin ? .14 : .12);
       const hp = isTank ? .22 : (isSupport ? .17 : .14);
       const speed = isAssassin ? .15 : .10;
@@ -15588,6 +16205,7 @@ let heistFeverActive = false;
                   if (data.persistent.event) playerData.event = data.persistent.event;
                   if (data.persistent.seasonPassHistory) playerData.seasonPassHistory = data.persistent.seasonPassHistory;
                   if (data.persistent.seasonPass) playerData.seasonPass = data.persistent.seasonPass;
+                  if (data.persistent.pins && typeof data.persistent.pins === 'object') playerData.pins = data.persistent.pins;
                   if (data.persistent.eventTappers) playerData.eventTappers = data.persistent.eventTappers;
                   if (data.persistent.questBoard) playerData.questBoard = data.persistent.questBoard;
                   if (data.persistent.tutorialCompleted != null) playerData.tutorialCompleted = !!data.persistent.tutorialCompleted;
@@ -15715,6 +16333,7 @@ let heistFeverActive = false;
           if (!playerData.selectedSkins) playerData.selectedSkins = {};
           if (!playerData.skinFeaturedRotationStart) playerData.skinFeaturedRotationStart = 0;
           ensureSeasonPassState();
+          ensurePinsState();
           if (ENABLE_EVENT_HUB && (!playerData.event || playerData.event.questSchemaVersion !== EVENT_QUEST_SCHEMA_VERSION)) resetEventQuests();
           ensureSoulSummonerData();
           ensureSlopSushiState();
@@ -15781,6 +16400,7 @@ let heistFeverActive = false;
                      season3: playerData.season3,
                      weeklyTrials: playerData.weeklyTrials,
                      seasonPassHistory: playerData.seasonPassHistory || {},
+                    pins: ensurePinsState(), // { owned: [...], equipped: [...] } — serialized by value
                     selectedBrawler,
                     brawlerProgress: {}
                 }
@@ -16192,7 +16812,7 @@ let heistFeverActive = false;
       overlay.appendChild(title);
 
       const subtitle = document.createElement('p');
-      subtitle.textContent = `Opened: ${regCount} Tappers, ${superCount} Supers, ${hyperCount} Surge Tappers`;
+      subtitle.textContent = `Opened: ${regCount} Tappers, ${superCount} Super Tappers, ${hyperCount} Surge Tappers`;
       subtitle.style.color = '#89aed2';
       overlay.appendChild(subtitle);
 
@@ -16961,7 +17581,7 @@ let heistFeverActive = false;
           const titleBox = document.createElement('div');
           titleBox.innerHTML = `
               <div style="font-size:clamp(16px, 2.4vw, 20px);font-weight:900;letter-spacing:0.04em;background:linear-gradient(90deg,#caa6ff,#6ee7ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;display:flex;align-items:center;gap:6px;">
-                  🌌 SOUL SUMMONER · STARR ROAD
+                  🌌 SOUL SUMMONER · SOUL ROAD
               </div>
               <div style="font-size:11px;color:#8eaad0;margin-top:1px;">Choose your fighter or summon randomly</div>
           `;
@@ -17010,7 +17630,7 @@ let heistFeverActive = false;
               stepHeader.innerHTML = `
                   <div>
                       <div style="font-size:11px;font-weight:900;letter-spacing:0.08em;color:${activeConstellation.color};text-transform:uppercase;">
-                          ${activeConstellation.icon} CURRENT STARR ROAD STEP · ${activeTier.toUpperCase()} CHOICE
+                          ${activeConstellation.icon} CURRENT SOUL ROAD STEP · ${activeTier.toUpperCase()} CHOICE
                       </div>
                       <div style="font-size:13px;color:#d0e2ff;font-weight:700;margin-top:2px;">
                           Pick 1 of ${choices.length} fighters to channel souls, or summon randomly!
@@ -17175,7 +17795,7 @@ let heistFeverActive = false;
           // ── Starr Road Constellation Path Overview ──
           const roadCard = document.createElement('div');
           roadCard.style.cssText = 'background:rgba(8,14,28,0.75);border:1px solid rgba(138,92,255,0.25);border-radius:16px;padding:14px;box-sizing:border-box;';
-          roadCard.innerHTML = `<div style="font-size:13px;font-weight:900;color:#caa6ff;margin-bottom:10px;display:flex;align-items:center;gap:6px;">🛤️ STARR ROAD CHAPTERS & MILESTONES</div>`;
+          roadCard.innerHTML = `<div style="font-size:13px;font-weight:900;color:#caa6ff;margin-bottom:10px;display:flex;align-items:center;gap:6px;">🛤️ SOUL ROAD CHAPTERS & MILESTONES</div>`;
 
           const roadList = document.createElement('div');
           roadList.style.cssText = 'display:flex;flex-direction:column;gap:8px;';
@@ -17363,7 +17983,12 @@ let heistFeverActive = false;
       overlay.style.cssText = 'position:fixed;inset:0;background:radial-gradient(ellipse at 50% 10%, rgba(18, 28, 58, 0.98), rgba(3, 6, 14, 0.98));z-index:1600;display:flex;align-items:center;justify-content:center;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#fff;padding:clamp(8px, 2vh, 16px);box-sizing:border-box;backdrop-filter:blur(14px);';
 
       const panel = document.createElement('div');
-      panel.style.cssText = 'width:min(860px, 98vw);max-height:calc(100dvh - 24px);max-height:calc(100vh - 24px);background:linear-gradient(180deg, #0d172e 0%, #060b17 100%);border:2px solid rgba(255,209,102,0.45);border-radius:20px;box-shadow:0 25px 80px rgba(0,0,0,0.85), inset 0 1px 0 rgba(255,255,255,0.1);display:flex;flex-direction:column;overflow:hidden;box-sizing:border-box;position:relative;';
+      panel.style.cssText = 'width:min(860px, 98vw);max-height:calc(100dvh - 24px);max-height:calc(100vh - 24px);background:linear-gradient(180deg, #0d172e 0%, #060b17 100%);border:2px solid rgba(255,209,102,0.45);border-radius:16px;box-shadow:0 25px 80px rgba(0,0,0,0.85), inset 0 1px 0 rgba(255,255,255,0.1);display:flex;flex-direction:column;overflow:hidden;box-sizing:border-box;position:relative;';
+
+      const previousFocusBrickRoad = document.activeElement;
+      const closeBrickRoad = () => { overlay.remove(); document.removeEventListener('keydown', brickRoadEscape); previousFocusBrickRoad?.focus?.(); };
+      const brickRoadEscape = (event) => { if (event.key === 'Escape') { event.stopPropagation(); closeBrickRoad(); } };
+      document.addEventListener('keydown', brickRoadEscape);
 
       function render() {
           panel.innerHTML = '';
@@ -17379,7 +18004,7 @@ let heistFeverActive = false;
           const titleBox = document.createElement('div');
           titleBox.innerHTML = `
               <div style="font-size:clamp(16px, 2.4vw, 20px);font-weight:900;letter-spacing:0.04em;background:linear-gradient(90deg,#ffd166,#ff9f43);-webkit-background-clip:text;-webkit-text-fill-color:transparent;display:flex;align-items:center;gap:6px;">
-                  🏆 BRICK ROAD · TROPHY LEAGUES
+                  🏆 BRICK ROAD · BRICK LEAGUES
               </div>
               <div style="font-size:11px;color:#8eaad0;margin-top:1px;">Earn Bricks with any fighter to unlock epic milestone rewards</div>
           `;
@@ -17394,7 +18019,7 @@ let heistFeverActive = false;
           const closeBtn = document.createElement('button');
           closeBtn.textContent = '✕';
           closeBtn.style.cssText = 'width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);color:#dbe8ff;font-size:15px;font-weight:bold;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.18s;flex-shrink:0;';
-          closeBtn.onclick = () => document.body.removeChild(overlay);
+          closeBtn.onclick = closeBrickRoad;
 
           headerRight.appendChild(leagueBadge);
           headerRight.appendChild(closeBtn);
@@ -17498,8 +18123,8 @@ let heistFeverActive = false;
       const costs = [0, 50, 100, 175, 300, 500, 750, 1050, 1400, 2000, 3000, 4200];
       return costs[Math.max(0, Math.floor(level || 0))] || 99999;
   }
-  // Levels 9+ also cost Core Pieces (keyed by CURRENT level; 11->12 is 1.7x the 10->11 cost).
-  const CORE_PIECE_UPGRADE_COSTS = { 8: 20, 9: 35, 10: 50, 11: 85 };
+  // Power 8+ upgrades also cost Core Pieces (keyed by CURRENT level; master update: 75% cut, so each cost is 25% of the old value, rounded).
+  const CORE_PIECE_UPGRADE_COSTS = { 8: 5, 9: 9, 10: 13, 11: 21 };
   function getCorePieceUpgradeCost(level) {
       return CORE_PIECE_UPGRADE_COSTS[Math.floor(level || 0)] || 0;
   }
@@ -17625,7 +18250,7 @@ let heistFeverActive = false;
           icon: 'AP',
           color: '#ffd34f',
           pieceName: 'Dashaholic Signature Piece',
-          shortDesc: 'Spend up to 1200 HP to empower the selected Gadget. Phase Dash repeats and grants 2s CC immunity; Adrenaline adds a 4s ally-healing aura and +50% reload for 2s.'
+          shortDesc: 'Spend up to 1200 HP to empower the selected Tool. Phase Dash repeats and grants 2s CC immunity; Adrenaline adds a 4s ally-healing aura and +50% reload for 2s.'
       },
       beast: {
           type: 'signature',
@@ -18289,14 +18914,14 @@ let heistFeverActive = false;
           grid.appendChild(makeShopCard({
               titleText: 'RELAY - Early Access',
               accent: '#67e8ff',
-              descText: 'Unlock Relay immediately at Power 1. Her upgrades, Gadget, Star Power, and Hypercharge are purchased normally.',
+              descText: 'Unlock Relay immediately at Power 1. Her upgrades, Tool, Talent, and Core Surge are purchased normally.',
               priceText: '79 GEMS',
               buttonText: 'UNLOCK RELAY',
               buttonColor: '#67e8ff',
               isOwned: relayOwned,
               isLocked: !relayOwned && (playerData.gems || 0) < 79,
               lockedText: '79 GEMS REQUIRED',
-              footerText: 'Brawler-only early access offer.',
+              footerText: 'Fighter-only early access offer.',
               onBuy: () => {
                   if (playerData.unlockedBrawlers.relay) return;
                   if ((playerData.gems || 0) < 79) return alert('Not enough Gems!');
@@ -18312,7 +18937,7 @@ let heistFeverActive = false;
           grid.appendChild(makeShopCard({
               titleText: 'RELAY - Max Signal Bundle',
               accent: '#df75ff',
-              descText: 'Unlock Relay, instantly reach Power 11, and receive her Gadget, Star Power, and Hypercharge.',
+              descText: 'Unlock Relay, instantly reach Power 11, and receive her Tool, Talent, and Core Surge.',
               priceText: `${relayBundlePrice} GEMS`,
               buttonText: relayOwned ? 'MAX RELAY' : 'GET FULL BUNDLE',
               buttonColor: '#df75ff',
@@ -18823,7 +19448,7 @@ let heistFeverActive = false;
           const p12CompKey = 'p12-fix-compensation';
           grid.appendChild(makeShopCard({
               titleText: '🛠️ Power 12 Fix Compensation', accent: '#ff9f6e',
-              descText: 'Our apology for the Power 12 save bug: 100 Core Pieces and 1 Hyper Tapper, on the house.', priceText: 'FREE', buttonText: 'CLAIM', buttonColor: '#ff9f6e',
+              descText: 'Our apology for the Power 12 save bug: 100 Core Pieces and 1 Surge Tapper, on the house.', priceText: 'FREE', buttonText: 'CLAIM', buttonColor: '#ff9f6e',
               isOwned: !!playerData.shopClaims[p12CompKey], footerText: 'One-time claim per save.',
               onBuy: () => { if(playerData.shopClaims[p12CompKey])return; addCorePieces(100); playerData.hyperTapperCount=(playerData.hyperTapperCount||0)+1; playerData.shopClaims[p12CompKey]=true; ensureShopButtonRefresh(); renderTabContent(); }
           }));
@@ -18844,7 +19469,7 @@ let heistFeverActive = false;
           const corePackKey = getShopClaimKey('daily-core-pack', dailyCycle.cycleKey);
           grid.appendChild(makeShopCard({
               titleText: '💠 Core Piece Pack', accent: '#7dfcd9',
-              descText: '25 Core Pieces toward Power 9+ upgrades and ability Pieces.', priceText: '10 GEMS → 25 CORE PIECES', buttonText: 'BUY PACK', buttonColor: '#7dfcd9',
+              descText: '25 Core Pieces toward Power 8+ upgrades and ability Pieces.', priceText: '10 GEMS → 25 CORE PIECES', buttonText: 'BUY PACK', buttonColor: '#7dfcd9',
               isOwned: !!playerData.shopClaims[corePackKey], isLocked: (playerData.gems||0)<10, lockedText:'10 GEMS REQUIRED', footerText:'One pack each day.',
               onBuy: () => { if(playerData.shopClaims[corePackKey]||(playerData.gems||0)<10)return; playerData.gems-=10; addCorePieces(25); playerData.shopClaims[corePackKey]=true; ensureShopButtonRefresh(); renderTabContent(); }
           }));
@@ -18942,7 +19567,7 @@ let heistFeverActive = false;
               const key = getShopClaimKey(`finish-set-${fid}`, dailyCycle.cycleKey);
               grid.appendChild(makeShopCard({
                   titleText: `🧩 ${def.name} — Next Piece`, accent: def.color,
-                  descText: `${(brawlerData[fid]||{}).name || fid} is at ${st.pieces}/3 ${def.type} pieces. Today's piece is discounted — finish the triangle.`,
+                  descText: `${(brawlerData[fid]||{}).name || fid} is at ${st.pieces}/3 ${def.type} pieces. Today's piece is discounted — finish the set.`,
                   priceText: '30 CORE PIECES (was 40)', buttonText: 'BUY PIECE', buttonColor: def.color,
                   isOwned: !!playerData.shopClaims[key], isLocked: getCorePieces()<30, lockedText: '30 CORE PIECES REQUIRED', footerText: 'Personalized pick · rotates daily.',
                   onBuy: () => { if(playerData.shopClaims[key])return; if(!spendCorePieces(30))return alert('Not enough Core Pieces!'); addSpecialAbilityPiece(fid); playerData.shopClaims[key]=true; ensureShopButtonRefresh(); renderTabContent(); }
@@ -24746,7 +25371,7 @@ let heistFeverActive = false;
         if ((enemy.invulnerableUntil || 0) > now || enemy.isFlying || (enemy.angelLiftUntil || 0) > now) score += 1400;
         if (isEntityInsideBush(enemy) && distance > 280) score += 220;
         if (context.ranged && distance < 210) score += (210 - distance) * 1.1;
-        if ((context.assassin || context.skirmisher) && hpPct < 0.42) score -= (0.42 - hpPct) * 520;
+        if (hpPct < 0.42) score -= (0.42 - hpPct) * ((context.assassin || context.skirmisher) ? 520 : 260);
         if (context.support && distance < 170 && hpPct > 0.55) score += 170;
         if (context.hpPct < 0.3 && distance < 300 && hpPct > 0.45) score += 360;
         if (isDamageFillerMode) score -= hpPct * 360;
@@ -24754,9 +25379,11 @@ let heistFeverActive = false;
 
         const enemyRole = String(brawlerData[enemy.id === player.id ? selectedBrawler : enemy.brawler]?.role || '').toLowerCase();
         if (context.teamMode && enemyRole.includes('support')) score -= 75;
+        let focusingAllies = 0;
         for (const ally of context.allies || []) {
-            if (ally.lastTargetId === enemy.id && Math.hypot(ally.x - bot.x, ally.y - bot.y) < 620) score -= 105;
+            if (ally.lastTargetId === enemy.id && Math.hypot(ally.x - bot.x, ally.y - bot.y) < 620) { score -= 105; focusingAllies++; }
         }
+        if (focusingAllies >= 2) score -= 150;
 
         if (isObjectiveMode && objectiveZone) {
             const objectiveDist = Math.hypot(enemy.x - objectiveZone.x, enemy.y - objectiveZone.y);
@@ -24855,6 +25482,51 @@ let heistFeverActive = false;
         if (!canBotMoveToPosition(bot, bot.x + dodgeX * testDistance, bot.y + dodgeY * testDistance)) return null;
         bot.botNextDodgeAt = context.now + 240 + (context.slot % 5) * 22;
         return { x: dodgeX, y: dodgeY };
+    }
+
+    function getBotHazardEscapeVector(bot, context) {
+        if ((bot.botNextHazardEscapeAt || 0) > context.now || bot.isFlying || bot.isDashing || bot.isJumping) return null;
+        const zones = [...chickpigEggZones, ...fightnFireZones, ...heaterZones, ...malakorHellZones,
+            ...cheeseFields, ...goonPuddles, ...skeleParachutes, ...malakorHands];
+        for (const zone of zones) {
+            if (!zone) continue;
+            const owner = zone.ownerId === player.id ? player : bots.find((candidate) => candidate.id === zone.ownerId);
+            if (owner && areAlliedEntities(bot, owner) && !isFriendlyFireActive()) continue;
+            const gap = Math.hypot(bot.x - zone.x, bot.y - zone.y) - (zone.radius || 52) - (bot.radius || 16) - 24;
+            if (gap >= 0) continue;
+            const d = Math.hypot(bot.x - zone.x, bot.y - zone.y) || 1;
+            bot.botNextHazardEscapeAt = context.now + 400;
+            return { x: (bot.x - zone.x) / d, y: (bot.y - zone.y) / d };
+        }
+        for (const ring of [...rings, ...snapperWaves]) {
+            if (!ring || ring.ownerId == null) continue;
+            const owner = ring.ownerId === player.id ? player : bots.find((candidate) => candidate.id === ring.ownerId);
+            if (owner && areAlliedEntities(bot, owner) && !isFriendlyFireActive()) continue;
+            const edgeGap = Math.abs(Math.hypot(bot.x - ring.x, bot.y - ring.y) - (ring.radius || 0));
+            if (edgeGap >= (bot.radius || 16) + 75) continue;
+            const d = Math.hypot(bot.x - ring.x, bot.y - ring.y) || 1;
+            const outward = Math.hypot(bot.x - ring.x, bot.y - ring.y) >= (ring.radius || 0) ? 1 : -1;
+            bot.botNextHazardEscapeAt = context.now + 400;
+            return { x: (bot.x - ring.x) / d * outward, y: (bot.y - ring.y) / d * outward };
+        }
+        for (const fence of trapperFences) {
+            if (!fence) continue;
+            const owner = fence.ownerId === player.id ? player : bots.find((candidate) => candidate.id === fence.ownerId);
+            if (owner && areAlliedEntities(bot, owner) && !isFriendlyFireActive()) continue;
+            const m = (bot.radius || 16) + 24;
+            const cx = Math.max(fence.x, Math.min(bot.x, fence.x + fence.w));
+            const cy = Math.max(fence.y, Math.min(bot.y, fence.y + fence.h));
+            if (Math.hypot(bot.x - cx, bot.y - cy) >= m) continue;
+            const fcX = fence.x + fence.w / 2, fcY = fence.y + fence.h / 2;
+            const dxF = bot.x - fcX, dyF = bot.y - fcY;
+            const penX = fence.w / 2 + m - Math.abs(dxF);
+            const penY = fence.h / 2 + m - Math.abs(dyF);
+            let ex = 0, ey = 0;
+            if (penX < penY) { ex = dxF >= 0 ? 1 : -1; } else { ey = dyF >= 0 ? 1 : -1; }
+            bot.botNextHazardEscapeAt = context.now + 400;
+            return { x: ex, y: ey };
+        }
+        return null;
     }
 
     function getImpossibleAimLine() {
@@ -25120,8 +25792,24 @@ let heistFeverActive = false;
         let shouldMove = distance > Math.max(14, stopDistance * 1.04) || tacticalRetreat || spacingRetreat;
         let speedMult = tacticalRetreat ? 1.08 : spacingRetreat ? 0.88 : 1;
 
-        if (tacticalRetreat || spacingRetreat) {
+        if (tacticalRetreat) {
+            const cover = findBotCoverPoint(bot, { x: target.x, y: target.y });
+            if (cover) {
+                return { dx: cover.x - bot.x, dy: cover.y - bot.y, shouldMove: true, speedMult: 1.08, tacticalRetreat, stopDistance };
+            }
+        }
+        if (spacingRetreat && !tacticalRetreat) {
             dx *= -1; dy *= -1;
+        } else if (tacticalRetreat) {
+            const dist = Math.hypot(dx, dy) || 1;
+            const nx = dx / dist, ny = dy / dist;
+            const side = context.slot % 2 === 0 ? 1 : -1;
+            const wantDist = (context.preferredRange || 185) + 60;
+            const rangeError = clamp((wantDist - dist) / Math.max(60, wantDist), -0.5, 1);
+            dx = -nx * rangeError + -ny * side * 0.85;
+            dy = -ny * rangeError + nx * side * 0.85;
+            speedMult = context.hpPct < 0.15 ? 1.12 : 1.0;
+            shouldMove = true;
         } else if (combatTarget && distance <= stopDistance * 1.08) {
             if (context.ranged || context.controller || context.support) {
                 const side = context.slot % 2 === 0 ? 1 : -1;
@@ -25170,7 +25858,9 @@ let heistFeverActive = false;
             const ax = bot.x - ally.x, ay = bot.y - ally.y;
             const allyDist = Math.hypot(ax, ay) || 1;
             if (allyDist < 78) {
-                const repel = (78 - allyDist) * 2.1;
+                const allyRole = String(brawlerData[ally.id === player.id ? selectedBrawler : ally.brawler]?.role || '').toLowerCase();
+                const allyIsFrontline = allyRole.includes('tank') || allyRole.includes('assassin') || allyRole.includes('close-range');
+                const repel = (78 - allyDist) * 2.1 * ((context.support || context.controller) && allyIsFrontline ? 0.5 : 1);
                 dx += ax / allyDist * repel;
                 dy += ay / allyDist * repel;
                 shouldMove = true;
@@ -25187,6 +25877,13 @@ let heistFeverActive = false;
         } else if (dodge) {
             dx += dodge.x * 520;
             dy += dodge.y * 520;
+            shouldMove = true;
+            speedMult = Math.max(speedMult, 1.12);
+        }
+        const hazardEscape = !context.impossible ? getBotHazardEscapeVector(bot, context) : null;
+        if (hazardEscape) {
+            dx += hazardEscape.x * 420;
+            dy += hazardEscape.y * 420;
             shouldMove = true;
             speedMult = Math.max(speedMult, 1.12);
         }
@@ -25213,6 +25910,8 @@ let heistFeverActive = false;
         const combatTarget = target && !target.isPowerup && !target.isBox && !['center', 'cart'].includes(target.id);
         const allyInTrouble = context.support && (context.allies || []).some((ally) => Math.hypot(ally.x - bot.x, ally.y - bot.y) < 360 && ally.hp / Math.max(1, ally.maxHp) < 0.42);
         const objectiveEmergency = (isObjectiveMode || isTugZoneMode) && Math.hypot(bot.x - objectiveZone.x, bot.y - objectiveZone.y) < (objectiveZone.r || 240) + 80 && combatTarget;
+        if (combatTarget && ((target.invulnerableUntil || 0) > context.now || target.isFlying || (target.angelLiftUntil || 0) > context.now)) return false;
+        if (context.hpPct < 0.30 && combatTarget && distance < 200) return true;
         if (bot.brawler === 'portalo') {
             const valuableTarget = !!(combatTarget && ((target.maxHp || 0) >= Math.max(6800, bot.maxHp || 0) || target.isArenaForgeStructure || target.isVault));
             return context.hpPct < .48 || objectiveEmergency || (valuableTarget && distance < 760);
@@ -25225,6 +25924,8 @@ let heistFeverActive = false;
         if (bot.brawler === 'jacktrade') return (bot.superCharge||0)>=100||getJackTradeStage(bot)===4||distance>700;
         if (context.impossible) return !!(combatTarget && (distance < 720 || context.hpPct < 0.7));
         if (context.hpPct < 0.42 || allyInTrouble || objectiveEmergency) return true;
+        const retreatThreshold = context.tank ? 0.22 : context.assassin ? 0.27 : 0.34;
+        if (context.hpPct < retreatThreshold && distance > 520) return false;
         return !!(combatTarget && distance < (context.ranged ? 520 : 340) && Math.random() < 0.48);
     }
 
@@ -25232,6 +25933,7 @@ let heistFeverActive = false;
         if (bot.copyphaseClone || (bot.superCharge || 0) < 100 || !target || target.isPowerup || target.isBox) return false;
         if ((bot.botNextSuperDecisionAt || 0) > context.now) return false;
         bot.botNextSuperDecisionAt = context.now + 360 + (context.slot % 6) * 35;
+        if ((target.invulnerableUntil || 0) > context.now || target.isFlying || (target.angelLiftUntil || 0) > context.now) return false;
         const distance = Math.hypot(target.x - bot.x, target.y - bot.y);
         if (bot.brawler === 'electrostien') return distance < ELECTROSTIEN_SUPER_THROW_RANGE - 40; // realm throw range
         const targetHpPct = target.hp ? target.hp / Math.max(1, target.maxHp || target.hp) : 1;
@@ -25264,6 +25966,7 @@ let heistFeverActive = false;
         if (bot.brawler === 'jacktrade') return distance<760&&(clustered>=2||objectiveFight||objectiveTarget||context.hpPct<.4||targetHpPct<.45);
         if (context.impossible) return distance < 980;
         if (bot.isBoss || clustered >= 2 || objectiveFight || objectiveTarget || targetHpPct < 0.38 || context.hpPct < 0.3) return true;
+        if (targetHpPct < 0.12 && clustered < 2 && !objectiveFight && !objectiveTarget) return false;
         const goodRange = context.ranged ? distance < 820 : distance < 470;
         return goodRange && Math.random() < 0.28;
     }
@@ -26619,6 +27322,33 @@ let heistFeverActive = false;
       else if (bot.propHuntRole === 'hider') updatePropHuntHiderBot(bot, dt, now);
   }
 
+      const AI_NAME_POOL = Object.freeze([
+        'Rusty Rivet', 'Captain Cobble', 'Sir Smashes-A-Lot', 'Brickhouse Bella',
+        'Turbo Tink', 'Professor Pow', 'Wobble Wally', 'General Gizmo',
+        'Peppy Piston', 'Madame Mortar', 'Joltin Jax', 'Copper Cora',
+        'Boulder Bob', 'Fizz Flanagan', 'Sergeant Slam', 'Wanda Wallop',
+        'Gadget Gus', 'Rumble Ruby', 'Timber Tess', 'Volt Vicky',
+        'Cranky Crank', 'Pogo Pete', 'Moxie Marbles', 'Duke Dynamite',
+        'Sprocket Sue', 'Hammer Hank', 'Zippy Zed', 'Barnacle Bart',
+        'Nova Nell', 'Grumble Gus', 'Pixel Pat', 'Roxy Rocket',
+        'Clank Carter', 'Boombox Bea', 'Slapdash Sal', 'Forge Fiona',
+        'Wreck-It Wren', 'Bingo Bolt', 'Tumble Tina', 'Iron Iris'
+      ]);
+      function assignBotDisplayNames() {
+        const pool = [...AI_NAME_POOL];
+        for (let i = pool.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [pool[i], pool[j]] = [pool[j], pool[i]];
+        }
+        let k = 0;
+        for (const b of bots) {
+          if (!b || b.isStructure || b.isPet || b.isSummon) continue;
+          if (b.displayName) continue;
+          b.displayName = pool[k] || `Forge Fighter ${k + 1}`;
+          k++;
+        }
+      }
+
   function spawnBots(){
     bots.length = 0;
     if (isPropHuntMode) { spawnPropHuntBots(); return; }
@@ -26694,7 +27424,7 @@ let heistFeverActive = false;
                     minigunAmmo: 100, minigunPierceShots: 0,
                     ridaSpeedMult: 1.0, ridaHitCooldowns: {}, isFlying: false,
                     moneyAndTaxMode: 'money',
-                    team: 'player', isTeammate: true, isBot3: true, respawnTimer: 0
+                    team: 'player', isTeammate: true, isBot3: true, respawnTimer: 0, displayName: null
                 });
             }
         }
@@ -26739,7 +27469,7 @@ let heistFeverActive = false;
                                         minigunAmmo: 100, minigunPierceShots: 0,
                                         ridaSpeedMult: 1.0, ridaHitCooldowns: {}, isFlying: false,
                                         moneyAndTaxMode: 'money',
-                                        team: 'player', isTeammate: true, isBot3: true, respawnTimer: 0
+                                        team: 'player', isTeammate: true, isBot3: true, respawnTimer: 0, displayName: null
                                 });
                         }
                 }
@@ -26813,7 +27543,7 @@ let heistFeverActive = false;
                 const spawn = points[(start + 1 + i) % points.length];
                 bx = spawn.x;
                 by = spawn.y;
-            } else if ((isDuoShowdown || isTrioShowdownMode) && showdownEnemyTeamAnchors.has(Math.floor(i / (isTrioShowdownMode ? 3 : 2)))) {
+            } else if ((isDuoShowdown || isTrioShowdownMode) && showdownEnemyTeamAnchors.has(Math.floor(i / (isTrioShowdownMode ? 4 : 2)))) {
                 const squadSize = isTrioShowdownMode ? 4 : 2;
                 const anchor = showdownEnemyTeamAnchors.get(Math.floor(i / squadSize));
                 const angle = (i % squadSize) * (Math.PI * 2 / squadSize) + Math.random() * 0.35;
@@ -26845,7 +27575,7 @@ let heistFeverActive = false;
                 : brawlerPool[Math.floor(Math.random() * brawlerPool.length)]))));
                 const botTeamId = (isImpossibleMode || isBraweBallMode || isKnockoutMode || isConstructionMode || isObjectiveMode || isMirrorMode || isDamageFillerMode || isKnockDonateMode || isBrickVaultMode || isArenaForgeMode || isMarkedMayhemMode || isTugZoneMode)
                     ? 'enemy'
-                    : (isTrioShowdownMode ? `enemy_${Math.floor(i / 3)}` : (isDuoShowdown ? `enemy_${Math.floor(i / 2)}` : `enemy_${i}`));
+                    : (isTrioShowdownMode ? `enemy_${Math.floor(i / 4)}` : (isDuoShowdown ? `enemy_${Math.floor(i / 2)}` : `enemy_${i}`));
     const botLevel = (isMirrorMode || isSplitterPoweredMode || isImpossibleMode || isRankedMatch) ? 11 : getBotLevelNearPlayer();
     const tier = getHPTier(brawler, botLevel);
     const unlocks = getUnlocksForLevel(botLevel);
@@ -26889,9 +27619,11 @@ let heistFeverActive = false;
                                 impossibleReads: 0,
                                 impossibleAdaptation: 0,
                                 impossiblePhaseUntil: 0,
-                                impossiblePhaseCooldownUntil: 0
+                                impossiblePhaseCooldownUntil: 0,
+                                displayName: null
       });
     }
+    assignBotDisplayNames();
   }
 
   const POWER_BOX_TYPES = Object.freeze({
@@ -27826,7 +28558,7 @@ let heistFeverActive = false;
     destructibleWalls.push({x: 710, y: 400, w: 40, h: 200, hp: 4000, maxHp: 4000, ownerId: null});
 
     selectedBrawler = playerTeam[Math.floor(Math.random() * playerTeam.length)];
-    // Duels' weekly ruleset always rolls two Tower Transformations for the
+    // Duels' weekly ruleset always rolls five Tower Transformations for the
     // fighter selected for this round. They are rerolled when the fighter does.
     isSlopSushiMode = true;
     sushiMatchArmed = true;
@@ -27835,9 +28567,9 @@ let heistFeverActive = false;
     const towerDuelPreset = isTowerDuelEvent ? towerDuelPowerLoadouts[selectedBrawler] : null;
     slopSushiActiveCards = Array.isArray(towerDuelPreset) && towerDuelPreset.length
         ? [...towerDuelPreset]
-        : duelTowerDeck.slice(0, 2).map(card => card.id);
+        : duelTowerDeck.slice(0, DUELS_ACTIVE_TOWER_POWERS).map(card => card.id);
     resetPlayerAmmoForBrawler(selectedBrawler, true);
-    const duelPlayerLevel = isTowerDuelEvent ? 11 : getSelectedBrawlerLevel();
+    const duelPlayerLevel = 11;
     const ptier = getHPTier(selectedBrawler, duelPlayerLevel);
     if (isTowerDuelEvent) {
         selectedStar = Math.random() > 0.5 ? 'slow' : 'long';
@@ -30713,6 +31445,7 @@ let heistFeverActive = false;
       if(!Array.isArray(target.trainingDamageEvents))target.trainingDamageEvents=[];
       target.trainingDamageEvents.push({at:now,amount:Number(amount)||0});
       target.trainingDamageEvents=target.trainingDamageEvents.filter(hit=>now-hit.at<=5000);
+      refreshTrainingMeterReadout();
       target.trainingLastHitAt=now;
       target.trainingLastHitAmount=Number(amount)||0;
   }
@@ -39395,6 +40128,19 @@ let heistFeverActive = false;
             }
             bot.ammo = Math.min(getNativeAmmoCapacity('the_deleter'), (bot.ammo || 0) + 1);
         }
+    } else if (bot.brawler === 'fuel' && g === 'g2') {
+        for (const enemy of bots.concat([player])) {
+            if (!enemy || enemy.hp <= 0 || areAlliedEntities(bot, enemy)) continue;
+            const dist = Math.hypot(enemy.x - bot.x, enemy.y - bot.y);
+            if (dist > 160) continue;
+            applyKnockback(enemy, bot.x, bot.y, 95, now);
+            enemy.fireUntil = Math.max(enemy.fireUntil || 0, now + 2000);
+            enemy.fireStacks = Math.max(enemy.fireStacks || 0, 1);
+            enemy.fireTickAt = now + 1000;
+            enemy.fuelBurnUntil = Math.max(enemy.fuelBurnUntil || 0, now + 2000);
+            enemy.fuelBurnDamage = 310;
+        }
+        explosions.push({x:bot.x, y:bot.y, radius:160, life:0, maxLife:0.38, color:'#ff4d0a', legendary:true});
     } else if (bot.brawler === 'magnatar' && g === 'g1') {
       executeMagnatarG1(bot);
     } else if (bot.brawler === 'magnatar' && g === 'g2') {
@@ -41619,7 +42365,6 @@ let heistFeverActive = false;
   const HOME_MODE_CARDS = [
       ['tug_zone', 'TZ', 'Tug Zone', '3v3 - pull the moving zone home'],
       ['blink_eye_dodge', '👁️', 'Boss Battle: 1 vs BlinkEye', '1-Player Boss Battle: Battle Mega Boss BlinkEye, dodge ricochet lasers & all-seeing eyes!'],
-      ['orbo_boss', '🪐', 'Boss Battle: 1 vs Orbo', '1-Player Boss Battle • Dodge cosmic orbits, giant returning Horizon Super & gravity wells!'],
       ['power_play_showdown', '⚡', 'Power Play Showdown', '3-Powers LTM with 5 curated hypercharged fighters'],
       ['corrupted_showdown', 'CS', 'Corrupted Showdown', 'Season 3 unstable Packet signals'],
       ['headless_boss_s4', '🎃', 'Headless Bolznstien Boss', 'Season 4 co-op ladder • Hard to Impossible XV • Spooky Boxes + free skin'],
@@ -41634,14 +42379,13 @@ let heistFeverActive = false;
       ['slop_sushi', '🏰', 'Tower Trouble', '10 floors • random maxed brawler • fuse 4'],
       ['slop_sushi_gauntlet', '🗼', 'Tower Trouble: Grand Tour', '20 floors • multi-mode • choose four'],
       ['chaos_crown', '🎲', 'Chaos Crown', '10 mystery guests • 10 unique rules • 3 strikes'],
-      ['solo', '⚔️', 'Solo Showdown', '50-player FFA'],
-      ['duo', '👥', 'Duo Showdown', '25 teams of 2'],
-      ['trio', '🔱', 'Trio Showdown', '15 teams of 3'],
+      ['solo', '⚔️', 'Solo Showdown', '20-player FFA'],
+      ['duo', '👥', 'Duo Showdown', '10 teams of 2'],
+      ['trio', '4️⃣', 'Quad Showdown', '5 teams of 4'],
       ['objective', '🏆', 'Control Clash', 'Control the zone'],
       ['construction', '🧱', 'Brick Run 3v3', 'Build race'],
       ['knock_donate', '🎯', 'Knock n Donate (Friendly Fire)', 'Ring-out 3v3 battles with friendly fire'],
       ['orbo_boss', '🪐', 'Boss Battle: 1 vs Orbo', 'Defeat the mega boss'],
-      ['demon_villains_boss', '😈', 'Boss Battle: Possessed Villains', 'Story Boss Battle: Face 4 Waves of possessed villains and the Demon Overlord puppet master!'],
       ['ramage_boss', '🥊', 'Boss Battle: 1 vs Ramage', 'Defeat the mega boss'],
       ['weefee_boss', '📶', 'Boss Battle: 1 vs Mega WeeFee', 'Defeat the mega boss'],
       ['demon_villains_boss', '😈', 'Boss Battle: Possessed Villains', 'Defeat the villains'],
@@ -41656,7 +42400,7 @@ let heistFeverActive = false;
       ['arena_forge_minion_surge', '👾', 'Arena Forge: Minion Surge', '3v3 • fighter KOs rally armored reinforcements • protect your lanes'],
       ['arena_forge_hyper', '⚡', 'Hyper Forge', '3v3 • everyone always Hypercharged • 3x reload speed'],
       ['damage_filler', '💥', 'Damage Filler', 'Pure DPS race'],
-      ['mirror', '🪞', 'Mirror 5v5', 'One brawler for all'],
+      ['mirror', '🪞', 'Mirror 4v4', 'One brawler for all'],
       ['power_gods', '⚡', 'Power of the Gods', 'Solo LTM'],
       ['solo_td', '🛡️', 'Solo Tower Defense', 'Protect your tower!'],
       ['impossible', 'AI', 'The Impossible', '1v1 against an adaptive dodger']
@@ -41667,14 +42411,73 @@ let heistFeverActive = false;
   HOME_PERMANENT_MODE_IDS.push('arena_forge_minion_surge');
   HOME_PERMANENT_MODE_IDS.push('arena_forge_hyper');
   const HOME_ROTATING_MODE_IDS = ['marked_mayhem', 'objective', 'brick_vault', 'mirror', 'power_gods', 'solo_td', 'impossible'];
+  const HOME_POPULAR_MODE_IDS = ['solo', 'duo', 'trio',
+    'arena_forge', 'arena_forge_overclocked', 'arena_forge_minion_surge', 'arena_forge_hyper',
+    'brawe_ball', 'knockout_3v3', 'duels',
+    'tug_zone', 'construction', 'knock_donate', 'damage_filler',
+    'capture_turkey', 'tower_defense', 'custom_clash'];
+  const HOME_DAILY_ROTATION_POOL = ['blink_eye_dodge', 'orbo_boss', 'ramage_boss',
+    'weefee_boss', 'demon_villains_boss', 'headless_boss_s4', 'tombstone_boss',
+    'power_play_showdown', 'corrupted_showdown', 'chaos_crown', 'prop_hunt',
+    'marked_mayhem', 'objective', 'brick_vault', 'mirror', 'impossible'];
+  const HOME_DAILY_ROTATION_KEY = 'arenaForgeHomeEventRotationV5';
+  const HOME_DAILY_ROTATION_SLOT_COUNT = 7;
+
+  function getHomeDailyRotationDayKey(now = Date.now()) {
+      const d = new Date(now);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+  function getHomeDailyRotationPool(now = Date.now()) {
+      const pool = [...HOME_DAILY_ROTATION_POOL];
+      if (isXplodemisSeasonActive(now)) pool.push('christmas_showdown');
+      if (isSlopSushiLive()) pool.push('slop_sushi_plus');
+      return pool.filter((id) => HOME_MODE_DATA[id] && !isRetiredTowerMode(id)
+          && (id !== 'brick_vault' || TOWER_POWER_SYSTEM_ENABLED)
+          && (id !== 'prop_hunt' || PROP_HUNT_ENABLED)
+          && (id !== 'tombstone_boss' || TOMBSTONE_BOSS_ENABLED));
+  }
+  function getHomeDailyRotationIds(now = Date.now()) {
+      const dayKey = getHomeDailyRotationDayKey(now);
+      let state = null;
+      try { state = JSON.parse(localStorage.getItem(HOME_DAILY_ROTATION_KEY) || 'null'); } catch (_) {}
+      if (state && state.dayKey === dayKey && Array.isArray(state.ids) && state.ids.length > 0) return state.ids;
+      const pool = getHomeDailyRotationPool(now);
+      const seed = hashHomeEventSeed(Number(dayKey.replaceAll('-', '')) || 1);
+      const ids = [];
+      let index = seed % Math.max(1, pool.length);
+      let guard = 0;
+      while (ids.length < Math.min(HOME_DAILY_ROTATION_SLOT_COUNT, pool.length) && guard++ < pool.length * 2) {
+          const candidate = pool[index % pool.length];
+          if (candidate && !ids.includes(candidate)) ids.push(candidate);
+          index += 7;
+      }
+      if (isBeastBossGodModeDay(now)) ids.unshift('beast_boss_god_mode');
+      const finalIds = [...new Set(ids)].slice(0, HOME_DAILY_ROTATION_SLOT_COUNT);
+      state = { dayKey, ids: finalIds };
+      try { localStorage.setItem(HOME_DAILY_ROTATION_KEY, JSON.stringify(state)); } catch (_) {}
+      return finalIds;
+  }
+  function getHomeDailyRotationEndsAt(now = Date.now()) {
+      const d = new Date(now);
+      d.setHours(24, 0, 0, 0);
+      return d.getTime();
+  }
   const WEEKLY_FEATURED_MODE_IDS = ['brick_vault', 'power_gods'];
-  const WEEKLY_FEATURED_START = new Date(2026, 7, 9, 0, 0, 0).getTime();
-  const WEEKLY_FEATURED_END = new Date(2026, 7, 16, 0, 0, 0).getTime();
   const TOWER_DUELS_WEEKEND_START = new Date(2026, 7, 14, 0, 0, 0).getTime();
   const TOWER_DUELS_WEEKEND_END = new Date(2026, 7, 17, 0, 0, 0).getTime();
   const TOWER_POWER_VAULT_WEEKEND_START = new Date(2026, 7, 15, 0, 0, 0).getTime();
   const TOWER_POWER_VAULT_WEEKEND_END = new Date(2026, 7, 17, 0, 0, 0).getTime();
-  function isWeeklyTowerFeatureActive(now = Date.now()) { return now >= WEEKLY_FEATURED_START && now < WEEKLY_FEATURED_END; }
+  function isWeeklyTowerFeatureActive(now = Date.now()) {
+    const d = new Date(now);
+    d.setHours(0, 0, 0, 0);
+    const day = (d.getDay() + 6) % 7;
+    d.setDate(d.getDate() - day + 3);
+    const firstThursday = new Date(d.getFullYear(), 0, 4);
+    const firstDay = (firstThursday.getDay() + 6) % 7;
+    firstThursday.setDate(firstThursday.getDate() - firstDay + 3);
+    const week = 1 + Math.round((d - firstThursday) / (7 * 24 * 60 * 60 * 1000));
+    return Math.max(1, week) % 2 === 0;
+  }
   function isTowerDuelsWeekendActive(now = Date.now()) { return now >= TOWER_DUELS_WEEKEND_START && now < TOWER_DUELS_WEEKEND_END; }
   function isTowerPowerVaultWeekendActive(now = Date.now()) { return now >= TOWER_POWER_VAULT_WEEKEND_START && now < TOWER_POWER_VAULT_WEEKEND_END; }
   function getHomePermanentModeIds(now = Date.now()) {
@@ -41725,7 +42528,6 @@ let heistFeverActive = false;
       slop_sushi_plus: { type:'sushi_tapper', amount:1, label:'+1 Tower Drop' }
   };
   const HOME_MODE_RULES = {
-      orbo_boss: ['1-Player Boss Battle: 1 vs Mega Boss Orbo!', 'Zero Power Cubes — Pure skill showdown', 'Dodge crisscross orbits, bouncing Horizon Super & gravity vortexes', 'Defeat Mega Boss Orbo & his Planetary Moons across 3 Stages!'],
       blink_eye_dodge: ['1-Player Boss Battle: 1 vs Mega Boss BlinkEye!', 'Zero Power Cubes — Pure skill showdown', 'Dodge bouncing Ricochet Gaze lasers, Retinal Flash & All-Seeing Eyes', 'Defeat Mega Boss BlinkEye & his Sentinels to claim Victory!'],
       knock_donate: ['Ring-out 3v3 battles with friendly fire', 'Friendly Fire Active'],
       headless_boss_s4: ['3v1 Co-op vs the Headless Bolznstien!', 'Dodge pumpkin bombs, anvil rain and the Ecto Nova', 'First clears pay coins, souls and up to 3 Spooky Boxes', 'Clear Impossible XV to earn his skin FREE'],
@@ -41736,24 +42538,18 @@ let heistFeverActive = false;
       christmas_showdown: ['Solo Showdown — with presents under fire!', 'Buff pickups rain down: DMG +30%, Speed +20%, Double HP', 'Buffs last the whole match and stack with Power Cubes', 'First to survive the blizzard wins • Season 6: Xplodemis event (Dec 1-31)'],
       prop_hunt: ['Hide & seek on Crown Collapse: 2 seekers vs 6 hiders', 'Hiders morph into props (barrel, crate, plant pot, sign post) and win by surviving the 2:30 seek timer', 'Every hit on a REAL prop costs the seeker 400 HP — wrong guesses hurt!', 'A destroyed morph shell reveals the hider for 500 damage • re-morphing takes 10 seconds'],
       orbo_boss: ['1-Player Boss Battle: 1 vs Mega Boss Orbo!', 'Zero Power Cubes — Pure skill showdown', 'Dodge crisscross orbits, bouncing Horizon Super & gravity vortexes'],
-      demon_villains_boss: [
-        'Story Boss Battle: Demon has possessed the 6 Villains!',
-        'Animated Storytelling Cutscenes with comic dialogue',
-        'Face 4 Waves: Vanguards, Steel & Cinders, Shadows, and the Demon Overlord Puppeteer!',
-        'Purify the possessed villains to break the marionette strings and claim Victory!'
-      ],
       ramage_boss: ['5-Stage Boss Battle: 1 vs Mega Boss Ramage!', 'Zero Power Cubes — Pure skill showdown', 'Survive escalating damage ramps up to 10.0x Overdrive across 5 Stages!'],
       weefee_boss: ['1-Player Boss Battle: 1 vs Mega WeeFee!', 'UNLIMITED signal poles', 'Destroy signal poles (1500 HP)'],
       demon_villains_boss: ['Story Boss Battle: Demon has possessed the 6 Villains!', 'Animated Storytelling Cutscenes', 'Face 4 Waves'],
       custom_clash: ['Pick ANY mode and map', 'Select up to 3 active mutators'],
       brawe_ball: ['3v3 Soccer clash', 'Score 2 goals to win'],
       knockout_3v3: ['Best of 3 Rounds', 'No respawns during rounds'],
-      duels: ['Draft 1 to 4 brawlers', 'First to win 9 rounds', 'Level 11 stats', '4 Tower Power', 'Poison storm disabled'],
-      power_play_showdown: ['12-player Solo Battle Royale with Power Cubes', 'Every fighter wields 3 simultaneous custom superpowers', 'Curated roster: BlinkEye, Fuser, Rocketeer, Bouncin\' Balls, Echo, Orbo, Decayer, Money & Tax'],
+      duels: ['Draft 1 to 4 brawlers', 'First to win 9 rounds', 'Level 11 stats', '5 Tower Powers', 'Poison storm disabled'],
+      power_play_showdown: ['12-player Solo Battle Royale with Power Cubes', 'Every fighter wields 3 simultaneous custom superpowers', 'Curated roster: BlinkEye, Fuser, Rocketeer, Bouncin\' Balls, Echo, Orbo, Decayer, Money & Tax, Ramage'],
       tower_duels_weekend: ['Five complete Duels matches', 'Each floor rolls a fresh random trio of Power 11 guest brawlers', 'Complete Floor 5 to unlock the exclusive TOWER DUELAR title'],
-      solo: ['50-player free-for-all', 'No respawns', 'Rare Nova Boxes grant +2 Power, shield and charge'],
-      duo: ['25 teams of two', '12-second Rally Beacon respawns', 'Stand by an ally beacon to revive them 2.25x faster'],
-      trio: ['15 teams of three', '12-second Rally Beacon respawns', 'A full squad wipe eliminates the team'],
+      solo: ['20-player free-for-all', 'No respawns', 'Rare Nova Boxes grant +2 Power, shield and charge'],
+      duo: ['10 teams of two', '12-second Rally Beacon respawns', 'Stand by an ally beacon to revive them 2.25x faster'],
+      trio: ['5 teams of four', '12-second Rally Beacon respawns', 'A full squad wipe eliminates the team'],
       arena_forge: ['3v3 lanes', 'Destroy the enemy Forge Core', 'About 4 minutes'],
       arena_forge_minion_surge: ['3v3 lanes', 'Fighter KOs summon up to 5 armored minions', '12-second team reinforcement cooldown', 'Minion kills never create another surge', 'Destroy both towers, then the Core'],
       arena_forge_hyper: ['3v3 lanes', 'Everyone is Hypercharged for the whole match', 'Reload speed 3x faster', 'Destroy both towers, then the Core'],
@@ -41762,7 +42558,7 @@ let heistFeverActive = false;
       tug_zone: ['3v3 moving control zone', 'Outnumber enemies to pull it toward your goal', 'Center hazards and 25/50/75% chaos checkpoints'],
       corrupted_showdown: ['Season 3 survival', 'Unstable Packet signals alter combat', 'Separate progression from normal Showdown'],
       brick_vault: ['3v3 assault', 'Weekend: all 8 Tower Powers are active', 'Weekend vaults have +350% HP'],
-      mirror: ['5v5 mirror battle', 'Everyone uses one brawler', 'First team to 20 eliminations'],
+      mirror: ['4v4 mirror battle', 'Everyone uses one brawler', 'First team to 20 eliminations'],
       power_gods: ['Solo power event', 'Extreme combat modifiers', 'Outlast every enemy'],
       solo_td: ['Solo defense', 'Protect the core for five waves', 'Build through escalating pressure'],
       impossible: ['1v1 challenge', 'Adaptive enemy reads attacks', 'Defeat the dodging AI'],
@@ -41849,14 +42645,12 @@ let heistFeverActive = false;
       return upcoming;
   }
 
-  function getHomeEventRewardForMode(mode, state = getHomeEventRotationState()) {
+  function getHomeEventRewardForMode(mode, now = Date.now()) {
       const base = HOME_EVENT_REWARDS[mode];
-      if (base && isWeeklyTowerFeatureActive() && WEEKLY_FEATURED_MODE_IDS.includes(mode)) {
-          return { ...base, amount:base.amount * 2, multiplier:2, slotIndex:-1, label:`+${base.amount * 2} ${base.type === 'coins' ? 'Coins' : base.type === 'souls' ? 'Souls' : base.type === 'sushi_tapper' ? 'Tower Drops' : 'Tappers'}` };
-      }
-      const active = getActiveHomeEventIds(state);
-      const slotIndex = active.indexOf(mode);
-      if (slotIndex < 0 || !base) return null;
+      if (!base) return null;
+      const dailyIds = getHomeDailyRotationIds(now);
+      const slotIndex = dailyIds.indexOf(mode);
+      if (slotIndex < 0) return null;
       const multiplier = slotIndex === 0 ? 2 : 1;
       return { ...base, amount:base.amount * multiplier, multiplier, slotIndex, label:`+${base.amount * multiplier} ${base.type === 'coins' ? 'Coins' : base.type === 'souls' ? 'Souls' : base.type === 'sushi_tapper' ? 'Tower Drops' : 'Tappers'}` };
   }
@@ -43268,7 +44062,7 @@ let heistFeverActive = false;
             <div style="height:100%;width:${Math.round(progress * 100)}%;background:linear-gradient(90deg,${info.color},#ffebc2);box-shadow: 0 0 8px ${info.color}aa;border-radius:999px;"></div>
           </div>
           <div style="margin-top:5px;font-size:10px;color:#a8916b;display:flex;justify-content:space-between;">
-            <span>${info.points - currentFloor} / ${span} division pts</span>
+            <span>${info.points - currentFloor} / ${span} division points</span>
             <span>${info.nextLabel ? `Next: ${info.nextLabel}` : 'Max division'}</span>
           </div>
       `;
@@ -43426,11 +44220,9 @@ let heistFeverActive = false;
           orbo_boss: '#8c75df',
           blink_eye_dodge: '#a855f7',
           tower_duels_weekend: '#67e8ff',
-          orbo_boss: '#8c75df',
           demon_villains_boss: '#d44763',
           ramage_boss: '#c0392b',
           weefee_boss: '#00f5d4',
-          demon_villains_boss: '#d44763',
           duels: '#a855f7',
           custom_clash: '#00f5d4',
           brawe_ball: '#2ed573',
@@ -43459,13 +44251,13 @@ let heistFeverActive = false;
           else if(id==='chaos_crown') tag='10F';
           else if(id==='tower_duels_weekend') tag='5F';
           else if (id === 'duo') tag = 'DUO';
-          else if (id === 'trio') tag = 'TRIO';
+          else if (id === 'trio') tag = 'QUAD';
           else if (id === 'orbo_boss' || id === 'ramage_boss' || id === 'demon_villains_boss' || id === 'weefee_boss' || id === 'blink_eye_dodge' || id === 'power_gods' || id === 'damage_filler' || id === 'solo_td' || id === 'tombstone_boss' || id === 'tower_defense') tag = 'SOLO';
           else if (id === 'beast_boss_god_mode') tag = '5V1';
           else if (id === 'duels' || id === 'impossible') tag = '1V1';
           else if (id === 'arena_forge') tag = '3V3';
           else if (id === 'marked_mayhem') tag = '3V3';
-          else if (id === 'mirror') tag = '5V5';
+          else if (id === 'mirror') tag = '4V4';
           else if (id === 'impossible') tag = '1V1';
 
           card.innerHTML = `
@@ -43542,9 +44334,9 @@ let heistFeverActive = false;
             <span class="showdown-hub-chevron">+</span>
           </button>
           <div class="showdown-variant-panel">
-            <button type="button" class="showdown-variant-card solo" data-mode="solo"><b>01</b><span><strong>SOLO</strong><small>10-player free-for-all</small></span></button>
-            <button type="button" class="showdown-variant-card duo" data-mode="duo"><b>02</b><span><strong>DUO</strong><small>Five teams of two</small></span></button>
-            <button type="button" class="showdown-variant-card trio" data-mode="trio"><b>03</b><span><strong>TRIO</strong><small>Three teams of three</small></span></button>
+            <button type="button" class="showdown-variant-card solo" data-mode="solo"><b>01</b><span><strong>SOLO</strong><small>20-player free-for-all</small></span></button>
+            <button type="button" class="showdown-variant-card duo" data-mode="duo"><b>02</b><span><strong>DUO</strong><small>Ten teams of two</small></span></button>
+            <button type="button" class="showdown-variant-card trio" data-mode="trio"><b>03</b><span><strong>TRIO</strong><small>Five teams of four</small></span></button>
           </div>`;
       showdownSection.grid.appendChild(homeShowdownHub);
       const showdownTrigger = homeShowdownHub.querySelector('.showdown-hub-trigger');
@@ -43563,41 +44355,32 @@ let heistFeverActive = false;
           };
       });
 
-      const rotationState = getHomeEventRotationState();
-      const activeEventIds = getActiveHomeEventIds(rotationState);
-      const nextEventIds = getNextHomeEventIds(rotationState, activeEventIds);
-      const rotating = createSection('ACTIVE EVENTS', '7 EVENTS LIVE - EACH SLOT CYCLES ON ITS OWN TIMER.', 'rotating-section');
-      activeEventIds.forEach((id, slotIndex) => {
+      const dailyEventIds = getHomeDailyRotationIds();
+      const popular = createSection('POPULAR EVENTS', 'ALWAYS AVAILABLE — NO WAITING.', 'popular-section');
+      HOME_POPULAR_MODE_IDS.forEach((id) => {
+          const card = createModeCard(id, false);
+          if (card) popular.grid.appendChild(card);
+      });
+      const rotating = createSection('ROTATING EVENTS', '7 EVENTS TODAY — NEW PICKS AT MIDNIGHT.', 'rotating-section');
+      const dailyCountdown = document.createElement('div');
+      dailyCountdown.className = 'rotating-event-timer';
+      dailyCountdown.innerHTML = `<span>NEW PICKS IN</span><strong data-daily-countdown>${formatHomeEventCountdown(getHomeDailyRotationEndsAt() - Date.now())}</strong>`;
+      rotating.heading.appendChild(dailyCountdown);
+      dailyEventIds.forEach((id, slotIndex) => {
           const card = createModeCard(id, true);
           if (card) {
               if (slotIndex === 0) card.classList.add('featured-event-card');
               card.classList.add('rotation-entering');
-              const reward = getHomeEventRewardForMode(id, rotationState);
+              const reward = getHomeEventRewardForMode(id);
               const rewardBadge = document.createElement('div');
               rewardBadge.className = 'rotating-event-reward';
               rewardBadge.textContent = `${slotIndex === 0 ? '2X FEATURED • ' : ''}${reward?.label || 'BONUS REWARDS'}`;
               card.appendChild(rewardBadge);
-              const timer = document.createElement('div');
-              timer.className = 'rotating-event-timer';
-              timer.innerHTML = `<span>ENDS IN</span><strong data-event-countdown="${slotIndex}">${formatHomeEventCountdown(rotationState.slots[slotIndex].endsAt - Date.now())}</strong>`;
-              card.appendChild(timer);
-              const next = document.createElement('div');
-              next.className = 'rotating-event-next';
-              next.textContent = `NEXT: ${HOME_MODE_DATA[nextEventIds[slotIndex]]?.[2] || 'Mystery Event'}`;
-              card.appendChild(next);
               rotating.grid.appendChild(card);
           }
       });
 
-      const allEventIds = [...new Set(HOME_MODE_CARDS.map((entry) => entry[0]))].filter((id) => HOME_MODE_DATA[id] && !isRetiredTowerMode(id) && (id !== 'slop_sushi_plus' || isSlopSushiLive()) && (id !== 'brick_vault' || TOWER_POWER_SYSTEM_ENABLED) && (id !== 'tower_duels_weekend' || TOWER_EVENT_MODES_ENABLED) && (id !== 'prop_hunt' || PROP_HUNT_ENABLED) && (id !== 'tombstone_boss' || TOMBSTONE_BOSS_ENABLED) && (id !== 'beast_boss_god_mode' || isBeastBossGodModeDay()));
-      const allEvents = createSection('ALL EVENTS', 'EVERY EVENT - ALWAYS AVAILABLE. NO WAITING ON THE ROTATION.', 'all-events-section');
-      allEventIds.forEach((id) => {
-          const card = createModeCard(id, false);
-          if (id === 'beast_boss_god_mode' && card) card.classList.add('featured-event-card');
-          if (card) allEvents.grid.appendChild(card);
-      });
-
-      const availableIds = new Set(['solo', 'duo', 'trio', ...activeEventIds, ...allEventIds]);
+      const availableIds = new Set(['solo', 'duo', 'trio', ...HOME_POPULAR_MODE_IDS, ...dailyEventIds]);
       // Events persistence: on a fresh boot showdownMode is still the 'solo'
       // default, so adopt the last saved event if it is still available. The
       // 'solo' guard keeps mid-session rotation rebuilds from ever clobbering
@@ -43616,11 +44399,13 @@ let heistFeverActive = false;
       }
 
       if (homeEventCountdownTimer) clearInterval(homeEventCountdownTimer);
+      let renderedDailyKey = getHomeDailyRotationDayKey();
       homeEventCountdownTimer = setInterval(() => {
-          const current = getHomeEventRotationState();
-          const oldSignature = rotationState.slots.map((slot) => slot.seed).join(':');
-          const newSignature = current.slots.map((slot) => slot.seed).join(':');
-          if (newSignature !== oldSignature && !homeEventRotationAnimating) {
+          const todayKey = getHomeDailyRotationDayKey();
+          homeModeCompactRow.querySelectorAll('[data-daily-countdown]').forEach((element) => {
+              element.textContent = formatHomeEventCountdown(getHomeDailyRotationEndsAt() - Date.now());
+          });
+          if (todayKey !== renderedDailyKey && !homeEventRotationAnimating) {
               homeEventRotationAnimating = true;
               const section = homeModeCompactRow.querySelector('.rotating-section');
               if (section) section.classList.add('rotation-leaving');
@@ -43629,21 +44414,7 @@ let heistFeverActive = false;
                   updateShowdownModeUI();
                   homeEventRotationAnimating = false;
               }, 360);
-              return;
           }
-          homeModeCompactRow.querySelectorAll('[data-event-countdown]').forEach((element) => {
-              const slotIndex = Number(element.dataset.eventCountdown || 0);
-              element.textContent = formatHomeEventCountdown(current.slots[slotIndex].endsAt - Date.now());
-          });
-          homeModeCompactRow.querySelectorAll('[data-weekly-feature-countdown]').forEach((element) => {
-              element.textContent = formatHomeEventCountdown(WEEKLY_FEATURED_END - Date.now());
-          });
-          homeModeCompactRow.querySelectorAll('[data-tower-duels-countdown]').forEach((element) => {
-              element.textContent = formatHomeEventCountdown(TOWER_DUELS_WEEKEND_END - Date.now());
-          });
-          homeModeCompactRow.querySelectorAll('[data-vault-weekend-countdown]').forEach((element) => {
-              element.textContent = formatHomeEventCountdown(TOWER_POWER_VAULT_WEEKEND_END - Date.now());
-          });
       }, 1000);
       syncHomeModeCards();
   }
@@ -43715,7 +44486,7 @@ let heistFeverActive = false;
         const sub = document.createElement('div');
         sub.style.fontSize = '13px';
         sub.style.color = '#a8c8ef';
-        sub.textContent = `Progress: ${progress.xp} Total Ranked XP • Tier ${progress.unlockedTiers} / ${RANKED_PASS_TIERS} Unlocked (${progress.currentTierXp}/${progress.xpPerTier} XP to next)`;
+        sub.textContent = `Progress: ${progress.xp} Total Ranked XP • Tier ${progress.unlockedTiers} / ${RANKED_PASS_TIERS} Unlocked (${progress.currentTierXp}/${progress.xpPerTier} XP to next) • Weekly: ${(playerData.ranked.weeklyPassXp || 0)}/2000 XP${playerData.ranked.weeklyMaxed ? ' • 🏆 WEEKLY MAXED' : ''}`;
         titleBox.appendChild(title);
         titleBox.appendChild(sub);
         top.appendChild(titleBox);
@@ -43786,6 +44557,17 @@ let heistFeverActive = false;
         trackGrid.style.paddingRight = '6px';
 
         RANKED_PASS_REWARDS.forEach((item, idx) => {
+            if (idx === 0 || idx === 10 || idx === 20 || idx === 30 || idx === 40) {
+                const chapterNames = ['BRONZE — TIERS 1–10', 'SILVER — TIERS 11–20', 'GOLD — TIERS 21–30', 'FUME — TIERS 31–40', 'LEGEND — TIERS 41–50'];
+                const chapterHeader = document.createElement('div');
+                chapterHeader.style.gridColumn = '1 / -1';
+                chapterHeader.style.fontWeight = '900';
+                chapterHeader.style.fontSize = '14px';
+                chapterHeader.style.color = '#ffd166';
+                chapterHeader.style.marginTop = idx === 0 ? '0' : '10px';
+                chapterHeader.textContent = chapterNames[idx / 10];
+                trackGrid.appendChild(chapterHeader);
+            }
             const isUnlocked = idx < progress.unlockedTiers;
             const isClaimed = progress.claimed.includes(idx);
             const card = document.createElement('div');
@@ -43816,6 +44598,13 @@ let heistFeverActive = false;
             cardBody.style.color = '#fff';
             cardBody.textContent = item.label;
             card.appendChild(cardBody);
+            if (item.type === 'pinpack') {
+                const pinSub = document.createElement('div');
+                pinSub.style.fontSize = '11px';
+                pinSub.style.color = '#a8c8ef';
+                pinSub.textContent = '3 random unowned pins (250 Coins each if your collection is complete)';
+                card.appendChild(pinSub);
+            }
 
             const cardBtn = document.createElement('button');
             cardBtn.style.border = 'none';
@@ -43864,7 +44653,7 @@ let heistFeverActive = false;
 
         const aboveBrickFume = isRankedAboveBrickFume(rankedPoints);
         const rankedLeavingModifiers = new Set(['timed_detonation', 'giant_projectiles', 'projectiles_150']);
-        const mutatorKeys = Object.keys(RANKED_MODIFIERS).filter(k => k !== 'classic' && !rankedLeavingModifiers.has(k));
+        const mutatorKeys = Object.keys(RANKED_MODIFIERS).filter(k => k !== 'classic' && k !== 'super_rate_plus' && !rankedLeavingModifiers.has(k));
         let draftModifierKey = 'classic';
         let draftModifierKeySecondary = null;
         let draftModifierKeyTertiary = null;
@@ -43968,7 +44757,11 @@ let heistFeverActive = false;
 
         let currentBanStep = 0; // 0 to 7
         let currentPickIndex = 0; // 0 to 5
-        let draftState = 'ban'; // 'ban' -> 'pick' -> 'complete'
+        let draftState = 'ban'; // 'ban' -> 'protect' -> 'pick' -> 'swap' -> 'veto' -> 'ready'
+        let blueProtect = null;
+        let redProtect = null;
+        let playerSwapped = false;
+        let vetoedModifier = null;
         let activeSelection = null;
         let draftSearchQuery = '';
         let aiTurnTimer = null;
@@ -44011,8 +44804,8 @@ let heistFeverActive = false;
         const floor = getRankedDivisionFloor(rankedPoints);
         const nextText = tierInfo.nextLabel
             ? ` • Next: ${tierInfo.nextLabel} at ${tierInfo.nextThreshold} RP`
-            : ' • Grandmaster Max';
-        meta.textContent = `${tierInfo.label} (${tierInfo.points} RP)${nextText} • Division Safety Floor: ${floor} RP`;
+            : ` • ${getRankedDisplayLabel(rankedPoints)} — MAX`;
+        meta.textContent = `${tierInfo.label} (${tierInfo.points} RP)${nextText} • Division Safety Floor: ${floor} RP • Weekly Pass XP: ${(playerData.ranked.weeklyPassXp || 0)}/2000${playerData.ranked.weeklyMaxed ? ' • 🏆 WEEKLY MAXED' : ''}`;
         titleBox.appendChild(title);
         titleBox.appendChild(meta);
         top.appendChild(titleBox);
@@ -44080,7 +44873,7 @@ let heistFeverActive = false;
         } else {
             modDisplayHtml = `<div style="font-size:13px;color:${modDef1.color};font-weight:800;">Modifier: ${modDef1.icon} ${modDef1.name} — <span style="font-weight:400;color:#d5e5f8;">${modDef1.desc}</span></div>`;
         }
-        banner.innerHTML = `<div style="font-weight:900;color:#9ee6ff;font-size:14px;">Mode: ${getShowdownModeLabel(draftMode).replace(/ 3v3$/, '')} 3v3</div>` + modDisplayHtml;
+        banner.innerHTML = `<div style="font-weight:900;color:#9ee6ff;font-size:14px;">Mode: ${getShowdownModeLabel(draftMode).replace(/ 3v3$/, '')} 3v3${draftMode === 'brick_vault' && !TOWER_POWER_SYSTEM_ENABLED ? ' (Tower Powers vaulted)' : ''}</div>` + modDisplayHtml;
         panel.appendChild(banner);
 
         // Player Lineup & Role Callout
@@ -44240,10 +45033,11 @@ let heistFeverActive = false;
         const isBanned = (id) => getAllBanned().includes(id);
         const isPicked = (id) => getAllPicked().includes(id);
 
-        const getAvailablePool = () => {
+        const getAvailablePool = (pickingTeam = 'blue') => {
             const banned = new Set(getAllBanned());
             const picked = new Set(getAllPicked());
-            return allUnlocked.filter(id => !banned.has(id) && !picked.has(id));
+            const enemyProtected = pickingTeam === 'blue' ? redProtect : blueProtect;
+            return allUnlocked.filter(id => !banned.has(id) && !picked.has(id) && id !== enemyProtected);
         };
 
         const pickRandomFromPool = (pool, count = 1) => {
@@ -44268,6 +45062,52 @@ let heistFeverActive = false;
             }
         };
 
+        const rebuildRankedModifierBanner = () => {
+            const modDef1 = RANKED_MODIFIERS[draftModifierKey] || RANKED_MODIFIERS.classic;
+            const modDef2 = draftModifierKeySecondary ? RANKED_MODIFIERS[draftModifierKeySecondary] : null;
+            const modDef3 = draftModifierKeyTertiary ? RANKED_MODIFIERS[draftModifierKeyTertiary] : null;
+            let modDisplayHtml = '';
+            if (modDef3 && modDef2) {
+                modDisplayHtml = `<div style="font-size:13px;color:#00f5d4;font-weight:800;">⚡ TRIPLE MODIFIER: ` +
+                    `<span style="color:${modDef1.color};">${modDef1.icon} ${modDef1.name}</span> + ` +
+                    `<span style="color:${modDef2.color};">${modDef2.icon} ${modDef2.name}</span> + ` +
+                    `<span style="color:${modDef3.color};">${modDef3.icon} ${modDef3.name}</span><br>` +
+                    `<span style="font-weight:400;color:#d5e5f8;font-size:12px;">1) ${modDef1.desc} • 2) ${modDef2.desc} • 3) ${modDef3.desc}</span></div>`;
+            } else if (modDef2) {
+                modDisplayHtml = `<div style="font-size:13px;color:#ff9ff3;font-weight:800;">⚡ DUAL MODIFIER: ` +
+                    `<span style="color:${modDef1.color};">${modDef1.icon} ${modDef1.name}</span> + ` +
+                    `<span style="color:${modDef2.color};">${modDef2.icon} ${modDef2.name}</span><br>` +
+                    `<span style="font-weight:400;color:#d5e5f8;font-size:12px;">1) ${modDef1.desc} • 2) ${modDef2.desc}</span></div>`;
+            } else {
+                modDisplayHtml = `<div style="font-size:13px;color:${modDef1.color};font-weight:800;">Modifier: ${modDef1.icon} ${modDef1.name} — <span style="font-weight:400;color:#d5e5f8;">${modDef1.desc}</span></div>`;
+            }
+            banner.innerHTML = `<div style="font-weight:900;color:#9ee6ff;font-size:14px;">Mode: ${getShowdownModeLabel(draftMode).replace(/ 3v3$/, '')} 3v3${draftMode === 'brick_vault' && !TOWER_POWER_SYSTEM_ENABLED ? ' (Tower Powers vaulted)' : ''}</div>` + modDisplayHtml;
+        };
+        const runProtectStep = () => {
+            if (isPlayerLeader) {
+                renderDraft();
+                return;
+            }
+            const unbanned = allUnlocked.filter(id => !getAllBanned().includes(id));
+            blueProtect = pickRandomFromPool(unbanned, 1);
+            redProtect = pickRandomFromPool(unbanned.filter(id => id !== blueProtect), 1);
+            draftState = 'pick';
+            currentPickIndex = 0;
+            renderDraft();
+            scheduleNextTurn();
+        };
+        const enterVetoStep = () => {
+            const activeMods = [draftModifierKey, draftModifierKeySecondary, draftModifierKeyTertiary].filter(Boolean);
+            const nonClassic = activeMods.filter(m => m !== 'classic');
+            if (nonClassic.length === 0) {
+                vetoedModifier = null;
+                draftState = 'ready';
+                renderDraft();
+                return;
+            }
+            draftState = 'veto';
+            renderDraft();
+        };
         const executeCurrentAiStep = () => {
             if (draftState === 'ban') {
                 const curStep = banSchedule[currentBanStep];
@@ -44277,8 +45117,8 @@ let heistFeverActive = false;
                     storeBan(curStep, choice);
                     currentBanStep++;
                     if (currentBanStep >= banSchedule.length) {
-                        draftState = 'pick';
-                        currentPickIndex = 0;
+                        draftState = 'protect';
+                        runProtectStep();
                     }
                     renderDraft();
                     scheduleNextTurn();
@@ -44286,7 +45126,7 @@ let heistFeverActive = false;
             } else if (draftState === 'pick') {
                 const curPick = pickLine[currentPickIndex];
                 if (curPick && !curPick.isPlayer) {
-                    const avail = getAvailablePool();
+                    const avail = getAvailablePool(curPick.team);
                     const choice = pickRandomFromPool(avail, 1);
                     if (curPick.team === 'blue') {
                         bluePicks[curPick.slot] = choice;
@@ -44295,7 +45135,7 @@ let heistFeverActive = false;
                     }
                     currentPickIndex++;
                     if (currentPickIndex >= pickLine.length) {
-                        draftState = 'complete';
+                        draftState = 'swap';
                     }
                     renderDraft();
                     scheduleNextTurn();
@@ -44332,12 +45172,17 @@ let heistFeverActive = false;
                 currentBanStep++;
             }
 
+            if (blueProtect == null && redProtect == null) {
+                const unbannedForProtect = allUnlocked.filter(id => !getAllBanned().includes(id));
+                blueProtect = pickRandomFromPool(unbannedForProtect, 1);
+                redProtect = pickRandomFromPool(unbannedForProtect.filter(id => id !== blueProtect), 1);
+            }
             draftState = 'pick';
 
             // Complete remaining picks
             while (currentPickIndex < pickLine.length) {
                 const pickObj = pickLine[currentPickIndex];
-                const pool = getAvailablePool();
+                const pool = getAvailablePool(pickObj.team);
                 let pickChoice = null;
                 if (pickObj.isPlayer) {
                     if (activeSelection && pool.includes(activeSelection)) pickChoice = activeSelection;
@@ -44354,7 +45199,7 @@ let heistFeverActive = false;
                 currentPickIndex++;
             }
 
-            draftState = 'complete';
+            draftState = 'ready';
             renderDraft();
         };
 
@@ -44363,13 +45208,18 @@ let heistFeverActive = false;
         const renderDraft = () => {
             // Update Stepper
             stepper.innerHTML = '';
-            // Stepper items: 8 Bans + 6 Picks
+            // Stepper items: 8 Bans + Protect + 6 Picks + Swap + Veto
             const totalSteps = [...banSchedule.map(s => ({ type: 'ban', text: s.title || s.who || 'Ban', isPlayer: s.isPlayer })),
-                                ...pickLine.map(p => ({ type: 'pick', text: `Pick ${p.pickNum} (${p.isPlayer ? 'YOU' : p.team[0].toUpperCase()})`, isPlayer: p.isPlayer }))];
+                                [{ type: 'protect', text: 'Protect', isPlayer: isPlayerLeader }],
+                                ...pickLine.map(p => ({ type: 'pick', text: `Pick ${p.pickNum} (${p.isPlayer ? 'YOU' : p.team[0].toUpperCase()})`, isPlayer: p.isPlayer })),
+                                [{ type: 'swap', text: 'Swap (YOU)', isPlayer: true }],
+                                [{ type: 'veto', text: 'Veto (YOU)', isPlayer: true }]];
 
-            const currentGlobalStep = draftState === 'ban'
-                ? currentBanStep
-                : (draftState === 'pick' ? (8 + currentPickIndex) : 14);
+            const currentGlobalStep = draftState === 'ban' ? currentBanStep
+                : draftState === 'protect' ? 8
+                : draftState === 'pick' ? (9 + currentPickIndex)
+                : draftState === 'swap' ? 15
+                : draftState === 'veto' ? 16 : 17;
 
             totalSteps.forEach((s, idx) => {
                 const dot = document.createElement('div');
@@ -44409,7 +45259,7 @@ let heistFeverActive = false;
                 }
             } else if (draftState === 'pick') {
                 const curPick = pickLine[currentPickIndex];
-                const pool = getAvailablePool();
+                const pool = getAvailablePool('blue');
                 const takenCount = getAllPicked().length;
                 if (curPick?.isPlayer) {
                     statusCallout.style.background = 'rgba(0, 245, 212, 0.2)';
@@ -44422,6 +45272,23 @@ let heistFeverActive = false;
                     statusCallout.style.color = curPick?.team === 'blue' ? '#8be9fd' : '#ff99c8';
                     statusCallout.innerHTML = `<span>🤖 DRAFTING (#${curPick?.pickNum} of 6 in Line): ${curPick?.title} is picking...</span><span style="font-size:12px;">Locking in...</span>`;
                 }
+            } else if (draftState === 'protect') {
+                statusCallout.style.background = 'rgba(0, 245, 212, 0.2)';
+                statusCallout.style.border = '1px solid #00f5d4';
+                statusCallout.style.color = '#00f5d4';
+                statusCallout.innerHTML = isPlayerLeader
+                    ? `<span>🛡️ YOUR PROTECT — select a brawler your team keeps</span><span style="font-size:12px;color:#cceeff;">Select brawler below & Lock In</span>`
+                    : `<span>🤖 CAPTAINS PROTECTING…</span><span style="font-size:12px;">Deciding...</span>`;
+            } else if (draftState === 'swap') {
+                statusCallout.style.background = 'rgba(0, 245, 212, 0.2)';
+                statusCallout.style.border = '1px solid #00f5d4';
+                statusCallout.style.color = '#00f5d4';
+                statusCallout.innerHTML = `<span>🔄 YOUR SWAP — swap your pick once, or Keep pick</span><span style="font-size:12px;color:#cceeff;">Select a brawler below, then Swap or Keep</span>`;
+            } else if (draftState === 'veto') {
+                statusCallout.style.background = 'rgba(255, 159, 67, 0.2)';
+                statusCallout.style.border = '1px solid #ff9f43';
+                statusCallout.style.color = '#ffd166';
+                statusCallout.innerHTML = `<span>🚫 YOUR VETO — remove one modifier, or Keep modifiers</span><span style="font-size:12px;color:#ffeaa7;">Tap a modifier to veto it</span>`;
             } else {
                 statusCallout.style.background = 'rgba(255, 209, 102, 0.2)';
                 statusCallout.style.border = '1px solid #ffd166';
@@ -44525,13 +45392,17 @@ let heistFeverActive = false;
 
                 const isPlayerTurnToBan = draftState === 'ban' && banSchedule[currentBanStep]?.isPlayer;
                 const isPlayerTurnToPick = draftState === 'pick' && pickLine[currentPickIndex]?.isPlayer;
-                const isSelectableTurn = isPlayerTurnToBan || isPlayerTurnToPick;
+                const isPlayerTurnToProtect = draftState === 'protect' && isPlayerLeader;
+                const isPlayerTurnToSwap = draftState === 'swap' && !playerSwapped;
+                const isSelectableTurn = isPlayerTurnToBan || isPlayerTurnToPick || isPlayerTurnToProtect || isPlayerTurnToSwap;
 
                 filtered.forEach(id => {
                     const bBanned = isBanned(id);
                     const bPicked = isPicked(id);
                     const isSelected = activeSelection === id;
                     const isPlayerChosen = bluePicks[playerSlot] === id;
+                    const isSwapCurrent = draftState === 'swap' && bluePicks[playerSlot] === id;
+                    const isEnemyProtected = (draftState === 'pick' || draftState === 'swap') && redProtect != null && id === redProtect;
 
                     const card = document.createElement('div');
                     card.style.padding = '7px';
@@ -44548,7 +45419,7 @@ let heistFeverActive = false;
                         card.style.opacity = '0.6';
                         card.style.cursor = 'not-allowed';
                         card.innerHTML = `<div>${brawlerData[id]?.name || id}</div><div style="font-size:10px;color:#ff6b6b;">🚫 BANNED</div>`;
-                    } else if (bPicked) {
+                    } else if (bPicked && !isSwapCurrent) {
                         card.style.background = 'rgba(100, 100, 100, 0.1)';
                         card.style.border = '1px solid rgba(150, 150, 150, 0.3)';
                         card.style.color = '#8295a8';
@@ -44556,6 +45427,13 @@ let heistFeverActive = false;
                         card.style.cursor = 'not-allowed';
                         const pickOwner = isPlayerChosen ? 'YOU' : (bluePicks.includes(id) ? 'BLUE ALLY' : 'RED ENEMY');
                         card.innerHTML = `<div>${brawlerData[id]?.name || id}</div><div style="font-size:10px;color:${pickOwner === 'YOU' ? '#00f5d4' : (pickOwner === 'BLUE ALLY' ? '#4cc9f0' : '#f72585')};">🔒 ${pickOwner}</div>`;
+                    } else if (isEnemyProtected) {
+                        card.style.background = 'rgba(255, 159, 67, 0.08)';
+                        card.style.border = '1px solid rgba(255, 159, 67, 0.3)';
+                        card.style.color = '#8f7a65';
+                        card.style.opacity = '0.6';
+                        card.style.cursor = 'not-allowed';
+                        card.innerHTML = `<div>${brawlerData[id]?.name || id}</div><div style="font-size:10px;color:#ff9f43;">🛡️ PROTECTED</div>`;
                     } else {
                         card.style.background = isSelected ? 'rgba(0, 245, 212, 0.25)' : 'rgba(20, 35, 60, 0.7)';
                         card.style.border = `1px solid ${isSelected ? '#00f5d4' : 'rgba(100, 150, 220, 0.3)'}`;
@@ -44614,8 +45492,8 @@ let heistFeverActive = false;
                             activeSelection = null;
                             currentBanStep++;
                             if (currentBanStep >= banSchedule.length) {
-                                draftState = 'pick';
-                                currentPickIndex = 0;
+                                draftState = 'protect';
+                                runProtectStep();
                             }
                             renderDraft();
                             scheduleNextTurn(450);
@@ -44629,6 +45507,39 @@ let heistFeverActive = false;
                         waitingText.style.fontWeight = '800';
                         actionControlsBox.appendChild(waitingText);
                     }
+                } else if (draftState === 'protect') {
+                    if (isPlayerLeader) {
+                        const lockProtectBtn = document.createElement('button');
+                        lockProtectBtn.textContent = '🛡️ LOCK IN PROTECT';
+                        lockProtectBtn.style.border = 'none';
+                        lockProtectBtn.style.borderRadius = '8px';
+                        lockProtectBtn.style.padding = '8px 16px';
+                        lockProtectBtn.style.fontWeight = '900';
+                        const canProtect = activeSelection && !isBanned(activeSelection);
+                        lockProtectBtn.style.cursor = canProtect ? 'pointer' : 'not-allowed';
+                        lockProtectBtn.style.background = canProtect ? 'linear-gradient(135deg, #00f5d4, #0abde3)' : 'rgba(255,255,255,0.1)';
+                        lockProtectBtn.style.color = canProtect ? '#05131d' : '#6a7d94';
+                        lockProtectBtn.disabled = !canProtect;
+                        lockProtectBtn.onclick = () => {
+                            if (!canProtect) return;
+                            blueProtect = activeSelection;
+                            activeSelection = null;
+                            const unbanned = allUnlocked.filter(id => !getAllBanned().includes(id) && id !== blueProtect);
+                            redProtect = pickRandomFromPool(unbanned, 1);
+                            draftState = 'pick';
+                            currentPickIndex = 0;
+                            renderDraft();
+                            scheduleNextTurn(500);
+                        };
+                        actionControlsBox.appendChild(lockProtectBtn);
+                    } else {
+                        const waitingProtect = document.createElement('div');
+                        waitingProtect.textContent = '🤖 Captains Protecting...';
+                        waitingProtect.style.fontSize = '13px';
+                        waitingProtect.style.color = '#8be9fd';
+                        waitingProtect.style.fontWeight = '800';
+                        actionControlsBox.appendChild(waitingProtect);
+                    }
                 } else if (draftState === 'pick') {
                     const curPick = pickLine[currentPickIndex];
                     if (curPick?.isPlayer) {
@@ -44638,7 +45549,7 @@ let heistFeverActive = false;
                         lockPickBtn.style.borderRadius = '8px';
                         lockPickBtn.style.padding = '8px 16px';
                         lockPickBtn.style.fontWeight = '900';
-                        const canPick = activeSelection && !isBanned(activeSelection) && !isPicked(activeSelection);
+                        const canPick = activeSelection && !isBanned(activeSelection) && !isPicked(activeSelection) && activeSelection !== redProtect;
                         lockPickBtn.style.cursor = canPick ? 'pointer' : 'not-allowed';
                         lockPickBtn.style.background = canPick ? 'linear-gradient(135deg, #00f5d4, #0abde3)' : 'rgba(255,255,255,0.1)';
                         lockPickBtn.style.color = canPick ? '#05131d' : '#6a7d94';
@@ -44649,7 +45560,7 @@ let heistFeverActive = false;
                             activeSelection = null;
                             currentPickIndex++;
                             if (currentPickIndex >= pickLine.length) {
-                                draftState = 'complete';
+                                draftState = 'swap';
                             }
                             renderDraft();
                             scheduleNextTurn(500);
@@ -44663,6 +45574,92 @@ let heistFeverActive = false;
                         waitingPick.style.fontWeight = '800';
                         actionControlsBox.appendChild(waitingPick);
                     }
+                } else if (draftState === 'swap') {
+                    const currentPickId = bluePicks[playerSlot];
+                    const swapBtn = document.createElement('button');
+                    swapBtn.textContent = '🔄 SWAP';
+                    swapBtn.style.border = 'none';
+                    swapBtn.style.borderRadius = '8px';
+                    swapBtn.style.padding = '8px 16px';
+                    swapBtn.style.fontWeight = '900';
+                    const canSwap = activeSelection && activeSelection !== currentPickId && !isBanned(activeSelection) && !isPicked(activeSelection) && activeSelection !== redProtect;
+                    swapBtn.style.cursor = canSwap ? 'pointer' : 'not-allowed';
+                    swapBtn.style.background = canSwap ? 'linear-gradient(135deg, #00f5d4, #0abde3)' : 'rgba(255,255,255,0.1)';
+                    swapBtn.style.color = canSwap ? '#05131d' : '#6a7d94';
+                    swapBtn.disabled = !canSwap;
+                    swapBtn.onclick = () => {
+                        if (!canSwap) return;
+                        bluePicks[playerSlot] = activeSelection;
+                        playerSwapped = true;
+                        activeSelection = null;
+                        enterVetoStep();
+                    };
+                    actionControlsBox.appendChild(swapBtn);
+                    const keepPickBtn = document.createElement('button');
+                    keepPickBtn.textContent = 'KEEP PICK';
+                    keepPickBtn.style.border = 'none';
+                    keepPickBtn.style.borderRadius = '8px';
+                    keepPickBtn.style.padding = '8px 16px';
+                    keepPickBtn.style.fontWeight = '900';
+                    keepPickBtn.style.cursor = 'pointer';
+                    keepPickBtn.style.background = 'rgba(255,255,255,0.1)';
+                    keepPickBtn.style.color = '#cceeff';
+                    keepPickBtn.onclick = () => {
+                        activeSelection = null;
+                        enterVetoStep();
+                    };
+                    actionControlsBox.appendChild(keepPickBtn);
+                } else if (draftState === 'veto') {
+                    const vetoSlots = [];
+                    if (draftModifierKey) vetoSlots.push(draftModifierKey);
+                    if (draftModifierKeySecondary) vetoSlots.push(draftModifierKeySecondary);
+                    if (draftModifierKeyTertiary) vetoSlots.push(draftModifierKeyTertiary);
+                    for (const modKey of vetoSlots) {
+                        const vetoBtn = document.createElement('button');
+                        vetoBtn.textContent = `🚫 VETO ${RANKED_MODIFIERS[modKey]?.name || modKey}`;
+                        vetoBtn.style.border = 'none';
+                        vetoBtn.style.borderRadius = '8px';
+                        vetoBtn.style.padding = '8px 16px';
+                        vetoBtn.style.fontWeight = '900';
+                        vetoBtn.style.cursor = 'pointer';
+                        vetoBtn.style.background = 'linear-gradient(135deg, #ff6b6b, #ee5253)';
+                        vetoBtn.style.color = '#fff';
+                        vetoBtn.onclick = () => {
+                            vetoedModifier = modKey;
+                            const remaining = [draftModifierKey, draftModifierKeySecondary, draftModifierKeyTertiary].filter(k => k && k !== modKey);
+                            if (remaining.length === 0) {
+                                draftModifierKey = 'classic';
+                                draftModifierKeySecondary = null;
+                                draftModifierKeyTertiary = null;
+                            } else {
+                                draftModifierKey = remaining[0] || 'classic';
+                                draftModifierKeySecondary = remaining[1] || null;
+                                draftModifierKeyTertiary = remaining[2] || null;
+                            }
+                            activeRankedModifier = draftModifierKey;
+                            activeRankedModifierSecondary = draftModifierKeySecondary;
+                            activeRankedModifierTertiary = draftModifierKeyTertiary;
+                            rebuildRankedModifierBanner();
+                            draftState = 'ready';
+                            renderDraft();
+                        };
+                        actionControlsBox.appendChild(vetoBtn);
+                    }
+                    const keepModsBtn = document.createElement('button');
+                    keepModsBtn.textContent = 'KEEP MODIFIERS';
+                    keepModsBtn.style.border = 'none';
+                    keepModsBtn.style.borderRadius = '8px';
+                    keepModsBtn.style.padding = '8px 16px';
+                    keepModsBtn.style.fontWeight = '900';
+                    keepModsBtn.style.cursor = 'pointer';
+                    keepModsBtn.style.background = 'rgba(255,255,255,0.1)';
+                    keepModsBtn.style.color = '#cceeff';
+                    keepModsBtn.onclick = () => {
+                        vetoedModifier = null;
+                        draftState = 'ready';
+                        renderDraft();
+                    };
+                    actionControlsBox.appendChild(keepModsBtn);
                 } else {
                     const doneText = document.createElement('div');
                     doneText.textContent = '✓ Draft Finalized';
@@ -44678,7 +45675,7 @@ let heistFeverActive = false;
 
             // Update Launch Button
             const playerPickedBrawler = bluePicks[playerSlot];
-            if (draftState === 'complete' && playerPickedBrawler) {
+            if (draftState === 'ready' && playerPickedBrawler) {
                 queueBtn.textContent = `⚔️ Start Ranked Battle (${brawlerData[playerPickedBrawler]?.name || playerPickedBrawler})`;
                 queueBtn.style.background = 'linear-gradient(135deg, #ffd166, #ff9f43)';
                 queueBtn.style.color = '#08101d';
@@ -44699,7 +45696,7 @@ let heistFeverActive = false;
 
         queueBtn.onclick = () => {
             const playerChosenBrawler = bluePicks[playerSlot];
-            if (draftState !== 'complete' || !playerChosenBrawler) return;
+            if (draftState !== 'ready' || !playerChosenBrawler) return;
             if (aiTurnTimer) clearTimeout(aiTurnTimer);
             selectedBrawler = playerChosenBrawler;
             normalizeSelectedBrawler();
@@ -44715,7 +45712,7 @@ let heistFeverActive = false;
             };
 
             const modSummaryLabel = activeRankedModifierSecondary ? (activeRankedModifierTertiary ? `${RANKED_MODIFIERS[activeRankedModifier]?.name || activeRankedModifier} + ${RANKED_MODIFIERS[activeRankedModifierSecondary]?.name || activeRankedModifierSecondary} + ${RANKED_MODIFIERS[activeRankedModifierTertiary]?.name || activeRankedModifierTertiary}` : `${RANKED_MODIFIERS[activeRankedModifier]?.name || activeRankedModifier} + ${RANKED_MODIFIERS[activeRankedModifierSecondary]?.name || activeRankedModifierSecondary}`) : (RANKED_MODIFIERS[activeRankedModifier]?.name || activeRankedModifier);
-            rankedDraftSummary = `${getShowdownModeLabel(draftMode)} | Mod: ${modSummaryLabel} | You: ${(brawlerData[selectedBrawler]?.name || selectedBrawler)} (${isPlayerLeader ? 'Leader' : 'Member'}, Pick #${playerLineNumber}/6)`;
+            rankedDraftSummary = `${getShowdownModeLabel(draftMode)} | Mod: ${modSummaryLabel} | You: ${(brawlerData[selectedBrawler]?.name || selectedBrawler)} (${isPlayerLeader ? 'Leader' : 'Member'}, Pick #${playerLineNumber}/6) | Protect: ${(brawlerData[blueProtect]?.name || blueProtect || '—')} | Veto: ${(vetoedModifier ? (RANKED_MODIFIERS[vetoedModifier]?.name || vetoedModifier) : '—')}`;
             isRankedMatch = true;
             showdownMode = draftMode;
             if (brawlerSelect) brawlerSelect.value = selectedBrawler;
@@ -44898,12 +45895,12 @@ let heistFeverActive = false;
             { id: 'construction', name: '🧱 Brick Run 3v3' },
             { id: 'brick_vault', name: '🔒 Vault Siege 3v3' },
             { id: 'knock_donate', name: '🎯 Knock n Donate' },
-            { id: 'trio', name: '🔱 Trio Showdown' },
+            { id: 'trio', name: '4️⃣ Quad Showdown' },
             { id: 'duo', name: '👥 Duo Showdown' },
             { id: 'solo', name: '⚔️ Solo Showdown' },
             { id: 'marked_mayhem', name: '🎯 Target Rush' },
             { id: 'damage_filler', name: '💥 Damage Filler' },
-            { id: 'mirror', name: '🪞 Mirror 5v5' },
+            { id: 'mirror', name: '🪞 Mirror 4v4' },
             { id: 'orbo_boss', name: '🪐 Boss Battle: Orbo' },
             { id: 'ramage_boss', name: '🥊 Boss Battle: Ramage' },
             { id: 'weefee_boss', name: '📶 Boss Battle: Mega WeeFee' },
@@ -45139,7 +46136,7 @@ let heistFeverActive = false;
     damageFillerBtn.style.cursor = 'pointer';
 
     const mirrorModeBtn = document.createElement('button');
-    mirrorModeBtn.textContent = 'Mirror 5v5';
+    mirrorModeBtn.textContent = 'Mirror 4v4';
     mirrorModeBtn.style.padding = '10px 14px';
     mirrorModeBtn.style.borderRadius = '10px';
     mirrorModeBtn.style.border = 'none';
@@ -45155,7 +46152,7 @@ let heistFeverActive = false;
     splitterPoweredBtn.style.cursor = 'pointer';
 
     const trioShowdownBtn = document.createElement('button');
-    trioShowdownBtn.textContent = 'Trio Showdown';
+    trioShowdownBtn.textContent = 'Quad Showdown';
     trioShowdownBtn.style.padding = '10px 14px';
     trioShowdownBtn.style.borderRadius = '10px';
     trioShowdownBtn.style.border = 'none';
@@ -45282,7 +46279,7 @@ let heistFeverActive = false;
           splitterPoweredBtn.style.color = '#d8e9ff';
           mirrorModeBtn.style.background = '#5df2c2';
           mirrorModeBtn.style.color = '#08101d';
-          if (startBtn) startBtn.textContent = 'Start Mirror 5v5';
+          if (startBtn) startBtn.textContent = 'Start Mirror 4v4';
       } else if (showdownMode === 'solo_td') {
           soloShowdownBtn.style.background = '#1c3354';
           soloShowdownBtn.style.color = '#d8e9ff';
@@ -45335,7 +46332,7 @@ let heistFeverActive = false;
           setModeBtnState(mirrorModeBtn, false);
           if (startBtn) {
               startBtn.textContent = showdownMode === 'trio'
-                  ? 'Start Trio Showdown'
+                  ? 'Start Quad Showdown'
                   : (showdownMode === 'knock_donate'
                       ? 'Start Knock n Donate 3v3'
                       : 'Start Vault Siege 3v3');
@@ -45429,6 +46426,7 @@ let heistFeverActive = false;
 
   function launchShowdownMatch() {
       try { console.log('[GAME] Start showdown', { showdownMode, selectedBrawler }); } catch(e) {}
+      if (showdownMode === 'splitter_powered') showdownMode = 'power_gods';
       if(isRetiredTowerMode(showdownMode)){
           showdownMode='solo';
           sushiMatchArmed=false;
@@ -45450,7 +46448,6 @@ let heistFeverActive = false;
       }
       const brickGate = getSelectedBrickPowerGate();
       if (brickGate.locked) { updateBrickPowerGateUI(); return; }
-      if (showdownMode === 'splitter_powered') showdownMode = 'power_gods';
       matchHomeEventReward = isRankedMatch ? null : getHomeEventRewardForMode(showdownMode);
       isBossFight = false;
       isBeastBossEvent = showdownMode === 'beast_boss_god_mode';
@@ -45600,7 +46597,7 @@ let heistFeverActive = false;
           else if (isArenaForgeMode) baseTitle = 'Arena Forge 2.0 - Triple Tower War';
           else if (isMarkedMayhemMode) baseTitle = 'Arena Forge - Target Rush 3v3';
           else if (isTugZoneMode) baseTitle = 'Arena Forge - Tug Zone 3v3';
-          else if (isTrioShowdownMode) baseTitle = 'Arena Forge - Trio Showdown';
+          else if (isTrioShowdownMode) baseTitle = 'Arena Forge - Quad Showdown';
           else if (isDamageFillerMode) baseTitle = `Arena Forge - Damage Filler ${damageFillerTeamSize}v${damageFillerTeamSize}`;
           else if (isTurkeyCaptureMode) baseTitle = 'Arena Forge - Capture the Turkey (Season 5)';
           else if (isPropHuntMode) baseTitle = 'Arena Forge - Prop Hunt';
@@ -45754,6 +46751,7 @@ let heistFeverActive = false;
       if (isObjectiveMode) initObjectiveModeState();
       if (isTurkeyCaptureMode) initTurkeyCaptureState();
       spawnBots();
+      ensurePinButton();
       if (isPropHuntMode) initPropHuntMatch();
       if (isRankedMatch || isCustomMutatorMatch) {
           timedDetonationStage = 0;
@@ -45844,6 +46842,7 @@ let heistFeverActive = false;
               }
           }, 300);
       }
+          showMatchIntroCards();
   }
 
   function rollTowerDuelPowerLoadouts(team) {
@@ -46007,8 +47006,14 @@ let heistFeverActive = false;
       overlay.style.overflowY = 'auto';
       
       const title = document.createElement('h1');
-      title.textContent = 'Draft 3 Brawlers for Duels!';
+      title.textContent = 'Draft 1–4 Brawlers for Duels!';
       overlay.appendChild(title);
+      const draftHint = document.createElement('div');
+      draftHint.textContent = 'Choose 1–4 fighters, then pick a format and LAUNCH.';
+      draftHint.style.fontSize = '14px';
+      draftHint.style.color = '#a8c8ef';
+      draftHint.style.marginTop = '8px';
+      overlay.appendChild(draftHint);
 
       const container = document.createElement('div');
       container.style.display = 'flex'; container.style.gap = '20px';
@@ -46020,7 +47025,67 @@ let heistFeverActive = false;
       const allowRepeatDraft = draftPool.length < 3;
       const draftDisplay = document.createElement('h2');
       draftDisplay.style.color = '#5df2c2'; draftDisplay.style.marginTop = '30px';
-      draftDisplay.textContent = `Drafted: ${drafted.length}/3`;
+      draftDisplay.textContent = `Drafted: ${drafted.length}/${DUELS_MAX_FIGHTERS}`;
+      const formatRow = document.createElement('div');
+      formatRow.style.display = 'flex'; formatRow.style.gap = '10px'; formatRow.style.marginTop = '20px';
+      const formatBtns = [];
+      for (const wins of DUELS_ROUND_OPTIONS) {
+          const fb = document.createElement('button');
+          fb.textContent = `First to ${wins}`;
+          fb.style.padding = '8px 14px'; fb.style.borderRadius = '10px'; fb.style.cursor = 'pointer';
+          fb.onclick = () => {
+              duelsTargetWins = wins;
+              formatBtns.forEach((b, i) => { b.style.outline = DUELS_ROUND_OPTIONS[i] === duelsTargetWins ? '3px solid #ffd44f' : 'none'; });
+          };
+          formatRow.appendChild(fb);
+          formatBtns.push(fb);
+      }
+      formatBtns.forEach((b, i) => { b.style.outline = DUELS_ROUND_OPTIONS[i] === duelsTargetWins ? '3px solid #ffd44f' : 'none'; });
+      const launchBtn = document.createElement('button');
+      launchBtn.textContent = 'LAUNCH DUELS';
+      launchBtn.style.padding = '12px 24px'; launchBtn.style.borderRadius = '12px'; launchBtn.style.marginTop = '16px'; launchBtn.style.cursor = 'pointer';
+      launchBtn.disabled = true;
+      function updateLaunchBtn() { launchBtn.disabled = drafted.length < 1; }
+      launchBtn.onclick = () => {
+          if (drafted.length < 1) return;
+          playerTeam = drafted;
+          const duelsPool = getBotBrawlerPool();
+          botTeam = Array.from({length: drafted.length}, () => duelsPool[Math.floor(Math.random()*duelsPool.length)]);
+          isDuoShowdown = false;
+          isConstructionMode = false;
+          isDamageFillerMode = false;
+          isKnockDonateMode = false;
+          isBrickVaultMode = false;
+          isArenaForgeMode = false;
+          isHyperForgeLTM = false;
+          isMarkedMayhemMode = false;
+          isTugZoneMode = false;
+          isTrioShowdownMode = false;
+          isSplitterPoweredMode = false;
+          isPowerGodsMode = false;
+          isMirrorMode = false;
+          isImpossibleMode = false;
+          isDuels = true;
+          isTowerDuelEvent = false;
+          isSlopSushiMode = true;
+          sushiMatchArmed = true;
+          clearShowdownModifier();
+          if (document.getElementById('topbar')) document.getElementById('topbar').textContent = 'Arena Forge - Duels • Tower Power';
+          playerScore = 0;
+          botScore = 0;
+          WORLD_W = 1000; WORLD_H = 1000;
+          generateCubes();
+          cubes.length = 0;
+          powerups.length = 0;
+          amplifierToolboxes.length = 0;
+          amplifierScrewZones.length = 0;
+          skeleParachutes.length = 0;
+          skelePortals.length = 0;
+          startDuelsRound();
+          if(brawlerSelect) brawlerSelect.disabled = true;
+          if(homeScreen) homeScreen.style.display = 'none';
+          document.body.removeChild(overlay);
+      };
       
       for (const id of draftPool) {
           const draftProgress = getOrCreateProgress(id);
@@ -46034,54 +47099,14 @@ let heistFeverActive = false;
           if (draftPowerLocked) { card.style.opacity='.48'; card.style.cursor='not-allowed'; }
           card.onclick = () => {
               if (draftPowerLocked) return;
-              if(drafted.length < 3) {
+              if(drafted.length < DUELS_MAX_FIGHTERS) {
                   drafted.push(id);
                   draftDisplay.textContent = `Drafted: ${drafted.join(', ').toUpperCase()}`;
                   if (!allowRepeatDraft) {
                       card.style.opacity = '0.5';
                       card.style.pointerEvents = 'none';
                   }
-                  if(drafted.length === 3) {
-                      setTimeout(() => {
-                          playerTeam = drafted;
-                          const duelsPool = getBotBrawlerPool();
-                          botTeam = [duelsPool[Math.floor(Math.random()*duelsPool.length)], duelsPool[Math.floor(Math.random()*duelsPool.length)], duelsPool[Math.floor(Math.random()*duelsPool.length)]];
-                          isDuoShowdown = false;
-                          isConstructionMode = false;
-                          isDamageFillerMode = false;
-                          isKnockDonateMode = false;
-                          isBrickVaultMode = false;
-                          isArenaForgeMode = false;
-                          isHyperForgeLTM = false;
-                          isMarkedMayhemMode = false;
-                          isTugZoneMode = false;
-                          isTrioShowdownMode = false;
-                          isSplitterPoweredMode = false;
-                          isPowerGodsMode = false;
-                          isMirrorMode = false;
-                          isImpossibleMode = false;
-                          isDuels = true;
-                          isTowerDuelEvent = false;
-                          isSlopSushiMode = true;
-                          sushiMatchArmed = true;
-                          clearShowdownModifier();
-                          if (document.getElementById('topbar')) document.getElementById('topbar').textContent = 'Arena Forge - Duels • Tower Power';
-                          playerScore = 0;
-                          botScore = 0;
-                          WORLD_W = 1000; WORLD_H = 1000;
-                          generateCubes(); // Maybe remove cubes in Duels according to "small empty arena"? Sure, I'll leave them or `cubes.length = 0`.
-                          cubes.length = 0; // The prompt said "a small empty arena", so no powercubes spread around randomly.
-                          powerups.length = 0;
-                          amplifierToolboxes.length = 0;
-                          amplifierScrewZones.length = 0;
-                          skeleParachutes.length = 0;
-                          skelePortals.length = 0;
-                          startDuelsRound();
-                          if(brawlerSelect) brawlerSelect.disabled = true;
-                          if(homeScreen) homeScreen.style.display = 'none';
-                          document.body.removeChild(overlay);
-                      }, 500);
-                  }
+                  updateLaunchBtn();
               }
           };
           container.appendChild(card);
@@ -46089,6 +47114,8 @@ let heistFeverActive = false;
       
       overlay.appendChild(container);
       overlay.appendChild(draftDisplay);
+      overlay.appendChild(formatRow);
+      overlay.appendChild(launchBtn);
       document.body.appendChild(overlay);
   });
 
@@ -46616,10 +47643,11 @@ isBrawlerLabMode = false;
         </div>
 
         <div id="tcDeckBody" style="display:${trainingCaveDeckCollapsed ? 'none' : 'flex'};flex-direction:column;gap:8px;">
+          <div style="font-size:11px;font-weight:900;letter-spacing:0.08em;color:#5df2c2;">MODE: ${TRAINING_MODE_LABELS[trainingMode] || 'Free Play'}</div>
           <!-- 1. Allies & Healing Toolkit -->
-          <div style="background:rgba(10,24,42,0.7);padding:8px 10px;border-radius:10px;border:1px solid rgba(93,242,194,0.2);">
+          <div id="tcSectionAllies" style="background:rgba(10,24,42,0.7);padding:12px;border-radius:10px;border:1px solid rgba(93,242,194,0.2);">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-              <span style="font-size:11px;font-weight:900;color:#5df2c2;letter-spacing:0.5px;">🧪 HEALING & ALLIES TEST</span>
+              <span style="font-size:13px;font-weight:900;color:#5df2c2;letter-spacing:0.08em;">🧪 HEALING & ALLIES TEST</span>
               <span id="tcAllyCountLabel" style="font-size:10px;color:#9bc8e6;">3 Allies</span>
             </div>
             <div style="display:flex;gap:5px;flex-wrap:wrap;">
@@ -46632,9 +47660,9 @@ isBrawlerLabMode = false;
           </div>
 
           <!-- 2. 15-Bot Practice Grid (Bottom Right) -->
-          <div style="background:rgba(10,24,42,0.7);padding:8px 10px;border-radius:10px;border:1px solid rgba(255,209,102,0.25);">
+          <div id="tcSectionGrid" style="background:rgba(10,24,42,0.7);padding:12px;border-radius:10px;border:1px solid rgba(255,209,102,0.25);">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-              <span style="font-size:11px;font-weight:900;color:#ffd166;letter-spacing:0.5px;">⚡ 15-BOT COMBAT GRID (BOTTOM RIGHT)</span>
+              <span style="font-size:13px;font-weight:900;color:#ffd166;letter-spacing:0.08em;">⚡ 15-BOT COMBAT GRID</span>
               <span style="font-size:10px;color:#ffdf99;">AOE / Piercing</span>
             </div>
             <div style="display:flex;gap:6px;">
@@ -46644,8 +47672,8 @@ isBrawlerLabMode = false;
           </div>
 
           <!-- 3. Select & Spawn Any Brawler As Enemy -->
-          <div style="background:rgba(10,24,42,0.7);padding:8px 10px;border-radius:10px;border:1px solid rgba(255,77,109,0.3);">
-            <div style="font-size:11px;font-weight:900;color:#ff6b81;letter-spacing:0.5px;margin-bottom:6px;">⚔️ ENEMY DUEL SPAWNER (ALL BRAWLERS)</div>
+          <div id="tcSectionDuel" style="background:rgba(10,24,42,0.7);padding:12px;border-radius:10px;border:1px solid rgba(255,77,109,0.3);">
+            <div style="font-size:13px;font-weight:900;color:#ff6b81;letter-spacing:0.08em;margin-bottom:6px;">⚔️ ENEMY DUEL SPAWNER (ALL BRAWLERS)</div>
             <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;">
               <select id="tcEnemySelect" style="flex:2;min-width:110px;height:30px;background:#051020;border:1px solid rgba(255,107,129,0.4);border-radius:7px;color:#fff;font-size:11px;font-weight:800;padding:0 6px;outline:none;"></select>
               <button id="tcSpawnEnemyAiBtn" style="flex:1;min-width:68px;padding:6px 8px;border-radius:7px;border:1px solid #ff4d6d;background:rgba(255,77,109,0.25);color:#ff8fa3;font-size:11px;font-weight:800;cursor:pointer;">⚔️ AI</button>
@@ -46654,14 +47682,21 @@ isBrawlerLabMode = false;
             </div>
           </div>
 
-          <!-- 4. Quick Powers & Teleport -->
+          <div style="font-size:11px;color:#95b8d4;">Dummies never fight back unless you spawn an enemy with AI on.</div>
+
+          <!-- 4. Your Tools (Quick Powers & Teleport) -->
+          <div style="font-size:13px;font-weight:900;color:#5df2c2;letter-spacing:0.08em;margin-bottom:6px;">🛠️ YOUR TOOLS</div>
+          <div style="font-size:11px;color:#95b8d4;margin-bottom:6px;">Refills and teleports. Nothing here costs anything.</div>
           <div style="display:flex;gap:5px;flex-wrap:wrap;">
             <button id="tcRefillSuperBtn" style="flex:1;min-width:80px;padding:6px 6px;border-radius:7px;border:1px solid #ffe66d;background:rgba(255,230,109,0.15);color:#ffe66d;font-size:10px;font-weight:800;cursor:pointer;">⚡ Super Max</button>
             <button id="tcRefillHyperBtn" style="flex:1;min-width:80px;padding:6px 6px;border-radius:7px;border:1px solid #ff77e9;background:rgba(255,119,233,0.18);color:#ff77e9;font-size:10px;font-weight:800;cursor:pointer;">🔥 Hyper Max</button>
             <button id="tcPlayerHealBtn" style="flex:1;min-width:70px;padding:6px 6px;border-radius:7px;border:1px solid #5df2c2;background:rgba(93,242,194,0.15);color:#5df2c2;font-size:10px;font-weight:800;cursor:pointer;">💚 Full HP</button>
             <button id="tcAddCubesBtn" style="flex:1;min-width:70px;padding:6px 6px;border-radius:7px;border:1px solid #ffd166;background:rgba(255,209,102,0.15);color:#ffd166;font-size:10px;font-weight:800;cursor:pointer;">📦 +5 Cubes</button>
             <button id="tcTeleportSpawnBtn" style="flex:1;min-width:70px;padding:6px 6px;border-radius:7px;border:1px solid #70a1ff;background:rgba(112,161,255,0.15);color:#70a1ff;font-size:10px;font-weight:800;cursor:pointer;">📍 Center</button>
+            <button id="tcTrainingResetBtn" style="flex:1;min-width:70px;padding:6px 6px;border-radius:7px;border:1px solid #ff5c77;background:rgba(255,70,100,0.15);color:#ff8fa3;font-size:10px;font-weight:800;cursor:pointer;">🔄 RESET</button>
+            <button id="tcGadgetCdBtn" style="flex:1;min-width:110px;padding:6px 6px;border-radius:7px;border:1px solid #60d9cc;background:rgba(96,217,204,0.15);color:#7ffff0;font-size:10px;font-weight:800;cursor:pointer;">Gadget Cooldown: OFF</button>
           </div>
+          <div id="tcMeterReadout" style="font-size:11px;color:#8fffd7;">Meter — 0 damage / 5s · Colossus — 0 damage total</div>
         </div>
       `;
 
@@ -46762,8 +47797,33 @@ isBrawlerLabMode = false;
           player.vy = 0;
           spawnFloatingText(player.x, player.y - 30, 'TELEPORTED TO SPAWN!', '#70a1ff');
       };
+      deck.querySelector('#tcTrainingResetBtn').onclick = () => launchTrainingSandbox(selectedBrawler, trainingMode);
+      const gcdBtn = deck.querySelector('#tcGadgetCdBtn');
+      const refreshGcdBtn = () => { if (gcdBtn) gcdBtn.textContent = trainingGadgetNoCooldown ? 'Gadget Cooldown: OFF' : 'Gadget Cooldown: ON'; };
+      refreshGcdBtn();
+      if (gcdBtn) gcdBtn.onclick = () => { trainingGadgetNoCooldown = !trainingGadgetNoCooldown; refreshGcdBtn(); const tgNoCd = document.querySelector('#tgNoCd'); if (tgNoCd) tgNoCd.checked = trainingGadgetNoCooldown; };
+      const alliesSec = deck.querySelector('#tcSectionAllies');
+      const gridSec = deck.querySelector('#tcSectionGrid');
+      const duelSec = deck.querySelector('#tcSectionDuel');
+      const meterEl = deck.querySelector('#tcMeterReadout');
+      if (alliesSec) alliesSec.style.display = (trainingMode === 'free' || trainingMode === 'healing') ? '' : 'none';
+      if (gridSec) gridSec.style.display = trainingMode === 'free' ? '' : 'none';
+      if (duelSec) duelSec.style.display = (trainingMode === 'free' || trainingMode === 'duel') ? '' : 'none';
+      if (meterEl) meterEl.style.display = (trainingMode === 'free' || trainingMode === 'dps') ? '' : 'none';
 
       updateTrainingCaveUI();
+  }
+
+  function refreshTrainingMeterReadout() {
+      if (!trainingCaveDeckPanel || !trainingCaveDeckPanel.isConnected) return;
+      const meterEl = trainingCaveDeckPanel.querySelector('#tcMeterReadout');
+      if (!meterEl) return;
+      const now = performance.now();
+      const meterBot = bots.find(b => b.isDamageMeterBot && b.hp > 0);
+      const colossusBot = bots.find(b => b.isColossusBot && b.hp > 0);
+      const meterTotal = meterBot ? (meterBot.trainingDamageEvents || []).filter(hit => now - hit.at <= 5000).reduce((sum, hit) => sum + (hit.amount || 0), 0) : 0;
+      const colossusTotal = colossusBot ? Math.max(0, (colossusBot.maxHp || 0) - (colossusBot.hp || 0)) : 0;
+      meterEl.textContent = `Meter — ${meterTotal} damage / 5s · Colossus — ${colossusTotal} damage total`;
   }
 
   function updateTrainingCaveUI() {
@@ -46778,6 +47838,7 @@ isBrawlerLabMode = false;
       const allyCount = bots.filter(b => b.isTrainingAlly && b.hp > 0).length;
       const countEl = trainingCaveDeckPanel.querySelector('#tcAllyCountLabel');
       if (countEl) countEl.textContent = `${allyCount} Active ${allyCount === 1 ? 'Ally' : 'Allies'}`;
+      refreshTrainingMeterReadout();
   }
 
   function updateTrainingCaveMode(dt, now) {
@@ -46835,7 +47896,6 @@ isBrawlerLabMode = false;
       ctx.fillStyle = '#5df2c2';
       ctx.font = 'bold 16px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('📍 SPAWN & RESTOCK STATION', 1900, 1680);
 
       // 2. Healing & Allies Test Ward (Left: 400..1000, 1400..2000)
       ctx.strokeStyle = 'rgba(0, 245, 212, 0.65)';
@@ -46847,10 +47907,8 @@ isBrawlerLabMode = false;
       ctx.stroke();
       ctx.fillStyle = '#00f5d4';
       ctx.font = 'bold 18px sans-serif';
-      ctx.fillText('🧪 HEALING & ALLIES TEST WARD', 700, 1440);
       ctx.fillStyle = '#a0fde7';
       ctx.font = '12px sans-serif';
-      ctx.fillText('Summon allies • Test Trampaheal, Duck swipe, Super heals & Gadgets', 700, 1465);
 
       ctx.fillStyle = 'rgba(0, 245, 212, 0.25)';
       ctx.font = '32px sans-serif';
@@ -46869,10 +47927,8 @@ isBrawlerLabMode = false;
       ctx.stroke();
       ctx.fillStyle = '#ffd166';
       ctx.font = 'bold 18px sans-serif';
-      ctx.fillText('⚡ 15-BOT COMBAT & MULTIKILL GRID', 3110, 2190);
       ctx.fillStyle = '#ffeaa7';
       ctx.font = '12px sans-serif';
-      ctx.fillText('Instant Respawn • AOE, Piercing, Bouncing & Chain Super Combos', 3110, 2215);
 
       const startX = 2750;
       const startY = 2250;
@@ -46898,10 +47954,8 @@ isBrawlerLabMode = false;
       ctx.stroke();
       ctx.fillStyle = '#ff4d6d';
       ctx.font = 'bold 18px sans-serif';
-      ctx.fillText('⚔️ 1v1 ENEMY DUEL ARENA', 3100, 1040);
       ctx.fillStyle = '#ffb3c1';
       ctx.font = '12px sans-serif';
-      ctx.fillText('Select any brawler to test AI attack patterns & 1v1 combat', 3100, 1065);
 
       // 5. Top Real-Time Damage Station (Top: 1500..2300, 250..680)
       ctx.strokeStyle = 'rgba(93, 242, 194, 0.5)';
@@ -46913,10 +47967,8 @@ isBrawlerLabMode = false;
       ctx.stroke();
       ctx.fillStyle = '#8fffd7';
       ctx.font = 'bold 18px sans-serif';
-      ctx.fillText('💥 REAL-TIME DAMAGE METER & COLOSSUS DUMMY', 1900, 290);
       ctx.fillStyle = '#d2fdf0';
       ctx.font = '12px sans-serif';
-      ctx.fillText('1,000,000 HP DPS Meter Bot (Left) • 10,000,000 HP Colossus (Right)', 1900, 315);
 
       // 6. Showcase Gallery (Upper-Mid)
       ctx.strokeStyle = 'rgba(112, 161, 255, 0.4)';
@@ -46928,12 +47980,64 @@ isBrawlerLabMode = false;
       ctx.stroke();
       ctx.fillStyle = '#70a1ff';
       ctx.font = 'bold 16px sans-serif';
-      ctx.fillText('🎯 ALL-BRAWLERS REFERENCE GALLERY', 1900, 785);
 
       ctx.restore();
   }
 
-  function launchTrainingSandbox(targetBrawler = selectedBrawler) {
+  function openTrainingHub() {
+      document.getElementById('trainingHubOverlay')?.remove();
+      const previousFocus = document.activeElement;
+      const overlay = document.createElement('div');
+      overlay.id = 'trainingHubOverlay';
+      overlay.setAttribute('role', 'dialog');
+      overlay.setAttribute('aria-label', 'Training Hub');
+      overlay.style.cssText = 'position:fixed;inset:0;z-index:1500;display:flex;align-items:center;justify-content:center;background:rgba(8,11,20,0.92);font-family:sans-serif;';
+      const panel = document.createElement('div');
+      panel.style.cssText = 'width:min(1080px,96vw);max-height:92vh;overflow-y:auto;background:linear-gradient(180deg,#081523,#111826);border:2px solid #5df2c2;border-radius:16px;padding:18px;color:#e7f2ff;box-sizing:border-box;';
+      const close = () => { overlay.remove(); document.removeEventListener('keydown', onKey); previousFocus?.focus?.(); };
+      const onKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } };
+      document.addEventListener('keydown', onKey);
+      const top = document.createElement('div');
+      top.style.cssText = 'display:flex;justify-content:space-between;align-items:center;';
+      const title = document.createElement('h1');
+      title.className = 'dialog-title';
+      title.textContent = 'Training Hub';
+      title.style.color = '#5df2c2';
+      const closeBtn = document.createElement('button');
+      closeBtn.textContent = 'Close';
+      closeBtn.className = 'dialog-btn dialog-btn-primary';
+      closeBtn.onclick = close;
+      top.appendChild(title);
+      top.appendChild(closeBtn);
+      panel.appendChild(top);
+      const sub = document.createElement('div');
+      sub.className = 'dialog-subtitle';
+      sub.textContent = 'Pick a training mode. Nothing here costs anything.';
+      panel.appendChild(sub);
+      const grid = document.createElement('div');
+      grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:16px;';
+      const modes = [
+          { id: 'free', title: 'Free Play', desc: 'Everything, exactly as today: meter bot, Colossus, allies ward, 15-bot grid, duel dummy, and gallery.', spawns: 'Meter + Colossus + allies + grid + duel dummy + gallery' },
+          { id: 'dps', title: 'DPS Lab', desc: 'Damage testing only: the meter bot and the Colossus dummy, nothing else.', spawns: 'Meter bot + Colossus dummy' },
+          { id: 'duel', title: 'Duel Lab', desc: '1v1 practice: starts with the non-hostile King dummy and the duel spawner.', spawns: 'Duel dummy + duel spawner' },
+          { id: 'healing', title: 'Healing Lab', desc: 'Healing, support, and gadget testing with the three wounded allies.', spawns: 'Allies ward (3 wounded allies)' },
+      ];
+      for (const m of modes) {
+          const card = document.createElement('button');
+          card.style.cssText = 'text-align:left;padding:12px;border:2px solid #2f4f70;border-radius:12px;background:rgba(6,13,24,0.88);color:#e7f2ff;cursor:pointer;';
+          card.innerHTML = `<div style="font-weight:900;font-size:15px;color:#5df2c2;">${m.title}</div><div style="font-size:12px;color:#bcaee9;margin-top:4px;">${m.desc}</div><div style="font-size:11px;color:#95b8d4;margin-top:6px;">Spawns: ${m.spawns}</div>`;
+          card.onclick = () => { close(); launchTrainingSandbox(selectedBrawler, m.id); };
+          grid.appendChild(card);
+      }
+      panel.appendChild(grid);
+      overlay.appendChild(panel);
+      document.body.appendChild(overlay);
+  }
+
+  let trainingMode = 'free';
+  const TRAINING_MODE_LABELS = { free: 'Free Play', dps: 'DPS Lab', duel: 'Duel Lab', healing: 'Healing Lab' };
+  function launchTrainingSandbox(targetBrawler = selectedBrawler, mode = 'free') {
+      trainingMode = ['free', 'dps', 'duel', 'healing'].includes(mode) ? mode : 'free';
       selectedBrawler = allBrawlers.includes(targetBrawler) ? targetBrawler : 'outlit';
       if (brawlerSelect) brawlerSelect.value = selectedBrawler;
       isTraining = true;
@@ -47008,6 +48112,7 @@ isBrawlerLabMode = false;
       bots.length = 0;
 
       // Zone 5: Top Heavyweight Damage Meter Bot (1M HP) & Colossus Dummy (10M HP)
+      if (trainingMode === 'free' || trainingMode === 'dps') {
       bots.push({
           id: nextId++, x: 1750, y: 460, baseX: 1750, baseY: 460, z: 0, vx: 0, vy: 0,
           hp: 1000000, maxHp: 1000000, shield: 0, shieldMax: 0, shieldDecayTimer: 0, reloadBuffUntil: 0,
@@ -47027,19 +48132,23 @@ isBrawlerLabMode = false;
           selectedStar: 'slow', unopcolocoCycle: 0, ridaSpeedMult: 1.0, ridaHitCooldowns: {},
           isFlying: false, isDummy: true, isTrainingBot: true, isColossusBot: true, team: 'enemy'
       });
+      }
 
       // Zone 2: Healing & Allies Test Ward (Left) -> 3 wounded allies
+      if (trainingMode === 'free' || trainingMode === 'healing') {
       summonTrainingAlly('outlit', 650, 1600, true);
       summonTrainingAlly('fuser', 750, 1600, true);
       summonTrainingAlly('trampaheal', 700, 1750, true);
+      }
 
       // Zone 3: 15-Bot Practice Grid (Bottom Right)
-      spawnTraining15BotGrid();
+      if (trainingMode === 'free') spawnTraining15BotGrid();
 
       // Zone 4: 1v1 Enemy Duel Arena (Right) -> Initial Dummy King (non-hostile on spawn)
-      spawnTrainingCustomEnemy('king', false);
+      if (trainingMode === 'free' || trainingMode === 'duel') spawnTrainingCustomEnemy('king', false);
 
       // Zone 6: Brawler Showcase Gallery (Upper Mid)
+      if (trainingMode === 'free') {
       const galleryBrawlers = allBrawlers.filter(b => !disabledBrawlers.has(b));
       const gCols = 10;
       galleryBrawlers.forEach((b, i) => {
@@ -47061,6 +48170,7 @@ isBrawlerLabMode = false;
               moneyAndTaxMode: 'money', team: 'enemy'
           });
       });
+      }
 
       initTrainingCaveUI();
   }
@@ -47068,7 +48178,7 @@ isBrawlerLabMode = false;
   trainingBtn.addEventListener('click', ()=>{
       activeSkinTrial = null;
       player.propHuntRole = null; player.propHuntMorphed = false; player.propHuntPropType = null; player.propHuntWall = null; player.propHuntRemorphAt = 0;
-      launchTrainingSandbox(selectedBrawler);
+      openTrainingHub();
   });
 
   function launchTutorialMatch() {
@@ -47198,7 +48308,16 @@ isBrawlerLabMode = false;
     styleHomeButton(profileBtn, 'purple', true);
     if (progressionShortcutRow) progressionShortcutRow.appendChild(profileBtn);
     else if (homeUtilityRow) homeUtilityRow.appendChild(profileBtn);
-    profileBtn.addEventListener('click', () => openBrickBonV2('career'));
+    profileBtn.addEventListener('click', () => openPlayerProfile());
+
+    const pinsHubBtn = document.createElement('button');
+    pinsHubBtn.id = 'pinsHubBtn';
+    pinsHubBtn.type = 'button';
+    pinsHubBtn.textContent = '📌 EMOTE PINS';
+    styleHomeButton(pinsHubBtn, 'mint', true);
+    if (progressionShortcutRow) progressionShortcutRow.appendChild(pinsHubBtn);
+    else if (homeUtilityRow) homeUtilityRow.appendChild(pinsHubBtn);
+    pinsHubBtn.addEventListener('click', () => openPinsHub());
 
     const balanceBlogBtn = document.createElement('button');
     balanceBlogBtn.textContent = '📊 Balance Blog';
@@ -52581,12 +53700,12 @@ function checkHit(target, b, i){
             if (performance.now() > duelTransitionTime) {
                 if (duelRoundState === 'playerDied') { 
                     botScore++; 
-                    if (botScore >= 5) gameOver = true; 
+                    if (botScore >= getDuelsWinScore()) gameOver = true; 
                     else startDuelsRound(); 
                 } 
                 else { 
                     playerScore++; 
-                    if (playerScore >= 5) gameOver = true; 
+                    if (playerScore >= getDuelsWinScore()) gameOver = true; 
                     else startDuelsRound(); 
                 }
             }
@@ -58789,15 +59908,20 @@ function checkHit(target, b, i){
           }
       } else
 
-      if(t.lastTargetId != null && nowTarget < t.targetLockUntil){
+      if (t.botWallBreakUntil && nowTarget >= t.botWallBreakUntil) {
+        const wallStillUp = destructibleWalls.some((w) => getDestructibleWallHitId(w) === t.botWallBreakTargetHitId);
+        if (wallStillUp) t.botWallBreakCooldownUntil = nowTarget + 4000;
+        t.botWallBreakUntil = 0;
+      }
+      if(t.lastTargetId != null && nowTarget < t.targetLockUntil && nowTarget >= (t.botWallBreakCooldownUntil || 0)){
         const locked = (t.lastTargetId === player.id) ? player : bots.find(o => o.id === t.lastTargetId && o.hp > 0);
-                if(locked && locked.id !== t.ownerId && !(t.team && locked.team && t.team === locked.team) && canDetectThroughBush(t, locked)){
+                if(locked && locked.id !== t.ownerId && !(t.team && locked.team && t.team === locked.team) && canDetectThroughBush(t, locked) && !((locked.invulnerableUntil || 0) > nowTarget || locked.isFlying || (locked.angelLiftUntil || 0) > nowTarget)){
           target = locked;
           bestScore = getBotEnemyScore(t, locked, botAi, nowTarget) - 95;
         }
       }
 
-            if(botTargetScanDue && player.hp > 0 && t.ownerId !== player.id && !(t.team && player.team && t.team === player.team) && canDetectThroughBush(t, player)){
+            if(botTargetScanDue && player.hp > 0 && t.ownerId !== player.id && !(t.team && player.team && t.team === player.team) && canDetectThroughBush(t, player) && !(nowTarget < (t.botWallBreakCooldownUntil || 0) && player.id === t.lastTargetId)){
           const d = Math.hypot(player.x - t.x, player.y - t.y);
           const score = getBotEnemyScore(t, player, botAi, nowTarget);
           if(score < bestScore){
@@ -58807,7 +59931,7 @@ function checkHit(target, b, i){
       }
       if (botTargetScanDue) {
           for(const o of aliveBots){
-              if(o.id === t.id || o.id === t.ownerId || (t.team && o.team && t.team === o.team)) continue;
+              if(o.id === t.id || o.id === t.ownerId || (t.team && o.team && t.team === o.team) || (nowTarget < (t.botWallBreakCooldownUntil || 0) && o.id === t.lastTargetId)) continue;
                         if (!canDetectThroughBush(t, o)) continue;
               const score = getBotEnemyScore(t, o, botAi, nowTarget);
               if(score < bestScore){ bestScore = score; target = o; }
@@ -77613,7 +78737,7 @@ function checkHit(target, b, i){
                     soloTdPanel.remove();
                 }
             } else if (isDuels) {
-                won = playerScore >= 5;
+                won = playerScore >= getDuelsWinScore();
                 matchText = won ? "YOU WON THE DUEL!" : "BOT WON THE DUEL!";
                 rankText = `Score: ${playerScore} - ${botScore}`;
             } else if (isTurkeyCaptureMode) {
@@ -77994,7 +79118,7 @@ function checkHit(target, b, i){
             let rankedPromotionCoins = 0;
             let rankedPromotionSouls = 0;
             let rankedPromotionGems = 0;
-            let rankedPassXpGained = 0;
+            let rankedPassXpGained = 0; let weeklyOverflowCoins = 0; let weeklyMaxBonusThisMatch = false;
             let rankedNewPassTiers = 0;
             let rankedStreakBonusRp = 0;
             let isRankedMVP = false;
@@ -78007,7 +79131,7 @@ function checkHit(target, b, i){
                 const beforeTier = getRankedTierInfo(beforePoints);
                 
                 // MVP evaluation: top performance / damage / victory
-                isRankedMVP = won || (fullOnDamageEarned >= 3000) || (playerScore > 0);
+                isRankedMVP = (won && fullOnDamageEarned >= 3000) || (!won && fullOnDamageEarned >= 6000);
                 
                 if (won) {
                     playerData.ranked.winStreak = (playerData.ranked.winStreak || 0) + 1;
@@ -78028,11 +79152,24 @@ function checkHit(target, b, i){
                 // Award Seasonal Ranked Pass XP
                 const passXpMultiplier = isArenaForgeMode ? 1.5 : 1.0;
                 const basePassXp = won ? (150 + (isRankedMVP ? 50 : 0)) : (60 + (isRankedMVP ? 50 : 0));
-                rankedPassXpGained = Math.round(basePassXp * passXpMultiplier);
+                const grossPassXpGained = Math.round(basePassXp * passXpMultiplier);
+                const weeklyRoom = Math.max(0, RANKED_WEEKLY_PASS_XP_CAP - (playerData.ranked.weeklyPassXp || 0));
+                rankedPassXpGained = Math.min(grossPassXpGained, weeklyRoom);
+                const weeklyOverflowXp = grossPassXpGained - rankedPassXpGained;
+                weeklyOverflowCoins = Math.floor(weeklyOverflowXp * RANKED_WEEKLY_OVERFLOW_COINS_PER_XP);
+                rewardCoins += weeklyOverflowCoins;
                 const beforePassTier = Math.floor((playerData.ranked.passXp || 0) / RANKED_PASS_XP_PER_TIER);
                 playerData.ranked.passXp = (playerData.ranked.passXp || 0) + rankedPassXpGained;
+                playerData.ranked.weeklyPassXp = (playerData.ranked.weeklyPassXp || 0) + rankedPassXpGained;
                 const afterPassTier = Math.floor(playerData.ranked.passXp / RANKED_PASS_XP_PER_TIER);
                 rankedNewPassTiers = Math.max(0, Math.min(RANKED_PASS_TIERS, afterPassTier) - beforePassTier);
+                if ((playerData.ranked.weeklyPassXp || 0) >= RANKED_WEEKLY_PASS_XP_CAP && !playerData.ranked.weeklyMaxClaimed) {
+                    playerData.ranked.weeklyMaxed = true;
+                    playerData.ranked.weeklyMaxClaimed = true;
+                    weeklyMaxBonusThisMatch = true;
+                    rewardCoins += RANKED_WEEKLY_MAX_BONUS_COINS;
+                    if (typeof grantPinPack === 'function') grantPinPack(3);
+                }
 
                 const afterTier = getRankedTierInfo(afterPoints);
                 rankedDivisionSummary = `${beforeTier.label} (${beforePoints} RP) → ${afterTier.label} (${afterPoints} RP)`;
@@ -78041,6 +79178,12 @@ function checkHit(target, b, i){
                         rankedPromotionCoins += 150;
                         rankedPromotionSouls += 10;
                         if ((idx + 1) % 4 === 0) rankedPromotionGems += 2;
+                    }
+                    const beforePrestige = getRankedPrestige(beforePoints);
+                    const afterPrestige = getRankedPrestige(afterPoints);
+                    for (let p = beforePrestige + 1; p <= afterPrestige; p++) {
+                        rankedPromotionCoins += 250;
+                        rankedPromotionSouls += 25;
                     }
                     rewardCoins += rankedPromotionCoins;
                 }
@@ -78105,6 +79248,8 @@ function checkHit(target, b, i){
             }
             saveProgress();
 
+            removePinButton(); // match over: pin HUD button leaves with the match
+            document.getElementById('matchIntroCards')?.remove();
             const overlay = document.createElement('div');
             overlay.className = `match-results-overlay ${won ? 'is-victory' : 'is-defeat'}`;
 
@@ -78186,7 +79331,7 @@ function checkHit(target, b, i){
                 rewardsBox.appendChild(rankedDiv);
                 
                 const passXpDiv = document.createElement('div');
-                passXpDiv.textContent = `🎖️ +${rankedPassXpGained} Ranked Pass XP${isArenaForgeMode ? ' (1.5x Forge)' : ''}${rankedNewPassTiers > 0 ? ` • 🎉 ${rankedNewPassTiers} Pass Tier(s) Unlocked!` : ''}`;
+                passXpDiv.textContent = `🎖️ +${rankedPassXpGained} Ranked Pass XP${isArenaForgeMode ? ' (1.5x Forge)' : ''}${rankedNewPassTiers > 0 ? ` • 🎉 ${rankedNewPassTiers} Pass Tier(s) Unlocked!` : ''}${weeklyOverflowCoins > 0 ? ` • Weekly cap reached: +${weeklyOverflowCoins} Coins instead of XP` : ''}${weeklyMaxBonusThisMatch ? ` • 🏆 WEEKLY MAXED! +300 Coins + Pin Pack!` : ''}`;
                 passXpDiv.style.fontSize = '18px';
                 passXpDiv.style.fontWeight = 'bold';
                 passXpDiv.style.color = '#70e000';
@@ -78901,6 +80046,7 @@ function checkHit(target, b, i){
       const names = {coins:'Coins',gems:'Gems',souls:'Souls',tapper:'Tapper',superTapper:'Super Tapper',hyperTapper:'Surge Tapper',towerDrop:'Tower Drop',spookyBox:'Spooky Box',present:'Present',corePieces:'Core Piece'};
       if (names[reward.type]) return `${(reward.amount || 1).toLocaleString()} ${names[reward.type]}${reward.amount > 1 && !['coins','gems','souls'].includes(reward.type) ? 's' : ''}`;
       if (reward.type === 'skin') return skinsDatabase[reward.id]?.name || 'Exclusive Skin';
+      if (reward.type === 'pinPack') return `Pin Pack ×${reward.amount || 3}${reward.bonusGems ? ` + ${reward.bonusGems} Gems` : ''}`;
       const pretty = String(reward.id || reward.group || '').replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());
       if (reward.type === 'packetSignal') return `${reward.amount} ${pretty} Signals`;
       return pretty || 'Profile Cosmetic';
