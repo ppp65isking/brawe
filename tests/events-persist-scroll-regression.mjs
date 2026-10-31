@@ -112,11 +112,12 @@ assert.equal(restoreTab('events'), 'events', 'saved events tab must restore');
 assert.equal(restoreTab('home'), 'home', 'saved home tab must restore');
 assert.equal(restoreTab(null), 'home', 'missing saved tab must default to home');
 
-// No event content, order, or availability was touched: the catalog builder
-// and its filters are unchanged.
-assert.match(game, /createSection\('ALL EVENTS'/, 'ALL EVENTS section must still exist');
-assert.match(game, /const availableIds = new Set\(\['solo', 'duo', 'trio', \.\.\.activeEventIds, \.\.\.allEventIds\]\);/,
-  'availableIds computation must be unchanged');
+// Events redesign (§B): ALL EVENTS is replaced by POPULAR EVENTS (always
+// available) + ROTATING EVENTS (daily picks); the validity set follows.
+assert.match(game, /createSection\('POPULAR EVENTS'/, 'POPULAR EVENTS section must exist');
+assert.match(game, /createSection\('ROTATING EVENTS'/, 'ROTATING EVENTS section must exist');
+assert.match(game, /const availableIds = new Set\(\['solo', 'duo', 'trio', \.\.\.HOME_POPULAR_MODE_IDS, \.\.\.dailyEventIds\]\);/,
+  'availableIds computation must be popular + daily ids');
 
 // ---------- FIX 2: desktop scroll ----------
 // The <=850px range flips the panel to height:auto page flow; without a

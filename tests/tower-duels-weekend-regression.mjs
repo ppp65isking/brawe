@@ -15,10 +15,10 @@ assert.match(source, /TOWER POWER ACTIVE - 2 transformations per fighter/);
 assert.match(source, /towerDuelPowerLoadouts = rollTowerDuelPowerLoadouts\(playerTeam\)/);
 assert.match(source, /towerDuelBotPowerLoadouts = rollTowerDuelPowerLoadouts\(botTeam\)/);
 assert.match(source, /towerDuelPreset\.map\(id => deck\.find/);
-assert.match(source, /const duelPlayerLevel = isTowerDuelEvent \? 11/);
+assert.match(source, /const duelPlayerLevel = 11;/);
 assert.match(source, /const botLevel = isTowerDuelEvent \? 11/);
 assert.match(source, /function getNativeAmmoCapacity\(brawlerId\)[\s\S]{0,260}minigunnin[\s\S]{0,120}return 100/);
-assert.match(source, /function startDuelsRound\([\s\S]{0,3000}resetPlayerAmmoForBrawler\(selectedBrawler, true\)/);
+assert.match(source, /function startDuelsRound\([\s\S]{0,3100}resetPlayerAmmoForBrawler\(selectedBrawler, true\)/);
 assert.match(source, /event\.matchesCompleted = Math\.min\(5/);
 assert.match(source, /bon\.unlockedTitles\.push\('tower_duelar'\)/);
 

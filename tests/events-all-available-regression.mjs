@@ -12,21 +12,24 @@ assert.match(source, /LIVE EARLY/, 'the Capture the Turkey card must announce th
 // ...while Christmas Showdown keeps its season gate.
 assert.match(source, /showdownMode === 'christmas_showdown' && !isXplodemisSeasonActive\(\)/, 'Christmas Showdown must stay season-gated');
 
-// The Events tab lists the full catalog in an ALL EVENTS section, built from
-// HOME_MODE_CARDS with the same retirement/system filters the game already uses.
-assert.match(source, /createSection\('ALL EVENTS'/, 'an ALL EVENTS section must be created');
-assert.match(source, /HOME_MODE_CARDS\.map\(\(entry\) => entry\[0\]\)/, 'ALL EVENTS must be built from the full mode catalog');
-assert.match(source, /id !== 'brick_vault' \|\| TOWER_POWER_SYSTEM_ENABLED/, 'system-disabled modes must stay unlisted');
-assert.match(source, /id !== 'tower_duels_weekend' \|\| TOWER_EVENT_MODES_ENABLED/, 'system-disabled modes must stay unlisted');
+// Events redesign: POPULAR EVENTS always available, the rest rotate daily.
+assert.match(source, /createSection\('POPULAR EVENTS'/, 'a POPULAR EVENTS section must be created');
+assert.match(source, /HOME_POPULAR_MODE_IDS\.forEach/, 'POPULAR EVENTS must be built from HOME_POPULAR_MODE_IDS');
+assert.match(source, /createSection\('ROTATING EVENTS'/, 'a ROTATING EVENTS section must be created');
+assert.match(source, /const dailyEventIds = getHomeDailyRotationIds\(\);/, 'rotating section must be built from the daily rotation');
+assert.doesNotMatch(source, /createSection\('ALL EVENTS'/, 'the ALL EVENTS section must be gone');
 // Selecting any listed event must survive the selector's validity reset.
-assert.match(source, /const availableIds = new Set\(\['solo', 'duo', 'trio', \.\.\.activeEventIds, \.\.\.allEventIds\]\);/, 'availableIds must include the ALL EVENTS list');
+assert.match(source, /const availableIds = new Set\(\['solo', 'duo', 'trio', \.\.\.HOME_POPULAR_MODE_IDS, \.\.\.dailyEventIds\]\);/, 'availableIds must be popular + daily ids');
+assert.match(source, /id !== 'brick_vault' \|\| TOWER_POWER_SYSTEM_ENABLED/, 'daily pool must keep system filters');
+assert.match(source, /id !== 'prop_hunt' \|\| PROP_HUNT_ENABLED/, 'daily pool must keep prop-hunt filter');
+assert.match(source, /id !== 'tombstone_boss' \|\| TOMBSTONE_BOSS_ENABLED/, 'daily pool must keep tombstone filter');
 
 // The heading no longer advertises only the rotation.
-assert.match(html, /ALL EVENTS - ALWAYS AVAILABLE/, 'events heading must reflect full availability');
+assert.match(html, /POPULAR EVENTS - ALWAYS AVAILABLE/, 'events heading must reflect popular availability');
 assert.doesNotMatch(html, /7 LIVE EVENTS - ROTATING ALL DAY/, 'the rotation-only heading must be gone');
 
 // The events pane must actually scroll: bounded flex column + scrollable list.
 assert.match(css, /#homeEventsView\.is-active\{display:flex!important;flex-direction:column\}/, 'events view must be a flex column when active');
 assert.match(css, /#homeModesSection\{flex:1 1 auto;min-height:0;overflow-y:auto!important/, 'the mode list must be the scroll container');
 
-console.log('Events all-available + scroll fix regression checks passed.');
+console.log('Events popular + daily rotation regression checks passed.');

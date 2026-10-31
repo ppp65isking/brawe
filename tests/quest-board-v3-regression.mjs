@@ -18,7 +18,7 @@ assert.doesNotMatch(game,/makeTab\('journeys'/,'The New Journeys tab is retired 
 assert.doesNotMatch(game,/makeTab\('limited'/,'Charged Packs are retired from the active Quest Board');
 assert.match(game,/makeTab\('gold', '🪙 Gold Event'\)/,'Gold Event has a dedicated Quest HQ tab');
 assert.match(game,/function grantContractXP\(amount\)[\s\S]{0,500}board\.questLevel=after/,'claiming Quest XP now advances Contract Level');
-assert.match(game,/if \(overlay\.isConnected\) overlay\.remove\(\);[\s\S]{0,120}openQuestBoard\(tab\);/,'claiming a Contract reward redraws the Quest HQ shell so the XP bar updates immediately');
+assert.match(game,/closeBoard\(\);[\s\S]{0,120}openQuestBoard\(activeQuestTab\);/,'claiming a Contract reward redraws the Quest HQ shell so the XP bar updates immediately');
 assert.doesNotMatch(game,/SNAPPER_JOURNEY_QUESTS/,'Snapper Journey definitions are fully retired while old save fields remain harmless');
 assert.match(game,/specialAbilityQuestEvent: playerData\.specialAbilityQuestEvent/,'The seven-day Unleash Potential deadline persists in save data');
 

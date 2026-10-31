@@ -9,7 +9,8 @@ for (const threshold of [100,250,500,750,1000,1500,2000,2500,3000,4000,5000,6000
 }
 assert.match(game, /for\(let threshold=30000;threshold<=max;threshold\+=5000\)/, 'Veteran milestones repeat every 5,000 Bricks');
 assert.match(game, /openBrickBonV2\('road'\)/, 'visible Brick Bon shortcut opens Reward Road');
-assert.match(game, /openBrickBonV2\('career'\)/, 'visible Profile shortcut opens Career');
+assert.match(game, /profileBtn\.addEventListener\('click', \(\) => openPlayerProfile\(\)\);/, 'visible Profile shortcut opens the new player profile screen');
+assert.match(game, /button data-tab="career">CAREER/, 'Brick Bon still offers the Career tab');
 assert.match(game, /profile:\s*\{ playerName:/, 'new saves include Profile defaults');
 assert.match(game, /brickBonV2:\s*\{ claimedRoad:/, 'new saves include Brick Bon 2.0 defaults');
 assert.match(game, /profile: playerData\.profile/, 'Profile is persisted');

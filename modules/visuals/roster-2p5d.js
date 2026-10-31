@@ -32,7 +32,14 @@
     ramage:['horn','#ac4655','#ffd285'], upgradart:['robot','#639fcc','#ffffa2'], cinderion:['furnace','#cf663a','#ffcd70'],
     cursed:['ghost','#9a68ba','#e0b1fc'], king:['crown','#566db3','#ffd465'], anti_royal:['pirate','#46948c','#f6d383'],
     sir_cheeseburger:['helmet','#b38a5a','#ffda72'], weefee:['robot','#458f95','#74ffca'], blinkeye:['visor','#ff9800','#ffe082'], dr0ne:['robot','#00e5ff','#80d8ff'], unhitabble:['visor','#00f5d4','#d25bff'],
-    carmela_fudge:['confection','#e67e22','#795548']
+    carmela_fudge:['confection','#e67e22','#795548'],
+    looma:['hood','#ff69cd','#ffd6ec'],
+    feathers:['horn','#7fe7ff','#ffffff'],
+    spikey:['horn','#a6e34d','#ffe45e'],
+    electrostien:['robot','#00f5d4','#ffe45e'],
+    mallow:['round','#ffdfb0','#ff8fb0'],
+    nightshade:['hood','#9b5cff','#b6ff5e'],
+    aegis:['helmet','#f0b429','#fff3b0']
   };
   const skins = {
     'fightn-spice':['firekeeper','#b63753','#ffbd79'],
@@ -91,7 +98,14 @@
     sir_cheeseburger:'burger_helm|cheese_lance|burger_crest|wide', weefee:'wifi_antennae|data_caster|signal_bars|square',
     blinkeye:'giant_eye|eye_bolt|blink_reticle|float', dr0ne:'drone_rotors|drone_blaster|drone_eye|float',
     unhitabble:'dodge_eye|phase_blades|dodge_cross|lean',
-    carmela_fudge:'baker_hat|caramel_hands|candy_swirl|wide'
+    carmela_fudge:'baker_hat|caramel_hands|candy_swirl|wide',
+    looma:'needle_hood|thread_needles|spool_mark|robe',
+    feathers:'storm_plume|gale_feathers|wind_swirl|float',
+    spikey:'spike_crown|thorn_balls|spike_mark|round',
+    electrostien:'volt_helm|volt_knuckle|bolt_core|wide',
+    mallow:'puff_cap|marshmallow_fan|mallow_swirl|round',
+    nightshade:'night_veil|viper_daggers|venom_mark|robe',
+    aegis:'bulwark_helm|bulwark_shield|bubble_mark|wide'
   });
   function hash(text){let value=2166136261;for(const ch of String(text)){value^=ch.charCodeAt(0);value=Math.imul(value,16777619);}return value>>>0;}
   function model(id, skin) { return skins[skin] || looks[id]; }

@@ -1,0 +1,85 @@
+/* pins.css — Emote Pins UI (Worker 3, master update).
+   Covers ONLY: the pins hub (grid / equipped / locked states), the
+   in-match pin picker popup, and the standalone pin HUD button.
+   Match-start profile cards live in styles.css (see spec §2.5) and are
+   intentionally NOT styled here. No existing stylesheet is modified. */
+
+/* ---------- In-match HUD button (standalone, body-appended) ---------- */
+.pin-hud-btn{
+  position:fixed;right:16px;bottom:96px;z-index:65;
+  width:56px;height:56px;border-radius:50%;
+  border:2px solid rgba(255,212,79,.65);
+  background:linear-gradient(160deg,#1a2a4f,#0a1224);
+  color:#fff;font-size:26px;line-height:1;cursor:pointer;
+  box-shadow:0 6px 20px rgba(0,0,0,.45);
+  display:grid;place-items:center;
+}
+.pin-hud-btn:active{transform:scale(.94)}
+@media (max-width:700px){
+  .pin-hud-btn{right:12px;bottom:150px;width:52px;height:52px;font-size:24px}
+}
+
+/* ---------- In-match pin picker popup ---------- */
+.pin-picker-popup{
+  position:fixed;right:16px;bottom:164px;z-index:66;
+  display:flex;flex-wrap:wrap;gap:8px;max-width:min(340px,calc(100vw - 32px));
+  padding:12px;border:2px solid rgba(140,190,255,.4);border-radius:16px;
+  background:rgba(7,15,31,.96);box-shadow:0 12px 32px rgba(0,0,0,.5);
+  font-family:'Trebuchet MS','Gill Sans',sans-serif;
+}
+.pin-picker-popup .pin-picker-empty{
+  color:#cfe3ff;font-size:13px;font-weight:700;line-height:1.4;margin:0;
+}
+.pin-picker-pin{
+  width:52px;height:52px;border-radius:12px;cursor:pointer;
+  border:2px solid rgba(140,190,255,.35);background:#12233d;
+  font-size:26px;line-height:1;color:#fff;
+}
+.pin-picker-pin:active{transform:scale(.92)}
+.pin-picker-close{
+  width:52px;height:52px;border-radius:12px;cursor:pointer;
+  border:2px solid rgba(140,190,255,.35);background:#22345c;
+  color:#dff2ff;font-size:18px;font-weight:1000;
+}
+
+/* ---------- Pins hub overlay ---------- */
+.pin-hub-overlay{
+  position:fixed;inset:0;z-index:2600;overflow:auto;
+  display:flex;align-items:flex-start;justify-content:center;
+  padding:24px 12px;background:rgba(3,8,18,.88);
+  font-family:'Trebuchet MS','Gill Sans',sans-serif;color:#fff;
+}
+.pin-hub{
+  width:min(860px,96vw);padding:20px;
+  border:2px solid rgba(255,212,79,.5);border-radius:20px;
+  background:linear-gradient(165deg,#0d1a33,#070f20);
+  box-shadow:0 16px 48px rgba(0,0,0,.5);
+}
+.pin-hub h2{margin:0 0 4px;font-size:26px;letter-spacing:.02em}
+.pin-hub__counts{margin:0 0 16px;color:#9cc3e9;font-size:13px;font-weight:800}
+.pin-hub__hint{min-height:18px;margin:0 0 10px;color:#ffd763;font-size:12px;font-weight:800}
+.pin-hub__close{
+  margin-top:16px;padding:11px 24px;border:0;border-radius:11px;
+  background:#ffd450;color:#132348;font-weight:1000;cursor:pointer;
+}
+
+/* ---------- Pin grid + tiles ---------- */
+.pin-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;
+}
+.pin-tile{
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  min-width:0;padding:12px 8px;border-radius:14px;cursor:pointer;text-align:center;
+  border:2px solid rgba(140,190,255,.3);background:rgba(18,35,61,.9);color:#fff;
+}
+.pin-tile__glyph{font-size:34px;line-height:1}
+.pin-tile__name{font-size:13px;font-weight:1000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.pin-tile__desc{font-size:11px;line-height:1.35;color:#9cc3e9}
+.pin-tile__state{font-size:9px;font-weight:1000;letter-spacing:.1em;color:#67f2bd}
+.pin-tile.is-equipped{border-color:#ffd44f;box-shadow:0 0 18px rgba(255,212,79,.35)}
+.pin-tile.is-locked{opacity:.55;cursor:default}
+.pin-tile.is-locked .pin-tile__state{color:#8aa0b9}
+@media (max-width:700px){
+  .pin-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .pin-picker-popup{right:12px;bottom:216px}
+}
