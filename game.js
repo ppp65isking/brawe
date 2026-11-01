@@ -22395,6 +22395,8 @@ let heistFeverActive = false;
     const RUNNER_FEAR_MS = 800;
     const RUNNER_TRAIL_TICK_MS = 250;
     let runnerTrailSegments = [];
+    let runnerHyperShoePickups = [];
+    const RUNNER_HYPER_SHOE_PICKUP_MS = 8000;
     function runnerStarChoice(entity) { try { return getEntityStarChoice(entity); } catch (_) { return entity ? entity.selectedStar : null; } }
     function runnerHasSP1(entity) { const c = runnerStarChoice(entity); return c === 'sp1' || c === 'slow'; }
     function runnerHasSP2(entity) { const c = runnerStarChoice(entity); return c === 'sp2' || c === 'long'; }
@@ -22433,6 +22435,7 @@ let heistFeverActive = false;
         if (isEntityCcImmune(target, now)) return;
         target.runnerFearUntil = Math.max(target.runnerFearUntil || 0, now + RUNNER_FEAR_MS);
         if (owner) { target.runnerFearFromX = owner.x; target.runnerFearFromY = owner.y; }
+        spawnFloatingText(target.x, target.y - 30, 'FEARED!', '#c084fc');
     }
     function grantRunnerSuperShoe(ally, isHyper) {
         const now = performance.now();
@@ -22492,6 +22495,15 @@ let heistFeverActive = false;
                 if (e.id === player.id) { superCharge = clamp(superCharge + RUNNER_SP1_CHARGE_PER_SEC * dt, 0, 100); updateSuperButton(); }
                 else { e.superCharge = clamp((e.superCharge || 0) + RUNNER_SP1_CHARGE_PER_SEC * dt, 0, 100); }
             }
+            if (now < (e.runnerOverchargeUntil || 0) || isEntityHyperchargedNow(e, now)) {
+                e.runnerMoveTrailTimer = (e.runnerMoveTrailTimer || 0) + dt;
+                if (e.runnerMoveTrailTimer >= 0.15) {
+                    e.runnerMoveTrailTimer = 0;
+                    spawnRunnerTrailSegment(e, e.x, e.y);
+                }
+            } else {
+                e.runnerMoveTrailTimer = 0;
+            }
         }
         for (const seg of runnerTrailSegments) {
             const owner = (seg.ownerId === player.id) ? player : bots.find(b => b.id === seg.ownerId);
@@ -22509,20 +22521,70 @@ let heistFeverActive = false;
                 }
             }
         }
+        for (let i = runnerHyperShoePickups.length - 1; i >= 0; i--) {
+            const pk = runnerHyperShoePickups[i];
+            if (now >= pk.until) { runnerHyperShoePickups.splice(i, 1); continue; }
+            const pkOwner = (pk.ownerId === player.id) ? player : bots.find(b => b.id === pk.ownerId);
+            if (!pkOwner || pkOwner.hp <= 0) continue;
+            if (Math.hypot(pkOwner.x - pk.x, pkOwner.y - pk.y) <= (pkOwner.radius || 14) + 24) {
+                pkOwner.runnerReloadBuffUntil = performance.now() + RUNNER_HYPER_RELOAD_MS;
+                spawnFloatingText(pkOwner.x, pkOwner.y - 30, '+20% RELOAD', '#ffd166');
+                runnerHyperShoePickups.splice(i, 1);
+            }
+        }
     }
     function renderRunnerEffects(ctx) {
         const now = performance.now();
+        const byOwner = new Map();
         for (const seg of runnerTrailSegments) {
             if (now >= seg.until) continue;
-            const fade = clamp((seg.until - now) / (seg.lifeMs || RUNNER_TRAIL_LIFE_MS), 0, 1);
+            if (!byOwner.has(seg.ownerId)) byOwner.set(seg.ownerId, []);
+            byOwner.get(seg.ownerId).push(seg);
+        }
+        for (const segs of byOwner.values()) {
+            for (let i = 0; i < segs.length; i++) {
+                const seg = segs[i];
+                const fade = clamp((seg.until - now) / (seg.lifeMs || RUNNER_TRAIL_LIFE_MS), 0, 1);
+                const burn = seg.dps > 0;
+                const next = segs[i + 1];
+                ctx.save();
+                if (next && Math.hypot(next.x - seg.x, next.y - seg.y) <= 200) {
+                    ctx.globalAlpha = 0.10 + 0.14 * fade;
+                    ctx.strokeStyle = burn ? '#ff7a3c' : '#b06bff';
+                    ctx.lineWidth = seg.radius * 2;
+                    ctx.lineCap = 'round';
+                    ctx.beginPath(); ctx.moveTo(seg.x, seg.y); ctx.lineTo(next.x, next.y); ctx.stroke();
+                    ctx.globalAlpha = 0.25 + 0.25 * fade;
+                    ctx.strokeStyle = burn ? '#ffb066' : '#d0a0ff';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath(); ctx.moveTo(seg.x, seg.y); ctx.lineTo(next.x, next.y); ctx.stroke();
+                } else {
+                    ctx.globalAlpha = 0.10 + 0.14 * fade;
+                    ctx.fillStyle = burn ? '#ff7a3c' : '#b06bff';
+                    ctx.beginPath(); ctx.arc(seg.x, seg.y, seg.radius, 0, Math.PI * 2); ctx.fill();
+                    ctx.globalAlpha = 0.25 + 0.25 * fade;
+                    ctx.strokeStyle = burn ? '#ffb066' : '#d0a0ff';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath(); ctx.arc(seg.x, seg.y, seg.radius, 0, Math.PI * 2); ctx.stroke();
+                }
+                ctx.restore();
+            }
+        }
+        for (const pk of runnerHyperShoePickups) {
+            if (now >= pk.until) continue;
+            const pulse = 1 + Math.sin(now / 180) * 0.12;
             ctx.save();
-            ctx.globalAlpha = 0.10 + 0.14 * fade;
-            ctx.fillStyle = seg.dps > 0 ? '#ff7a3c' : '#b06bff';
-            ctx.beginPath(); ctx.arc(seg.x, seg.y, seg.radius, 0, Math.PI * 2); ctx.fill();
-            ctx.globalAlpha = 0.25 + 0.25 * fade;
-            ctx.strokeStyle = seg.dps > 0 ? '#ffb066' : '#d0a0ff';
-            ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.arc(seg.x, seg.y, seg.radius, 0, Math.PI * 2); ctx.stroke();
+            ctx.globalAlpha = 0.9;
+            ctx.strokeStyle = '#ffd166'; ctx.lineWidth = 3;
+            ctx.shadowColor = '#ffd166'; ctx.shadowBlur = 16;
+            ctx.beginPath(); ctx.arc(pk.x, pk.y, 22 * pulse, 0, Math.PI * 2); ctx.stroke();
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#2b2333';
+            ctx.beginPath(); ctx.roundRect(pk.x - 21, pk.y - 7, 42, 14, 6); ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(pk.x - 21, pk.y + 4, 42, 3);
+            ctx.fillStyle = '#b06bff';
+            ctx.beginPath(); ctx.arc(pk.x + 19, pk.y, 4, 0, Math.PI * 2); ctx.fill();
             ctx.restore();
         }
     }
@@ -22533,15 +22595,15 @@ let heistFeverActive = false;
         ctx.rotate(ang);
         ctx.fillStyle = '#2b2333';
         ctx.beginPath();
-        ctx.roundRect(-16, -7, 32, 14, 6);
+        ctx.roundRect(-21, -7, 42, 14, 6);
         ctx.fill();
         ctx.fillStyle = '#ffffff';
-        ctx.fillRect(-16, 4, 32, 3);
+        ctx.fillRect(-21, 4, 42, 3);
         ctx.fillStyle = '#b06bff';
-        ctx.beginPath(); ctx.arc(14, 0, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(19, 0, 4, 0, Math.PI * 2); ctx.fill();
         if (b.runnerFear) {
             ctx.strokeStyle = '#c084fc'; ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.arc(0, 0, 20, 0, Math.PI * 2); ctx.stroke();
+            ctx.beginPath(); ctx.arc(0, 0, 22, 0, Math.PI * 2); ctx.stroke();
         }
         ctx.restore();
     }
@@ -57224,6 +57286,7 @@ function checkHit(target, b, i){
                   if (Math.hypot(ally.x - b.x, ally.y - b.y) <= (ally.radius || 14) + 20) {
                       granted[ally.id] = true;
                       grantShield(ally, RUNNER_G2_SHIELD, Math.max(5000, ally.shieldMax || 0));
+                      spawnFloatingText(ally.x, ally.y - 30, 'SHIELDED +800', '#5df2c2');
                   }
               }
           }
@@ -57886,7 +57949,8 @@ function checkHit(target, b, i){
                     const hyperOwner = getEntityById(b.ownerId);
                     if (hyperOwner) {
                         spawnRunnerTrailSegment(hyperOwner, b.x, b.y, { lifeMs: RUNNER_HYPER_PATCH_MS });
-                        hyperOwner.runnerReloadBuffUntil = performance.now() + RUNNER_HYPER_RELOAD_MS;
+                        runnerHyperShoePickups.push({ x: b.x, y: b.y, ownerId: hyperOwner.id, until: performance.now() + RUNNER_HYPER_SHOE_PICKUP_MS, radius: 22 });
+                        spawnFloatingText(b.x, b.y - 30, 'SHOE DROPPED!', '#ffd166');
                     }
                 }
                 bullets.splice(i, 1);
@@ -66435,6 +66499,19 @@ function checkHit(target, b, i){
       ctx.fillText(getSmoothDisplayedHp(t), t.x, hpY + 5.5);
       ctx.textAlign = 'left';
     drawEntityStatusChips(t, t.x, hpY - (t.shield > 0 ? 42 : 25), false);
+      if ((t.runnerFearUntil || 0) > performance.now()) {
+          ctx.save();
+          ctx.strokeStyle = '#c084fc'; ctx.lineWidth = 3;
+          ctx.shadowColor = '#c084fc'; ctx.shadowBlur = 12;
+          ctx.beginPath(); ctx.arc(t.x, t.y, (t.radius || 20) + 12, 0, Math.PI * 2); ctx.stroke();
+          ctx.shadowBlur = 0;
+          ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.strokeStyle = 'rgba(0,0,0,0.9)'; ctx.lineWidth = 3;
+          ctx.strokeText('FEARED', t.x, t.y - (t.radius || 20) - 24);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillText('FEARED', t.x, t.y - (t.radius || 20) - 24);
+          ctx.restore();
+      }
       if ((t.chocolateCoverage || 0) > 0 && !t.inChocolateShell) {
           const chocoPct = clamp((t.chocolateCoverage || 0) / 100, 0, 1);
           const chocoY = hpY - (t.shield > 0 ? 52 : 35);
@@ -81559,6 +81636,7 @@ function buildWeeFeeBossMap() {
     bullets.length = 0;
     aegisBubbles.length = 0;
     runnerTrailSegments.length = 0;
+    runnerHyperShoePickups.length = 0;
     powerups.length = 0;
     cubes.length = 0;
     explosions.length = 0;
