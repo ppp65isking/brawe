@@ -47479,6 +47479,7 @@ isBrawlerLabMode = false;
   let trainingCaveDeckCollapsed = false;
 
   let trainingGadgetNoCooldown = true;
+  let trainingInfiniteCharges = true;
   let trainingGadgetPanelKey = '';
   const trainingSpeedTest = { active:false, startAt:0, lastAt:0, lastX:0, lastY:0, distance:0, currentSpeed:0, peakSpeed:0, lastResult:0, baseline:0 };
   function formatTrainingSpeed(value) { return `${Math.max(0, Number(value)||0).toFixed(1)} u/s`; }
@@ -47582,6 +47583,7 @@ isBrawlerLabMode = false;
         <label>Fighter <select id="tgFighter" aria-label="Gadget test fighter" style="width:100%;margin:6px 0;padding:8px;background:#061426;color:white"></select></label>
         <div style="display:flex;gap:6px;flex-wrap:wrap"><button data-test-gadget="g1">G1</button><button data-test-gadget="g2">G2</button><button id="tgUse">USE GADGET</button><button id="tgWound">SELF HP 25%</button></div>
         <label style="display:block;margin:8px 0"><input id="tgNoCd" type="checkbox"> No cooldown (Training only)</label>
+        <label style="display:block;margin:8px 0"><input id="tgInfiniteCharges" type="checkbox"> Infinite Super + Hypercharge (Training only)</label>
         <details open style="margin:8px 0;padding:8px;border:1px solid #365a78;border-radius:8px;background:#091a2d"><summary style="cursor:pointer;font-weight:900;color:#69bfff">SPEED TEST</summary>
           <p style="margin:5px 0;color:#b9cadc">Press START, move with the same route/input, then STOP. Save one run as baseline and compare the buffed run.</p>
           <div style="display:flex;gap:6px;flex-wrap:wrap"><button id="tgSpeedStart">▶ START</button><button id="tgSpeedStop">■ STOP</button><button id="tgSpeedBaseline">📌 STOP + SAVE BASELINE</button><button id="tgSpeedReset">RESET</button></div>
@@ -47597,6 +47599,8 @@ isBrawlerLabMode = false;
       panel.querySelector('#tgFighter').onchange=e=>switchTrainingBrawler(e.target.value);
       panel.querySelector('#tgNoCd').checked=trainingGadgetNoCooldown;
       panel.querySelector('#tgNoCd').onchange=e=>{trainingGadgetNoCooldown=e.target.checked;updateGadgetButton();};
+      panel.querySelector('#tgInfiniteCharges').checked=trainingInfiniteCharges;
+      panel.querySelector('#tgInfiniteCharges').onchange=e=>{trainingInfiniteCharges=e.target.checked;};
       panel.querySelector('#tgUse').onclick=()=>{updateGadgetButton();gadgetBtn.click();};
       panel.querySelector('#tgWound').onclick=()=>{player.hp=Math.max(1,Math.round(player.maxHp*.25));};
       panel.querySelector('#tgSpeedStart').onclick=startTrainingSpeedTest;
@@ -47656,10 +47660,10 @@ isBrawlerLabMode = false;
       player.isDashing = false;
       player.isFlying = false;
       player.z = 0;
-      player.superCharge = 100;
-      player.hyperChargeCharge = 100;
-      superCharge = 100;
-      hyperChargeCharge = 100;
+      player.superCharge = trainingInfiniteCharges ? 100 : 0;
+      player.hyperChargeCharge = trainingInfiniteCharges ? 100 : 0;
+      superCharge = trainingInfiniteCharges ? 100 : 0;
+      hyperChargeCharge = trainingInfiniteCharges ? 100 : 0;
       syncAbilityInputs();
       updateGadgetInfo();
       updateGadgetButton();
@@ -48351,6 +48355,15 @@ isBrawlerLabMode = false;
           grid.appendChild(card);
       }
       panel.appendChild(grid);
+      const chargesRow = document.createElement('label');
+      chargesRow.style.cssText = 'display:flex;align-items:center;gap:8px;margin-top:14px;font-size:13px;color:#dff7ff;cursor:pointer;';
+      const chargesCheck = document.createElement('input');
+      chargesCheck.type = 'checkbox';
+      chargesCheck.checked = trainingInfiniteCharges;
+      chargesCheck.onchange = (e) => { trainingInfiniteCharges = e.target.checked; const panelCheck = document.querySelector('#tgInfiniteCharges'); if (panelCheck) panelCheck.checked = trainingInfiniteCharges; };
+      chargesRow.appendChild(chargesCheck);
+      chargesRow.appendChild(document.createTextNode('Infinite Super + Hypercharge (turn off for normal charging)'));
+      panel.appendChild(chargesRow);
       overlay.appendChild(panel);
       document.body.appendChild(overlay);
   }
@@ -48423,10 +48436,10 @@ isBrawlerLabMode = false;
       player.y = 1900;
       player.team = 'player';
       player.powerCubes = 0;
-      player.superCharge = 100;
-      player.hyperChargeCharge = 100;
-      superCharge = 100;
-      hyperChargeCharge = 100;
+      player.superCharge = trainingInfiniteCharges ? 100 : 0;
+      player.hyperChargeCharge = trainingInfiniteCharges ? 100 : 0;
+      superCharge = trainingInfiniteCharges ? 100 : 0;
+      hyperChargeCharge = trainingInfiniteCharges ? 100 : 0;
       updateSuperButton();
       updateHyperButton();
 
@@ -54516,7 +54529,7 @@ function checkHit(target, b, i){
     }
 
     if (isTraining) {
-        if (!isBrawlerLabMode) {
+        if (!isBrawlerLabMode && trainingInfiniteCharges) {
             superCharge = 100;
             if (!isHypercharged) hyperChargeCharge = 100;
         }
