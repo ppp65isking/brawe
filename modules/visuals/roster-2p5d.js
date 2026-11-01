@@ -39,7 +39,8 @@
     electrostien:['robot','#00f5d4','#ffe45e'],
     mallow:['round','#ffdfb0','#ff8fb0'],
     nightshade:['hood','#9b5cff','#b6ff5e'],
-    aegis:['helmet','#f0b429','#fff3b0']
+    aegis:['helmet','#f0b429','#fff3b0'],
+    runner:['visor','#b06bff','#ffffff']
   };
   const skins = {
     'fightn-spice':['firekeeper','#b63753','#ffbd79'],
@@ -105,7 +106,8 @@
     electrostien:'volt_helm|volt_knuckle|bolt_core|wide',
     mallow:'puff_cap|marshmallow_fan|mallow_swirl|round',
     nightshade:'night_veil|viper_daggers|venom_mark|robe',
-    aegis:'bulwark_helm|bulwark_shield|bubble_mark|wide'
+    aegis:'bulwark_helm|bulwark_shield|bubble_mark|wide',
+    runner:'sprint_cap|runner_shoe|speed_streak|lean'
   });
   function hash(text){let value=2166136261;for(const ch of String(text)){value^=ch.charCodeAt(0);value=Math.imul(value,16777619);}return value>>>0;}
   function model(id, skin) { return skins[skin] || looks[id]; }
