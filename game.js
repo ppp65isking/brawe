@@ -279,6 +279,10 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             const scale = 0.55 + (level - 1) * 0.045;
             return { hp: Math.round(7400 * scale), dmg: Math.round(900 * scale), speed: 270 };
         }
+        if (brawlerId === 'runner') {
+            const scale = 0.55 + (level - 1) * 0.045;
+            return { hp: Math.round(6600 * scale), dmg: Math.round(950 * scale), speed: 290 };
+        }
         if (brawlerId === 'looma') {
             const scale = 0.55 + (level - 1) * 0.045;
             return { hp: Math.round(6600 * scale), dmg: Math.round(1450 * scale), speed: 270 };
@@ -5008,6 +5012,7 @@ const bolznstienPendingStrikes = [];
             electrostien: 1100,
             mallow: 1500,
             nightshade: 1600,
+            runner: 1500,
             carmela_fudge: 1400,
             oil_maker: 90,
             magnatar: 1450,
@@ -5070,6 +5075,7 @@ const bolznstienPendingStrikes = [];
             electrostien: 260,
             mallow: 550,
             nightshade: 300,
+            runner: 300,
             carmela_fudge: 180,
             oil_maker: 56,
             magnatar: 200,
@@ -5160,6 +5166,7 @@ const bolznstienPendingStrikes = [];
         if (now < (entity.electrostienChainedSlowUntil || 0)) baseSlow = Math.min(baseSlow, 0.80);
         if (now < (entity.electrostienRealmSlowUntil || 0)) baseSlow = Math.min(baseSlow, 0.70);
         if (now < (entity.mallowSlowUntil || 0)) baseSlow = Math.min(baseSlow, getMallowSlowMultiplier(entity, now));
+        if (now < (entity.runnerSlowUntil || 0)) baseSlow = Math.min(baseSlow, RUNNER_TRAIL_SLOW_MULT);
         if (now < (entity.beamSlowUntil || 0)) baseSlow = Math.min(baseSlow, 0.50);
         if (now < (entity.ridaSuperArmorUntil || 0)) {
             return 1 - (1 - baseSlow) * 0.65;
@@ -5311,7 +5318,7 @@ const bolznstienPendingStrikes = [];
         'boom_arang', 'teether', 'fuel', 'xray', 'angel', 'demon', 'warrior', 'relay',
         'upiedown', 'chickpig', 'jetpack', 'snapper', 'robber', 'rocketeer',
         'carmela_fudge', 'peter_pickle', 'unstable', 'homer', 'orbo', 'predator', 'fastpass', 'freestyle', 'portalo', 'ghoul', 'jacktrade', 'darkener', 'awakenator', 'adlof', 'cluster', 'witch', 'boomer', 'blade_vane', 'daggershard', 'ice_cream', 'swimmer', 'kage', 'drainbow', 'draflygon', 'axeywaxy', 'trampaheal', 'mageny', 'ramage', 'upgradart', 'cinderion', 'cursed', 'king', 'anti_royal', 'sir_cheeseburger', 'weefee', 'blinkeye', 'bolznstien', 'magnatar', 'oil_maker', 'rager', 'badbat', 'looma',
-        'feathers', 'spikey', 'electrostien', 'mallow', 'nightshade', 'aegis'
+        'feathers', 'spikey', 'electrostien', 'mallow', 'nightshade', 'aegis', 'runner'
     ];
     const registeredBrawlerModules = window.ArenaForgeModules?.brawlers || Object.create(null);
     for (const moduleId of Object.keys(registeredBrawlerModules)) {
@@ -5418,6 +5425,7 @@ const bolznstienPendingStrikes = [];
             freestyle: 'Mythic',
             nightshade: 'Mythic',
             aegis: 'Mythic',
+            runner: 'Mythic',
 
             // Exotic (10)
             the_deleter: 'Exotic',
@@ -10062,6 +10070,17 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           g2: 'Sunder Plate (Your next Bulwark Throw deals +50% damage and shreds 600 max HP instead of 300.)',
           sp1: 'Wound Weave (Your Blockshot bubble regrows 40 HP per segment per second.)',
           sp2: 'Sundered Guard (Enemies shredded by Aegis deal 10% less damage until they respawn.)'
+      },
+      'runner': {
+          name: 'Runner', role: 'Controller', rarity: 'Mythic', color: '#b06bff',
+          desc: 'A sprinting Controller who paves the arena with speed trails and kicks shoes to the whole team.',
+          attack: 'Shoe Toss', attackDesc: 'Kicks a shoe projectile (950 damage) that leaves a speed trail behind it.',
+          super: 'Super Shoes', superDesc: 'Kicks a shoe through walls to every ally. Allies charge their supers 20% faster for 4 seconds, then Runner overcharges for 4 seconds.',
+          hyper: 'Overdrive Soles: While Hypercharged, Shoe Toss drops a shoe at the end of flight that leaves a 2-second trail patch, and reload is 20% faster for 2 seconds. Super Shoes instantly fully charges allies\' supers, boosts allies\' Core Surge charge 20% for 4 seconds, and leaves a burning trail.',
+          g1: 'Wall-Breaker Kick (Your next shoe breaks walls, deals 500 damage, and knocks back enemies within 220px.)',
+          g2: 'Team Soles (For 3 seconds, shoes passing through allies grant them an 800 shield, once per ally.)',
+          sp1: 'Home Stretch (Your super passively charges 5% per second while you stand on your own trail.)',
+          sp2: 'Dreaded Sprint (Every 6 seconds, your next main attack also inflicts FEAR for 0.8 seconds, making enemies run away from you.)'
       }
   };
 
@@ -10087,7 +10106,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
 
     // V4 standardized primary-role organization: exactly one gameplay role per brawler.
     const PRIMARY_ROLE_BY_BRAWLER = {
-        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank', rager:'Controller', looma:'Controller', feathers:'Controller', spikey:'Damage Dealer', electrostien:'Assassin', mallow:'Controller', nightshade:'Assassin',
+        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank', rager:'Controller', looma:'Controller', feathers:'Controller', spikey:'Damage Dealer', electrostien:'Assassin', mallow:'Controller', nightshade:'Assassin', runner:'Controller',
     carmela_fudge:'Damage Dealer', bolznstien:'Damage Dealer', badbat:'Damage Dealer', magnatar:'Controller', oil_maker:'Controller', sir_cheeseburger:'Tank',
         blade_vane:'Assassin', kage:'Assassin', drainbow:'Controller', bowlin_rida:'Assassin', dashaholic:'Assassin', demon:'Assassin', jetpack:'Assassin', malakor:'Assassin', predator:'Assassin', swimmer:'Assassin', teether:'Assassin',
         boom_arang:'Marksman', cheseypuff:'Marksman', crystila:'Marksman', homer:'Marksman', hunter:'Marksman', orbo:'Marksman', snapper:'Marksman', xray:'Marksman',
@@ -10203,7 +10222,8 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
         kage: '🥷',
         drainbow: '🌈',
         draflygon: '🐉',
-        aegis: '🛡️'
+        aegis: '🛡️',
+        runner: '👟'
     };
 
     function getBrawlerPortraitIcon(brawlerId) {
@@ -11246,6 +11266,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
       mallow: { g1: 12000, g2: 12000 },
       nightshade: { g1: 16000, g2: 18000 },
       aegis: { g1: 16000, g2: 14000 },
+      runner: { g1: 15000, g2: 15000 },
       carmela_fudge: { g1: 8000, g2: 8000 },
       bolznstien: { g1: 14000, g2: 15000 },
       sir_cheeseburger: { g1: 13000, g2: 14000 },
@@ -13743,6 +13764,7 @@ function isPowerPlayModifierActive(entity = player) {
         if (entity.aegisBaseMaxHp) { entity.maxHp = entity.aegisBaseMaxHp; entity.aegisBaseMaxHp = null; }
         entity.aegisShredded = false;
         entity.aegisShredSp2 = false;
+        entity.runnerOverchargeUntil = 0; entity.runnerSuperRateUntil = 0; entity.runnerHyperRateUntil = 0; entity.runnerReloadBuffUntil = 0; entity.runnerShieldWindowUntil = 0; entity.runnerShieldGranted = {}; entity.runnerWallBreakNext = false; entity.runnerFearUntil = 0; entity.runnerFearArmed = false; entity.runnerFearNextAt = 0; entity.runnerSlowUntil = 0; entity.runnerFearFromX = undefined; entity.runnerFearFromY = undefined;
         const now = performance.now();
         const fallbackX = entity.team === 'enemy' ? WORLD_W * 0.5 : WORLD_W * 0.5;
         const fallbackY = entity.team === 'enemy' ? 190 : WORLD_H - 190;
@@ -22345,6 +22367,184 @@ let heistFeverActive = false;
             ctx.restore();
         }
     }
+    // ===== Runner systems (Shoe Toss + Super Shoes) =====
+    const RUNNER_SHOE_SPEED = 900;
+    const RUNNER_SHOE_RANGE = 700;
+    const RUNNER_TRAIL_RADIUS = 40;
+    const RUNNER_TRAIL_LIFE_MS = 3000;
+    const RUNNER_TRAIL_SPEED_MULT = 1.75;
+    const RUNNER_TRAIL_SLOW_MULT = 0.75;
+    const RUNNER_OVERCHARGE_MS = 4000;
+    const RUNNER_OVERCHARGE_TRAIL_DPS = 300;
+    const RUNNER_OVERCHARGE_TRAIL_LIFE_MS = 1000;
+    const RUNNER_OVERCHARGE_SPEED_MULT = 1.50;
+    const RUNNER_SUPER_RATE_MULT = 1.20;
+    const RUNNER_SUPER_RATE_MS = 4000;
+    const RUNNER_HYPER_RATE_MULT = 1.20;
+    const RUNNER_HYPER_RATE_MS = 4000;
+    const RUNNER_HYPER_PATCH_MS = 2000;
+    const RUNNER_HYPER_RELOAD_MULT = 1.20;
+    const RUNNER_HYPER_RELOAD_MS = 2000;
+    const RUNNER_HYPER_TRAIL_DPS = 200;
+    const RUNNER_G1_DAMAGE = 500;
+    const RUNNER_G1_KNOCKBACK_RADIUS = 220;
+    const RUNNER_G2_SHIELD = 800;
+    const RUNNER_G2_WINDOW_MS = 3000;
+    const RUNNER_SP1_CHARGE_PER_SEC = 5;
+    const RUNNER_SP2_INTERVAL_MS = 6000;
+    const RUNNER_FEAR_MS = 800;
+    const RUNNER_TRAIL_TICK_MS = 250;
+    let runnerTrailSegments = [];
+    function runnerStarChoice(entity) { try { return getEntityStarChoice(entity); } catch (_) { return entity ? entity.selectedStar : null; } }
+    function runnerHasSP1(entity) { const c = runnerStarChoice(entity); return c === 'sp1' || c === 'slow'; }
+    function runnerHasSP2(entity) { const c = runnerStarChoice(entity); return c === 'sp2' || c === 'long'; }
+    function isRunnerEntity(entity) { return !!entity && entity.brawler === 'runner'; }
+    function runnerTrailPatchAt(entity) {
+        if (!entity || entity.hp <= 0) return null;
+        const now = performance.now();
+        for (let i = runnerTrailSegments.length - 1; i >= 0; i--) {
+            const seg = runnerTrailSegments[i];
+            if (seg.ownerId !== entity.id || now >= seg.until) continue;
+            if (Math.hypot(entity.x - seg.x, entity.y - seg.y) <= seg.radius + (entity.radius || 14)) return seg;
+        }
+        return null;
+    }
+    function getRunnerTrailSpeedMult(entity, now) {
+        if (!entity || entity.hp <= 0) return 1.0;
+        const onTrail = !!runnerTrailPatchAt(entity);
+        const overcharged = now < (entity.runnerOverchargeUntil || 0);
+        if (onTrail && overcharged) return Math.max(RUNNER_TRAIL_SPEED_MULT, RUNNER_OVERCHARGE_SPEED_MULT);
+        if (onTrail) return RUNNER_TRAIL_SPEED_MULT;
+        if (overcharged) return RUNNER_OVERCHARGE_SPEED_MULT;
+        return 1.0;
+    }
+    function spawnRunnerTrailSegment(owner, x, y, opts) {
+        if (!owner || owner.hp <= 0) return;
+        const now = performance.now();
+        const overcharged = now < (owner.runnerOverchargeUntil || 0);
+        const hyper = isEntityHyperchargedNow(owner, now);
+        const lifeMs = (opts && opts.lifeMs) ? opts.lifeMs : (overcharged ? RUNNER_OVERCHARGE_TRAIL_LIFE_MS : RUNNER_TRAIL_LIFE_MS);
+        const dps = overcharged ? RUNNER_OVERCHARGE_TRAIL_DPS : (hyper ? RUNNER_HYPER_TRAIL_DPS : 0);
+        runnerTrailSegments.push({ x, y, ownerId: owner.id, until: now + lifeMs, lifeMs, radius: RUNNER_TRAIL_RADIUS, dps, hitAt: {} });
+    }
+    function applyRunnerFear(target, owner) {
+        if (!target || target.hp <= 0) return;
+        const now = performance.now();
+        if (isEntityCcImmune(target, now)) return;
+        target.runnerFearUntil = Math.max(target.runnerFearUntil || 0, now + RUNNER_FEAR_MS);
+        if (owner) { target.runnerFearFromX = owner.x; target.runnerFearFromY = owner.y; }
+    }
+    function grantRunnerSuperShoe(ally, isHyper) {
+        const now = performance.now();
+        ally.runnerSuperRateUntil = Math.max(ally.runnerSuperRateUntil || 0, now + RUNNER_SUPER_RATE_MS);
+        if (isHyper) {
+            if (ally.id === player.id) { superCharge = 100; updateSuperButton(); }
+            else { ally.superCharge = 100; }
+            ally.runnerHyperRateUntil = Math.max(ally.runnerHyperRateUntil || 0, now + RUNNER_HYPER_RATE_MS);
+        }
+    }
+    function castRunnerSuper(entity, isHyper, targetX, targetY) {
+        if (!entity || entity.hp <= 0) return;
+        const now = performance.now();
+        const allies = [player, ...bots].filter(e => e && e.hp > 0 && e.id !== entity.id && areAlliedEntities(entity, e));
+        for (const ally of allies) {
+            const ang = Math.atan2(ally.y - entity.y, ally.x - entity.x);
+            bullets.push({ ownerBrawler: 'runner', isRunnerSuperShoe: true, runnerSuperTargetId: ally.id, runnerSuperHyper: !!isHyper,
+                x: entity.x + Math.cos(ang) * (entity.radius + 7), y: entity.y + Math.sin(ang) * (entity.radius + 7),
+                vx: Math.cos(ang) * 1100, vy: Math.sin(ang) * 1100, life: 0, maxLife: 5,
+                damage: 0, pierce: true, pierceWalls: true, ownerId: entity.id, hitIds: {}, hitboxMod: 1.0, hyperVisual: !!isHyper });
+        }
+        entity.runnerOverchargeUntil = now + RUNNER_OVERCHARGE_MS;
+    }
+    function executeRunnerG1(entity) {
+        if (!entity) return;
+        entity.runnerWallBreakNext = true;
+    }
+    function executeRunnerG2(entity) {
+        if (!entity) return;
+        entity.runnerShieldWindowUntil = performance.now() + RUNNER_G2_WINDOW_MS;
+        entity.runnerShieldGranted = {};
+    }
+    function applyRunnerWallBreakAoE(b, impactX, impactY, directTarget) {
+        const owner = (b.ownerId === player.id) ? player : bots.find(bt => bt.id === b.ownerId);
+        if (!owner) return;
+        for (const target of [player, ...bots]) {
+            if (!target || target.hp <= 0 || target.id === owner.id) continue;
+            if (areAlliedEntities(owner, target)) continue;
+            if (Math.hypot(target.x - impactX, target.y - impactY) > RUNNER_G1_KNOCKBACK_RADIUS + (target.radius || 14)) continue;
+            applyKnockback(target, impactX, impactY, RUNNER_G1_KNOCKBACK_RADIUS, performance.now());
+            if (directTarget && target.id === directTarget.id) continue;
+            checkHit(target, { ownerBrawler: 'runner', ownerId: owner.id, damage: RUNNER_G1_DAMAGE, pierce: true, super: true, hitIds: {}, runnerWallBreakAoE: true }, -1);
+        }
+    }
+    function updateRunnerSystems(dt) {
+        const now = performance.now();
+        for (let i = runnerTrailSegments.length - 1; i >= 0; i--) {
+            if (now >= runnerTrailSegments[i].until) runnerTrailSegments.splice(i, 1);
+        }
+        for (const e of [player, ...bots]) {
+            if (!e || e.hp <= 0 || e.brawler !== 'runner') continue;
+            if (runnerHasSP2(e) && now >= (e.runnerFearNextAt || 0)) {
+                e.runnerFearArmed = true;
+                e.runnerFearNextAt = now + RUNNER_SP2_INTERVAL_MS;
+            }
+            if (runnerHasSP1(e) && runnerTrailPatchAt(e)) {
+                if (e.id === player.id) { superCharge = clamp(superCharge + RUNNER_SP1_CHARGE_PER_SEC * dt, 0, 100); updateSuperButton(); }
+                else { e.superCharge = clamp((e.superCharge || 0) + RUNNER_SP1_CHARGE_PER_SEC * dt, 0, 100); }
+            }
+        }
+        for (const seg of runnerTrailSegments) {
+            const owner = (seg.ownerId === player.id) ? player : bots.find(b => b.id === seg.ownerId);
+            if (!owner || owner.hp <= 0) continue;
+            for (const target of [player, ...bots]) {
+                if (!target || target.hp <= 0) continue;
+                if (areAlliedEntities(owner, target)) continue;
+                if (Math.hypot(target.x - seg.x, target.y - seg.y) > seg.radius + (target.radius || 14)) continue;
+                target.runnerSlowUntil = Math.max(target.runnerSlowUntil || 0, now + 250);
+                if (seg.dps > 0) {
+                    if (now - (seg.hitAt[target.id] || 0) >= RUNNER_TRAIL_TICK_MS) {
+                        seg.hitAt[target.id] = now;
+                        checkHit(target, { ownerBrawler: 'runner', ownerId: seg.ownerId, damage: Math.round(seg.dps * RUNNER_TRAIL_TICK_MS / 1000), pierce: true, super: true, hitIds: {}, runnerTrailBurn: true }, -1);
+                    }
+                }
+            }
+        }
+    }
+    function renderRunnerEffects(ctx) {
+        const now = performance.now();
+        for (const seg of runnerTrailSegments) {
+            if (now >= seg.until) continue;
+            const fade = clamp((seg.until - now) / (seg.lifeMs || RUNNER_TRAIL_LIFE_MS), 0, 1);
+            ctx.save();
+            ctx.globalAlpha = 0.10 + 0.14 * fade;
+            ctx.fillStyle = seg.dps > 0 ? '#ff7a3c' : '#b06bff';
+            ctx.beginPath(); ctx.arc(seg.x, seg.y, seg.radius, 0, Math.PI * 2); ctx.fill();
+            ctx.globalAlpha = 0.25 + 0.25 * fade;
+            ctx.strokeStyle = seg.dps > 0 ? '#ffb066' : '#d0a0ff';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(seg.x, seg.y, seg.radius, 0, Math.PI * 2); ctx.stroke();
+            ctx.restore();
+        }
+    }
+    function drawRunnerShoe(ctx, b) {
+        const ang = Math.atan2(b.vy || 0, b.vx || 1);
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        ctx.rotate(ang);
+        ctx.fillStyle = '#2b2333';
+        ctx.beginPath();
+        ctx.roundRect(-16, -7, 32, 14, 6);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(-16, 4, 32, 3);
+        ctx.fillStyle = '#b06bff';
+        ctx.beginPath(); ctx.arc(14, 0, 4, 0, Math.PI * 2); ctx.fill();
+        if (b.runnerFear) {
+            ctx.strokeStyle = '#c084fc'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(0, 0, 20, 0, Math.PI * 2); ctx.stroke();
+        }
+        ctx.restore();
+    }
     function drawNightshadeDagger(ctx, b) {
         if (!NIGHTSHADE_VISUALS_ENABLED) return;
         const a = Math.atan2(b.vy, b.vx);
@@ -23246,6 +23446,7 @@ let heistFeverActive = false;
         if (entity.aegisBaseMaxHp) { entity.maxHp = entity.aegisBaseMaxHp; entity.aegisBaseMaxHp = null; }
         entity.aegisShredded = false;
         entity.aegisShredSp2 = false;
+        entity.runnerOverchargeUntil = 0; entity.runnerSuperRateUntil = 0; entity.runnerHyperRateUntil = 0; entity.runnerReloadBuffUntil = 0; entity.runnerShieldWindowUntil = 0; entity.runnerShieldGranted = {}; entity.runnerWallBreakNext = false; entity.runnerFearUntil = 0; entity.runnerFearArmed = false; entity.runnerFearNextAt = 0; entity.runnerSlowUntil = 0; entity.runnerFearFromX = undefined; entity.runnerFearFromY = undefined;
         entity.hp = entity.maxHp;
         entity.x = spawn.x;
         entity.y = spawn.y;
@@ -28125,6 +28326,7 @@ let heistFeverActive = false;
         else if (brawler === 'angel') base = 1700;
         else if (brawler === 'demon') base = 1800;
         if (brawler === 'warrior' && performance.now() < (player.warriorStandUntil || 0)) base /= 2.50;
+        if (brawler === 'runner' && performance.now() < (player.runnerReloadBuffUntil || 0)) base /= RUNNER_HYPER_RELOAD_MULT;
         if (brawler === 'unopcoloco' && performance.now() < (player.unopRageUntil || 0)) base /= 1.7;
         if (brawler === 'sir_cheeseburger' && performance.now() < (player.sirCheddarReloadBuffUntil || 0)) base /= 1.15;
         if (brawler === 'upiedown' && performance.now() < (player.upiedownReloadBuffUntil || 0)) base *= 0.85;
@@ -28157,7 +28359,7 @@ let heistFeverActive = false;
       beam:8, fuser:24, heater_miser:20, minigunnin:72, money_and_tax:24, outlit:30, steamer:8,
       bouncin_balls:6, chickpig:12, classy:6, copyphase:6, goonbob:6, hoop:5, hyperorigin:5, robber:42,
       portalo:7, ghoul:6, jacktrade:18, darkener:6, awakenator:8, trampaheal:6, axeywaxy:6, mageny:6, draflygon:6, ramage:6, upgradart:10, cinderion:10, cursed:7, king:6, anti_royal:6, weefee:6, rager:4,
-    carmela_fudge:5, bolznstien:5, sir_cheeseburger:4, blinkeye:4, magnatar:6, oil_maker:16, badbat:5, looma:7, feathers:5, spikey:6, electrostien:14, mallow:12, nightshade: 6
+    carmela_fudge:5, bolznstien:5, sir_cheeseburger:4, blinkeye:4, magnatar:6, oil_maker:16, badbat:5, looma:7, feathers:5, spikey:6, electrostien:14, mallow:12, nightshade: 6, runner: 6
   });
   let nextMainAttackActivationId = 1;
   function getSuperChargeHitsForBrawler(brawler) {
@@ -28477,7 +28679,12 @@ let heistFeverActive = false;
       // applies, so Super and Core Surge surge independently at exactly
       // their registry values (x1.2 each under power_surge; both x1.0
       // otherwise, identical to before).
-      const modeHyperGain = (hyperGain / getModeSuperGainMultiplier()) * getModeHyperGainMultiplier();
+      let modeHyperGain = (hyperGain / getModeSuperGainMultiplier()) * getModeHyperGainMultiplier();
+      // Runner Super Shoes: allies charge supers 20% faster for 4s, and
+      // Hyper Super Shoes boost Core Surge charge 20% for 4s.
+      const chargeNow = performance.now();
+      if (chargeNow < (owner.runnerSuperRateUntil || 0)) gain *= RUNNER_SUPER_RATE_MULT;
+      if (chargeNow < (owner.runnerHyperRateUntil || 0)) modeHyperGain *= RUNNER_HYPER_RATE_MULT;
       if (hasMultiSuper(brawler) || (owner && hasMultiSuper(owner.brawler)) || (owner.id === player.id && hasMultiSuper(selectedBrawler))) {
           const activeBrawler = (owner.id === player.id) ? selectedBrawler : (owner.brawler || brawler);
           if (activeBrawler === 'steamer') {
@@ -28848,8 +29055,53 @@ let heistFeverActive = false;
       if ((entity.poisonUntil || 0) > now) chips.push({ t: 'PSN', c: '#88d66b' });
       if ((entity.fireUntil || 0) > now) chips.push({ t: 'BRN', c: '#ff8c42' });
       if (entity.boomArangTaggedBy && (entity.boomArangTagUntil || 0) > now) chips.push({ t: 'TAG', c: '#ffaa00' });
+      if (isEntityRooted(entity, now)) chips.push({ t: 'ROT', c: '#d98c4a' });
+      if ((entity.awakenatorSleepUntil || 0) > now) chips.push({ t: 'SLP', c: '#c9b8ff' });
+      if ((entity.reloadDebuffUntil || 0) > now) chips.push({ t: 'DBT', c: '#9aa5b1' });
+      if (Array.isArray(entity.nightshadePoisonStacks) && entity.nightshadePoisonStacks.some(s => s && now < s.endsAt)) chips.push({ t: 'NPS', c: '#b6ff5e' });
+      if ((entity.runnerFearUntil || 0) > now) chips.push({ t: 'FER', c: '#c084fc' });
       return chips;
   }
+
+    // Redesigned crowd-control treatment for the PLAYER (visuals only — no
+    // CC numbers, multipliers, or durations are touched here). One pulsing
+    // ring + label for the highest-priority active CC, so a CC'd player
+    // reads instantly instead of leaking through the old scattered tints.
+    // CC immunity suppresses the treatment entirely.
+    function drawPlayerCcTreatment(ctx, entity, cx, cy, radius) {
+      if (!entity || entity.hp <= 0) return;
+      const now = performance.now();
+      if (isEntityCcImmune(entity, now)) return;
+      let cc = null;
+      if ((entity.stunUntil || 0) > now) cc = { label: 'STUNNED', color: '#ff6b6b' };
+      else if (isEntityRooted(entity, now)) cc = { label: 'ROOTED', color: '#d98c4a' };
+      else if ((entity.runnerFearUntil || 0) > now) cc = { label: 'FEARED', color: '#c084fc' };
+      else if ((entity.iceBlockUntil || 0) > now) cc = { label: 'FROZEN', color: '#48dbfb' };
+      else if ((entity.awakenatorSleepUntil || 0) > now) cc = { label: 'ASLEEP', color: '#c9b8ff' };
+      else if ((entity.fireUntil || 0) > now) cc = { label: 'BURNING', color: '#ff8c42' };
+      else if ((entity.poisonUntil || 0) > now || (Array.isArray(entity.nightshadePoisonStacks) && entity.nightshadePoisonStacks.some(s => s && now < s.endsAt))) cc = { label: 'POISONED', color: '#88d66b' };
+      else if ((entity.slowUntil || 0) > now || (entity.runnerSlowUntil || 0) > now || (entity.mallowSlowUntil || 0) > now) cc = { label: 'SLOWED', color: '#87cefa' };
+      else if ((entity.reloadDebuffUntil || 0) > now) cc = { label: 'RELOAD SLOWED', color: '#9aa5b1' };
+      if (!cc) return;
+      const pulse = 1 + Math.sin(now / 180) * 0.06;
+      const r = (radius || 20) + 12;
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.globalAlpha = 0.22 + 0.08 * Math.sin(now / 180);
+      ctx.fillStyle = cc.color;
+      ctx.beginPath(); ctx.arc(0, 0, r * pulse, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 0.95;
+      ctx.strokeStyle = cc.color; ctx.lineWidth = 3;
+      ctx.shadowColor = cc.color; ctx.shadowBlur = 14;
+      ctx.beginPath(); ctx.arc(0, 0, r * pulse, 0, Math.PI * 2); ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.strokeStyle = 'rgba(0,0,0,0.9)'; ctx.lineWidth = 3;
+      ctx.strokeText(cc.label, 0, -r - 24);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(cc.label, 0, -r - 24);
+      ctx.restore();
+    }
 
     function drawIceBlockStasis(ctx, entity, cx, cy, radius) {
       if (!entity || !entity.iceBlockUntil || entity.iceBlockUntil <= performance.now()) return;
@@ -33530,6 +33782,7 @@ let heistFeverActive = false;
     if (!isBot && isSlopSushiMode) fireDelay *= Math.max(0.45, 1 - getSlopEffectTotal('fireDelayPct'));
     if (isBot && isSlopSushiMode) fireDelay *= Math.max(0.45, 1 - getEntitySlopEffectTotal(fromEntity, 'fireDelayPct'));
     if(isBot && brawler === 'decayer' && now < (fromEntity.reloadBuffUntil || 0)) fireDelay *= 0.5;
+    if(isBot && brawler === 'runner' && now < (fromEntity.runnerReloadBuffUntil || 0)) fireDelay /= RUNNER_HYPER_RELOAD_MULT;
     if(isBot && fromEntity.reloadDebuffUntil && now < fromEntity.reloadDebuffUntil) fireDelay *= 1.4;
     if(isBot && brawler === 'hunter') fireDelay = 800;
     if(isBot && brawler === 'minigunnin') fireDelay = fromEntity.isHypercharged ? 165 : 212;
@@ -36665,6 +36918,20 @@ let heistFeverActive = false;
         const dmg = empowered ? Math.round(aegisStats.dmg * AEGIS_GADGET2_DAMAGE_MULT) : aegisStats.dmg;
         bullets.push({ ownerBrawler: 'aegis', isAegisShield: true, aegisEmpowered: empowered, aegisHyperReflect: aegisHyper, aegisReflectRadius: 30, x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 7), y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 7), vx: Math.cos(ang) * AEGIS_SHIELD_SPEED, vy: Math.sin(ang) * AEGIS_SHIELD_SPEED, life: 0, maxLife: AEGIS_SHIELD_RANGE / AEGIS_SHIELD_SPEED, damage: dmg, pierce: false, ownerId: fromEntity.id, team: fromEntity.team || 'player', hitIds: {}, hitboxMod: AEGIS_SHIELD_HITBOX_MOD, hyperVisual: aegisHyper });
         return;
+    } else if (brawler === 'runner') {
+        const runnerHyper = isEntityHyperchargedNow(fromEntity, now);
+        const runnerLevel = fromEntity.id === player.id ? getSelectedBrawlerLevel() : (fromEntity.level || 11);
+        const runnerStats = getScaledStats('runner', runnerLevel);
+        const wallBreak = !!fromEntity.runnerWallBreakNext;
+        if (wallBreak) fromEntity.runnerWallBreakNext = false;
+        const fearCarried = !!fromEntity.runnerFearArmed && runnerHasSP2(fromEntity);
+        const dmg = wallBreak ? RUNNER_G1_DAMAGE : runnerStats.dmg;
+        bullets.push({ ownerBrawler: 'runner', isRunnerShoe: true, runnerWallBreak: wallBreak, runnerFear: fearCarried,
+            x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 7), y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 7),
+            vx: Math.cos(ang) * RUNNER_SHOE_SPEED, vy: Math.sin(ang) * RUNNER_SHOE_SPEED, life: 0, maxLife: RUNNER_SHOE_RANGE / RUNNER_SHOE_SPEED,
+            damage: dmg, pierce: wallBreak, pierceWalls: wallBreak, breakWallsInstantly: wallBreak,
+            ownerId: fromEntity.id, hitIds: {}, hitboxMod: 1.3, hyperVisual: runnerHyper });
+        return;
     }
   }
 
@@ -38887,6 +39154,7 @@ let heistFeverActive = false;
     if (combatBrawler === 'mallow') { castMallowSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'nightshade') { castNightshadeSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'aegis') { castAegisSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
+    if (combatBrawler === 'runner') { castRunnerSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'ramage') { castRamageSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
         if (combatBrawler === 'upgradart') { castUpgradartSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'axeywaxy') { castAxeyWaxySuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
@@ -40167,6 +40435,10 @@ let heistFeverActive = false;
       executeAegisG1(bot, target?.x ?? (bot.x + Math.cos(ang) * 200), target?.y ?? (bot.y + Math.sin(ang) * 200));
     } else if (bot.brawler === 'aegis' && g === 'g2') {
       executeAegisG2(bot);
+    } else if (bot.brawler === 'runner' && g === 'g1') {
+      executeRunnerG1(bot);
+    } else if (bot.brawler === 'runner' && g === 'g2') {
+      executeRunnerG2(bot);
     } else if (bot.brawler === 'rager' && g === 'g1') {
       executeRagerG1(bot);
     } else if (bot.brawler === 'rager' && g === 'g2') {
@@ -40700,6 +40972,7 @@ let heistFeverActive = false;
     if (botCombatBrawler === 'mallow') { castMallowSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'nightshade') { castNightshadeSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'aegis') { castAegisSuper(bot, isHyper, targetX, targetY); return; }
+    if (botCombatBrawler === 'runner') { castRunnerSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'ramage') { castRamageSuper(bot, isHyper, targetX, targetY); return; }
             if (botCombatBrawler === 'upgradart') { castUpgradartSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'axeywaxy') { castAxeyWaxySuper(bot, isHyper, targetX, targetY); return; }
@@ -42288,6 +42561,18 @@ let heistFeverActive = false;
         return;
     } else if (curBrawler === 'aegis' && curGadget === 'g2') {
         executeAegisG2(player);
+        gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
+        setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
+        updateGadgetButton();
+        return;
+    } else if (curBrawler === 'runner' && curGadget === 'g1') {
+        executeRunnerG1(player);
+        gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
+        setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
+        updateGadgetButton();
+        return;
+    } else if (curBrawler === 'runner' && curGadget === 'g2') {
+        executeRunnerG2(player);
         gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
         setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
         updateGadgetButton();
@@ -47697,6 +47982,24 @@ isBrawlerLabMode = false;
             <button id="tcGadgetCdBtn" style="flex:1;min-width:110px;padding:6px 6px;border-radius:7px;border:1px solid #60d9cc;background:rgba(96,217,204,0.15);color:#7ffff0;font-size:10px;font-weight:800;cursor:pointer;">Gadget Cooldown: OFF</button>
           </div>
           <div id="tcMeterReadout" style="font-size:11px;color:#8fffd7;">Meter — 0 damage / 5s · Colossus — 0 damage total</div>
+
+          <!-- 5. Test Effects On Yourself -->
+          <div id="tcSectionSelfEffects" style="background:rgba(10,24,42,0.7);padding:12px;border-radius:10px;border:1px solid rgba(192,132,252,0.35);">
+            <div style="font-size:13px;font-weight:900;color:#c084fc;letter-spacing:0.08em;margin-bottom:6px;">🌀 TEST EFFECTS ON YOURSELF</div>
+            <div style="font-size:11px;color:#95b8d4;margin-bottom:6px;">Applies the effect to YOU for testing. One-shot buttons need no upkeep; Clear wipes them all.</div>
+            <div style="display:flex;gap:5px;flex-wrap:wrap;">
+              <button id="tcSelfSlowBtn" style="flex:1;min-width:70px;padding:6px 6px;border-radius:7px;border:1px solid #87cefa;background:rgba(135,206,250,0.15);color:#87cefa;font-size:10px;font-weight:800;cursor:pointer;">🐌 Slow (3s)</button>
+              <button id="tcSelfStunBtn" style="flex:1;min-width:70px;padding:6px 6px;border-radius:7px;border:1px solid #ff6b6b;background:rgba(255,107,107,0.15);color:#ff6b6b;font-size:10px;font-weight:800;cursor:pointer;">💫 Stun (2s)</button>
+              <button id="tcSelfRootBtn" style="flex:1;min-width:70px;padding:6px 6px;border-radius:7px;border:1px solid #d98c4a;background:rgba(217,140,74,0.15);color:#d98c4a;font-size:10px;font-weight:800;cursor:pointer;">🌱 Root (2s)</button>
+              <button id="tcSelfBurnBtn" style="flex:1;min-width:70px;padding:6px 6px;border-radius:7px;border:1px solid #ff8c42;background:rgba(255,140,66,0.15);color:#ff8c42;font-size:10px;font-weight:800;cursor:pointer;">🔥 Burn (3s)</button>
+              <button id="tcSelfPoisonBtn" style="flex:1;min-width:70px;padding:6px 6px;border-radius:7px;border:1px solid #88d66b;background:rgba(136,214,107,0.15);color:#88d66b;font-size:10px;font-weight:800;cursor:pointer;">☠️ Poison (3s)</button>
+              <button id="tcSelfIceBtn" style="flex:1;min-width:70px;padding:6px 6px;border-radius:7px;border:1px solid #48dbfb;background:rgba(72,219,251,0.15);color:#48dbfb;font-size:10px;font-weight:800;cursor:pointer;">🧊 Ice (2s)</button>
+              <button id="tcSelfSleepBtn" style="flex:1;min-width:70px;padding:6px 6px;border-radius:7px;border:1px solid #c9b8ff;background:rgba(201,184,255,0.15);color:#c9b8ff;font-size:10px;font-weight:800;cursor:pointer;">💤 Sleep (2s)</button>
+              <button id="tcSelfFearBtn" style="flex:1;min-width:70px;padding:6px 6px;border-radius:7px;border:1px solid #c084fc;background:rgba(192,132,252,0.15);color:#c084fc;font-size:10px;font-weight:800;cursor:pointer;">😱 Fear (2s)</button>
+              <button id="tcSelfReloadDebuffBtn" style="flex:1;min-width:90px;padding:6px 6px;border-radius:7px;border:1px solid #9aa5b1;background:rgba(154,165,177,0.15);color:#9aa5b1;font-size:10px;font-weight:800;cursor:pointer;">⏳ Reload Slow (3s)</button>
+              <button id="tcSelfClearBtn" style="flex:1;min-width:90px;padding:6px 6px;border-radius:7px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.06);color:#b0c6df;font-size:10px;font-weight:800;cursor:pointer;">❌ Clear Effects</button>
+            </div>
+          </div>
         </div>
       `;
 
@@ -47802,6 +48105,24 @@ isBrawlerLabMode = false;
       const refreshGcdBtn = () => { if (gcdBtn) gcdBtn.textContent = trainingGadgetNoCooldown ? 'Gadget Cooldown: OFF' : 'Gadget Cooldown: ON'; };
       refreshGcdBtn();
       if (gcdBtn) gcdBtn.onclick = () => { trainingGadgetNoCooldown = !trainingGadgetNoCooldown; refreshGcdBtn(); const tgNoCd = document.querySelector('#tgNoCd'); if (tgNoCd) tgNoCd.checked = trainingGadgetNoCooldown; };
+      // Self-effects lab: apply any crowd-control effect to the player.
+      // One-shot buttons write the same fields live code writes.
+      const tcSelfFx = (label, color, apply) => { const now = performance.now(); apply(now); spawnFloatingText(player.x, player.y - 30, label, color); };
+      const tcSelfFearSource = () => {
+          let best = null, bestD = 1e12;
+          for (const o of bots) { if (!o || o.hp <= 0) continue; const d = Math.hypot(o.x - player.x, o.y - player.y); if (d < bestD) { bestD = d; best = o; } }
+          return best ? { x: best.x, y: best.y } : { x: player.x, y: player.y - 300 };
+      };
+      deck.querySelector('#tcSelfSlowBtn').onclick = () => tcSelfFx('SLOWED (3s)', '#87cefa', () => applyStatusEffect(player, 'slow', 3000));
+      deck.querySelector('#tcSelfStunBtn').onclick = () => tcSelfFx('STUNNED (2s)', '#ff6b6b', () => applyStatusEffect(player, 'stun', 2000));
+      deck.querySelector('#tcSelfRootBtn').onclick = () => tcSelfFx('ROOTED (2s)', '#d98c4a', () => applyStatusEffect(player, 'root', 2000));
+      deck.querySelector('#tcSelfBurnBtn').onclick = () => tcSelfFx('BURNING (3s)', '#ff8c42', (now) => { player.fireUntil = Math.max(player.fireUntil || 0, now + 3000); player.fuelBurnDamage = Math.max(player.fuelBurnDamage || 0, 60); player.fuelBurnUntil = Math.max(player.fuelBurnUntil || 0, now + 3000); player.fireTickAt = Math.min(player.fireTickAt || now + 1000, now + 1000); });
+      deck.querySelector('#tcSelfPoisonBtn').onclick = () => tcSelfFx('POISONED (3s)', '#88d66b', (now) => { player.poisonUntil = Math.max(player.poisonUntil || 0, now + 3000); player.poisonDamage = Math.max(player.poisonDamage || 0, 60); player.poisonTicksLeft = Math.max(player.poisonTicksLeft || 0, 4); player.poisonTickAt = Math.min(player.poisonTickAt || now + 700, now + 700); });
+      deck.querySelector('#tcSelfIceBtn').onclick = () => tcSelfFx('FROZEN (2s)', '#48dbfb', (now) => { player.iceBlockUntil = Math.max(player.iceBlockUntil || 0, now + 2000); });
+      deck.querySelector('#tcSelfSleepBtn').onclick = () => tcSelfFx('ASLEEP (2s)', '#c9b8ff', (now) => { player.awakenatorSleepUntil = Math.max(player.awakenatorSleepUntil || 0, now + 2000); });
+      deck.querySelector('#tcSelfFearBtn').onclick = () => tcSelfFx('FEARED (2s)', '#c084fc', (now) => { const s = tcSelfFearSource(); player.runnerFearUntil = Math.max(player.runnerFearUntil || 0, now + 2000); player.runnerFearFromX = s.x; player.runnerFearFromY = s.y; });
+      deck.querySelector('#tcSelfReloadDebuffBtn').onclick = () => tcSelfFx('RELOAD SLOWED (3s)', '#9aa5b1', (now) => { player.reloadDebuffUntil = Math.max(player.reloadDebuffUntil || 0, now + 3000); });
+      deck.querySelector('#tcSelfClearBtn').onclick = () => { const p = player; p.slowUntil = 0; p.stunUntil = 0; p.rootUntil = 0; p.fireUntil = 0; p.fuelBurnUntil = 0; p.poisonUntil = 0; p.poisonTicksLeft = 0; p.iceBlockUntil = 0; p.awakenatorSleepUntil = 0; p.runnerFearUntil = 0; p.runnerSlowUntil = 0; p.mallowSlowUntil = 0; p.reloadDebuffUntil = 0; p.arenaForgeFrostfireUntil = 0; p.nightshadePoisonStacks = []; spawnFloatingText(p.x, p.y - 30, 'EFFECTS CLEARED', '#eaf6ff'); };
       const alliesSec = deck.querySelector('#tcSectionAllies');
       const gridSec = deck.querySelector('#tcSectionGrid');
       const duelSec = deck.querySelector('#tcSectionDuel');
@@ -52089,6 +52410,10 @@ function checkHit(target, b, i){
     if (b.isMallow && owner && target) applyMallowSlowHit(target, owner, b);
     if (b.isNightshadeDagger && owner && target) applyNightshadePoisonHit(target, owner, b);
     if (b.isAegisShield && owner && target) applyAegisMaxHpShred(target, owner, b);
+    if (b.isRunnerShoe && owner && target) {
+        if (b.runnerFear && owner.runnerFearArmed) { applyRunnerFear(target, owner); owner.runnerFearArmed = false; }
+        if (b.runnerWallBreak && !b.runnerWallBreakAoEDone) { b.runnerWallBreakAoEDone = true; applyRunnerWallBreakAoE(b, target.x, target.y, target); }
+    }
     if (b.ownerBrawler === 'rager' && b.isRagerTimber && b.hasSp1) {
             // SP1: burst into 4 cardinal splinter darts
             const dartDirs = [0, Math.PI / 2, Math.PI, Math.PI * 1.5];
@@ -53869,6 +54194,7 @@ function checkHit(target, b, i){
     if (playing && !gameOver) updateMallowSystems(dt);
     if (playing && !gameOver) updateNightshadeSystems(dt);
     if (playing && !gameOver) updateAegisSystems(dt);
+    if (playing && !gameOver) updateRunnerSystems(dt);
     if (playing && !gameOver) updatePropPads();
     if (playing && !gameOver) updateChristmasShowdown(dt);
     if (playing && !gameOver) updatePropHuntMode(dt, now);
@@ -55653,7 +55979,7 @@ function checkHit(target, b, i){
               }
           }
       }
-    const playerSlowMult = getEntitySlowMultiplier(player, now) * playerCheeseSlow * getMallowSp1SpeedMult(player, now);
+    const playerSlowMult = getEntitySlowMultiplier(player, now) * playerCheeseSlow * getMallowSp1SpeedMult(player, now) * getRunnerTrailSpeedMult(player, now);
 
       let vx=0, vy=0;
       if(keys['w']||keys['arrowup']) vy -= 1;
@@ -55664,6 +55990,13 @@ function checkHit(target, b, i){
           vx += mobileInput.moveX;
           vy += mobileInput.moveY;
       }
+    // Runner FEAR: the player walks away from the fear source. Placed
+    // before the stun/root zeroing so stun and root still win.
+    if (now < (player.runnerFearUntil || 0) && player.runnerFearFromX !== undefined && player.runnerFearFromY !== undefined) {
+        const fdx = player.x - player.runnerFearFromX, fdy = player.y - player.runnerFearFromY;
+        const flen = Math.hypot(fdx, fdy) || 1;
+        vx = fdx / flen; vy = fdy / flen;
+    }
     if (playerIsStunned || isEntityRooted(player, now) || player.blinkeyeSteering || (isPropHuntMode && propHuntState && propHuntState.phase === 'hide' && player.propHuntRole === 'seeker')) { vx = 0; vy = 0; }
       const len = Math.hypot(vx,vy) || 1;
       const isMoving = Math.hypot(vx, vy) > 0;
@@ -56863,6 +57196,38 @@ function checkHit(target, b, i){
       }
       b.x += b.vx * dt;
       b.y += b.vy * dt;
+      // Runner: super shoes home to their ally; main shoes lay trail + G2 shields.
+      if (b.isRunnerSuperShoe) {
+          const shoeTarget = getEntityById(b.runnerSuperTargetId);
+          if (!shoeTarget || shoeTarget.hp <= 0) { bullets.splice(i, 1); continue; }
+          const shoeAng = Math.atan2(shoeTarget.y - b.y, shoeTarget.x - b.x);
+          const shoeSpeed = Math.max(1, Math.hypot(b.vx || 0, b.vy || 0));
+          b.vx = Math.cos(shoeAng) * shoeSpeed; b.vy = Math.sin(shoeAng) * shoeSpeed;
+          if (Math.hypot(shoeTarget.x - b.x, shoeTarget.y - b.y) <= (shoeTarget.radius || 14) + 20) {
+              grantRunnerSuperShoe(shoeTarget, b.runnerSuperHyper);
+              bullets.splice(i, 1); continue;
+          }
+      }
+      if (b.isRunnerShoe) {
+          const shoeOwner = getEntityById(b.ownerId);
+          b.runnerTrailTimer = (b.runnerTrailTimer || 0) + dt;
+          if (b.runnerTrailTimer >= 0.15) {
+              b.runnerTrailTimer = 0;
+              if (shoeOwner) spawnRunnerTrailSegment(shoeOwner, b.x, b.y);
+          }
+          if (shoeOwner && performance.now() < (shoeOwner.runnerShieldWindowUntil || 0)) {
+              const granted = shoeOwner.runnerShieldGranted || (shoeOwner.runnerShieldGranted = {});
+              for (const ally of [player, ...bots]) {
+                  if (!ally || ally.hp <= 0 || ally.id === shoeOwner.id) continue;
+                  if (!areAlliedEntities(shoeOwner, ally)) continue;
+                  if (granted[ally.id]) continue;
+                  if (Math.hypot(ally.x - b.x, ally.y - b.y) <= (ally.radius || 14) + 20) {
+                      granted[ally.id] = true;
+                      grantShield(ally, RUNNER_G2_SHIELD, Math.max(5000, ally.shieldMax || 0));
+                  }
+              }
+          }
+      }
       // Nightshade Hyper shield: enemy projectiles die on the zone edge
       // before hit detection runs later in this same iteration.
       if (nightshadeHyperShieldBlocks(b)) {
@@ -57512,6 +57877,18 @@ function checkHit(target, b, i){
       if(b.life > b.maxLife){ 
             if (b.isMallow) {
                 if (b.mallowHyper) mallowHyperEndBurst(b);
+                bullets.splice(i, 1);
+                i--;
+                continue;
+            }
+            if (b.isRunnerShoe) {
+                if (b.hyperVisual) {
+                    const hyperOwner = getEntityById(b.ownerId);
+                    if (hyperOwner) {
+                        spawnRunnerTrailSegment(hyperOwner, b.x, b.y, { lifeMs: RUNNER_HYPER_PATCH_MS });
+                        hyperOwner.runnerReloadBuffUntil = performance.now() + RUNNER_HYPER_RELOAD_MS;
+                    }
+                }
                 bullets.splice(i, 1);
                 i--;
                 continue;
@@ -59866,7 +60243,7 @@ function checkHit(target, b, i){
         }
       }
     const upiedownMapSlow = now < upiedownPieUntil && t.brawler !== 'upiedown' ? 0.72 : 1;
-    const slow = getEntitySlowMultiplier(t, now) * cheeseSlow * upiedownMapSlow * getMallowSp1SpeedMult(t, now);
+    const slow = getEntitySlowMultiplier(t, now) * cheeseSlow * upiedownMapSlow * getMallowSp1SpeedMult(t, now) * getRunnerTrailSpeedMult(t, now);
       
       // find nearest enemy (player or other bot), biased toward low HP targets
       let target = null;
@@ -60577,7 +60954,14 @@ function checkHit(target, b, i){
           
           // Mode-aware spacing: ranged bots strafe, weak bots retreat toward
           // allies, teams stay in formation, and everyone can dodge a shot.
-          const tacticalMove = getBotTacticalMovement(t, target, botAi);
+          let tacticalMove = getBotTacticalMovement(t, target, botAi);
+          // Runner FEAR: flee away from the fear source through the normal
+          // steered step (wall-safe). Stun/root gates below still win.
+          if (nowTarget < (t.runnerFearUntil || 0) && t.runnerFearFromX !== undefined && t.runnerFearFromY !== undefined) {
+              const fdx = t.x - t.runnerFearFromX, fdy = t.y - t.runnerFearFromY;
+              const flen = Math.hypot(fdx, fdy) || 1;
+              tacticalMove = { dx: fdx / flen, dy: fdy / flen, shouldMove: true, speedMult: tacticalMove.speedMult || 1 };
+          }
           if(!isStunned && !isEntityRooted(t, nowTarget) && t.brawler !== 'egg' && !t.isJumping && !t.isDashing && !t.isTrainingBot && tacticalMove.shouldMove){
             const moveSpeed = activeBotSpeed * slow * tacticalMove.speedMult;
             const steered = getBotSteeredStep(t, tacticalMove.dx, tacticalMove.dy, moveSpeed, dt);
@@ -60741,7 +61125,7 @@ function checkHit(target, b, i){
                  wantToShoot = false;
                  if (t.brawler === 'parrot') {
                       const attackRate = t.parrotSp2 ? 1040 : 1300; 
-                      if (!isStunned && target && !target.isPowerup && !target.isBox && distToTarget <= 300 && performance.now() - t.lastShot > attackRate) {
+                      if (!isStunned && !(nowTarget < (t.runnerFearUntil || 0)) && target && !target.isPowerup && !target.isBox && distToTarget <= 300 && performance.now() - t.lastShot > attackRate) {
                           const leadSeconds = getBotAimLeadSeconds(botAi, distToTarget);
                           const leadX = distToTarget > 50 ? (target.vx || 0) * leadSeconds : 0;
                           const leadY = distToTarget > 50 ? (target.vy || 0) * leadSeconds : 0;
@@ -60753,6 +61137,8 @@ function checkHit(target, b, i){
              } else if (t.brawler === 'skeletrooper') {
                  wantToShoot = distToTarget <= 62;
              }
+             // Runner FEAR: a feared bot flees and does not shoot.
+             if (nowTarget < (t.runnerFearUntil || 0)) wantToShoot = false;
              if (t.isArenaForgeMinion) {
                  if (!isStunned && wantToShoot && !target.isPowerup && !target.isBox) {
                      fireArenaForgeMinionAttack(t, target, nowTarget);
@@ -64109,6 +64495,7 @@ function checkHit(target, b, i){
     renderElectrostienEffects();
     renderMallowEffects();
     renderNightshadeEffects();
+    renderRunnerEffects();
     if (typeof renderBouncinBossEvent === 'function') renderBouncinBossEvent('ground');
     if (isBraweBallMode) renderBraweBallWorld(ctx);
     if (isKnockoutMode) renderKnockoutWorld(ctx);
@@ -66410,6 +66797,7 @@ function checkHit(target, b, i){
             ctx.fillStyle = hpColor; ctx.beginPath(); ctx.roundRect(player.x-24, drawY-40, 48 * playerHpPct,10,5); ctx.fill();
       drawEntityShieldBar(player, player.x, drawY - 61, 64, 14);
       drawIceBlockStasis(ctx, player, player.x, player.y, player.radius);
+      drawPlayerCcTreatment(ctx, player, player.x, drawY, player.radius);
 
             if (player.hp > 0 && playerHpPct <= BALANCE_PROFILE.lowHpWarningPct) {
                     const pulse = 0.45 + Math.sin(performance.now() / 120) * 0.25;
@@ -71292,6 +71680,10 @@ function checkHit(target, b, i){
       }
       if (b.isAegisShield) {
         drawAegisShield(ctx, b);
+        continue;
+      }
+      if (b.isRunnerShoe || b.isRunnerSuperShoe) {
+        drawRunnerShoe(ctx, b);
         continue;
       }
       const earlyProjectileBrawler = b.ownerBrawler || (b.ownerId === player.id ? selectedBrawler : '');
@@ -81166,6 +81558,7 @@ function buildWeeFeeBossMap() {
     weefeeShockwaves.length = 0;
     bullets.length = 0;
     aegisBubbles.length = 0;
+    runnerTrailSegments.length = 0;
     powerups.length = 0;
     cubes.length = 0;
     explosions.length = 0;

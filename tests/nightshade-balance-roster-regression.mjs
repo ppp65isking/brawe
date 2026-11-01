@@ -123,9 +123,9 @@ const sel = html.match(/<select id="brawlerSelect"[^>]*>([\s\S]*?)<\/select>/);
 check('brawlerSelect block found in index.html', !!sel);
 if (sel) {
   const opts = [...sel[1].matchAll(/<option value="([^"]+)"/g)].map((x) => x[1]);
-  check('static roster is exactly 91 (99 minus 8 disabled)', opts.length === 91);
+  check('static roster is exactly 92 (91 + Runner)', opts.length === 92);
   check('static roster includes mallow + nightshade', opts.includes('mallow') && opts.includes('nightshade'));
-  check('static roster ends looma, feathers, spikey, electrostien, mallow, nightshade', opts.slice(-6).join(',') === 'looma,feathers,spikey,electrostien,mallow,nightshade');
+  check('static roster ends looma, feathers, spikey, electrostien, mallow, nightshade, runner', opts.slice(-7).join(',') === 'looma,feathers,spikey,electrostien,mallow,nightshade,runner');
   check('dead static options removed (dr0ne, unhitabble not in allBrawlers)', !opts.includes('dr0ne') && !opts.includes('unhitabble'));
   check('no disabled brawler in static roster', !opts.some((id) => ['robber', 'boomer', 'daggershard', 'cluster', 'witch', 'adlof', 'swimmer', 'blade_vane'].includes(id)));
 }
