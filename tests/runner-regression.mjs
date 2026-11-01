@@ -83,7 +83,7 @@ check('SP2 arming cadence: 6s re-arm via runnerFearNextAt', game.includes('e.run
 
 // --- Wiring: update / render / resets ---
 check('update() calls updateRunnerSystems', game.includes('if (playing && !gameOver) updateRunnerSystems(dt);'));
-check('render calls renderRunnerEffects', game.includes('renderRunnerEffects();'));
+check('render calls renderRunnerEffects(ctx) with the canvas context', game.includes('renderRunnerEffects(ctx);'));
 check('bullet draw dispatch draws runner shoes before universal skin renderer', (() => {
   const shoeAt = game.indexOf("if (b.isRunnerShoe || b.isRunnerSuperShoe) {");
   const skinAt = game.indexOf('if (renderUniversalSkinProjectile(b, earlyProjectileSkin)) continue;');
