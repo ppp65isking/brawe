@@ -64495,7 +64495,7 @@ function checkHit(target, b, i){
     renderElectrostienEffects();
     renderMallowEffects();
     renderNightshadeEffects();
-    renderRunnerEffects();
+    renderRunnerEffects(ctx);
     if (typeof renderBouncinBossEvent === 'function') renderBouncinBossEvent('ground');
     if (isBraweBallMode) renderBraweBallWorld(ctx);
     if (isKnockoutMode) renderKnockoutWorld(ctx);
