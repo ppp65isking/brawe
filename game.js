@@ -5299,7 +5299,7 @@ const bolznstienPendingStrikes = [];
     }
     function armFullscreenRestoreOnGesture() {
         if ((document.fullscreenElement || document.webkitFullscreenElement) || !wantsFullscreenRestore()) return;
-        const isFullscreenButton = (event) => !!(event?.target?.closest && event.target.closest('#fullscreenBtn, #matchFullscreenBtn'));
+        const isFullscreenButton = (event) => !!(event?.target?.closest && event.target.closest('#fullscreenBtn, #mobileFullscreenBtn'));
         const onFirstGesture = (event) => {
             if (isFullscreenButton(event)) return;
             window.removeEventListener('pointerdown', onFirstGesture);
