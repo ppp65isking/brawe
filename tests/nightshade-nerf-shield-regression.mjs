@@ -136,16 +136,16 @@ if (mallowWin) {
 }
 if (nightWin) {
   check('nightshade entry: Mythic Assassin, purple', nightWin.includes("role: 'Assassin'") && nightWin.includes("rarity: 'Mythic'") && nightWin.includes("color: '#9b5cff'"));
-  check('nightshade entry: attackDesc 640 each (-20%)', nightWin.includes('Throws 4 daggers in a tight super-short cone (640 damage each)'));
+  check('nightshade entry: attackDesc 560 each (Round 41)', nightWin.includes('Throws 4 daggers in a tight super-short cone (560 damage each)'));
   check('nightshade entry: hyper describes shield, not homing', nightWin.includes('shield zone around Nightshade blocks enemy projectiles until the daggers return') && !nightWin.includes('home toward'));
   check('nightshade entry: gadgets/star powers kept', nightWin.includes("g1: 'Backstab Dash") && nightWin.includes("g2: 'Purge Vial") && nightWin.includes("sp1: 'Lingering Toxin") && nightWin.includes("sp2: 'Fresh Wounds"));
 }
 
 // ---------------------------------------------------------- 3. nerf values
-check('main dmg base 800 -> 640 in getScaledStats', game.includes('hp: Math.round(6400 * scale), dmg: Math.round(640 * scale), speed: 300'));
+check('main dmg 640 -> 560 in getScaledStats (Round 41)', game.includes('hp: Math.round(6400 * scale), dmg: Math.round(560 * scale), speed: 300'));
 check('main dagger speed 1000 -> 700 (-30%)', game.includes('const NIGHTSHADE_DAGGER_SPEED = 700;') && !game.includes('NIGHTSHADE_DAGGER_SPEED = 1000'));
 check('super blade speed 900 -> 630 (-30%)', game.includes('const NIGHTSHADE_BLADE_SPEED = 630;') && !game.includes('NIGHTSHADE_BLADE_SPEED = 900'));
-check('blade damage/count/range unchanged 1100/12/640', game.includes('const NIGHTSHADE_BLADE_DAMAGE = 1100;') && game.includes('const NIGHTSHADE_BLADE_COUNT = 12;') && game.includes('const NIGHTSHADE_BLADE_RANGE = 640;'));
+check('blade damage/count/range 800/12/640 (Round 41)', game.includes('const NIGHTSHADE_BLADE_DAMAGE = 800;') && game.includes('const NIGHTSHADE_BLADE_COUNT = 12;') && game.includes('const NIGHTSHADE_BLADE_RANGE = 640;'));
 check('cone/poison unchanged 0.36/60', game.includes('const NIGHTSHADE_DAGGER_FAN_ARC = 0.36;') && game.includes('const NIGHTSHADE_POISON_DPS = 60;'));
 
 // ---------------------------------------------------------- 4. homing gone, shield in
@@ -166,9 +166,9 @@ try {
   vm.createContext(sb);
   vm.runInContext(extractFn(game, 'getScaledStats'), sb);
   const l11 = sb.getScaledStats('nightshade', 11);
-  check('vm: nightshade dmg is 640 at Power 11', l11.dmg === 640 && l11.hp === 6400 && l11.speed === 300);
+  check('vm: nightshade dmg is 560 at Power 11 (Round 41)', l11.dmg === 560 && l11.hp === 6400 && l11.speed === 300);
   const l1 = sb.getScaledStats('nightshade', 1);
-  check('vm: nightshade dmg scales 640 x 0.55 = 352 at Power 1', l1.dmg === 352);
+  check('vm: nightshade dmg scales 560 x 0.55 = 308 at Power 1 (Round 41)', l1.dmg === 308);
 } catch (e) { failures.push('scaled-stats vm threw: ' + e.message); }
 
 // ---------------------------------------------------------- 6. vm: shield behavior
@@ -231,7 +231,7 @@ try {
     NIGHTSHADE_BLADE_RANGE: 640,
     NIGHTSHADE_BLADE_RADIUS: 18,
     NIGHTSHADE_BLADE_MAX_LIFE_MS: 4000,
-    NIGHTSHADE_BLADE_DAMAGE: 1100,
+    NIGHTSHADE_BLADE_DAMAGE: 800,
     getSelectedBrawlerLevel: () => 11,
     rectCircleCollides: () => false,
     areAlliedEntities: (a, b) => !!a && !!b && a.team === b.team,

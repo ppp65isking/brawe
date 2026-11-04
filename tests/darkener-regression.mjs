@@ -18,7 +18,7 @@ for (const marker of [
   "const dense=!!options.dense,range=DARKENER_CLOUD_RANGE*(hyper?1.5:1)*(1+rangeBonus),speed=DARKENER_CLOUD_SPEED",
   "linger=650*lingerMult*(1+lingerBonus)",
   "darkenerSlowSuffocation:cloud.slowSuffocation",
-  "darkenerTickDamageMult:cloud.slowSuffocation?(1+state.ticks*.25):1",
+  "darkenerTickDamageMult:cloud.slowSuffocation?(1+state.ticks*.20):1",
   "if (b.isDarkenerCloud && b.darkenerSlowSuffocation) dealtDamage *= Math.max(0, Number(b.darkenerTickDamageMult) || 1)",
   "state.ticks>=maxTicks",
   "const DARKENER_CLOUD_TICK_MS = 416",

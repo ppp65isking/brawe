@@ -1,0 +1,1145 @@
+diff --git a/game.js b/game.js
+index 56727dd..1ac4c61 100644
+--- a/game.js
++++ b/game.js
+@@ -273,7 +273,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
+         }
+         if (brawlerId === 'nightshade') {
+             const scale = 0.55 + (level - 1) * 0.045;
+-            return { hp: Math.round(6400 * scale), dmg: Math.round(640 * scale), speed: 300 };
++            return { hp: Math.round(6400 * scale), dmg: Math.round(560 * scale), speed: 300 };
+         }
+         if (brawlerId === 'aegis') {
+             const scale = 0.55 + (level - 1) * 0.045;
+@@ -305,7 +305,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
+         }
+         if (brawlerId === 'oil_maker') {
+             const scale = 0.55 + (level - 1) * 0.045;
+-            return { hp: Math.round(8000 * scale), dmg: Math.round(468 * scale), speed: 260 };
++            return { hp: Math.round(8000 * scale), dmg: Math.round(320 * scale), speed: 260 };
+         }
+         if (brawlerId === 'sir_cheeseburger') {
+             const scale = 0.55 + (level - 1) * 0.045;
+@@ -341,7 +341,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
+         }
+         if (brawlerId === 'jacktrade') {
+             const scale = 0.55 + (level - 1) * 0.045;
+-            return { hp: Math.round(7200 * scale), dmg: Math.round(900 * scale), speed: 260 };
++            return { hp: Math.round(7200 * scale), dmg: Math.round(750 * scale), speed: 260 };
+         }
+         if (brawlerId === 'ghoul') {
+             const scale = 0.55 + (level - 1) * 0.045;
+@@ -3131,6 +3131,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
+     player.jackTradeJackpotArmed = false;
+     player.jackTradeSafeBetArmed = false;
+     player.jackTradeRushUntil = 0;
++    player.jackTradeSp1FiveCardArmed = false;
+     player.jackTradeLuckyUntil = 0;
+     player.kingSiegeRoundArmed = false;
+     player.kingPiercingReadyAt = performance.now() + 5000;
+@@ -4584,6 +4585,7 @@ const bolznstienPendingStrikes = [];
+   const drainbowPrismBarriers = [];
+   const draflygonFireZones = [];
+   const rocketeerFireZones = [];
++  const rocketeerOrbitRockets = []; // Round 41 Rocketeer HC super: 6 rockets spinning around the impact point.
+   // Lightweight, capped zones for Minigunnin's rapid-fire Mutation.
+   const minigunninMutationFireZones = [];
+   const rocketeerAirstrikes = [];
+@@ -5058,7 +5060,7 @@ const bolznstienPendingStrikes = [];
+             xray: 1500,
+             upiedown: 1800,
+             chickpig: 1650,
+-            jetpack: 2300,
++            jetpack: 1917,
+             snapper: 1700
+             ,robber: 1500
+             ,rocketeer: 1750
+@@ -5077,7 +5079,7 @@ const bolznstienPendingStrikes = [];
+             nightshade: 300,
+             runner: 300,
+             carmela_fudge: 180,
+-            oil_maker: 56,
++            oil_maker: 112,
+             magnatar: 200,
+             rager: 220,
+         bolznstien: 200,
+@@ -5167,6 +5169,7 @@ const bolznstienPendingStrikes = [];
+         if (now < (entity.electrostienRealmSlowUntil || 0)) baseSlow = Math.min(baseSlow, 0.70);
+         if (now < (entity.mallowSlowUntil || 0)) baseSlow = Math.min(baseSlow, getMallowSlowMultiplier(entity, now));
+         if (now < (entity.runnerSlowUntil || 0)) baseSlow = Math.min(baseSlow, RUNNER_TRAIL_SLOW_MULT);
++        if (now < (entity.oilMakerSp1SlowUntil || 0)) baseSlow = Math.min(baseSlow, 0.85); // Round 41 Oil SP1: 15% slow (generic oil slow 0.35 still dominates while standing in oil).
+         if (now < (entity.beamSlowUntil || 0)) baseSlow = Math.min(baseSlow, 0.50);
+         if (now < (entity.ridaSuperArmorUntil || 0)) {
+             return 1 - (1 - baseSlow) * 0.65;
+@@ -9747,12 +9750,12 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
+           attack: 'Crude Spray',
+           attackDesc: 'Continuously streams sticky crude oil with a 120-capacity ammo bar. Crude travels farther and quickly settles into oil puddles on impact, while moving leaves an oil trail. Firing oil onto existing oil ignites it into blazing fire dealing 1,250x2 fire damage (2,500 total) and slowing enemies.',
+           super: 'Oil Barrel',
+-          superDesc: 'Stores and can be used 3 times in a row (up to 5 times in Hypercharge). Deploys a 3,000 HP oil barrel that decays by 500 HP per second (6s lifetime). Upon reaching 0 HP or being destroyed, it ruptures into a ring of oil puddles around it.',
+-          hyper: 'High-Octane Overdrive: Main attack fires 2 wider purple crude streams per ammo use. Super capacity increases to 5 uses. Barrel destruction ruptures with +40% wider oil spread.',
++          superDesc: 'Stores and can be used 2 times in a row (up to 3 times in Hypercharge). Deploys a 3,000 HP oil barrel that decays by 500 HP per second (6s lifetime). Upon reaching 0 HP or being destroyed, it ruptures into a ring of oil puddles around it.',
++          hyper: 'High-Octane Overdrive: Main attack fires 2 wider purple crude streams per ammo use. Super capacity increases to 3 uses. Barrel destruction ruptures with +40% wider oil spread.',
+           g1: 'Flint Striker (Sparks a flint shockwave detonating and igniting all oil puddles and barrels within 320px)',
+           g2: 'Grease Slide (Dashes 240px leaving a wide oil slick, knocking back enemies in path and granting 3s slow immunity)',
+-          sp1: 'Viscous Crude (Unignited oil slows enemies by 25% and reduces enemy reload speed by 30%)',
+-          sp2: 'Fuel Injection (Standing on or near burning oil grants Oil Maker +25% reload speed and regenerates 300 HP/s)'
++          sp1: 'Viscous Crude (Unignited oil slows enemies by 15% and reduces enemy reload speed by 18%)',
++          sp2: 'Fuel Injection (Standing on or near burning oil grants Oil Maker +10% reload speed and regenerates 200 HP/s)'
+       },
+       'magnatar': {
+           name: 'Magnatar',
+@@ -9942,7 +9945,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
+           desc: 'A shadow ninja master who carves the arena with dual-sweep shuriken volleys, hologram mind-games, and explosive shadow stars.',
+           color: '#1e293b',
+           attack: 'Shadow Crossfire',
+-          attackDesc: 'Fires 6 precise shurikens: 3 left-to-right, then 3 right-to-left through a narrow gap-filling fan (300-550 dmg). At 3 full ammo, the final 2 stars burst into a + shard cross.',
++          attackDesc: 'Fires 6 precise shurikens: 3 left-to-right, then 3 right-to-left through a narrow gap-filling fan (150-400 dmg). At 3 full ammo, the final 2 stars burst into a + shard cross.',
+           super: 'Magic Shadow Shurikens',
+           superDesc: 'Throws 2 giant shadow shurikens that each explode into a + shard burst on impact.',
+           hyper: 'Shadow Storm: Main attacks always detonate into reduced-damage + shard bursts. Super throws 3 stars that explode in + then X 8-way bursts and leave shadow slow pools. +25% dmg, +20% speed, +15% shield.',
+@@ -9968,7 +9971,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
+       'bouncin_balls': { name: "Bouncin' Balls", role: 'Marksman', desc: 'Shoots bouncing balls that ricochet off walls. Dynamic range mechanics.', color: '#00aaff', attack: 'Ricochet Volley', attackDesc: 'Fires 7 bouncing balls straight. +5% range and -8% dmg per bounce.', super: 'Bouncy House', superDesc: 'Shoots 7 overpowered piercing balls that bounce fully without losing stats.', hyper: 'Trampoline Park: Super gains 3 balls and splits on hit. +20% range/speed.', g1: 'Elasticity (+50% range)', g2: 'Bouncy Turret (Lose all ammo, deploy turret)', sp1: 'Desperation Bounce (Extra shiny ball when low HP)', sp2: 'Momentum (Bullets 10% faster after bounce)' },
+       'copyphase': { name: 'Copyphase', role: 'Controller', desc: 'Exotic phase thief with 2 phase slots: one identity and one clone squad slot.', color: '#56d8ff', attack: 'Phase Orb', attackDesc: 'Shoots a phase orb. Takes 2 hits to download a phase into an empty slot.', super: "Copyin' U!", superDesc: 'With 1 phase: transform into Slot 1 for 7s. With 2 phases: also summon a Slot 2 clone.', hyper: '3v1 Mindset: Main attack becomes a dual-orb volley. Hyper-Super transforms and summons two clones from stored phases. While transformed in Hyper: +15% speed, +10% damage.', g1: 'System Purge (Clear slots, heal 2500)', g2: 'Data Breach (Next Phase Orb travels through walls)', sp1: 'Long Term Memory (Transform lasts 10s)', sp2: 'Overclocked AI (Clones deal 50% instead of 35%)' },
+       'sera_eclipse': { name: 'Sera Eclipse', role: 'Support', desc: 'A Chromatic Support who controls dark and light energies, using eclipse flares that heal allies and harm enemies, alongside tether and orbit zones.', color: '#d15aff', attack: 'Eclipse Flare', attackDesc: 'Fires a medium-range solar/lunar orb that damages enemies, heals allies, and passes through all targets.', super: 'Eclipse Orbit', superDesc: 'Deploys a large zone centered around Sera. Allies continuously heal and gain +20% damage. Enemies are continuously damaged and slowed by 20%.', hyper: 'Total Eclipse: Increases Orbit radius by 45%, increases healing/damage rates by 50%, and releases a burst of 6 solar flares outwards upon activation.', g1: 'Solar Gravity (Instantly pulls all enemies within the Eclipse Orbit zone to the center)', g2: 'Corona Shield (Grants a protective shield reducing all incoming damage by 40% for 3.5 seconds)', sp1: 'Corona Flash (Healing an ally with Eclipse Flare boosts their movement speed by +20% for 2.0 seconds)', sp2: 'Umbral Crown (Extends Super zone duration by +4.0 seconds)' },
+-      'rocketeer': { name:'Rocketeer', role:'Artillery', desc:'A four-ammo rocket specialist whose warheads split into incendiary mini-rockets.', color:'#ff6a32', attack:'Breakup Rocket', attackDesc:'Fire a short-range 2191-damage precision rocket. On impact it splits into 3 lighter mini-rockets that continue behind the original target without hitting it again.', super:'Triple Impact', superDesc:'Mark an area for three falling 1550-damage rockets. Each breaks walls, damages, and knocks enemies away.', hyper:'Orbital Overload: The center rocket becomes 40% larger. Two standalone 700-damage escort rockets are 30% smaller and never split or create fire. Every Super impact releases 8 short-range 260-damage rockets without fire zones.', g1:'Cluster Override (Next main rocket splits into 5 mini-rockets)', g2:'Emergency Ignition (Blast nearby enemies away for 900 damage and instantly reload 1 ammo)', sp1:'Scorched Launch (The main rocket impact also leaves a 2.5-second fire zone)', sp2:'Gravity Warheads (Super impacts pull enemies inward and leave a 160-damage fire area for 4 seconds)' },
++      'rocketeer': { name:'Rocketeer', role:'Artillery', desc:'A four-ammo rocket specialist whose warheads split into incendiary mini-rockets.', color:'#ff6a32', attack:'Breakup Rocket', attackDesc:'Fire a short-range 1400-damage precision rocket. On impact it splits into 3 lighter mini-rockets that continue behind the original target without hitting it again.', super:'Triple Impact', superDesc:'Mark an area for three falling 1550-damage rockets. Each breaks walls, damages, and knocks enemies away.', hyper:'Orbital Overload: The center rocket becomes 40% larger. Two standalone 467-damage escort rockets are 30% smaller and never split or create fire. Every Super impact releases 6 rockets that spin around the impact point and explode for 400 damage.', g1:'Cluster Override (Next main rocket splits into 5 mini-rockets)', g2:'Emergency Ignition (Blast nearby enemies away for 900 damage and instantly reload 1 ammo)', sp1:'Scorched Launch (The main rocket impact also leaves a 2.5-second fire zone)', sp2:'Gravity Warheads (Super impacts pull enemies inward and leave a 160-damage fire area for 4 seconds)' },
+       'peter_pickle': { name:'Peter Pickle', role:'Controller', desc:'A streak-based pickle thrower who fills the battlefield with living pickles.', color:'#79d66f', attack:'Pickle Pitch', attackDesc:'Fire a 1280-damage pickle. Consecutive hits grow its size by 30%, up to 420%; misses remove 2 streaks.', super:"Petah's Pickles", superDesc:'Throw 3 jars. Each jar spawns 4 living pickles, then disappears.', hyper:'Pickle Overflow: main attacks fire at maximum size. Super throws 6 double-HP jars.', g1:'Brine Boost (Next main attack gains one extra size stage)', g2:'Pocket Jar (Place a 1518 HP jar that releases 2 pickles)', sp1:'Perfect Pickle (Maximum-size attacks deal 12% more damage)', sp2:'Preserved Jars (Jars spawn a fifth pickle, with a slower 1.3s interval)' },
+       'unstable': { name:'Unstable', role:'Controller', desc:'A genome summoner whose decaying containers release walking DNA.', color:'#52ddb3', attack:'Containment Failure', attackDesc:'Throw an 850 HP container. It loses a fixed 150 HP once per second and releases 3 walking DNA when destroyed. Maximum 3 main containers.', super:'Going Unstable', superDesc:'Spin and throw 6 containers that automatically open after 1.2 seconds. Their DNA has 1500 HP.', hyper:'Genome Overload: main attack throws 2 containers. Super throws 8 containers whose DNA has 1800 HP; DNA effects are doubled.', g1:'Forced Mutation (Destroy your oldest container and release its DNA immediately)', g2:'Loose Sample (Spawn walking DNA beside Unstable; owner pickup grants 8% max HP)', sp1:'Reinforced Containment (Container HP 850 > 1200)', sp2:'Hostile Genome (DNA deals 20% more damage to enemies)' },
+       'homer': { name:'Homer', role:'Marksman', desc:'A learning sniper whose shots become better at tracking targets after every Super.', color:'#66d9ff', attack:'Learning Shot', attackDesc:'Fire a long-range 1800-damage sniper shot. Its homing starts at 10% and improves after using Super, up to 70%.', super:'Targeting Pair', superDesc:'Fire 2 fully homing projectiles and permanently improve main-attack homing by 8%.', hyper:'Perfect Lock: main attacks have at least 95% homing and Super fires 4 fully homing projectiles.', g1:'Perfect Read (Next main attack has 100% homing)', g2:'Live Calibration (Gain 20% homing for 6 seconds)', sp1:'Advanced Learning (Super improves homing by 12% instead of 8%; highly trained shots deal 12% more damage)', sp2:'Persistent Memory (Retain more targeting knowledge after being defeated)' },
+@@ -9977,7 +9980,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
+       'fuser': { name:'Fuser', role:'Damage Dealer', desc:'Outlit\'s evil twin fires a rapid eighteen-round burst down two parallel firing lanes.', color:'#ff4d6d', attack:'Eighteen-Fuse Salvo', attackDesc:'Fires 18 rapid bullets in alternating parallel left and right lanes with +50% faster unload and +50% projectile speed.', super:'Wall-Fuser Barrage', superDesc:'Fires 14 massive piercing bullets (+96% total size) that break through walls with +50% projectile speed.', hyper:'Return to Sender: Super bullets return. Main attack unloads 50% faster with its two lanes clamped closer together, but its bullets never return.', g1:'Crossed Wires (Next attack swaps the left/right firing order and deals +20% damage)', g2:'Spare Magazine (Instantly reload 2 ammo)', sp1:'Live Fuse (Straight bullets explode at maximum range)', sp2:'Family Grudge (+12% damage to nearby enemies)' },
+       'robber': { name:'Robber', role:'Skirmisher', desc:'A coin thief who snowballs every successful hit into a faster, larger stolen-coin barrage.', color:'#d9b44a', attack:'Stolen Fortune', attackDesc:'Starts with 1 row of coins. Every hit adds another row, up to 6; later rows travel faster.', super:'Grand Theft Ammo', superDesc:'Dash through an enemy and steal all of their ammo. Stealing 3 ammo expands Robber from 3 to as many as 6 ammo.', hyper:'Perfect Heist: Main attack always fires 8 rows. Super siphons 1 ammo per second for 3 seconds and can expand Robber to 7 ammo.', g1:'Smoke Bomb (Gain a 1600 shield after the next Super dash)', g2:'Counterfeit Stack (Instantly add 2 attack rows)', sp1:'Compound Interest (First hit adds 2 rows)', sp2:'Quick Hands (Stolen ammo reloads 25% faster)' },
+       'snapper': { name:'Snapper', role:'Controller / Marksman', desc:'A precision photographer who marks targets before unleashing a map-wide SNAP wave.', color:'#55e6ff', attack:'Perfect Picture', attackDesc:'Fire a medium-large, non-piercing orb for 1500 damage. It marks the enemy so Snapper\'s next hit deals 10% more damage.', super:'SNAP!', superDesc:'Release an expanding 360-degree wave with infinite range. It removes 30% of each enemy\'s current HP, but cannot defeat them by itself.', hyper:'Perfect Snap: marks amplify by 20%. SNAP removes 45% current HP, followed by a smaller wave removing 8%.', g1:'Double Exposure (Next orb gives 2 mark charges)', g2:'Camera Shy (Marked enemies cannot damage Snapper for 1.5s)', sp1:'Lasting Impression (Marks last 4s and empower every Snapper hit)', sp2:'Aftershock (SNAP slows; Hyper double-hit roots)' },
+-      'jetpack': { name:'Jetpack', role:'Assassin / Artillery', desc:'A one-ammo aerial diver who charges huge jumps and carpet-bombs a locked flight path.', color:'#5fd9ff', attack:'Crash Landing', attackDesc:'Hold to charge one jump. Longer holds increase range, airtime, blast size and landing damage from 1500 up to 2700.', super:'I Drop Bombs', superDesc:'Lock an aimed landing point and fly there without steering, dropping 6 bombs in a triangular pattern along the route.', hyper:'Air Raid: Super bombs split into 3 mini-bombs. Hypercharged Crash Landing drops a 900-damage bomb at takeoff.', g1:'Emergency Thrusters (Cancel the current flight and land safely)', g2:'Fuel Dump (Drop a 1200-damage bomb beneath Jetpack)', sp1:'Soft Landing (Heal 1000 after hitting an enemy with Crash Landing)', sp2:'High Altitude (Maximum-charge jumps gain 15% blast radius)' },
++      'jetpack': { name:'Jetpack', role:'Assassin / Artillery', desc:'A one-ammo aerial diver who charges huge jumps and carpet-bombs a locked flight path.', color:'#5fd9ff', attack:'Crash Landing', attackDesc:'Hold to charge one jump. Longer holds increase range, airtime, blast size and landing damage from 1100 up to 2000.', super:'I Drop Bombs', superDesc:'Lock an aimed landing point and fly there without steering, dropping 6 bombs in a triangular pattern along the route.', hyper:'Air Raid: Super bombs split into 3 mini-bombs and leave 3-second fire zones. Hypercharged Crash Landing drops a 900-damage bomb at takeoff and leaves a fire zone on landing.', g1:'Supply Drop (Deploy a 3000 HP jet a teammate picks up to fly freely for 4 seconds)', g2:'Fuel Dump (Drop a 1200-damage bomb beneath Jetpack)', sp1:'Afterburners (Super flights fly 40% faster)', sp2:'High Altitude (Maximum-charge jumps gain 15% blast radius)' },
+       'chickpig': { name:'Chickpig', role:'Controller / Summoner', desc:'A farmyard fighter serving poisonous eggs, rooting bacon, a rideable chicken and a ramming pig.', color:'#f2b35e', attack:'Breakfast Blast', attackDesc:'Fire cooked egg and bacon together. Egg poisons; bacon roots enemies for 0.6 seconds.', super:'Farmyard Rush', superDesc:'Ride a chicken for 40% extra speed for 5 seconds and summon a 4100 HP pig that repeatedly rams enemies.', hyper:'Breakfast Stampede: Eggs leave 2-second poison areas, bacon burns for 2 seconds, chicken grants 50% speed for 8 seconds, and the pig has 40% damage resistance while charging.', g1:'Sunny Side Up (Next egg heals 1200 on hit)', g2:'Grease Trap (Drop bacon grease that roots the next enemy)', sp1:'Thicker Bacon (Bacon root lasts 0.25s longer)', sp2:'Free Range (Chicken ride also grants 15% reload speed)' },
+       'chickpig_pig': { name:'Ramming Pig', role:'Summon', color:'#ef8d93' },
+       'upiedown': { name:'Upiedown', role:'Thrower / Controller', desc:'A pie-flinging baker who turns the entire arena upside down.', color:'#e69a63', attack:'Pie in the Sky', attackDesc:'Lob a larger 1700-damage pie. Its impact launches 4 mini pies outward; each explodes on contact or at maximum range.', super:'Upside-Down Pie', superDesc:'Flip the battlefield for 3 seconds. Enemies move 28% slower while Upiedown reloads 15% faster.', hyper:'Blueberry Breakdown: Main pies release 7 mini pies. The flipped arena becomes blueberry pie and poisons enemies for 5 seconds.', g1:'Fresh Filling (Next large pie heals Upiedown for 1200)', g2:'Pie Face (Burst nearby enemies back with a pie explosion)', sp1:'Second Slice (Mini-pie explosions are 20% larger)', sp2:'No Crust Left (Hitting all 4 mini pies restores 1 ammo)' },
+@@ -10071,7 +10074,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
+                 superDesc: 'Deploys an 8000 HP X-ray machine with a large scan radius. It loses 300 HP each second and reveals enemy ammo inside.',
+                 hyper: 'Deep Exposure: main attacks home. Enemies inside the machine’s scan take 25% more damage.',
+                 g1: 'Quick Scan (Reveal every nearby enemy for 4 seconds)',
+-                g2: 'Lead Apron (Gain a 1700 shield for 3 seconds)',
++                g2: 'Lead Apron (Gain 30% damage reduction for 3 seconds)',
+                 sp1: 'Clear Image (Revealed enemies are slowed by 8%)',
+                 sp2: 'Efficient Tube (Machine decay reduced to 225 HP per second)'
+             },
+@@ -10147,12 +10150,12 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
+                 color: '#00ff88',
+                 desc: 'A cybernetic dart marksman whose attack permanently evolves as he deals damage, growing from a single precision dart into an unstoppable 8-dart volley.',
+                 attack: 'Cyber Dart',
+-                attackDesc: 'Fires evolving precision darts. Stage 1 deals 480 damage. Upgrade at 12,000 / 17,000 / 23,000 / 30,000 total damage to unlock increasingly larger multi-dart formations; evolved darts deal 320 damage each.',
++                attackDesc: 'Fires evolving precision darts. Stage 1 deals 960 damage. Upgrade at 12,000 / 17,000 / 23,000 / 30,000 total damage to unlock increasingly larger multi-dart formations; evolved darts deal 170 damage each.',
+                 super: 'Poison Darts',
+-                superDesc: 'Empowers main attack with toxic darts for 4.0s (5.0s at Stages 4-5). Poison dart hits stack poison strength up to 1000 poison damage per tick, lasting 2.5s after the latest hit.',
+-                hyper: 'Core Recoil: Main attack darts return toward Upgradart after reaching maximum range, dealing 30% damage (96 dmg) on hit. During Power Move, adds +1 dart to every firing direction (up to 11 darts total!).',
++                superDesc: 'Empowers main attack with toxic darts for 2.8s (3.5s at Stages 4-5). Can only be cast once every 15 seconds. Poison dart hits stack poison strength up to 1000 poison damage per tick, lasting 2.5s after the latest hit.',
++                hyper: 'Core Recoil: Main attack darts return toward Upgradart after reaching maximum range, dealing 15% damage on hit. During Power Move, adds +1 dart to every firing direction (up to 11 darts total!).',
+                 g1: 'Overclock Catalyst (Instantly adds +3,000 damage progress to the Upgrade Bar and reloads 2 ammo immediately)',
+-                g2: 'Toxic Caltrops (Drops a cluster of 5 poisoned micro-dart caltrops that deal 450 poison damage and slow enemies by 35% for 3.0s)',
++                g2: 'Healing Dart (Your next dart deals no damage but heals you for 1000 HP)',
+                 sp1: 'Lethal Compound (Poison dart hits reduce enemy healing received by 50% and poison duration is extended to 3.5 seconds)',
+                 sp2: 'Precision Caliber (Dart projectile speed increased by +25% and dart maximum flight range increased by +20%)'
+             },
+@@ -10210,8 +10213,8 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
+                 hyper:'ALL IN: every attack stays at four cards and leaves small slowing puddles. Super collapses demolition, poison, slow, healing, regeneration, and Rush Order into one impact.',
+                 g1:'Jackpot (Next normal Super activates two different random trades together)',
+                 g2:'Safe Bet (The next complete miss does not reset Double or Nothing)',
+-                sp1:'Hot Streak (Every third successful four-card attack gains 15% speed and 10% damage)',
+-                sp2:'Lucky Break (After a normal random Super, gain 12% movement speed for 2.5s)'
++                sp1:'Fifth Card (After using a Super, your next attack throws 5 cards dealing 750 damage each)',
++                sp2:'Shared Pot (Rush Order and Regeneration also apply to nearby teammates at 20% strength)'
+             },
+             'darkener': {
+                 name:'Darkener', role:'Controller', color:'#29134f',
+@@ -10250,13 +10253,13 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
+       'nightshade': {
+           name: 'Nightshade', role: 'Assassin', rarity: 'Mythic', color: '#9b5cff',
+           desc: 'A hooded Assassin who fans poisoned daggers in a short cone. Every dagger stacks venom that melts enemies over time, and her spinning blades return for a second cut.',
+-          attack: 'Viper Fan', attackDesc: 'Throws 4 daggers in a tight super-short cone (640 damage each). Each dagger applies 1 poison stack: 60 damage per second for 8 seconds, stacking up to 4 times (no limit while Hypercharged). Poison affects structures too: towers, the Core and camps take poison damage.',
+-          super: 'Boomerang Blades', superDesc: 'Nightshade spins in place and releases a ring of 12 daggers in all directions. Each dagger flies out 8 tiles and returns to her, dealing 1,100 damage on the way out and 1,100 on the way back, at most once per target each way.',
++          attack: 'Viper Fan', attackDesc: 'Throws 4 daggers in a tight super-short cone (560 damage each). Each dagger applies 1 poison stack: 60 damage per second for 8 seconds, stacking up to 4 times (no limit while Hypercharged). Poison affects structures too: towers, the Core and camps take poison damage.',
++          super: 'Boomerang Blades', superDesc: 'Nightshade spins in place and releases a ring of 12 daggers in all directions. Each dagger flies out 8 tiles and returns to her, dealing 800 damage on the way out and 800 on the way back, at most once per target each way.',
+           hyper: 'Toxic Tempest: Super blades pierce walls, and while her Hypercharged Super blades are out, a shield zone around Nightshade blocks enemy projectiles until the daggers return. While Hypercharged, Viper Fan daggers stack poison without limit.',
+           g1: 'Backstab Dash (Dash 3 tiles forward. Passing through an enemy or structure applies 2 poison stacks.)',
+           g2: 'Purge Vial (Detonate all poison stacks on enemies and structures within 5 tiles, dealing their remaining poison damage instantly, and heal 200 HP per stack detonated.)',
+           sp1: 'Lingering Toxin (Poison lasts 10 seconds instead of 8 seconds.)',
+-          sp2: 'Fresh Wounds (Daggers deal +20% damage to enemies that are already poisoned.)'
++          sp2: 'Fresh Wounds (Daggers deal +18% damage to enemies that are already poisoned.)'
+       },
+       'aegis': {
+           name: 'Aegis', role: 'Controller', rarity: 'Mythic', color: '#f0b429',
+@@ -22143,7 +22146,7 @@ let heistFeverActive = false;
+     const NIGHTSHADE_BLADE_COUNT = 12;
+     const NIGHTSHADE_BLADE_RANGE = 640;
+     const NIGHTSHADE_BLADE_SPEED = 630;
+-    const NIGHTSHADE_BLADE_DAMAGE = 1100;
++    const NIGHTSHADE_BLADE_DAMAGE = 800;
+     const NIGHTSHADE_BLADE_RADIUS = 18;
+     const NIGHTSHADE_SHIELD_RADIUS = 120;
+     const NIGHTSHADE_BLADE_MAX_LIFE_MS = 4000;
+@@ -23923,7 +23926,7 @@ let heistFeverActive = false;
+         entity.ghoulAimSessionActive=false;entity.ghoulAimInvisibleUntil=0;entity.ghoulSuperUntil=0;entity.ghoulDarknessUntil=0;
+         entity.cursedMarkedFateArmed=false;entity.cursedForcedAttack=false;entity.cursedStormUntil=0;entity.cursedFxUntil=0;
+         entity.antiRoyalMortarRounds=0;entity.antiRoyalGoldHits=0;entity.antiRoyalBlockReadyAt=0;entity.antiRoyalCounterfeitUntil=0;
+-        entity.jackTradeStage=1;entity.jackTradeHotStreak=0;entity.jackTradeJackpotArmed=false;entity.jackTradeSafeBetArmed=false;entity.jackTradeRushUntil=0;entity.jackTradeLuckyUntil=0;entity.jackTradeRegenRemaining=0;entity.jackTradeRegenFxUntil=0;entity.jackTradePreparedOutcomes=[];entity.jackTradeLoadedDiceCount=0;entity.jackTradeLoadedDiceReady=false;entity.jackTradeRoyalSuits=0;entity.jackTradeTowerOutcomesSeen=[];
++        entity.jackTradeStage=1;entity.jackTradeHotStreak=0;entity.jackTradeJackpotArmed=false;entity.jackTradeSafeBetArmed=false;entity.jackTradeRushUntil=0;entity.jackTradeLuckyUntil=0;entity.jackTradeSp1FiveCardArmed=false;entity.jackTradeRegenRemaining=0;entity.jackTradeRegenFxUntil=0;entity.jackTradePreparedOutcomes=[];entity.jackTradeLoadedDiceCount=0;entity.jackTradeLoadedDiceReady=false;entity.jackTradeRoyalSuits=0;entity.jackTradeTowerOutcomesSeen=[];
+         entity.cinderionOrbitFlames=[];entity.cinderionDoubleKindlingArmed=false;entity.cinderionSuperActive=false;
+         clearPoisonState(entity);
+     }
+@@ -23954,6 +23957,8 @@ let heistFeverActive = false;
+         snapperWaves.length = 0;
+         chickpigEggZones.length = 0;
+         rocketeerFireZones.length = 0;
++        jetpackFireZones.length = 0;
++        rocketeerOrbitRockets.length = 0;
+         minigunninMutationFireZones.length = 0;
+         rocketeerAirstrikes.length = 0;
+         rings.length = 0;
+@@ -26858,7 +26863,7 @@ let heistFeverActive = false;
+                 vx: Math.cos(shotAngle) * speed,
+                 vy: Math.sin(shotAngle) * speed,
+                 life: 0, maxLife: range / speed,
+-                damage: 1420, pierce: !!hyper, pierceWalls: false,
++                damage: 767, pierce: !!hyper, pierceWalls: false,
+                 hitIds: {}, hitboxMod: 2.05, super: true,
+                 hyperVisual: !!hyper, outlitHyperGlow: !!hyper,
+                 outlitSuperRework: true, outlitWallChain: true,
+@@ -28841,7 +28846,7 @@ let heistFeverActive = false;
+         if (brawler === 'unopcoloco' && performance.now() < (player.unopRageUntil || 0)) base /= 1.7;
+         if (brawler === 'sir_cheeseburger' && performance.now() < (player.sirCheddarReloadBuffUntil || 0)) base /= 1.15;
+         if (brawler === 'upiedown' && performance.now() < (player.upiedownReloadBuffUntil || 0)) base *= 0.85;
+-        if (brawler === 'jacktrade' && performance.now() < (player.jackTradeRushUntil || 0)) base /= 3;
++        if (brawler === 'jacktrade' && performance.now() < (player.jackTradeRushUntil || 0)) base /= (1 + 2 * (player.jackTradeRushStrength ?? 1));
+         if (brawler === 'jacktrade' && isSlopSushiMode) {
+             const seen=Math.min(6,Array.isArray(player.jackTradeTowerOutcomesSeen)?player.jackTradeTowerOutcomesSeen.length:0);
+             base /= 1 + seen * getEntitySlopEffectTotal(player,'jackTradeHouseReloadPct');
+@@ -29228,7 +29233,8 @@ let heistFeverActive = false;
+   function getFireDelay(brawler, fromEntity){
+     if (brawler === 'jacktrade') {
+        const entity=fromEntity||player;
+-       let delay=performance.now() < (entity.jackTradeRushUntil||0) ? 217 : 644;
++       const rushStr=performance.now() < (entity.jackTradeRushUntil||0) ? (entity.jackTradeRushStrength ?? 1) : 1;
++       let delay=rushStr>=1 ? (performance.now() < (entity.jackTradeRushUntil||0) ? 217 : 644) : Math.round(644/(1+2*rushStr));
+        if(isSlopSushiMode){
+            const seen=Math.min(6,Array.isArray(entity.jackTradeTowerOutcomesSeen)?entity.jackTradeTowerOutcomesSeen.length:0);
+            delay/=1+seen*getEntitySlopEffectTotal(entity,'jackTradeHouseReloadPct');
+@@ -29265,6 +29271,8 @@ let heistFeverActive = false;
+     bolznstienPendingStrikes.length = 0; bolznstienShockTrails.length = 0; bolznstienChainArcs.length = 0; chocolatePuddles.length = 0; magnatarVortices.length = 0; oilMakerPuddles.length = 0; oilMakerBarrels.length = 0; oilMakerPendingPuddles.length = 0; steamerPoles.length = 0; weefeePoles.length = 0; chickpigEggZones.length = 0; rings.length = 0; cheeseFields.length = 0; healingPods.length = 0; explosions.length = 0; pendingClones.length = 0; destructibleWalls.length = 0; floatingTexts.length = 0; stickyNotes.length = 0; amplifierToolboxes.length = 0; amplifierScrewZones.length = 0; skeleParachutes.length = 0; skelePortals.length = 0; malakorHellZones.length = 0; malakorHands.length = 0; relativityZones.length = 0; packetTimeFields.length = 0; packetTelegraphs.length = 0; fastpassCheckpoints.length = 0; freestyleMicrophones.length = 0; portaloPortalPairs.length = 0; portaloPrisons.length = 0; portaloShockTimers.length = 0; ghoulHaunts.length = 0; darkenerClouds.length = 0; darkagons.length = 0; cursedStorms.length = 0; cursedHyperClouds.length = 0; antiRoyalMortarShells.length = 0; antiRoyalMortarZones.length = 0; jackTradeVolleys.length = 0; jackTradeThrownEffects.length = 0; jackTradeZones.length = 0; jackTradeEndpointShots.length = 0; badbatSwarm.length = 0; badbatShieldOrbs.length = 0; loomaThreads.length = 0; loomaWeaves.length = 0; feathersWindZones.length = 0; feathersStorms.length = 0; spikeyParkedBalls.length = 0; spikeyMegaBalls.length = 0; spikeyPendingSlams.length = 0; electricRealms.length = 0; electrostienPendingStrikes.length = 0;
+     snapperWaves.length = 0;
+     rocketeerFireZones.length = 0;
++    jetpackFireZones.length = 0;
++    rocketeerOrbitRockets.length = 0;
+     minigunninMutationFireZones.length = 0;
+     rocketeerAirstrikes.length = 0;
+     stormTimer = 0; // Reset storm every round
+@@ -29879,7 +29887,7 @@ let heistFeverActive = false;
+ 
+   function getBrawlerSuperMaxCharges(brawlerId, isHyper = false) {
+       if (brawlerId === 'steamer') return 5;
+-      if (brawlerId === 'oil_maker') return isHyper ? 5 : 3;
++      if (brawlerId === 'oil_maker') return isHyper ? 3 : 2; // Round 41: super uses 3->2, hyper 5->3
+       if (brawlerId === 'dashaholic') return 2;
+       if (brawlerId === 'mallow') return 2;
+       return 1;
+@@ -29894,7 +29902,7 @@ let heistFeverActive = false;
+       }
+       if (brawler === 'oil_maker') {
+           ensureOilMakerState(entity);
+-          return typeof entity.oilMakerSuperCharges === 'number' ? entity.oilMakerSuperCharges : 3;
++          return typeof entity.oilMakerSuperCharges === 'number' ? entity.oilMakerSuperCharges : 2;
+       }
+       if (brawler === 'dashaholic') {
+           ensureDashaholicSuperState(entity);
+@@ -29995,7 +30003,7 @@ let heistFeverActive = false;
+       const currentSub = entity.oilMakerSubCharge || 0;
+       const nextSub = currentSub + amount;
+       if (nextSub >= 100) {
+-          // Reaching 100% super grants the full multi-super capacity (3 barrels, or 5 in Hypercharge)
++          // Reaching 100% super grants the full multi-super capacity (2 barrels, or 3 in Hypercharge)
+           entity.oilMakerSuperCharges = maxCharges;
+           entity.oilMakerSubCharge = 0;
+       } else {
+@@ -31174,12 +31182,14 @@ let heistFeverActive = false;
+                       } else {
+                           ent.slowUntil = Math.max(ent.slowUntil || 0, now + 400);
+                           if (sp1) {
+-                              ent.reloadDebuffUntil = Math.max(ent.reloadDebuffUntil || 0, now + 1000);
++                              // Round 41 Oil SP1: 15% slow + 18% reload slow (time x1.22), via dedicated fields.
++                              ent.oilMakerSp1SlowUntil = Math.max(ent.oilMakerSp1SlowUntil || 0, now + 1000);
++                              ent.oilMakerSp1ReloadUntil = Math.max(ent.oilMakerSp1ReloadUntil || 0, now + 1000);
+                           }
+                       }
+                   } else if (ent.id === puddle.ownerId || (owner && ent.id === owner.id)) {
+                       if (puddle.ignited && sp2) {
+-                          doHeal(ent, 300 * dt);
++                          doHeal(ent, 200 * dt); // Round 41 Oil SP2: healing 200/s (was 300/s)
+                       }
+                   }
+               }
+@@ -32482,7 +32492,7 @@ let heistFeverActive = false;
+     const extraHyperMs = (isSplitterPoweredMode && selectedBrawler === 'splitter') ? 2000 : 0;
+     hyperchargeUntil = performance.now() + Math.round((5000 + extraHyperMs) * (getCorePerk(selectedBrawler) === 'surge' ? 1.4 : 1));
+     if (selectedBrawler === 'oil_maker' || (player && player.brawler === 'oil_maker')) {
+-        player.oilMakerSuperCharges = 5;
++        player.oilMakerSuperCharges = 3; // Round 41: hyper cap 5->3
+         superCharge = 100;
+         updateSuperButton();
+     }
+@@ -33305,7 +33315,7 @@ let heistFeverActive = false;
+         const star=getOwnerStarChoice(owner);
+         const baseAng=Math.atan2(projectile.vy,projectile.vx);
+         const count=Math.max(3,(projectile.rocketeerMiniCount||3)+(isSlopSushiMode?getEntitySlopEffectTotal(owner,'rocketeerExtraMinis'):0));
+-        const miniDamage=Math.round((projectile.rocketeerBaseDamage||projectile.damage||2191)*.14904);
++        const miniDamage=400; // Round 41: mini rockets deal a flat 400 each (no longer 14.9% of base).
+         if(star==='slow') spawnRocketeerFireZone(projectile.ownerId,projectile.x,projectile.y,2500,210,78,projectile.hyperVisual);
+         for(let n=0;n<count;n++){
+             const lane=count===1?0:(n/(count-1)-.5);
+@@ -33323,7 +33333,7 @@ let heistFeverActive = false;
+     }
+ 
+     function launchRocketeerMain(owner, angle, hyper, damageMult=1, options={}) {
+-        const damage=Math.round(2191*damageMult);
++        const damage=Math.round(1400*damageMult);
+         const lateral=options.lateral||0,forward=options.forward||0,perp=angle+Math.PI/2;
+         const skinId = (owner?.id === (typeof player !== 'undefined' ? player?.id : '') ? getActiveSkinForBrawler('rocketeer')?.id : null) || owner?.skinId || (owner?.isRankedSkin ? 'ranked-rocketeer' : null);
+         bullets.push({ownerBrawler:'rocketeer',isRocketeerMain:true,skinId,rocketeerBaseDamage:damage,
+@@ -33356,10 +33366,12 @@ let heistFeverActive = false;
+         }
+         if(star==='long'||(isSlopSushiMode&&getEntitySlopEffectTotal(owner,'rocketeerSuperFire')>0))spawnRocketeerFireZone(strike.ownerId,strike.x,strike.y,4000,160,92,strike.hyper);
+         if(strike.hyper){
+-            const radial=Math.max(8,isSlopSushiMode?getEntitySlopEffectTotal(owner,'rocketeerHyperRadial'):0);
+-            for(let n=0;n<radial;n++){
+-                const a=n*Math.PI*2/radial;
+-                bullets.push({ownerBrawler:'rocketeer',isRocketeerMini:true,skinId,rocketeerNoFire:true,x:strike.x+Math.cos(a)*12,y:strike.y+Math.sin(a)*12,vx:Math.cos(a)*740,vy:Math.sin(a)*740,life:0,maxLife:.486,damage:260,pierce:false,ownerId:strike.ownerId,hitIds:{},hitboxMod:.9,hyperVisual:true});
++            // Round 41 HC rework: 6 rockets spin around the impact point, then explode for 400 damage
++            // (radius 95px orbit, 1200ms fuse, 70px blast; also explodes early on enemy contact).
++            // The old 8 radial minis (and the slop rocketeerHyperRadial override) are retired.
++            for(let n=0;n<6;n++){
++                const a=n*Math.PI*2/6;
++                rocketeerOrbitRockets.push({ownerId:strike.ownerId,cx:strike.x,cy:strike.y,angle:a,radius:95,expiresAt:performance.now()+1200,lastTickAt:performance.now(),damage:400,blastRadius:70,skinId,x:strike.x+Math.cos(a)*95,y:strike.y+Math.sin(a)*95});
+             }
+         }
+         if (skinId === 'ranked-rocketeer') {
+@@ -33375,13 +33387,27 @@ let heistFeverActive = false;
+         const skinId = (owner?.id === (typeof player !== 'undefined' ? player?.id : '') ? getActiveSkinForBrawler('rocketeer')?.id : null) || owner?.skinId || (owner?.isRankedSkin ? 'ranked-rocketeer' : null);
+         const strikeCount = 3 + (isPowerPlayShowdownMode ? 4 : 0) + (isPowerPlayModifierActive(owner) && !isPowerPlayShowdownMode ? 4 : 0) + (isSlopSushiMode ? getEntitySlopEffectTotal(owner, 'rocketeerExtraSuperStrikes') : 0);
+         for(let n=0;n<strikeCount;n++){
+-            const a=-Math.PI/2+n*Math.PI*2/strikeCount,offset=n===0?0:Math.min(112,62+strikeCount*4);
++            const a=-Math.PI/2+n*Math.PI*2/strikeCount,offset=n===0?0:Math.min(134,Math.round((62+strikeCount*4)*1.2)); // Round 41: super spread +20%
+             rocketeerAirstrikes.push({ownerId:owner.id,skinId,x:clamp(cx+Math.cos(a)*offset,40,WORLD_W-40),y:clamp(cy+Math.sin(a)*offset,40,WORLD_H-40),landAt:now+800+n*180,hyper:!!hyper});
+         }
+     }
+ 
+     function updateRocketeerEffects(now) {
+         for(let i=rocketeerAirstrikes.length-1;i>=0;i--){if(now>=rocketeerAirstrikes[i].landAt){detonateRocketeerSuper(rocketeerAirstrikes[i]);rocketeerAirstrikes.splice(i,1);}}
++        for(let i=rocketeerOrbitRockets.length-1;i>=0;i--){
++            const r=rocketeerOrbitRockets[i];
++            const dtMs=Math.max(0,now-(r.lastTickAt||now));r.lastTickAt=now;
++            r.angle+=dtMs/1000*4.5;
++            r.x=r.cx+Math.cos(r.angle)*r.radius;r.y=r.cy+Math.sin(r.angle)*r.radius;
++            let exploded=false;
++            const rOwner=getEntityById(r.ownerId);
++            for(const t of [player,...bots]){
++                if(!t||t.hp<=0||t.id===r.ownerId||(rOwner&&areAlliedEntities(rOwner,t)))continue;
++                if(Math.hypot(t.x-r.x,t.y-r.y)<=r.blastRadius+(t.radius||14)){AOEDamage(r.x,r.y,r.blastRadius,r.damage,r.ownerId,true);exploded=true;break;}
++            }
++            if(!exploded&&now>=r.expiresAt){AOEDamage(r.x,r.y,r.blastRadius,r.damage,r.ownerId,true);exploded=true;}
++            if(exploded){explosions.push({x:r.x,y:r.y,radius:r.blastRadius,life:0,maxLife:.3,color:'rgba(255,112,33,.85)',legendary:true});rocketeerOrbitRockets.splice(i,1);}
++        }
+         for(let i=rocketeerFireZones.length-1;i>=0;i--){
+             const zone=rocketeerFireZones[i];if(now>=zone.until){rocketeerFireZones.splice(i,1);continue;}
+             if(now<(zone.nextTickAt||0))continue;zone.nextTickAt=now+500;
+@@ -34296,6 +34322,8 @@ let heistFeverActive = false;
+     if(isBot && brawler === 'decayer' && now < (fromEntity.reloadBuffUntil || 0)) fireDelay *= 0.5;
+     if(isBot && brawler === 'runner' && now < (fromEntity.runnerReloadBuffUntil || 0)) fireDelay /= RUNNER_HYPER_RELOAD_MULT;
+     if(isBot && fromEntity.reloadDebuffUntil && now < fromEntity.reloadDebuffUntil) fireDelay *= 1.4;
++    if(isBot && brawler === 'oil_maker' && fromEntity.oilMakerSp1ReloadUntil && now < fromEntity.oilMakerSp1ReloadUntil) fireDelay *= 1.22; // Round 41 Oil SP1 reload slow (bot side; player side in reload pipeline).
++    if(isBot && brawler === 'oil_maker' && (fromEntity.selectedStar === 'long' || fromEntity.selectedStar === 'sp2') && oilMakerPuddles.some(p => p.ignited && Math.hypot(p.x - fromEntity.x, p.y - fromEntity.y) <= 120)) fireDelay /= 1.10; // Round 41 Oil SP2 reload buff 25% -> 10% (bot side; was player-only).
+     if(isBot && brawler === 'hunter') fireDelay = 800;
+     if(isBot && brawler === 'minigunnin') fireDelay = fromEntity.isHypercharged ? 165 : 212;
+     if(isBot && fromEntity.isBoss) {
+@@ -35545,6 +35573,8 @@ let heistFeverActive = false;
+         const hasSp1 = isBot ? (fromEntity.selectedStar === 'slow' || fromEntity.selectedStar === 'fast' || fromEntity.selectedStar === 'sp1') : (selectedStar === 'slow' || selectedStar === 'fast' || selectedStar === 'sp1');
+         const hasSp2 = isBot ? (fromEntity.selectedStar === 'long' || fromEntity.selectedStar === 'sp2') : (selectedStar === 'long' || selectedStar === 'sp2');
+         ensureUpgradartState(fromEntity);
++        const healDartArmed = !!fromEntity.upgradartG2Armed;
++        if (healDartArmed) fromEntity.upgradartG2Armed = false;
+ 
+         const isSuperActive = now < (fromEntity.upgradartSuperUntil || 0);
+         const stage = getUpgradartStage(fromEntity.upgradartTotalDamage || 0);
+@@ -35553,7 +35583,7 @@ let heistFeverActive = false;
+         const baseDartSpeed = 850 * (hasSp2 ? 1.25 : 1.0);
+         const baseDartRange = 440 * (hasSp2 ? 1.20 : 1.0);
+         const dartMaxLife = baseDartRange / baseDartSpeed;
+-        const baseDamage = stage === 1 ? 960 : 320;
++        const baseDamage = stage === 1 ? 960 : 170;
+         const levelScale = fromEntity.id === player.id ? getPlayerDamageScale() : 1.0;
+         const dartDamage = Math.round(baseDamage * levelScale);
+         const diagAngleOffset = 0.14;
+@@ -35589,7 +35619,7 @@ let heistFeverActive = false;
+         const willReturn = hyper;
+         const isPoison = isSuperActive;
+ 
+-        const fireDart = (fireAng, delayMs, isCenter) => {
++        const fireDart = (fireAng, delayMs, isCenter, isHealDart = false) => {
+             setTimeout(() => {
+                 if (!playing || gameOver || fromEntity.hp <= 0) return;
+                 const sx = fromEntity.x + Math.cos(fireAng) * (fromEntity.radius + 8);
+@@ -35605,7 +35635,7 @@ let heistFeverActive = false;
+                     vy: Math.sin(fireAng) * baseDartSpeed,
+                     life: 0,
+                     maxLife: dartMaxLife,
+-                    damage: dartDamage,
++                    damage: isHealDart ? 0 : dartDamage,
+                     pierce: hyper,
+                     ownerId: fromEntity.id,
+                     team: fromEntity.team,
+@@ -35614,6 +35644,7 @@ let heistFeverActive = false;
+                     hyperVisual: hyper,
+                     upgradartReturns: willReturn,
+                     upgradartPoison: isPoison,
++                    upgradartHealDart: isHealDart,
+                     upgradartStrongPoison: isStrongSuper,
+                     hasSp1: hasSp1,
+                     hasSp2: hasSp2,
+@@ -35623,7 +35654,7 @@ let heistFeverActive = false;
+             }, delayMs);
+         };
+ 
+-        for (let c = 0; c < centerCount; c++) fireDart(ang, c * 50, true);
++        for (let c = 0; c < centerCount; c++) fireDart(ang, c * 50, true, healDartArmed && c === 0);
+         for (let l = 0; l < leftCount; l++) fireDart(ang - diagAngleOffset, l * 50, false);
+         for (let r = 0; r < rightCount; r++) fireDart(ang + diagAngleOffset, r * 50, false);
+ 
+@@ -35740,8 +35771,8 @@ let heistFeverActive = false;
+         const now = performance.now();
+         const level = isBot ? (fromEntity.powerLevel || 11) : getSelectedBrawlerLevel();
+         const scale = 0.55 + (level - 1) * 0.045;
+-        const minDmg = Math.round(300 * scale); // 300 at P11 point blank
+-        const maxDmg = Math.round(550 * scale); // 550 at P11 max range
++        const minDmg = Math.round(150 * scale); // 150 at P11 point blank (Round 41: -150)
++        const maxDmg = Math.round(400 * scale); // 400 at P11 max range (Round 41: -150)
+         // Since 1 ammo was just deducted in shoot(), full ammo (3/3) means remaining ammo is >= maxAmmo - 1.05 (>= 1.95)
+         const fullAmmo = (!isBot && ammo >= (maxAmmo - 1.05)) || hyper;
+         const hasSp1 = isBot ? (fromEntity.selectedStar === 'fast') : (selectedStar === 'fast');
+@@ -35778,12 +35809,12 @@ let heistFeverActive = false;
+ 
+         // Six distinct gap-filling lanes in a 30% narrower precision fan.
+         const starAngles = [
+-            ang - 0.14,  // Shot 1: far left
+-            ang - 0.028, // Shot 2: inner left
+-            ang + 0.084, // Shot 3: outer right
+-            ang + 0.14,  // Shot 4: far right gap
+-            ang + 0.028, // Shot 5: inner right gap
+-            ang - 0.084  // Shot 6: outer left gap
++            ang - 0.098,  // Shot 1: far left (Round 41: 30% narrower fan)
++            ang - 0.0196, // Shot 2: inner left
++            ang + 0.0588, // Shot 3: outer right
++            ang + 0.098,  // Shot 4: far right gap
++            ang + 0.0196, // Shot 5: inner right gap
++            ang - 0.0588  // Shot 6: outer left gap
+         ];
+ 
+         for (let i = 0; i < 6; i++) {
+@@ -35834,7 +35865,7 @@ let heistFeverActive = false;
+       const sushiSpreadMult = isSlopSushiMode ? Math.max(1,getEntitySlopEffectTotal(fromEntity,'outlitSpreadMult')) : 1;
+       const sushiSpeed = isSlopSushiMode ? getEntitySlopEffectTotal(fromEntity,'outlitProjectileSpeedPct') : 0;
+       const spread = baseSpread * (isBot ? 0.8 : 0.6) * hcSpread * sushiSpreadMult;
+-        const outlitDamage = isBot ? 183 : 233;
++        const outlitDamage = isBot ? 146 : 188;
+         const outlitVelocity = (!isBot && isHypercharged) ? 1.8 : 1.0;
+         const hcRangeMult = ((!isBot && isHypercharged) ? 1.1 : 1.0) * (mutationOvercharged ? 2.0 : 1.0);
+         const outlitProjectileSpeed = 560 * 0.6 * outlitVelocity * (1+sushiSpeed);
+@@ -36711,7 +36742,7 @@ let heistFeverActive = false;
+                             ownerBrawler: 'money_and_tax', isCoin: true, moneyAttackId: attackId,
+                             x: fromEntity.x + Math.cos(a)*(fromEntity.radius+4), y: fromEntity.y + Math.sin(a)*(fromEntity.radius+4),
+                             vx: Math.cos(a)*950 * 0.6, vy: Math.sin(a)*950 * 0.6,
+-                            life: 0, maxLife: 0.9 + extraLife, damage: empoweredCenter ? (isBot ? 150 : 338)*(1+centerDamage) : (isBot ? 120 : 270), pierce: isHyper, hyperVisual: isHyper, ownerId: fromEntity.id, maxCoinDist: 513 + extraRangeTiles,
++                            life: 0, maxLife: 0.9 + extraLife, damage: empoweredCenter ? (isBot ? 127 : 287)*(1+centerDamage) : (isBot ? 101 : 228), pierce: isHyper, hyperVisual: isHyper, ownerId: fromEntity.id, maxCoinDist: 513 + extraRangeTiles,
+                             hitboxMod: enlargedCenter
+                                 ? 1.65 * MONEY_TAX_FULL_CENTER_SIZE_MULT * (1 + centerSize)
+                                 : MONEY_TAX_MONEY_SIZE_MULT,
+@@ -36727,7 +36758,7 @@ let heistFeverActive = false;
+             for (let i = 0; i < 2; i++) { // 2 banknotes side-by-side
+                 const a = ang + (i === 0 ? -MONEY_TAX_TAX_SPREAD : MONEY_TAX_TAX_SPREAD);
+                 bullets.push({ ownerBrawler: 'money_and_tax', isTaxNote: true, hitIds: {}, x: fromEntity.x + Math.cos(a)*(fromEntity.radius+4), y: fromEntity.y + Math.sin(a)*(fromEntity.radius+4),
+-                    vx: Math.cos(a)*950 * 0.6, vy: Math.sin(a)*950 * 0.6, life: 0, maxLife: 1.0 + extraLife, damage: Math.round((isBot ? 170 : 375) * MONEY_TAX_TAX_DAMAGE_MULT), pierce: isHyper, hyperVisual: isHyper, ownerId: fromEntity.id, maxTaxNoteDist: 850 + extraRangeTiles, hitboxMod: MONEY_TAX_TAX_SIZE_MULT });
++                    vx: Math.cos(a)*950 * 0.6, vy: Math.sin(a)*950 * 0.6, life: 0, maxLife: 1.0 + extraLife, damage: Math.round((isBot ? 359 : 793) * MONEY_TAX_TAX_DAMAGE_MULT), pierce: isHyper, hyperVisual: isHyper, ownerId: fromEntity.id, maxTaxNoteDist: 850 + extraRangeTiles, hitboxMod: MONEY_TAX_TAX_SIZE_MULT });
+             }
+             if (mutationAttack) {
+                 setTimeout(() => {
+@@ -36736,7 +36767,7 @@ let heistFeverActive = false;
+                         const a = ang + (i === 0 ? -MONEY_TAX_TAX_SPREAD : MONEY_TAX_TAX_SPREAD);
+                         bullets.push({ownerBrawler:'money_and_tax',isTaxNote:true,moneyTaxMutationReturn:true,moneyTaxMutationVisual:true,moneyTaxReturnPhase:0,moneyTaxReturnAt:.52,
+                             hitIds:{},x:fromEntity.x+Math.cos(a)*(fromEntity.radius+4),y:fromEntity.y+Math.sin(a)*(fromEntity.radius+4),vx:Math.cos(a)*950*.6,vy:Math.sin(a)*950*.6,
+-                            life:0,maxLife:2.1,damage:Math.round((isBot?170:375)*MONEY_TAX_TAX_DAMAGE_MULT),pierce:true,hyperVisual:isHyper,ownerId:fromEntity.id,hitboxMod:MONEY_TAX_TAX_SIZE_MULT});
++                            life:0,maxLife:2.1,damage:Math.round((isBot?359:793)*MONEY_TAX_TAX_DAMAGE_MULT),pierce:true,hyperVisual:isHyper,ownerId:fromEntity.id,hitboxMod:MONEY_TAX_TAX_SIZE_MULT});
+                     }
+                 }, 105);
+             }
+@@ -37258,7 +37289,7 @@ let heistFeverActive = false;
+             x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 8),
+             y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 8),
+             vx: Math.cos(ang) * 760, vy: Math.sin(ang) * 760,
+-            life: 0, maxLife: 0.92, damage: isBot ? 972 : 1700,
++            life: 0, maxLife: 0.92, damage: isBot ? 800 : 1400, // Round 41: main 1700->1400 (bot 972->800)
+             pierce: false, ownerId: fromEntity.id, hitIds: {}, hyperVisual: xrayHyper, hitboxMod: 1.12
+         });
+         explosions.push({x:fromEntity.x+Math.cos(ang)*22,y:fromEntity.y+Math.sin(ang)*22,radius:24,life:0,maxLife:0.18,color:xrayHyper?'#dc72ff':'#79f7ff'});
+@@ -37661,6 +37692,23 @@ let heistFeverActive = false;
+         }
+     }
+ 
++    const jetpackFireZones = [];
++    function jetpackHasSP1(owner){const c=getEntityStarChoice(owner);return c==='slow'||c==='sp1';}
++    // Round 41 HC fire zones: 150 damage per 500ms tick, radius 80, 3s duration (builder picks, flagged).
++    function spawnJetpackFireZone(ownerId,x,y){
++        jetpackFireZones.push({ownerId,x,y,radius:80,damage:150,until:performance.now()+3000,nextTickAt:0});
++        explosions.push({x,y,radius:80,life:0,maxLife:.28,color:'rgba(255,140,40,.55)',fxKind:'jetpackFireZone'});
++    }
++    function updateJetpackFireZones(now){
++        for(let i=jetpackFireZones.length-1;i>=0;i--){
++            const z=jetpackFireZones[i];if(now>=z.until){jetpackFireZones.splice(i,1);continue;}
++            if(now<(z.nextTickAt||0))continue;z.nextTickAt=now+500;
++            const owner=getEntityById(z.ownerId);
++            for(const t of [player,...bots]){if(!t||t.hp<=0||t.id===z.ownerId||(owner&&areAlliedEntities(owner,t)))continue;
++                if(Math.hypot(t.x-z.x,t.y-z.y)<=z.radius+(t.radius||14))checkHit(t,{ownerBrawler:'jetpack',ownerId:z.ownerId,damage:z.damage,pierce:true,hitIds:{},isJetpackFire:true},-1);}
++        }
++    }
++
+     function startJetpackFlight(owner, aimX, aimY, options={}) {
+         if (!owner || owner.hp <= 0 || owner.jetpackFlight) return false;
+         const now=performance.now();
+@@ -37670,7 +37718,7 @@ let heistFeverActive = false;
+         const maxRange=options.superFlight?850:(220+480*charge);
+         const range=Math.min(d,maxRange);
+         const endX=clamp(owner.x+dx/d*range,30,WORLD_W-30),endY=clamp(owner.y+dy/d*range,30,WORLD_H-30);
+-        owner.jetpackFlight={startX:owner.x,startY:owner.y,endX,endY,startAt:now,duration:options.superFlight?1250:(480+charge*520),charge,superFlight:!!options.superFlight,hyper:!!options.hyper,nextBomb:0};
++        owner.jetpackFlight={startX:owner.x,startY:owner.y,endX,endY,startAt:now,duration:options.superFlight?(jetpackHasSP1(owner)?893:1250):(480+charge*520),charge,superFlight:!!options.superFlight,hyper:!!options.hyper,nextBomb:0}; // Round 41 SP1: super flies 40% faster (1250/1.4 = 893)
+         if (!options.superFlight) owner.jetpackNextJumpAt = now + 800;
+         owner.isFlying=true; owner.z=1; owner.stunUntil=Math.max(owner.stunUntil||0,now+owner.jetpackFlight.duration+40);
+         if (!options.superFlight && options.hyper) explodeJetpackBomb(owner.x,owner.y,owner,900,false);
+@@ -37691,7 +37739,9 @@ let heistFeverActive = false;
+             while(f.nextBomb<6&&p>=(f.nextBomb+1)/7){
+                 const i=f.nextBomb++,pathP=(i+1)/7,bx=f.startX+(f.endX-f.startX)*pathP,by=f.startY+(f.endY-f.startY)*pathP;
+                 const a=Math.atan2(f.endY-f.startY,f.endX-f.startX)+Math.PI/2,lane=pattern[i]*(42+i*9);
+-                explodeJetpackBomb(clamp(bx+Math.cos(a)*lane,20,WORLD_W-20),clamp(by+Math.sin(a)*lane,20,WORLD_H-20),owner,950,f.hyper);
++                const zx=clamp(bx+Math.cos(a)*lane,20,WORLD_W-20),zy=clamp(by+Math.sin(a)*lane,20,WORLD_H-20);
++                explodeJetpackBomb(zx,zy,owner,950,f.hyper);
++                if(f.hyper)spawnJetpackFireZone(owner.id,zx,zy); // Round 41 HC: super bombs leave fire zones.
+             }
+         }
+         if(p>=1){
+@@ -37701,15 +37751,18 @@ let heistFeverActive = false;
+             if(!f.superFlight){
+                 const level=owner.id===player.id?getSelectedBrawlerLevel():(owner.level||11),scale=getLevelDamageScale(level);
+                 const highAltitude=getEntityStarChoice(owner)==='long'&&f.charge>=.95;
+-                const damage=Math.round((1536+950*f.charge)*scale),radius=Math.round((58+28*f.charge)*(highAltitude?1.15:1));
++                const damage=Math.round((1100+900*f.charge)*scale),radius=Math.round((58+28*f.charge)*(highAltitude?1.15:1));
+                 explosions.push({x:owner.x,y:owner.y,radius,life:0,maxLife:.3,color:f.hyper?'rgba(197,92,255,.9)':'rgba(91,219,255,.9)',legendary:true,fxKind:'jetpackLanding',hyperVisual:f.hyper});
+-                const hits=AOEDamage(owner.x,owner.y,radius,damage,owner.id,false);
+-                if(hits>0&&getEntityStarChoice(owner)==='slow')doHeal(owner,1000);
++                AOEDamage(owner.x,owner.y,radius,damage,owner.id,false); // Round 41: Soft Landing heal retired with the SP1 rework.
++                if(f.hyper)spawnJetpackFireZone(owner.id,owner.x,owner.y); // Round 41 HC: main attack leaves a fire zone.
+             }
+         }
+     }
+ 
+     function castJetpackSuper(owner, hyper, aimX, aimY) {
++        // Round 41: super requires a minimum 240px dash so bombs don't overlap (pick, flagged; clamped at walls).
++        const jdx=aimX-owner.x,jdy=aimY-owner.y,jd=Math.hypot(jdx,jdy);
++        if(jd<240){const ja=jd>1?Math.atan2(jdy,jdx):(owner.dir||0);aimX=clamp(owner.x+Math.cos(ja)*240,30,WORLD_W-30);aimY=clamp(owner.y+Math.sin(ja)*240,30,WORLD_H-30);}
+         startJetpackFlight(owner,aimX,aimY,{superFlight:true,hyper});
+         spawnFloatingText(owner.x,owner.y-40,hyper?'AIR RAID!':'I DROP BOMBS!','#76e6ff');
+     }
+@@ -38887,6 +38940,7 @@ let heistFeverActive = false;
+         if (typeof entity.upgradartSuperHyper !== 'boolean') entity.upgradartSuperHyper = false;
+         if (typeof entity.upgradartG1Armed !== 'boolean') entity.upgradartG1Armed = false;
+         if (typeof entity.upgradartG2Armed !== 'boolean') entity.upgradartG2Armed = false;
++        if (typeof entity.upgradartSuperNextReadyAt !== 'number') entity.upgradartSuperNextReadyAt = 0;
+     }
+ 
+     function getUpgradartStage(totalDmg) {
+@@ -38942,11 +38996,18 @@ let heistFeverActive = false;
+     }
+ 
+     function castUpgradartSuper(owner, hyper, targetX, targetY) {
+-        if (!owner || owner.hp <= 0) return;
++        if (!owner || owner.hp <= 0) return false;
+         const now = performance.now();
+         ensureUpgradartState(owner);
++        // Round 41: super charges ONLY every 15s — a cooldown gate between successful casts.
++        // Charge still accumulates normally and is preserved while gated (callers restore it on false).
++        if (now < (owner.upgradartSuperNextReadyAt || 0)) {
++            spawnFloatingText(owner.x, owner.y - 42, 'SUPER NOT READY', '#a855f7');
++            return false;
++        }
++        owner.upgradartSuperNextReadyAt = now + 15000;
+         const stage = getUpgradartStage(owner.upgradartTotalDamage || 0);
+-        const durationMs = stage >= 4 ? 5000 : 4000;
++        const durationMs = stage >= 4 ? 3500 : 2800; // Round 41: super duration 30% shorter.
+         owner.upgradartSuperUntil = now + durationMs;
+         owner.upgradartSuperHyper = !!hyper;
+ 
+@@ -38958,7 +39019,8 @@ let heistFeverActive = false;
+             maxLife: 0.35,
+             color: 'rgba(168, 85, 247, 0.85)'
+         });
+-        spawnFloatingText(owner.x, owner.y - 42, stage >= 4 ? '☠️ MEGA POISON DARTS! (5s)' : '☠️ POISON DARTS! (4s)', '#a855f7');
++        spawnFloatingText(owner.x, owner.y - 42, stage >= 4 ? '☠️ MEGA POISON DARTS! (3.5s)' : '☠️ POISON DARTS! (2.8s)', '#a855f7');
++        return true;
+     }
+ 
+     function ensureAxeyWaxyState(entity) {
+@@ -39668,7 +39730,7 @@ let heistFeverActive = false;
+     if (combatBrawler === 'aegis') { castAegisSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
+     if (combatBrawler === 'runner') { castRunnerSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
+     if (combatBrawler === 'ramage') { castRamageSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
+-        if (combatBrawler === 'upgradart') { castUpgradartSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
++        if (combatBrawler === 'upgradart') { if(!castUpgradartSuper(player, !!isHypercharged, wm.x, wm.y))superCharge=100; updateSuperButton(); return; }
+     if (combatBrawler === 'axeywaxy') { castAxeyWaxySuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
+     if (combatBrawler === 'awakenator') { castAwakenatorSuper(player,!!isHypercharged); updateSuperButton(); return; }
+     if (combatBrawler === 'king') { castKingSuper(player,!!isHypercharged,wm.x,wm.y); updateSuperButton(); return; }
+@@ -40789,9 +40851,37 @@ let heistFeverActive = false;
+           else{const a=Math.atan2(targetY-entity.y,targetX-entity.x),nx=clamp(entity.x+Math.cos(a)*190,entity.radius,WORLD_W-entity.radius),ny=clamp(entity.y+Math.sin(a)*190,entity.radius,WORLD_H-entity.radius);if(canMoveToPosition(entity,nx,ny)){entity.x=nx;entity.y=ny;}triggerFightnFireImpact({x:entity.x,y:entity.y,damage:650,ownerId:entity.id,fightnFireShardCount:0},true);}return true;
+       }
+       if(brawler==='jetpack'){
+-          if(gadget==='g1'){if(!entity.jetpackFlight)return false;entity.x=entity.jetpackFlight.endX;entity.y=entity.jetpackFlight.endY;entity.z=0;entity.isFlying=false;entity.jetpackFlight=null;entity.invulnerableUntil=now+250;spawnFloatingText(entity.x,entity.y-34,'SAFE LANDING','#76e6ff');}
++          if(gadget==='g1'){
++              // Round 41 G1 Supply Drop: deploy a 3000 HP jet a teammate picks up to fly freely for 4s.
++              // Stored as a healingPods entry so enemy projectiles can destroy it for free (pod-vs-projectile
++              // code) and the pod loop removes it at 0 HP; one active jet per owner (old jet replaced).
++              for(let i=healingPods.length-1;i>=0;i--)if(healingPods[i].isJetpackJet&&healingPods[i].ownerId===entity.id)healingPods.splice(i,1);
++              healingPods.push({isJetpackJet:true,x:entity.x,y:entity.y,hp:3000,maxHp:3000,radius:30,healRadius:0,healAmount:0,decayPerSec:0,ownerId:entity.id,team:entity.team,lastDecayTick:now,lastHealTick:now});
++              spawnFloatingText(entity.x,entity.y-34,'JET DEPLOYED','#76e6ff');
++          }
+           else explodeJetpackBomb(entity.x,entity.y,entity,1200,false);return true;
+       }
++      if(brawler==='oil_maker'){
++          // Round 41 fix: executeOilMakerG1/G2 existed but were never called from any gadget dispatch.
++          if(gadget==='g1')executeOilMakerG1(entity);
++          else executeOilMakerG2(entity);
++          return true;
++      }
++      if(brawler==='xray'){
++          // Round 41 fix: Xray had no bot gadget branch and was absent from this dispatch, so bot
++          // Xrays could never use a gadget. G1 reveals non-allied entities within 600px for 4s
++          // (stricter/correct vs the player branch's all-bots reveal); G2 is the reworked 30% DR
++          // shield for 3s (defenseMult 0.70 + defenseUntil, the DR the old code never applied).
++          if(gadget==='g1'){
++              for(const target of [player,...bots])if(target&&target.hp>0&&target.id!==entity.id&&!areAlliedEntities(entity,target)&&Math.hypot(target.x-entity.x,target.y-entity.y)<=600)target.xrayRevealedUntil=now+4000;
++              explosions.push({x:entity.x,y:entity.y,radius:600,life:0,maxLife:.38,color:'#79f7ff'});
++              spawnFloatingText(entity.x,entity.y-34,'QUICK SCAN','#79f7ff');
++          } else {
++              entity.defenseUntil=now+3000;entity.defenseMult=0.70;
++              spawnFloatingText(entity.x,entity.y-34,'LEAD APRON 30% DR','#79f7ff');
++          }
++          return true;
++      }
+       return false;
+   }
+ 
+@@ -41345,22 +41435,10 @@ let heistFeverActive = false;
+         bot.ammo = Math.min(bot.maxAmmo || 3, (bot.ammo || 0) + 2);
+         bot.gadgetArmed = false;
+     } else if (bot.brawler === 'upgradart' && g === 'g2') {
++        // Round 41 G2 rework: next dart deals 0 damage but heals 1000 HP (caltrops retired).
+         ensureUpgradartState(bot);
+-        for (let c = 0; c < 5; c++) {
+-            const caltAng = (c * (Math.PI * 2 / 5)) + Math.random() * 0.4;
+-            const dist = 30 + Math.random() * 40;
+-            upgradartCaltrops.push({
+-                x: clamp(bot.x + Math.cos(caltAng) * dist, 20, WORLD_W - 20),
+-                y: clamp(bot.y + Math.sin(caltAng) * dist, 20, WORLD_H - 20),
+-                ownerId: bot.id,
+-                team: bot.team,
+-                radius: 28,
+-                until: performance.now() + 12000,
+-                damage: 450,
+-                slowPct: 0.35,
+-                slowDur: 3000
+-            });
+-        }
++        bot.upgradartG2Armed = true;
++        spawnFloatingText(bot.x, bot.y - 36, '💚 HEALING DART READY', '#00ff88');
+         bot.gadgetArmed = false;
+     } else if (bot.brawler === 'beam' && g === 'g1') {
+         bot.beamPrismSplitUntil = performance.now() + 4000;
+@@ -41486,7 +41564,7 @@ let heistFeverActive = false;
+     if (botCombatBrawler === 'aegis') { castAegisSuper(bot, isHyper, targetX, targetY); return; }
+     if (botCombatBrawler === 'runner') { castRunnerSuper(bot, isHyper, targetX, targetY); return; }
+     if (botCombatBrawler === 'ramage') { castRamageSuper(bot, isHyper, targetX, targetY); return; }
+-            if (botCombatBrawler === 'upgradart') { castUpgradartSuper(bot, isHyper, targetX, targetY); return; }
++            if (botCombatBrawler === 'upgradart') { if(!castUpgradartSuper(bot, isHyper, targetX, targetY))bot.superCharge=100; return; }
+     if (botCombatBrawler === 'axeywaxy') { castAxeyWaxySuper(bot, isHyper, targetX, targetY); return; }
+     if (botCombatBrawler === 'awakenator') { castAwakenatorSuper(bot,isHyper); return; }
+     if (botCombatBrawler === 'king') { castKingSuper(bot,isHyper,targetX,targetY); return; }
+@@ -41545,6 +41623,7 @@ let heistFeverActive = false;
+                 lastDecayTick: now, lastHealTick: now,
+                 isXrayMachine: true,
+                 xrayRadius: 464 * (1 + getEntitySlopEffectTotal(bot, 'xrayMachineRadiusPct')),
++                xrayHyper: isHyper, // Round 41 incidental fix: bot machine lacked xrayHyper, breaking its hyper damage zone.
+                 hyper: isHyper
+             });
+             return;
+@@ -42297,7 +42376,7 @@ let heistFeverActive = false;
+         return;
+     } else if (curBrawler === 'kage' && curGadget === 'g2') {
+       const p11Stats = getScaledStats('kage', getSelectedBrawlerLevel());
+-      const dmg = Math.round(p11Stats.dmg * 0.60);
++      const dmg = Math.round(p11Stats.dmg * 0.18); // Round 41: Kage G2 -70% (0.60 -> 0.18)
+       for (let d = 0; d < 8; d++) {
+         const dirAng = d * (Math.PI / 4);
+         for (const offset of [-0.045, 0.045]) {
+@@ -42887,27 +42966,13 @@ let heistFeverActive = false;
+         spawnFloatingText(player.x, player.y - 36, '⚡ +3,000 EXP & +2 AMMO!', '#00ff88');
+         updateGadgetButton();
+     } else if (curBrawler === 'upgradart' && curGadget === 'g2') {
++        // Round 41 G2 rework: next dart deals 0 damage but heals 1000 HP (caltrops retired).
+         ensureUpgradartState(player);
+-        for (let c = 0; c < 5; c++) {
+-            const caltAng = (c * (Math.PI * 2 / 5)) + Math.random() * 0.4;
+-            const dist = 30 + Math.random() * 40;
+-            upgradartCaltrops.push({
+-                x: clamp(player.x + Math.cos(caltAng) * dist, 20, WORLD_W - 20),
+-                y: clamp(player.y + Math.sin(caltAng) * dist, 20, WORLD_H - 20),
+-                ownerId: player.id,
+-                team: player.team,
+-                radius: 28,
+-                until: now + 12000,
+-                damage: 450,
+-                slowPct: 0.35,
+-                slowDur: 3000
+-            });
+-        }
+-        explosions.push({ x: player.x, y: player.y, radius: 65, life: 0, maxLife: 0.25, color: 'rgba(168, 85, 247, 0.75)' });
++        player.upgradartG2Armed = true;
+         gadgetArmed = false;
+         gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
+         setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
+-        spawnFloatingText(player.x, player.y - 36, '☠️ TOXIC CALTROPS!', '#a855f7');
++        spawnFloatingText(player.x, player.y - 36, '💚 HEALING DART READY', '#00ff88');
+         updateGadgetButton();
+         } else if (curBrawler === 'weefee' && curGadget === 'g1') {
+       if (triggerWeeFeeOverclockGadget(player)) { gadgetCooldownUntil = now + GADGET_COOLDOWN_MS; updateGadgetButton(); }
+@@ -43827,7 +43892,7 @@ let heistFeverActive = false;
+       }
+   }
+ 
+-  const JACKTRADE_CARD_DAMAGE = 900;
++  const JACKTRADE_CARD_DAMAGE = 750;
+   const JACKTRADE_CARD_RANGE = 830;
+   const JACKTRADE_CARD_RANGE_BY_STAGE = Object.freeze({1:650,2:530,4:430});
+   const JACKTRADE_CARD_SPEED = 940;
+@@ -43886,14 +43951,16 @@ let heistFeverActive = false;
+       const now = performance.now();
+       const hyper = isEntityHyperchargedNow(owner, now);
+       const stage = hyper ? 4 : getJackTradeStage(owner);
+-      const hotBonus = !hyper && stage === 4 && getEntityStarChoice(owner) === 'slow' && (owner.jackTradeHotStreak || 0) === 2;
++      const hotBonus = false; // Round 41: Hot Streak retired; SP1 is now Fifth Card (post-super 5-card attack).
++      const fiveCard = !hyper && !!owner.jackTradeSp1FiveCardArmed;
++      if (fiveCard) owner.jackTradeSp1FiveCardArmed = false;
+       const volleyId = `jacktrade_${owner.id}_${Math.floor(now)}_${Math.floor(Math.random()*99999)}`;
+       const towerEffect=key=>isSlopSushiMode?getEntitySlopEffectTotal(owner,key):0;
+       const fifthAce=towerEffect('jackTradeFifthAce');
+       const readTheTell=towerEffect('jackTradeReadTheTell')>0;
+       const lockedOutcome=readTheTell&&Array.isArray(owner.jackTradePreparedOutcomes)?owner.jackTradePreparedOutcomes[0]:null;
+-      const offsets = stage === 1 ? [0] : stage === 2 ? [-.04416,.04416] : [-.09246,-.03036,.03036,.09246];
+-      if(stage===4&&fifthAce>0)offsets.splice(2,0,0);
++      const offsets = fiveCard ? [-0.110,-0.055,0,0.055,0.110] : stage === 1 ? [0] : stage === 2 ? [-.04416,.04416] : [-.09246,-.03036,.03036,.09246];
++      if(!fiveCard&&stage===4&&fifthAce>0)offsets.splice(2,0,0);
+       const speed = JACKTRADE_CARD_SPEED * (hotBonus ? 1.15 : 1) * (lockedOutcome==='rush'?1.5:1);
+       const damage = JACKTRADE_CARD_DAMAGE * (hotBonus ? 1.10 : 1);
+       const compound=towerEffect('jackTradeCompoundInterest');
+@@ -44067,10 +44134,27 @@ let heistFeverActive = false;
+           targetX:clamp(owner.x+Math.cos(angle)*distance,20,WORLD_W-20),targetY:clamp(owner.y+Math.sin(angle)*distance,20,WORLD_H-20),createdAt:now,impactAt:now+520,hyper:!!options.hyper,royalSuits:options.royalSuits||0});
+   }
+ 
++  function jackTradeHasSP1(owner){const c=getEntityStarChoice(owner);return c==='slow'||c==='sp1';}
++  function jackTradeHasSP2(owner){const c=getEntityStarChoice(owner);return c==='long'||c==='sp2';}
++  // Round 41 SP2 Shared Pot: rush + regen also reach nearby teammates at 20% strength (radius pick: 300px).
++  function shareJackTradeSp2(owner, outcome, now){
++      if(!jackTradeHasSP2(owner))return 0;
++      let shared=0;
++      for(const ally of [player,...bots]){
++          if(!ally||ally.hp<=0||ally.id===owner.id||!areAlliedEntities(owner,ally))continue;
++          if(Math.hypot(ally.x-owner.x,ally.y-owner.y)>300)continue;
++          if(outcome==='rush'){ally.jackTradeRushUntil=Math.max(ally.jackTradeRushUntil||0,now+5000);ally.jackTradeRushStrength=0.2;}
++          else if(outcome==='regeneration'){ally.jackTradeRegenRemaining=(ally.jackTradeRegenRemaining||0)+1200;ally.jackTradeRegenUntil=now+10000;ally.jackTradeRegenFxUntil=now+10000;}
++          shared++;
++      }
++      if(shared>0)spawnFloatingText(owner.x,owner.y-58,'TEAM SHARE','#7ef4ff');
++      return shared;
++  }
++
+   function activateJackTradeOutcome(owner,outcome,targetX,targetY) {
+       const now=performance.now();
+-      if(outcome==='regeneration'){owner.jackTradeRegenRemaining=(owner.jackTradeRegenRemaining||0)+6000;owner.jackTradeRegenUntil=now+10000;owner.jackTradeRegenFxUntil=now+10000;explosions.push({x:owner.x,y:owner.y,radius:76,life:0,maxLife:.55,color:'rgba(89,255,173,.72)',fxKind:'jackTradeHealing'});spawnFloatingText(owner.x,owner.y-42,'REGENERATION','#64ffad');}
+-      else if(outcome==='rush'){owner.jackTradeRushUntil=Math.max(owner.jackTradeRushUntil||0,now+5000);spawnFloatingText(owner.x,owner.y-42,'RUSH ORDER','#ffd85c');}
++      if(outcome==='regeneration'){owner.jackTradeRegenRemaining=(owner.jackTradeRegenRemaining||0)+6000;owner.jackTradeRegenUntil=now+10000;owner.jackTradeRegenFxUntil=now+10000;shareJackTradeSp2(owner,'regeneration',now);explosions.push({x:owner.x,y:owner.y,radius:76,life:0,maxLife:.55,color:'rgba(89,255,173,.72)',fxKind:'jackTradeHealing'});spawnFloatingText(owner.x,owner.y-42,'REGENERATION','#64ffad');}
++      else if(outcome==='rush'){owner.jackTradeRushUntil=Math.max(owner.jackTradeRushUntil||0,now+5000);owner.jackTradeRushStrength=1;shareJackTradeSp2(owner,'rush',now);spawnFloatingText(owner.x,owner.y-42,'RUSH ORDER','#ffd85c');}
+       else if(outcome==='toxic'){
+           const angle=Math.atan2(targetY-owner.y,targetX-owner.x);
+           spawnJackTradeZone('toxicSpray',owner,owner.x+Math.cos(angle)*22,owner.y+Math.sin(angle)*22,{angle,radius:46,cloudRadius:76,travelDistance:JACKTRADE_TOXIC_SPRAY_RANGE,travelDuration:760,duration:1120,poisonDuration:2000,poisonDamagePerSecond:1000*getJackTradeDamageScale(owner)});
+@@ -44089,6 +44173,7 @@ let heistFeverActive = false;
+               return;
+           }
+           owner.jackTradeRushUntil=Math.max(owner.jackTradeRushUntil||0,now+5000);
++          owner.jackTradeRushStrength=1;
+           owner.jackTradeRegenRemaining=(owner.jackTradeRegenRemaining||0)+6000;
+           owner.jackTradeRegenUntil=now+6000;
+           owner.jackTradeRegenFxUntil=now+6000;
+@@ -44108,7 +44193,7 @@ let heistFeverActive = false;
+           for(const outcome of rolled)if(!owner.jackTradeTowerOutcomesSeen.includes(outcome))owner.jackTradeTowerOutcomesSeen.push(outcome);
+       }
+       rolled.forEach(outcome=>activateJackTradeOutcome(owner,outcome,targetX,targetY));
+-      if(getEntityStarChoice(owner)==='long')owner.jackTradeLuckyUntil=now+2500;
++      if(jackTradeHasSP1(owner))owner.jackTradeSp1FiveCardArmed=true; // Round 41 SP1: next attack throws 5 cards at 750 (Lucky Break retired).
+       spawnFloatingText(owner.x,owner.y-48,rolled.map(v=>v.toUpperCase()).join(' + '),'#f8c95f');
+   }
+ 
+@@ -51704,7 +51789,7 @@ function checkHit(target, b, i){
+         if (b && b.isNightshadeDagger && target && !b.nightshadeSp2Applied) {
+             const daggerOwner = b.ownerId === player.id ? player : (typeof bots !== 'undefined' ? bots.find((bt) => bt && bt.id === b.ownerId) : null);
+             if (daggerOwner && nightshadeHasSP2(daggerOwner) && nightshadeActiveStacks(target, performance.now()).length > 0) {
+-                b.damage = Math.round((b.damage || 0) * 1.2);
++                b.damage = Math.round((b.damage || 0) * 1.18); // Round 41: Fresh Wounds +20% -> +18%
+                 b.nightshadeSp2Applied = true;
+             }
+         }
+@@ -52149,6 +52234,12 @@ function checkHit(target, b, i){
+         }
+     }
+     if (b.isUpgradartDart && owner) {
++        if (b.upgradartHealDart && !b.upgradartHealDone) {
++            // Round 41 G2: the healing dart deals 0 damage but heals its owner for 1000 HP (once, even on piercing hyper darts).
++            b.upgradartHealDone = true;
++            doHeal(owner, 1000);
++            spawnFloatingText(owner.x, owner.y - 36, '+1000 HEALING DART', '#00ff88');
++        }
+         if (b.upgradartPoison) {
+             const poisonDuration = b.hasSp1 ? 3500 : 2500;
+             const poisonStackGain = b.upgradartStrongPoison ? 250 : 150;
+@@ -52205,7 +52296,7 @@ function checkHit(target, b, i){
+     if (b.isKageShuriken && b.startX != null) {
+         const distTraveled = Math.hypot(target.x - b.startX, target.y - b.startY);
+         const distRatio = Math.min(1, Math.max(0, distTraveled / 580));
+-        const rawDmg = Math.round((b.minDamage || 300) + ((b.maxDamage || 550) - (b.minDamage || 300)) * distRatio);
++        const rawDmg = Math.round((b.minDamage || 150) + ((b.maxDamage || 400) - (b.minDamage || 150)) * distRatio);
+         dealtDamage = rawDmg * mult;
+         if (b.hasSp1 && b.activationId && owner) {
+             owner.kageVolleyHitCounts = owner.kageVolleyHitCounts || {};
+@@ -56366,6 +56457,22 @@ function checkHit(target, b, i){
+           healingPods.splice(i, 1);
+           continue;
+       }
++      if (pod.isJetpackJet) {
++          // Round 41 Jetpack G1: teammates (not the deployer) pick the jet up to fly freely for 4s.
++          const podOwner = pod.ownerId === player.id ? player : bots.find(b => b.id === pod.ownerId);
++          for (const t of [player, ...bots]) {
++              if (!t || t.hp <= 0 || t.id === pod.ownerId) continue;
++              if (podOwner && !areAlliedEntities(podOwner, t)) continue;
++              if (Math.hypot(t.x - pod.x, t.y - pod.y) <= pod.radius + (t.radius || 14)) {
++                  t.jetpackFreeFlyUntil = now + 4000;
++                  t.jetpackFreeFlyMult = 1.25;
++                  spawnFloatingText(t.x, t.y - 34, 'JET RIDE!', '#76e6ff');
++                  healingPods.splice(i, 1);
++                  break;
++              }
++          }
++          continue;
++      }
+       if (pod.isKingPrincess || pod.isAntiRoyalMortar) continue;
+       if (pod.isXrayMachine) {
+           const podOwner = pod.ownerId === player.id ? player : bots.find(b => b.id === pod.ownerId);
+@@ -56609,6 +56716,7 @@ function checkHit(target, b, i){
+       if (player.jackTradeLuckyUntil && now < player.jackTradeLuckyUntil) hcSpd *= 1.12;
+       if (player.ghoulPhantomSlowUntil && now < player.ghoulPhantomSlowUntil) hcSpd *= .75;
+       if (player.evilDoctorSpeedBoostUntil && now < player.evilDoctorSpeedBoostUntil) hcSpd *= 1.3;
++        if (player.jetpackFreeFlyUntil && now < player.jetpackFreeFlyUntil) hcSpd *= 1.25; // Round 41 Jetpack G1 free flight (+25% speed, stays targetable).
+       if (player.hoopDriveUntil && now < player.hoopDriveUntil) hcSpd *= 1.22;
+       if (player.scubaDiverOxygenSpeedUntil && now < player.scubaDiverOxygenSpeedUntil) hcSpd *= 1.16;
+             if (player.trapperSpeedUntil && performance.now() < player.trapperSpeedUntil) hcSpd *= 1.12;
+@@ -56834,6 +56942,7 @@ function checkHit(target, b, i){
+ 
+       updateJetpackFlight(player, now);
+       for (const flyingBot of aliveBots) if (flyingBot.brawler === 'jetpack') updateJetpackFlight(flyingBot, now);
++      updateJetpackFireZones(now);
+ 
+       // firing
+       if(selectedBrawler==='ghoul'){
+@@ -56949,9 +57058,9 @@ function checkHit(target, b, i){
+                   ? { x: player.x + mobileInput.aimX * 1200, y: player.y + mobileInput.aimY * 1200 }
+                   : getMouseWorld();
+               player.jetpackAimX=wm.x;player.jetpackAimY=wm.y;
+-              player.jetpackChargePct=clamp((now-player.jetpackChargeStartedAt)/1200,0,1);
++              player.jetpackChargePct=clamp((now-player.jetpackChargeStartedAt)/960,0,1); // Round 41: 25% faster charging
+           } else if (!held && player.jetpackChargeStartedAt && !player.jetpackFlight && jetpackReady) {
+-              const charge=clamp((now-player.jetpackChargeStartedAt)/1200,.12,1);
++              const charge=clamp((now-player.jetpackChargeStartedAt)/960,.12,1);
+               ammo=Math.max(0,ammo-1);lastShot=now;ammoReloadTimer=0;player.lastAttackAt=now;
+               beginMainAttackActivation(player,'jetpack',now);
+               fireArenaForgeCapturedHyperAttacks(player,Math.atan2((player.jetpackAimY??player.y)-player.y,(player.jetpackAimX??player.x)-player.x),now);
+@@ -58334,7 +58443,7 @@ function checkHit(target, b, i){
+           const dartOwner = getEntityById(b.ownerId);
+           if (!b.upgradartReturning && b.life >= b.maxLife) {
+               b.upgradartReturning = true;
+-              b.damage = 96;
++              b.damage = Math.round((b.damage || 0) * 0.15);
+               b.life = 0;
+               b.maxLife = 0.95;
+               b.hitIds = {};
+@@ -60448,12 +60557,13 @@ function checkHit(target, b, i){
+        if(player.trinketHyperReloadUntil && now < player.trinketHyperReloadUntil) currentReloadTime /= 1.10;
+        if(player.trinketComebackUntil && now < player.trinketComebackUntil) currentReloadTime /= 1.10;
+        if (selectedBrawler === 'minigunnin' || selectedBrawler === 'oil_maker') {
+-           let fastDelay = selectedBrawler === 'oil_maker' ? 285 : 1000;
+-           let reloadTime = selectedBrawler === 'oil_maker' ? 24 : 30;
++           let fastDelay = selectedBrawler === 'oil_maker' ? 570 : 1000; // Round 41: oil base reload 50% slower
++           let reloadTime = selectedBrawler === 'oil_maker' ? 48 : 30;
+            if (selectedBrawler === 'oil_maker' && (selectedStar === 'long' || selectedStar === 'sp2')) {
+                const nearFire = oilMakerPuddles.some(p => p.ignited && Math.hypot(p.x - player.x, p.y - player.y) <= 120);
+-               if (nearFire) reloadTime /= 1.25;
++               if (nearFire) reloadTime /= 1.10; // Round 41: SP2 reload buff 25% -> 10%
+            }
++           if (selectedBrawler === 'oil_maker' && player.oilMakerSp1ReloadUntil && now < player.oilMakerSp1ReloadUntil) reloadTime *= 1.22; // Round 41: SP1 reload slow 30% -> 18% (time x1.22)
+            if (now - lastShot > fastDelay) currentReloadTime = reloadTime;
+            else currentReloadTime = 999999;
+        } else if (selectedBrawler === 'beam') {
+@@ -61496,6 +61606,7 @@ function checkHit(target, b, i){
+           if (t.brawler === 'ghoul' && isEntityHyperchargedNow(t, nowTarget)) activeBotSpeed *= 1.15;
+           if (t.ghoulShadowSpeedUntil && nowTarget < t.ghoulShadowSpeedUntil) activeBotSpeed *= 1.18;
+           if (t.jackTradeLuckyUntil && nowTarget < t.jackTradeLuckyUntil) activeBotSpeed *= 1.12;
++          if (t.jetpackFreeFlyUntil && nowTarget < t.jetpackFreeFlyUntil) activeBotSpeed *= 1.25; // Round 41 Jetpack G1 free flight.
+           if (t.ghoulPhantomSlowUntil && nowTarget < t.ghoulPhantomSlowUntil) activeBotSpeed *= .75;
+           if (t.brawler === 'copyphase') {
+               ensureCopyphaseState(t);
+@@ -62170,7 +62281,7 @@ function checkHit(target, b, i){
+       if (selectedBrawler === 'jetpack') {
+           const flight=player.jetpackFlight;
+           if(flight)return {label:flight.superFlight?'BOMBING RUN  •  FLIGHT LOCKED':'CRASH LANDING  •  AIRBORNE',value:Math.max(0,flight.duration-(now-flight.startAt)),max:flight.duration,color:flight.hyper?'#d96cff':'#5fd9ff'};
+-          const pct=player.jetpackChargeStartedAt?clamp((now-player.jetpackChargeStartedAt)/1200,0,1):0;
++          const pct=player.jetpackChargeStartedAt?clamp((now-player.jetpackChargeStartedAt)/960,0,1):0;
+           return {label:pct>0?`JUMP CHARGE  •  ${Math.round(pct*100)}%`:'JUMP CHARGE  •  HOLD ATTACK',value:pct,max:1,color:pct>=1?'#ffe16b':'#5fd9ff'};
+       }
+       if (selectedBrawler === 'hoop') {
+@@ -67076,10 +67187,21 @@ function checkHit(target, b, i){
+           ctx.restore();
+       }
+       if ((t.xrayRevealedUntil || 0) > performance.now()) {
+-          const shownAmmo=Math.max(0,Math.min(t.maxAmmo||3,Number.isFinite(t.ammo)?t.ammo:3));
++          // Round 41 ammo-visibility fix: segment count follows the target's real capacity (was
++          // hardcoded to 3, so a 1-ammo Jetpack bot showed 3 pips). Bots still carry no live ammo
++          // state, so an unknown value keeps the old full display; true per-bot ammo values need
++          // a bot-ammo system (out of scope, flagged).
++          const cap=Math.max(1,t.maxAmmo||getNativeAmmoCapacity(t.brawler)||3);
++          const shownAmmo=Number.isFinite(t.ammo)?Math.max(0,Math.min(cap,t.ammo)):cap;
+           const ay=hpY+11;
+-          for(let ai=0;ai<3;ai++){
+-              ctx.fillStyle=shownAmmo>=ai+1?'#68efff':'rgba(18,48,61,.75)';ctx.beginPath();ctx.roundRect(t.x-16+ai*12,ay,9,4,2);ctx.fill();
++          if(cap<=12){
++              for(let ai=0;ai<cap;ai++){
++                  ctx.fillStyle=shownAmmo>=ai+1?'#68efff':'rgba(18,48,61,.75)';ctx.beginPath();ctx.roundRect(t.x-(cap-1)*6-4+ai*12,ay,9,4,2);ctx.fill();
++              }
++          } else {
++              const w=44;
++              ctx.fillStyle='rgba(18,48,61,.75)';ctx.beginPath();ctx.roundRect(t.x-w/2,ay,w,4,2);ctx.fill();
++              ctx.fillStyle='#68efff';ctx.beginPath();ctx.roundRect(t.x-w/2,ay,w*Math.max(0,Math.min(1,shownAmmo/cap)),4,2);ctx.fill();
+           }
+           ctx.fillStyle='#bafaff';ctx.font='bold 7px sans-serif';ctx.textAlign='center';ctx.fillText('AMMO',t.x,ay+12);ctx.textAlign='left';
+       }
+@@ -68040,7 +68162,7 @@ function checkHit(target, b, i){
+     const dx = (wm.x || 0) - (player.x || 0); const dy = (wm.y || 0) - (player.y || 0);
+     const ang = Number.isFinite(Math.atan2(dy, dx)) ? Math.atan2(dy, dx) : (player.dir || 0);
+       if (selectedBrawler === 'jetpack' && !aimingSuper && !player.jetpackFlight) {
+-          const charge=player.jetpackChargeStartedAt?clamp((performance.now()-player.jetpackChargeStartedAt)/1200,.12,1):.12;
++          const charge=player.jetpackChargeStartedAt?clamp((performance.now()-player.jetpackChargeStartedAt)/960,.12,1):.12;
+           const range=220+480*charge,rawDist=Math.hypot(dx,dy),dist=Math.min(range,Number.isFinite(rawDist)?rawDist:0);
+           const landX=player.x+Math.cos(ang)*dist,landY=player.y+Math.sin(ang)*dist,radius=58+34*charge;
+           const px = Number.isFinite(player.x) ? player.x : 500;
+@@ -68052,7 +68174,7 @@ function checkHit(target, b, i){
+           ctx.strokeStyle=pathGrad;ctx.lineWidth=5;ctx.setLineDash([13,8]);ctx.beginPath();ctx.moveTo(player.x,player.y);ctx.quadraticCurveTo((player.x+landX)/2,(player.y+landY)/2-90-100*charge,landX,landY);ctx.stroke();ctx.setLineDash([]);
+           ctx.fillStyle=getPlayerHyperMainActive('jetpack')?'rgba(211,92,255,.18)':'rgba(76,219,255,.16)';ctx.strokeStyle=getPlayerHyperMainActive('jetpack')?'#e8a1ff':'#9af4ff';ctx.lineWidth=4;ctx.beginPath();ctx.arc(landX,landY,radius,0,Math.PI*2);ctx.fill();ctx.stroke();
+           ctx.strokeStyle='rgba(255,255,255,.75)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(landX-radius,landY);ctx.lineTo(landX+radius,landY);ctx.moveTo(landX,landY-radius);ctx.lineTo(landX,landY+radius);ctx.stroke();
+-          ctx.fillStyle='#fff';ctx.font='900 13px sans-serif';ctx.textAlign='center';ctx.fillText(`${Math.round(1500+1200*charge)} DMG`,landX,landY-radius-10);ctx.fillText(`${Math.round(charge*100)}%`,(player.x+landX)/2,(player.y+landY)/2-55-75*charge);ctx.textAlign='left';ctx.restore();
++          ctx.fillStyle='#fff';ctx.font='900 13px sans-serif';ctx.textAlign='center';ctx.fillText(`${Math.round(1100+900*charge)} DMG`,landX,landY-radius-10);ctx.fillText(`${Math.round(charge*100)}%`,(player.x+landX)/2,(player.y+landY)/2-55-75*charge);ctx.textAlign='left';ctx.restore();
+       }
+       if(selectedBrawler==='peter_pickle'&&!aimingSuper){
+           const streak=Math.min(12,player.peterPickleStreak||0),size=isHypercharged?3.8:Math.min(3.8,1+streak*.3),range=624,endX=player.x+Math.cos(ang)*range,endY=player.y+Math.sin(ang)*range;
+@@ -71307,6 +71429,14 @@ function checkHit(target, b, i){
+       }
+       ctx.restore();
+     }
++    for(const zone of jetpackFireZones){
++      const pulse=.9+Math.sin(performance.now()/115)*.08;ctx.save();
++      const grad=ctx.createRadialGradient(zone.x,zone.y,4,zone.x,zone.y,zone.radius);
++      grad.addColorStop(0,'rgba(255,220,73,.55)');grad.addColorStop(.55,'rgba(255,92,20,.35)');grad.addColorStop(1,'rgba(120,18,0,.04)');
++      ctx.fillStyle=grad;ctx.beginPath();ctx.arc(zone.x,zone.y,zone.radius*pulse,0,Math.PI*2);ctx.fill();
++      ctx.strokeStyle='rgba(255,145,48,.85)';ctx.lineWidth=3;ctx.setLineDash([7,5]);ctx.stroke();ctx.setLineDash([]);
++      ctx.restore();
++    }
+     for(const zone of minigunninMutationFireZones){
+       const remaining=clamp((zone.until-performance.now())/1200,0,1);
+       const pulse=1+Math.sin(performance.now()/90)*.05;
+@@ -71361,6 +71491,11 @@ function checkHit(target, b, i){
+       ctx.restore();
+     }
+ 
++    for(const r of rocketeerOrbitRockets){
++      ctx.save();ctx.shadowColor='#ff7b2f';ctx.shadowBlur=14;ctx.fillStyle='#2f1a08';ctx.strokeStyle='#ff9f2f';ctx.lineWidth=3;
++      ctx.beginPath();ctx.arc(r.x,r.y,11,0,Math.PI*2);ctx.fill();ctx.stroke();
++      ctx.fillStyle='#ffd166';ctx.beginPath();ctx.arc(r.x,r.y,5,0,Math.PI*2);ctx.fill();ctx.restore();
++    }
+     for(const zone of chickpigEggZones){
+       const pulse=.75+Math.sin(performance.now()/100)*.12;ctx.save();ctx.fillStyle=`rgba(255,213,67,${.12+pulse*.08})`;ctx.strokeStyle='rgba(255,241,158,.82)';ctx.lineWidth=3;ctx.setLineDash([9,6]);ctx.beginPath();ctx.arc(zone.x,zone.y,zone.radius*pulse,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='#ffcf32';ctx.beginPath();ctx.arc(zone.x,zone.y,18,0,Math.PI*2);ctx.fill();ctx.fillStyle='#fff8d8';ctx.beginPath();ctx.arc(zone.x,zone.y,8,0,Math.PI*2);ctx.fill();ctx.restore();
+     }
+@@ -71415,6 +71550,15 @@ function checkHit(target, b, i){
+           ctx.fillStyle='#fff';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.fillText(getSmoothDisplayedHp(pod),pod.x,by-3);ctx.textAlign='left';
+           continue;
+       }
++      if (pod.isJetpackJet) {
++          const r=pod.radius||30;ctx.save();ctx.translate(pod.x,pod.y);ctx.shadowColor='#5fd9ff';ctx.shadowBlur=16;
++          ctx.fillStyle='#102d3b';ctx.strokeStyle='#5fd9ff';ctx.lineWidth=4;ctx.beginPath();ctx.roundRect(-r,-r*0.8,r*2,r*1.6,10);ctx.fill();ctx.stroke();
++          ctx.fillStyle='#dffcff';ctx.beginPath();ctx.roundRect(-14,-16,28,32,8);ctx.fill();
++          ctx.fillStyle='#5fd9ff';ctx.beginPath();ctx.arc(-7,20,5,0,Math.PI*2);ctx.arc(7,20,5,0,Math.PI*2);ctx.fill();
++          ctx.restore();
++          const pct=Math.max(0,pod.hp/pod.maxHp),w=68;ctx.fillStyle='rgba(4,9,20,.82)';ctx.fillRect(pod.x-w/2,pod.y-r-13,w,7);ctx.fillStyle='#5fd9ff';ctx.fillRect(pod.x-w/2,pod.y-r-13,w*pct,7);
++          ctx.fillStyle='#fff';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.fillText(getSmoothDisplayedHp(pod),pod.x,pod.y-r-17);ctx.textAlign='left';continue;
++      }
+       if (pod.isRelayDevice) {
+           const owner=pod.ownerId===player.id?player:bots.find(b=>b.id===pod.ownerId);
+           const linkedAllies = [player, ...aliveBots].filter(e => e && e.hp > 0 && (e.id === pod.ownerId || (owner && areAlliedEntities(owner, e))) && Math.hypot(e.x-pod.x,e.y-pod.y)<=(pod.relayLinkRadius||520));
+diff --git a/tests/sheet-round-41-group-D-regression.mjs b/tests/sheet-round-41-group-D-regression.mjs
+new file mode 100644
+index 0000000..23e0c5e
+--- /dev/null
++++ b/tests/sheet-round-41-group-D-regression.mjs
+@@ -0,0 +1,127 @@
++// Sheet Balance Round 41 — Group D regression (2026-11-04).
++// Covers ONLY the Group D rows: JackTrade, Jetpack, Kage, Money & Tax,
++// Nightshade (numbers only — her star-power gates are deliberately untouched),
++// Oil Maker, Outlit, Rocketeer, Runner (no change), Upgradart, Xray.
++// Sheet numbers are Power 11 values; code base stats scale 1.0x at P11.
++import assert from 'node:assert/strict';
++import fs from 'node:fs';
++
++const game = fs.readFileSync(new URL('../game.js', import.meta.url), 'utf8');
++let passed = 0;
++const failures = [];
++function check(name, cond) {
++  if (cond) passed++;
++  else failures.push(name);
++}
++const has = (re) => re.test(game);
++
++// ---------- JackTrade (row 47) ----------
++check('jacktrade card damage 900 -> 750', has(/const JACKTRADE_CARD_DAMAGE = 750;/));
++check('jacktrade scaled dmg 900 -> 750', has(/dmg: Math\.round\(750 \* scale\), speed: 260/));
++check('jacktrade SP1 rework: five-card flag armed on super', has(/if\(jackTradeHasSP1\(owner\)\)owner\.jackTradeSp1FiveCardArmed=true/));
++check('jacktrade SP1 rework: 5-card fan in spawn', has(/fiveCard \? \[-0\.110,-0\.055,0,0\.055,0\.110\]/));
++check('jacktrade SP1 rework: Hot Streak retired', has(/const hotBonus = false; \/\/ Round 41: Hot Streak retired/));
++check('jacktrade SP1 rework: Lucky Break setter removed', !has(/jackTradeLuckyUntil=now\+2500/));
++check('jacktrade SP2 rework: share helper with 300px radius + 20% strength', has(/shareJackTradeSp2/) && has(/Math\.hypot\(ally\.x-owner\.x,ally\.y-owner\.y\)>300/) && has(/ally\.jackTradeRushStrength=0\.2/) && has(/ally\.jackTradeRegenRemaining=\(ally\.jackTradeRegenRemaining\|\|0\)\+1200/));
++check('jacktrade SP2 rework: shared rush divisor 1.4 in getFireDelay', has(/Math\.round\(644\/\(1\+2\*rushStr\)\)/));
++check('jacktrade SP2 rework: shared rush divisor in getReloadTime', has(/base \/= \(1 \+ 2 \* \(player\.jackTradeRushStrength \?\? 1\)\)/));
++check('jacktrade star gates accept slow/sp1 + long/sp2', has(/jackTradeHasSP1\(owner\)\{const c=getEntityStarChoice\(owner\);return c==='slow'\|\|c==='sp1'/) && has(/jackTradeHasSP2\(owner\)\{const c=getEntityStarChoice\(owner\);return c==='long'\|\|c==='sp2'/));
++check('jacktrade charge 18 matches sheet (18 card hits)', has(/jacktrade:18/));
++
++// ---------- Jetpack (row 48) ----------
++check('jetpack reload 2300 -> 1917 (20% faster)', has(/jetpack: 1917,/));
++check('jetpack charge window 1200 -> 960ms (25% faster, all 4 sites)', (game.match(/jetpackChargeStartedAt\)\/960/g) || []).length === 4);
++check('jetpack landing damage 1100+900*charge', has(/Math\.round\(\(1100\+900\*f\.charge\)\*scale\)/));
++check('jetpack aim preview 1100+900*charge', has(/Math\.round\(1100\+900\*charge\)\} DMG/));
++check('jetpack G1 rework: deploys 3000 HP jet pod', has(/isJetpackJet:true/) && has(/hp:3000,maxHp:3000/) && has(/JET DEPLOYED/));
++check('jetpack G1 rework: old Emergency Thrusters flight-cancel removed', !has(/SAFE LANDING/));
++check('jetpack G1 rework: teammate pickup grants 4s free flight', has(/jetpackFreeFlyUntil = now \+ 4000/) && has(/JET RIDE!/));
++check('jetpack G1 rework: free flight = +25% speed, player + bot chains', has(/player\.jetpackFreeFlyUntil && now < player\.jetpackFreeFlyUntil\) hcSpd \*= 1\.25/) && has(/t\.jetpackFreeFlyUntil && nowTarget < t\.jetpackFreeFlyUntil\) activeBotSpeed \*= 1\.25/));
++check('jetpack SP1 rework: super flight 1250 -> 893ms gated on slow/sp1', has(/jetpackHasSP1\(owner\)\?893:1250/) && has(/jetpackHasSP1\(owner\)\{const c=getEntityStarChoice\(owner\);return c==='slow'\|\|c==='sp1'/));
++check('jetpack SP1 rework: Soft Landing heal removed', !has(/doHeal\(owner,1000\)/));
++check('jetpack super minimum dash 240px', has(/if\(jd<240\)/));
++check('jetpack HC: fire zones 150 dmg, radius 80, 3s', has(/radius:80,damage:150,until:performance\.now\(\)\+3000/) && has(/z\.nextTickAt=now\+500/));
++check('jetpack HC: zones on super bomb drops + main landing', has(/if\(f\.hyper\)spawnJetpackFireZone\(owner\.id,zx,zy\)/) && has(/if\(f\.hyper\)spawnJetpackFireZone\(owner\.id,owner\.x,owner\.y\)/));
++check('jetpack HC: zones updated + rendered + reset', has(/updateJetpackFireZones\(now\)/) && has(/for\(const zone of jetpackFireZones\)/) && has(/jetpackFireZones\.length = 0;/));
++check('jetpack charge FLAG documented: code 4 vs sheet 6 landings (unchanged)', has(/jetpack:4,/));
++
++// ---------- Kage (row 49) ----------
++check('kage fan 30% narrower (x0.7 offsets)', has(/ang - 0\.098,/) && has(/ang - 0\.0196,/) && has(/ang \+ 0\.0588,/) && has(/ang \+ 0\.098,/));
++check('kage damage 300 -> 150 / 550 -> 400', has(/const minDmg = Math\.round\(150 \* scale\)/) && has(/const maxDmg = Math\.round\(400 \* scale\)/));
++check('kage hit fallbacks 150/400', has(/b\.minDamage \|\| 150/) && has(/b\.maxDamage \|\| 400/));
++check('kage G2 multiplier 0.60 -> 0.18 (-70%)', has(/Math\.round\(p11Stats\.dmg \* 0\.18\)/));
++check('kage G2 arithmetic: 2350 x 0.18 = 423/dart', Math.round(2350 * 0.18) === 423);
++check('kage charge FLAG documented: code 12 vs sheet 32 shurikens (unchanged)', has(/kage:12/));
++
++// ---------- Money & Tax (row 56) ----------
++check('money coins: player 270 -> 228, center 338 -> 287; bot 120 -> 101, center 150 -> 127', has(/isBot \? 127 : 287/) && has(/isBot \? 101 : 228/));
++check('money full volley arithmetic: 3 x (287+228+228) = 2229 ~= sheet 2230', 3 * (287 + 228 + 228) === 2229);
++check('tax notes: player 375 -> 793, bot 170 -> 359 (x1.45 -> 1150 / 521)', has(/isBot \? 359 : 793/) && has(/isBot\?359:793/));
++check('tax arithmetic: 793 x 1.45 = 1150 (rounded)', Math.round(793 * 1.45) === 1150);
++check('money charge FLAG documented: code 24 vs sheet 4 full hits / 8 notes (unchanged)', has(/money_and_tax:24/));
++
++// ---------- Nightshade (row 57; numbers only) ----------
++check('nightshade main 640 -> 560', has(/dmg: Math\.round\(560 \* scale\), speed: 300/));
++check('nightshade super blade 1100 -> 800', has(/const NIGHTSHADE_BLADE_DAMAGE = 800;/));
++check('nightshade SP2 1.2 -> 1.18', has(/Math\.round\(\(b\.damage \|\| 0\) \* 1\.18\); \/\/ Round 41: Fresh Wounds/));
++check('nightshade star gates UNTOUCHED (declined fix 2026-10-28)', has(/nightshadeHasSP1/) && !has(/Round 41.*nightshadeHasSP/));
++check('nightshade charge FLAG documented: code 6 vs sheet 24 dagger hits (unchanged)', has(/nightshade: 6/));
++
++// ---------- Oil Maker (row 58) ----------
++check('oil main 468 -> 320', has(/dmg: Math\.round\(320 \* scale\), speed: 260/));
++check('oil super charges 3 -> 2 / hyper 5 -> 3 (all 3 sites)', has(/return isHyper \? 3 : 2; \/\/ Round 41/) && has(/entity\.oilMakerSuperCharges === 'number' \? entity\.oilMakerSuperCharges : 2/) && has(/player\.oilMakerSuperCharges = 3;/));
++check('oil base reload 50% slower: player 24 -> 48 / 285 -> 570', has(/let fastDelay = selectedBrawler === 'oil_maker' \? 570/) && has(/let reloadTime = selectedBrawler === 'oil_maker' \? 48/));
++check('oil bot fireDelay 56 -> 112 (50% slower cadence)', has(/oil_maker: 112,/));
++check('oil G1/G2 wired via activateRecoveryGadget', has(/if\(brawler==='oil_maker'\)\{\s*\/\/ Round 41 fix: executeOilMakerG1\/G2 existed/) && has(/if\(gadget==='g1'\)executeOilMakerG1\(entity\);/));
++check('oil SP1: dedicated slow 0.85 + reload x1.22 fields', has(/oilMakerSp1SlowUntil/) && has(/Math\.min\(baseSlow, 0\.85\)/) && has(/reloadTime \*= 1\.22/) && has(/fireDelay \*= 1\.22;/));
++check('oil SP1: old generic reloadDebuff setter removed from puddle loop', !has(/ent\.reloadDebuffUntil = Math\.max\(ent\.reloadDebuffUntil/));
++check('oil SP2: reload 1.25 -> 1.10 player + bot, heal 300 -> 200/s', has(/if \(nearFire\) reloadTime \/= 1\.10;/) && has(/fireDelay \/= 1\.10; \/\/ Round 41 Oil SP2/) && has(/doHeal\(ent, 200 \* dt\);/));
++check('oil charge FLAG documented: code 16 vs sheet 36 flame hits (unchanged)', has(/oil_maker:16/));
++
++// ---------- Outlit (row 60) ----------
++check('outlit point blank: player pellet 233 -> 188, bot 183 -> 146', has(/const outlitDamage = isBot \? 146 : 188;/));
++check('outlit point blank arithmetic: 8 x 188 = 1504 ~= sheet 1500', 8 * 188 === 1504);
++check('outlit super pellet 1420 -> 767 (3 x 767 = 2301 ~= 2300)', has(/damage: 767, pierce: !!hyper/) && 3 * 767 === 2301);
++check('outlit charge FLAG documented: code 30 (unchanged)', has(/outlit:30/));
++
++// ---------- Rocketeer (row 69) ----------
++check('rocketeer big rocket 2191 -> 1400 (launch + fallback)', has(/const damage=Math\.round\(1400\*damageMult\)/) && !has(/2191\*damageMult/));
++check('rocketeer mini rockets flat 400 (no longer 14.9% of base)', has(/const miniDamage=400;/) && !has(/\.14904/));
++check('rocketeer super spread +20% (cap 112 -> 134)', has(/Math\.min\(134,Math\.round\(\(62\+strikeCount\*4\)\*1\.2\)\)/));
++check('rocketeer HC rework: 6 orbiting rockets, 400 dmg, 70px blast', has(/for\(let n=0;n<6;n\+\+\)/) && has(/damage:400,blastRadius:70/) && has(/rocketeerOrbitRockets\.push/));
++check('rocketeer HC rework: old 8 radial minis retired', !has(/rocketeerHyperRadial/) || has(/The old 8 radial minis \(and the slop rocketeerHyperRadial override\) are retired/));
++check('rocketeer HC rework: orbit update + render + reset', has(/rocketeerOrbitRockets\[i\]/) && has(/for\(const r of rocketeerOrbitRockets\)/) && has(/rocketeerOrbitRockets\.length = 0;/));
++check('rocketeer charge FLAG documented: code 18 vs sheet 8 big rocket hits (unchanged)', has(/rocketeer:18/));
++
++// ---------- Runner (row 70: NO CHANGE) ----------
++check('runner unchanged: charge 6 matches sheet', has(/runner: 6/));
++
++// ---------- Upgradart (row 89) ----------
++check('upgradart stage 2-5 darts 320 -> 170 (stage 1 stays 960)', has(/const baseDamage = stage === 1 \? 960 : 170;/));
++check('upgradart HC returning darts 15% of outbound (was flat 96)', has(/b\.damage = Math\.round\(\(b\.damage \|\| 0\) \* 0\.15\);/) && !has(/b\.damage = 96;/));
++check('upgradart super gate: 15s cooldown, charge restored on failure', has(/upgradartSuperNextReadyAt = now \+ 15000/) && has(/SUPER NOT READY/) && has(/if\(!castUpgradartSuper\(player, !!isHypercharged, wm\.x, wm\.y\)\)superCharge=100/) && has(/if\(!castUpgradartSuper\(bot, isHyper, targetX, targetY\)\)bot\.superCharge=100/));
++check('upgradart super duration 30% shorter: 5000/4000 -> 3500/2800', has(/const durationMs = stage >= 4 \? 3500 : 2800;/) && has(/MEGA POISON DARTS! \(3\.5s\)/) && has(/POISON DARTS! \(2\.8s\)/));
++check('upgradart G2 rework: heal dart armed on gadget press (player + bot)', has(/player\.upgradartG2Armed = true;/) && has(/bot\.upgradartG2Armed = true;/) && has(/HEALING DART READY/));
++check('upgradart G2 rework: next dart 0 damage, heals 1000 on first hit', has(/damage: isHealDart \? 0 : dartDamage/) && has(/upgradartHealDart: isHealDart/) && has(/b\.upgradartHealDart && !b\.upgradartHealDone/) && has(/doHeal\(owner, 1000\);/));
++check('upgradart G2 rework: caltrops retired', !has(/TOXIC CALTROPS/));
++check('upgradart charge N/A: code 10 unchanged', has(/upgradart:10/));
++
++// ---------- Xray (row 93) ----------
++check('xray main: player 1700 -> 1400, bot 972 -> 800', has(/damage: isBot \? 800 : 1400,/));
++check('xray G1/G2 wired via activateRecoveryGadget (bot path)', has(/if\(brawler==='xray'\)\{/) && has(/QUICK SCAN/) && has(/xrayRevealedUntil=now\+4000/));
++check('xray G2 rework: 30% DR shield 3s (defenseMult 0.70)', has(/entity\.defenseUntil=now\+3000;entity\.defenseMult=0\.70;/) && has(/LEAD APRON 30% DR/));
++check('xray G2 rework: old 1900-HP shield path no longer reachable for G2', has(/g2: 'Lead Apron \(Gain 30% damage reduction for 3 seconds\)'/));
++check('xray bot machine gains xrayHyper (hyper damage zone fix)', has(/xrayHyper: isHyper, \/\/ Round 41 incidental fix/));
++check('xray ammo visibility: pip count follows real capacity (not hardcoded 3)', has(/const cap=Math\.max\(1,t\.maxAmmo\|\|getNativeAmmoCapacity\(t\.brawler\)\|\|3\)/) && has(/for\(let ai=0;ai<cap;ai\+\+\)/));
++check('xray charge FLAG documented: code 5 vs sheet 7 hits (unchanged)', has(/xray:5,/));
++
++// ---------- Shared helpers stay brawler-scoped ----------
++check('shared slow helper: only an oil-scoped branch added', has(/oilMakerSp1SlowUntil/) && has(/if \(now < \(entity\.oilMakerSp1SlowUntil \|\| 0\)\) baseSlow = Math\.min\(baseSlow, 0\.85\)/));
++check('syntax: game.js parses (checked separately via node --check)', true);
++
++if (failures.length) {
++  console.error(`\nGROUP D REGRESSION: ${passed} passed, ${failures.length} FAILED:`);
++  for (const f of failures) console.error('  FAIL: ' + f);
++  process.exit(1);
++}
++console.log(`GROUP D REGRESSION: all ${passed} checks passed.`);

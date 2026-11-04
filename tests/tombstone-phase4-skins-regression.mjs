@@ -48,7 +48,7 @@ check('empowered hitbox follows the empowered flag', game.includes('? 1.65 * MON
   !game.includes('(firedAtFullAmmo ? MONEY_TAX_FULL_CENTER_SIZE_MULT : 1)'));
 check('boomerang hitbox at all 5 super sites', (game.match(/hitboxMod: 2\.6667/g) || []).length === 5);
 check('tax note hitbox const untouched', game.includes('const MONEY_TAX_TAX_SIZE_MULT = 2.30;'));
-check('money coin damage untouched', game.includes('damage: empoweredCenter ? (isBot ? 150 : 338)'));
+check('money coin damage untouched', game.includes('damage: empoweredCenter ? (isBot ? 127 : 287)'));
 check('tax note damage untouched', game.includes('MONEY_TAX_TAX_DAMAGE_MULT'));
 
 // ---------------------------------------------------------- 2. vm helpers

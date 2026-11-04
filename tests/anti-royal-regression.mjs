@@ -8,8 +8,8 @@ assert.match(game,/'anti_royal':\s*\{[\s\S]*?name:\s*'Anti-Royal'/,'Anti-Royal h
 assert.match(game,/if \(brawlerId === 'anti_royal'\)[\s\S]*?Math\.round\(7600 \* scale\)[\s\S]*?Math\.round\(1550 \* scale\)[\s\S]*?speed:\s*255/,'P11 stats are wired');
 assert.match(game,/ANTI_ROYAL_MORTAR_ROUND_CAP\s*=\s*6/,'separate mortar bank caps at six');
 assert.match(game,/ANTI_ROYAL_BLOCK_COOLDOWN_MS\s*=\s*4500/,'personal blocker has a 4.5 second cooldown');
-assert.match(game,/ANTI_ROYAL_MORTAR_FIRE_MS\s*=\s*1300/,'mortar fires every 1.3 seconds');
-assert.match(game,/ANTI_ROYAL_OPENING_BARRAGE_FIRE_MS\s*=\s*220/,'banked rounds create the rapid opening barrage');
+assert.match(game,/ANTI_ROYAL_MORTAR_FIRE_MS\s*=\s*1820/,'mortar fires every 1.3 seconds');
+assert.match(game,/ANTI_ROYAL_OPENING_BARRAGE_FIRE_MS\s*=\s*308/,'banked rounds create the rapid opening barrage');
 assert.match(game,/barrageOffsets=\[-90,90,-55,55,-120,120,-25,25\]/,'opening barrage alternates among distinct impact offsets');
 assert.match(game,/barrageOffset\+\(mortar\.antiRoyalHyper\?-42:0\)/,'Hyper double shells preserve the spread-out barrage center');
 assert.match(game,/isAntiRoyalGoldPouch[\s\S]*?registerAntiRoyalGoldHit\(owner\)/,'gold hits bank mortar rounds');

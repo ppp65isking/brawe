@@ -1,0 +1,580 @@
+diff --git a/game.js b/game.js
+index 56727dd..ed5c5b3 100644
+--- a/game.js
++++ b/game.js
+@@ -245,7 +245,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
+         }
+         if (brawlerId === 'blinkeye') {
+             const scale = 0.55 + (level - 1) * 0.045;
+-            return { hp: Math.round(5600 * scale), dmg: Math.round(1850 * scale), speed: 265 };
++            return { hp: Math.round(5600 * scale), dmg: Math.round(1400 * scale), speed: 265 };
+         }
+         if (brawlerId === 'weefee') {
+             const scale = 0.55 + (level - 1) * 0.045;
+@@ -333,7 +333,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
+         }
+         if (brawlerId === 'awakenator') {
+             const scale = 0.55 + (level - 1) * 0.045;
+-            return { hp: Math.round(6800 * scale), dmg: Math.round(950 * scale), speed: 260 };
++            return { hp: Math.round(6800 * scale), dmg: Math.round(1050 * scale), speed: 260 };
+         }
+         if (brawlerId === 'darkener') {
+             const scale = 0.55 + (level - 1) * 0.045;
+@@ -404,7 +404,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
+         if (brawlerId === 'angel' || brawlerId === 'demon' || brawlerId === 'warrior' || brawlerId === 'relay' || brawlerId === 'upiedown' || brawlerId === 'chickpig' || brawlerId === 'jetpack' || brawlerId === 'snapper') {
+             const scale = 0.55 + (level - 1) * 0.045;
+             const p11Hp = brawlerId === 'angel' ? 7200 : (brawlerId === 'demon' ? 7700 : (brawlerId === 'relay' ? 5200 : (brawlerId === 'upiedown' ? 6800 : (brawlerId === 'chickpig' ? 7200 : (brawlerId === 'jetpack' ? 6600 : (brawlerId === 'snapper' ? 6500 : 7600))))));
+-            return { hp:Math.round(p11Hp*scale), dmg:brawlerId==='angel'?1600:(brawlerId==='demon'?1900:(brawlerId==='relay'?1250:(brawlerId==='upiedown'?1700:(brawlerId==='chickpig'?1150:(brawlerId==='jetpack'?2550:(brawlerId==='snapper'?1650:950)))))), speed:brawlerId==='angel'?255:(brawlerId==='demon'?300:(brawlerId==='relay'?265:(brawlerId==='upiedown'?250:(brawlerId==='chickpig'?255:(brawlerId==='jetpack'?270:(brawlerId==='snapper'?250:260)))))) };
++            return { hp:Math.round(p11Hp*scale), dmg:brawlerId==='angel'?1200:(brawlerId==='demon'?1900:(brawlerId==='relay'?1250:(brawlerId==='upiedown'?1700:(brawlerId==='chickpig'?1150:(brawlerId==='jetpack'?2550:(brawlerId==='snapper'?1650:950)))))), speed:brawlerId==='angel'?255:(brawlerId==='demon'?300:(brawlerId==='relay'?265:(brawlerId==='upiedown'?250:(brawlerId==='chickpig'?255:(brawlerId==='jetpack'?270:(brawlerId==='snapper'?250:260)))))) };
+         }
+         const data = brawlerData[brawlerId] || {};
+         const role = String(data.role || '').toLowerCase();
+@@ -4479,6 +4479,7 @@ const bolznstienPendingStrikes = [];
+   const oilMakerBarrels = [];
+   const oilMakerPendingPuddles = [];
+   const badbatSwarm = [];
++  const badbatTelegraphs = []; // Sheet round 41: straight main-attack telegraph lines (visual only, 450ms)
+   const badbatShieldOrbs = [];
+   const loomaThreads = [];
+   const loomaWeaves = [];
+@@ -9777,7 +9778,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
+           desc: 'A rebellious gothic punk bat who swings a wooden baseball bat to send sonic ground shockwaves, summoning aggressive ground-walking bats to hunt down and dash at marked prey.',
+           color: '#8a2be2',
+           attack: 'Sonic Ground Wave',
+-          attackDesc: 'Slams a wooden baseball bat to unleash a wide ground shockwave (1,400 damage). Hitting an enemy marks them and summons 1 ground walking bat (up to 6 bats max at once). Bats freely roam within 40% range around BadBat, return to BadBat after striking, lock on with laser telegraphs, and dash to bite targets for 300 damage.',
++          attackDesc: 'Slams a wooden baseball bat to unleash a straight telegraph shockwave (1,400 damage). Hitting an enemy marks them and summons 1 ground walking bat (up to 6 bats max at once). Bats freely roam within 40% range around BadBat, return to BadBat after striking, lock on with laser telegraphs, and dash to bite targets for 300 damage. Bat HP decays over time.',
+           super: 'Bat Colony Eruption',
+           superDesc: 'Summons a fierce colony of autonomous walking bats (560 HP each, max 6 bats at once) that roam within 40% range around BadBat, lock onto nearby enemies with telegraph laser lines, and dash to strike for 300 damage.',
+           hyper: 'Nocturnal Swarm: Main attack shockwave widens continuously as it travels forward. Summons max 6 persistent walking bats that roam within 40% range and attack relentlessly until destroyed. Bat strikes generate life-essence orbs returning +300 shield to BadBat.',
+@@ -10007,7 +10008,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
+         },
+       'fightnfire': { name: 'Fight\'nFire', role: 'Thrower', desc: 'Shoots shards in a 360-degree burst that ignite enemies.', color: '#ff6b2d', attack: 'Fireball Throw', attackDesc: 'Throws a fireball with range limit. Explodes into 4 shards that bounce once then explode again.', super: 'Shard Bloom', superDesc: 'Fires shards in a full 360-degree burst around you, then spits one fireball forward.', hyper: 'Main attack throws 8 shards with +20% damage. Super shards home in on enemies. +20% damage.', g1: 'Thermite Canister: Next fireball is bigger, flies farther (1100 px), and splits into 8 embers.', g2: 'Firestep: Instantly hop to your cursor and leave a smaller fire patch on landing.', sp1: 'Flaming Core: Fireballs leave burn trails. Shards apply slight knockback.', sp2: 'Ember Shield: Taking damage grants 400 HP shield (3s cooldown).' }
+             ,
+-        'beast': { name: 'Beast', role: 'Assassin', desc: 'A feral claw fighter that slashes diagonally and transforms into a stronger beast.', color: '#ff3d6e', attack: 'Twin Claws', attackDesc: 'Alternating diagonal claw swipes that carve from right-to-left and left-to-right.', super: 'Unleash the Beast', superDesc: 'Transforms after 0.70 seconds for about 7 seconds. Beast form grants 15% max HP, 25% movement speed, poison claws, and split claws. You remain vulnerable during the transform.', hyper: 'Beast form lasts about 9 seconds with 35% movement speed. Main claws gain +20% range and split into 2 sideways claws on hit.', g1: 'Rending Grip (Next claw slows)', g2: 'Savage Surge (Start Beast mode with a speed burst)', sp1: 'Razor Pounce (Main attack gains tiny knockback)', sp2: 'Predator Instinct (Gain ammo on Beast hits)' },
++        'beast': { name: 'Beast', role: 'Assassin', desc: 'A feral claw fighter that slashes diagonally and transforms into a stronger beast.', color: '#ff3d6e', attack: 'Twin Claws', attackDesc: 'Alternating diagonal claw swipes that carve from right-to-left and left-to-right.', super: 'Unleash the Beast', superDesc: 'Transforms after 0.70 seconds for about 7 seconds. Beast form grants 15% max HP, 25% movement speed, poison claws, and split claws. You remain vulnerable during the transform.', hyper: 'Beast form lasts about 9 seconds with 35% movement speed. Main claws gain +20% range and split into 2 sideways claws on hit.', g1: 'Rending Grip (Next claw slows)', g2: 'Savage Surge (Start Beast mode with a speed burst)', sp1: 'Primal Guard (Gain a 30% decaying shield when starting beast mode)', sp2: 'Predator Instinct (Gain ammo on Beast hits)' },
+             'amplifier': { name: 'Amplifier', role: 'Support', desc: 'Drops toolboxes and screws that swing fights with buff and debuff zones.', color: '#ffc04d', attack: 'Ampifin', attackDesc: 'Throws a toolbox. It drops for 2s at max range. Ally pickup: +15% damage for 1.7s. Enemy hit or touch: -15% damage for 1.3s.', super: 'Screws and Nuts', superDesc: 'Deploys a 5400 HP screw with a zone: allies +10% damage and +30% speed. Enemies -10% damage and -12% speed.', hyper: 'Power Tool: Ampifin grows 35%, pierces one enemy and drops 2.5s mini screw zones that cut enemy damage by 20%. The Super screw also gains +30% HP and shield ticks.', g1: 'Torque Snap (Next Ampifin applies stronger, longer damage-down)', g2: 'Quick Wrench (Instant heal, speed boost, 900 shield and drop a toolbox)', sp1: 'Overtighten (Screw zone buffs/debuffs are stronger)', sp2: 'Stabilizer (Larger screw zone and screw self-repairs over time)' },
+             'skeleflying': { name: 'Skeleflying', role: 'Controller', desc: 'Drops explosive para-shoots and summons skyfall skeletroopers.', color: '#cfd4ff', attack: 'Para-Shoot Barrage', attackDesc: 'Fires 3 para-shoots in a cone. They fall and explode on landing.', super: 'Comin Down!', superDesc: 'Open 3 sky portals. Skeletroopers descend for 4s with visible landing spots, then land with mini swords and chase the nearest enemy.', hyper: 'Homin Skeles: troopers retarget while descending. Main attack also spawns a skeletrooper on each landing.', g1: 'Bone Beacon (Next attack para-shoots home and fly farther)', g2: 'Reinforce Drop (Spawn a skeletrooper at your feet with a short shield)', sp1: 'Heavy Bones (Troopers gain HP and sword damage)', sp2: 'Swift Chutes (Main and super land faster)' },
+             'crystila': { name: 'Crystila', role: 'Marksman', desc: 'Anime crystal duelist with shrinking arm shots and a reflective glass super.', color: '#86d7ff', attack: 'Crystal Arms: Detach!', attackDesc: 'Launches a crystal arm that shrinks while traveling. On hit, after 0.22s, a follow-up shard lunges forward for 50% distance.', super: 'Crystal Glass: Explode!', superDesc: 'Summons a persistent glass reflector. Front-facing by default, reflects incoming projectiles and absorbs up to 4000 damage.', hyper: 'Overreflective: Main attack gains an extra returning crystal layer. Super becomes 360°, absorbs 5000 damage, and is completely invulnerable for the first 3 seconds.', g1: 'Prism Edge (Next attack pierces and follow-up travels farther)', g2: 'Polish Guard (Repair glass HP or gain instant shield)', sp1: 'Shatter Chill (Reflected/follow-up shots slow)', sp2: 'Tempered Glass (+20% glass HP)' },
+@@ -10119,7 +10120,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
+                 attack: 'Axe Cleave',
+                 attackDesc: 'Swings a dynamic double-bladed axe in a sweeping 260-degree crescent arc for 1400 damage. At full ammo (3/3), waiting 0.7s charges Heavy Heft, empowering the next swing with heavy knockback and +250 bonus damage.',
+                 super: 'Whirlwind Chopper',
+-                superDesc: 'Spins continuously for 6.0s with +40% movement speed, dealing 250 damage per tick every 0.2s (1,250 DPS) while projecting a 35% slowing aura and gaining a 40% damage reduction shield.',
++                superDesc: 'Spins continuously for 6.0s with +40% movement speed, dealing 200 damage per tick every 0.2s (1,000 DPS) while projecting a 35% slowing aura and gaining a 40% damage reduction shield.',
+                 hyper: 'Furious Juggernaut: Super axe radius +40% larger, moves +60% faster with complete CC immunity, main attack always knocks back, and automatically heals 4000 HP if dropping below 1000 HP.',
+                 g1: 'Hatchet Toss (Throws a piercing returning tomahawk for 1200 damage that pulls enemies along)',
+                 g2: 'Timber Stomp (Slams the ground to root enemies in a 160px cone for 1.2s and deal 900 damage)',
+@@ -10226,7 +10227,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
+             },
+             'awakenator': {
+                 name:'Awakenator', role:'Controller', desc:'An Anomaly dream-weaver who weakens awake enemies, remembers everyone he has put to Sleep, and corrupts their next attack.', color:'#7b6cff',
+-                attack:'SLEEP COMMAND', attackDesc:'Fire a 950-damage dream bolt. A hit applies Sleep for 1 second: -40% movement speed and -20% outgoing damage, without preventing actions.',
++                attack:'SLEEP COMMAND', attackDesc:'Fire a 1050-damage dream bolt. A hit applies Sleep for 1 second: -40% movement speed and -20% outgoing damage, without preventing actions.',
+                 super:'AWAKEN MY PAST, PRESENT AND FUTURE', superDesc:'Corrupt up to 2 previously slept enemies in 3v3 (1 in smaller modes). Their next attack is forced at a teammate for 30% damage, and the first hit Sleeps that teammate.',
+                 hyper:'NIGHT SHIFT: main hits immediately corrupt one attack. Power Move corruption lasts 2 attacks and removes 30% of each target’s current HP without defeating them.',
+                 g1:'Lucid Echo (Next Sleep lasts 1.5 seconds)', g2:'Memory Leak (Reapply Sleep to the nearest previously slept enemy)',
+@@ -11000,7 +11001,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
+         // Beast used to inherit the harsh global P1 scale twice: once in his
+         // tiny raw claws and again on hit. Give only Beast a healthier curve.
+         const beastScale = 0.72 + (level - 1) * 0.028;
+-        const p11RawDamage = isBot ? 250 : 475;
++        const p11RawDamage = isBot ? 216 : 412; // Sheet round 41: full regular hit 750>650 (primary+small: 412+239=651; bot scaled at same ratio)
+         return Math.round(p11RawDamage * beastScale / Math.max(0.01, normalScale));
+     }
+ 
+@@ -11098,11 +11099,26 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
+                 entity.hp = Math.min(entity.maxHp, entity.hp + hpBoost);
+                 entity.beastTransformed = true;
+             }
++            // Sheet round 41 SP1 rework: 30% decaying shield on beast-mode start
++            // (replaces Razor Pounce knockback). Decays 5% max HP/s (gone in 6s).
++            if (!entity.beastSp1ShieldGranted && (getEntityStarChoice(entity) === 'slow' || getEntityStarChoice(entity) === 'sp1')) {
++                entity.beastSp1ShieldGranted = true;
++                const beastShieldAmt = Math.round((entity.maxHp || 0) * 0.30);
++                if (beastShieldAmt > 0) { grantShield(entity, beastShieldAmt, beastShieldAmt); entity.beastSp1ShieldPool = beastShieldAmt; entity.beastSp1ShieldNextDecayAt = now + 1000; }
++            }
+             entity.beastMoveMult = entity.beastHyper ? 1.35 : 1.25;
+         }
+ 
++        if (entity.beastModeActive && entity.beastSp1ShieldPool > 0 && now >= (entity.beastSp1ShieldNextDecayAt || 0)) {
++            entity.beastSp1ShieldNextDecayAt = now + 1000;
++            const decayAmt = Math.min(entity.beastSp1ShieldPool, Math.round((entity.maxHp || 0) * 0.05), entity.shield || 0);
++            entity.shield = Math.max(0, (entity.shield || 0) - decayAmt);
++            entity.beastSp1ShieldPool = Math.max(0, entity.beastSp1ShieldPool - Math.round((entity.maxHp || 0) * 0.05));
++        }
+         if (entity.beastModeActive && now >= entity.beastModeUntil) {
+             entity.beastModeActive = false;
++            entity.beastSp1ShieldGranted = false;
++            entity.beastSp1ShieldPool = 0;
+             entity.beastTransformUntil = 0;
+             entity.beastModeUntil = 0;
+             entity.beastMoveMult = 1.0;
+@@ -12696,9 +12712,14 @@ function isPowerPlayModifierActive(entity = player) {
+         const baseRadius = isG1 ? 84 : 42;
+         const maxLife = range / speed;
+ 
++        // Sheet round 41: main attack is now a straight telegraph — a dashed
++        // straight line along the aim for the full 440 range, shown as the wave
++        // fires. Hitbox/damage/mark behavior is unchanged (see report FLAG).
++        badbatTelegraphs.push({ x: fromEntity.x, y: fromEntity.y, ang, until: now + 450 });
+         bullets.push({
+             ownerBrawler: 'badbat',
+             isBadBatWave: true,
++            badbatStraightTelegraph: true,
+             x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 14),
+             y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 14),
+             vx: Math.cos(ang) * speed,
+@@ -12960,6 +12981,9 @@ function isPowerPlayModifierActive(entity = player) {
+                 badbatSwarm.splice(bi, 1);
+                 continue;
+             }
++            // Sheet round 41: bat HP decays — 28 HP/s (5% of 560 max HP), so an
++            // untouched bat lasts 20s. Decay hits HP directly, not G2 shield.
++            bat.hp -= 28 * dt; // <=0 bats are removed (with explosion) at the top of the next frame's pass
+ 
+             // --- Animation ticks (Ground Walking & Dashing) ---
+             const isDashing = bat.state === 'dash_to';
+@@ -13213,6 +13237,24 @@ function isPowerPlayModifierActive(entity = player) {
+ 
+     function renderBadBatSwarm(ctx) {
+         const now = performance.now();
++        // Sheet round 41: draw straight main-attack telegraph lines.
++        for (let ti = badbatTelegraphs.length - 1; ti >= 0; ti--) {
++            const t = badbatTelegraphs[ti];
++            if (!t || now >= t.until) { badbatTelegraphs.splice(ti, 1); continue; }
++            const fade = Math.max(0, (t.until - now) / 450);
++            ctx.save();
++            ctx.globalAlpha = 0.35 + 0.55 * fade;
++            ctx.strokeStyle = '#c77dff';
++            ctx.lineWidth = 3;
++            ctx.setLineDash([14, 10]);
++            ctx.lineDashOffset = -now * 0.05;
++            ctx.beginPath();
++            ctx.moveTo(t.x, t.y);
++            ctx.lineTo(t.x + Math.cos(t.ang) * 440, t.y + Math.sin(t.ang) * 440);
++            ctx.stroke();
++            ctx.setLineDash([]);
++            ctx.restore();
++        }
+ 
+         // 1. Draw shield orbs
+         for (const orb of badbatShieldOrbs) {
+@@ -22640,7 +22682,7 @@ let heistFeverActive = false;
+         for (const target of [player, ...bots]) {
+             if (!target || target.hp <= 0 || target.id === entity.id || dash.hitIds[target.id]) continue;
+             if (areAlliedEntities(entity, target)) continue;
+-            if (target.isStructure || (target.isPet && !target.isTowerDefenseMinion) || target.isDummy) continue;
++            if (target.isStructure || (target.isPet && !target.isTowerDefenseMinion)) continue;
+             if (Math.hypot(target.x - entity.x, target.y - entity.y) <= 48 + (target.radius || 14)) {
+                 dash.hitIds[target.id] = true;
+                 checkHit(target, { ownerBrawler: 'aegis', ownerId: entity.id, damage: AEGIS_GADGET1_DAMAGE, pierce: true, super: false, isSuperDash: true, hitIds: {} }, -1);
+@@ -23948,6 +23990,7 @@ let heistFeverActive = false;
+         jackTradeZones.length = 0;
+         jackTradeEndpointShots.length = 0;
+         badbatSwarm.length = 0;
++        badbatTelegraphs.length = 0;
+         loomaThreads.length = 0;
+         loomaWeaves.length = 0;
+         badbatShieldOrbs.length = 0;
+@@ -28819,7 +28862,7 @@ let heistFeverActive = false;
+             : 1740 * 1.15;
+         if (brawler === 'looma') base = 1550;
+         else if (brawler === 'fastpass') base = 1550;
+-        else if (brawler === 'anti_royal') base = 1800;
++        else if (brawler === 'anti_royal') base = 2571; // Sheet round 41: reload speed -30% => reload time 1800/0.70
+         else if (brawler === 'cursed') base = 1750;
+         else if (brawler === 'king') base = 1750;
+         else if (brawler === 'freestyle') base = 1650;
+@@ -30448,12 +30491,21 @@ let heistFeverActive = false;
+           }
+ 
+           const star = isBot ? entity.selectedStar : selectedStar;
+-          const hasSP1 = (star === 'slow');
+-          const hasSP2 = (star === 'long');
++          const hasSP1 = (star === 'slow' || star === 'sp1');
++          const hasSP2 = (star === 'long' || star === 'sp2');
+           if (hasSP1 && stage === 5) {
+               entity.beamSP1ShieldActive = true;
++              // Sheet round 41 SP1 fix: the tooltip promises a 25% shield at
++              // max ramp, not just damage reduction — grant it once per ramp.
++              // (The pre-existing 25% DR while beamSP1ShieldActive is kept.)
++              if (!entity.beamSP1ShieldGranted) {
++                  entity.beamSP1ShieldGranted = true;
++                  const shieldAmt = Math.round((entity.maxHp || 0) * 0.25);
++                  if (shieldAmt > 0) grantShield(entity, shieldAmt, shieldAmt);
++              }
+           } else {
+               entity.beamSP1ShieldActive = false;
++              entity.beamSP1ShieldGranted = false;
+           }
+ 
+           entity.beamLines = [];
+@@ -30713,10 +30765,13 @@ let heistFeverActive = false;
+                                       entity.superCharge = clamp((entity.superCharge || 0) + (isGolden ? 3.0 : 2.0), 0, 100);
+                                   }
+ 
+-                                  // Golden Super stuns hit targets for 0.75s (max once every 3.0s)
++                                  // Golden Super stuns hit targets for 0.75s — Sheet round 41:
++                                  // at most ONCE per super per target (super-id stamped at cast).
+                                   if (isGolden && target.hp > 0) {
+-                                      const lastStun = target.lastBeamStunnedAt || 0;
+-                                      if (now - lastStun >= 3000) {
++                                      const goldenId = isBot ? (entity.beamGoldenSuperId || 0) : (player.beamGoldenSuperId || 0);
++                                      if (target.beamStunnedGoldenId !== goldenId || target.beamStunnedGoldenOwner !== entity.id) {
++                                          target.beamStunnedGoldenId = goldenId;
++                                          target.beamStunnedGoldenOwner = entity.id;
+                                           target.lastBeamStunnedAt = now;
+                                           applyStatusEffect(target, 'stun', 750);
+                                           spawnFloatingText(target.x, target.y - 20, 'STUN!', '#ffd700');
+@@ -30733,6 +30788,9 @@ let heistFeverActive = false;
+                                   }
+ 
+                                   // Star Power 2: Also refract secondary split lasers on hitting slowed target
++                                  // Sheet round 41 SP2 fix: these secondaries were visual-only;
++                                  // they now deal damage like wall-hit refractions (45% of base,
++                                  // +30% vs slowed targets), excluding the already-hit target.
+                                   if (hasSP2 && isSlowed && !triggeredRefraction) {
+                                       triggeredRefraction = true;
+                                       const refAngles = [ang - 0.48, ang + 0.48];
+@@ -30750,6 +30808,17 @@ let heistFeverActive = false;
+                                               isHyper,
+                                               isSignature
+                                           });
++                                          if (shouldTickDamage) {
++                                              for (const rt of targets) {
++                                                  if (!rt || rt.w !== undefined || rt.id === target.id) continue;
++                                                  if (lineCircleIntersection(target.x, target.y, refEndX, refEndY, rt.x, rt.y, rt.radius || 16)) {
++                                                      let slowRefDmg = Math.round(baseDmg * 0.45);
++                                                      const rtSlowed = ((rt.slowUntil || 0) > now || (rt.beamSlowUntil || 0) > now);
++                                                      if (rtSlowed) slowRefDmg = Math.round(slowRefDmg * 1.30);
++                                                      checkHit(rt, { damage: slowRefDmg, ownerBrawler: 'beam', ownerId: entity.id, pierce: true, isBeamGolden: isGolden }, -1);
++                                                  }
++                                              }
++                                          }
+                                       }
+                                   }
+                               }
+@@ -33763,8 +33832,8 @@ let heistFeverActive = false;
+ 
+   const ANTI_ROYAL_MORTAR_ROUND_CAP = 6;
+   const ANTI_ROYAL_BLOCK_COOLDOWN_MS = 4500;
+-  const ANTI_ROYAL_MORTAR_FIRE_MS = 1300;
+-  const ANTI_ROYAL_OPENING_BARRAGE_FIRE_MS = 220;
++  const ANTI_ROYAL_MORTAR_FIRE_MS = 1820; // Sheet round 41: unload 40% slower => interval x1.40
++  const ANTI_ROYAL_OPENING_BARRAGE_FIRE_MS = 308; // Sheet round 41: unload 40% slower => interval x1.40
+   const ANTI_ROYAL_MORTAR_RANGE = 760;
+ 
+   function ensureAntiRoyalState(entity) {
+@@ -34744,7 +34813,7 @@ let heistFeverActive = false;
+     }
+     if (brawler === 'awakenator') {
+         const level = fromEntity.id === player.id ? getSelectedBrawlerLevel() : (fromEntity.level || 11);
+-        const damage = Math.round(950 * getLevelDamageScale(level));
++        const damage = Math.round(1050 * getLevelDamageScale(level));
+         const hyper = isEntityHyperchargedNow(fromEntity, now);
+         bullets.push({ ownerBrawler:'awakenator', isAwakenatorMain:true, awakenatorHyper:hyper, x:fromEntity.x+Math.cos(ang)*(fromEntity.radius+7), y:fromEntity.y+Math.sin(ang)*(fromEntity.radius+7), vx:Math.cos(ang)*760, vy:Math.sin(ang)*760, life:0, maxLife:1.05, damage, pierce:false, ownerId:fromEntity.id, hitIds:{}, hitboxMod:1.65, hyperVisual:hyper });
+         return;
+@@ -35212,11 +35281,11 @@ let heistFeverActive = false;
+         bullets.push({ownerBrawler:'relay',isRelayOrb:true,x:fromEntity.x+Math.cos(ang)*(fromEntity.radius+6),y:fromEntity.y+Math.sin(ang)*(fromEntity.radius+6),vx:Math.cos(ang)*680,vy:Math.sin(ang)*680,life:0,maxLife:.594,damage:1250,pierce:false,ownerId:fromEntity.id,hitIds:{},hitboxMod:2.82,relayShieldAmount:Math.round((hyper?1540:1120)*getLevelDamageScale(level)*(1+shieldPct)),relayShieldCap:shieldCap,relayHyperAttachie:hyper,hyperVisual:hyper});
+     } else if (brawler === 'angel') {
+         const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
+-        const count = (hyper ? 3 : 1)+(isSlopSushiMode?Math.round(getEntitySlopEffectTotal(fromEntity,'angelExtraBurst')):0);
++        const count = (hyper ? 2 : 1)+(isSlopSushiMode?Math.round(getEntitySlopEffectTotal(fromEntity,'angelExtraBurst')):0);
+         lockMainAttackSequence(fromEntity,(count-1)*105,now);
+         for (let shot=0; shot<count; shot++) setTimeout(()=>{
+             if (!playing || gameOver || fromEntity.hp <= 0) return;
+-            bullets.push({ownerBrawler:'angel',isAngelLight:true,x:fromEntity.x+Math.cos(ang)*(fromEntity.radius+5),y:fromEntity.y+Math.sin(ang)*(fromEntity.radius+5),vx:Math.cos(ang)*760,vy:Math.sin(ang)*760,life:0,maxLife:.82,damage:hyper?(isBot?850:1180):(isBot?1120:1600),healAmt:hyper?(isBot?455:630):(isBot?735:1015),angelCanLift:shot===0,pierce:true,ownerId:fromEntity.id,hitIds:{},hitboxMod:2.0,hyperVisual:hyper});
++            bullets.push({ownerBrawler:'angel',isAngelLight:true,x:fromEntity.x+Math.cos(ang)*(fromEntity.radius+5),y:fromEntity.y+Math.sin(ang)*(fromEntity.radius+5),vx:Math.cos(ang)*760,vy:Math.sin(ang)*760,life:0,maxLife:.82,damage:hyper?(isBot?638:885):(isBot?840:1200),healAmt:hyper?(isBot?455:630):(isBot?735:1015),angelCanLift:shot===0,pierce:true,ownerId:fromEntity.id,hitIds:{},hitboxMod:2.0,hyperVisual:hyper});
+         },shot*105);
+     } else if (brawler === 'demon') {
+         const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
+@@ -36418,7 +36487,7 @@ let heistFeverActive = false;
+         const rangeMult = 1 + (isSlopSushiMode ? getEntitySlopEffectTotal(fromEntity, 'sushiAttackRangePct') : 0);
+         const rangeDist = 650 * rangeMult;
+         const maxLife = rangeDist / speed;
+-        const scaledBaseDmg = isBot ? (isHyper ? 1400 : 1100) : (isHyper ? 2200 : 1850);
++        const scaledBaseDmg = isBot ? (isHyper ? 1059 : 832) : (isHyper ? 1665 : 1400); // Sheet round 41: main 1850>1400, all variants at same ratio
+         
+         for (let j = 0; j < shotCount; j++) {
+             const spread = (j === 0 ? 0 : 0.05 * (j % 2 === 0 ? 1 : -1));
+@@ -39828,6 +39897,7 @@ let heistFeverActive = false;
+         // Super: The Golden Beam
+         ammo = maxAmmo; // Fill the ammo bar
+         player.beamSuperGoldenUntil = now + 5000; // Set golden state for 5 seconds
++        player.beamGoldenSuperId = (player.beamGoldenSuperId || 0) + 1; // Sheet round 41: stun once per super per target
+         updateSuperButton();
+         return;
+     }
+@@ -40947,6 +41017,9 @@ let heistFeverActive = false;
+       executeAegisG1(bot, target?.x ?? (bot.x + Math.cos(ang) * 200), target?.y ?? (bot.y + Math.sin(ang) * 200));
+     } else if (bot.brawler === 'aegis' && g === 'g2') {
+       executeAegisG2(bot);
++    } else if (bot.brawler === 'angel' && g === 'g1') {
++      const ally = bots.filter(b=>b.hp>0&&areAlliedEntities(bot,b)).sort((a,b)=>Math.hypot(a.x-bot.x,a.y-bot.y)-Math.hypot(b.x-bot.x,b.y-bot.y))[0];
++      if (ally && performance.now() < (bot.angelSecondLifeUntil || 0)) { ally.angelSecondLifeUntil = bot.angelSecondLifeUntil; ally.angelSecondLifeUsed = false; ally.angelSecondLifeOwnerId = bot.id; bot.angelSecondLifeUntil = 0; spawnFloatingText(ally.x, ally.y - 35, 'GUARDIAN SWAP', '#fff0a8'); }
+     } else if (bot.brawler === 'runner' && g === 'g1') {
+       executeRunnerG1(bot);
+     } else if (bot.brawler === 'runner' && g === 'g2') {
+@@ -41552,6 +41625,7 @@ let heistFeverActive = false;
+ 
+         if (botCombatBrawler === 'beam') {
+             bot.beamSuperGoldenUntil = now + 5000;
++            bot.beamGoldenSuperId = (bot.beamGoldenSuperId || 0) + 1; // Sheet round 41: stun once per super per target
+             return;
+         }
+ 
+@@ -42372,7 +42446,7 @@ let heistFeverActive = false;
+       gadgetCooldownUntil=now+GADGET_COOLDOWN_MS;updateGadgetButton();
+     } else if (curBrawler === 'angel' && curGadget === 'g1') {
+       const ally=bots.filter(b=>b.hp>0&&areAlliedEntities(player,b)).sort((a,b)=>Math.hypot(a.x-player.x,a.y-player.y)-Math.hypot(b.x-player.x,b.y-player.y))[0];
+-      if(ally&&performance.now()<(player.angelSecondLifeUntil||0)){ally.angelSecondLifeUntil=player.angelSecondLifeUntil;ally.angelSecondLifeUsed=false;player.angelSecondLifeUntil=0;spawnFloatingText(ally.x,ally.y-35,'GUARDIAN SWAP','#fff0a8');}
++      if(ally&&performance.now()<(player.angelSecondLifeUntil||0)){ally.angelSecondLifeUntil=player.angelSecondLifeUntil;ally.angelSecondLifeUsed=false;ally.angelSecondLifeOwnerId=player.id;player.angelSecondLifeUntil=0;spawnFloatingText(ally.x,ally.y-35,'GUARDIAN SWAP','#fff0a8');}
+       gadgetCooldownUntil=now+GADGET_COOLDOWN_MS;updateGadgetButton();
+     } else if (curBrawler === 'angel' && curGadget === 'g2') {
+       for(const ally of [player,...bots].filter(e=>e&&areAlliedEntities(player,e)&&e.angelLiftUntil>now)){ally.angelLiftUntil=0;ally.isFlying=false;ally.z=0;doHeal(ally,1600);ally.angelLandingSpeedUntil=now+2000;}
+@@ -52518,7 +52592,7 @@ function checkHit(target, b, i){
+     if (b.isBeastClaw) {
+         const owner = b.ownerId === player.id ? player : bots.find(bt=>bt.id===b.ownerId);
+         if(b.beastRending)target.slowUntil=Math.max(target.slowUntil||0,performance.now()+1200);
+-        if(owner&&owner.beastModeActive&&getEntityStarChoice(owner)==='long'&&!(b.beastAmmoGrantedIds||{})[target.id]){b.beastAmmoGrantedIds=b.beastAmmoGrantedIds||{};b.beastAmmoGrantedIds[target.id]=true;if(owner.id===player.id){ammo=Math.min(maxAmmo,ammo+.25);}else owner.ammo=Math.min(owner.maxAmmo||3,(owner.ammo||0)+.25);}
++        if(owner&&owner.beastModeActive&&(getEntityStarChoice(owner)==='long'||getEntityStarChoice(owner)==='sp2')&&!(b.beastAmmoGrantedIds||{})[target.id]){b.beastAmmoGrantedIds=b.beastAmmoGrantedIds||{};b.beastAmmoGrantedIds[target.id]=true;if(owner.id===player.id){ammo=Math.min(maxAmmo,ammo+.10);}else owner.ammo=Math.min(owner.maxAmmo||3,(owner.ammo||0)+.10);} // Sheet round 41: SP2 ammo 0.25>0.10 (sheet range 0.08-0.12, midpoint)
+         const ownerIsHyper = b.ownerId === player.id ? isHypercharged : (owner ? owner.isHypercharged : false);
+         if (ownerIsHyper && !b.beastClawSplit) {
+             b.beastClawSplit = true;
+@@ -52894,8 +52968,8 @@ function checkHit(target, b, i){
+         target.hp = Math.max(1, Math.round(target.maxHp * 0.75)); target.invulnerableUntil = performance.now() + 800;
+         spawnFloatingText(target.x,target.y-42,'SECOND LIFE!','#fff0a8');
+         const blessingOwner=target.angelSecondLifeOwnerId===player.id?player:bots.find(e=>e.id===target.angelSecondLifeOwnerId);
+-        const judgment=blessingOwner&&(blessingOwner.id===player.id?selectedStar==='long':blessingOwner.selectedStar==='long');
+-        if(judgment)AOEDamage(target.x,target.y,145,1800,target.id);
++        const judgment=blessingOwner&&(blessingOwner.id===player.id?(selectedStar==='long'||selectedStar==='sp2'):(blessingOwner.selectedStar==='long'||blessingOwner.selectedStar==='sp2'));
++        if(judgment){AOEDamage(target.x,target.y,145,1800,target.id);for(const foe of [player,...bots]){if(!foe||foe.hp<=0||foe.id===target.id||areAlliedEntities(target,foe))continue;if(Math.hypot(foe.x-target.x,foe.y-target.y)<=145+(foe.radius||14))applyKnockback(foe,target.x,target.y,180,performance.now());}}
+     }
+     handleTrinketDamageDealt(owner, target, dealtDamage);
+     applyPacketHit(owner,target,dealtDamage,b);
+@@ -54335,9 +54409,9 @@ function checkHit(target, b, i){
+               entity.angelSecondLifeUsed = true; entity.angelSecondLifeUntil = 0; entity.isDead = false;
+               entity.hp = Math.max(1, Math.round(entity.maxHp * 0.75)); entity.invulnerableUntil = now + 800;
+               spawnFloatingText(entity.x,entity.y-42,'SECOND LIFE!','#fff0a8');
+-              const angelOwner = entity;
+-              const judgment = angelOwner.id===player.id ? selectedStar==='long' : angelOwner.selectedStar==='long';
+-              if (judgment) AOEDamage(entity.x,entity.y,145,1800,entity.id);
++              const angelOwner = entity.angelSecondLifeOwnerId===player.id ? player : bots.find(b=>b.id===entity.angelSecondLifeOwnerId);
++              const judgment = angelOwner && (angelOwner.id===player.id ? (selectedStar==='long'||selectedStar==='sp2') : (angelOwner.selectedStar==='long'||angelOwner.selectedStar==='sp2'));
++              if (judgment) { AOEDamage(entity.x,entity.y,145,1800,entity.id); for (const foe of [player,...bots]) { if (!foe||foe.hp<=0||foe.id===entity.id||areAlliedEntities(entity,foe)) continue; if (Math.hypot(foe.x-entity.x,foe.y-entity.y)<=145+(foe.radius||14)) applyKnockback(foe,entity.x,entity.y,180,performance.now()); } }
+           }
+           if (now < (entity.demonPullUntil || 0)) {
+               const owner = entity.demonPullOwnerId===player.id ? player : bots.find(b=>b.id===entity.demonPullOwnerId);
+@@ -56788,7 +56862,7 @@ function checkHit(target, b, i){
+                   e.rooted = false;
+               }
+               const spinRadius = hyper ? 280 : 200;
+-              const tickDamage = hyper ? 150 : 250;
++              const tickDamage = hyper ? 150 : 200; // Sheet round 41: super DMG 250>200 (non-hyper tick; hyper tick 150 unchanged)
+               const candidates = e.id === player.id ? aliveBots : [player, ...aliveBots];
+ 
+               // Apply 35% slow aura to nearby enemies
+@@ -75108,6 +75182,42 @@ function checkHit(target, b, i){
+           }
+           ctx.restore();
+       }
++      else if (b.isAmplifierToolboxShot) {
++          // Sheet round 41: minimal main-attack visuals — a spinning toolbox
++          // with a spark trail (torque-snap shots glow magenta, hyper shots gold).
++          ctx.save();
++          const a = Math.atan2(b.vy || 0, b.vx || 1);
++          const spd = Math.hypot(b.vx || 0, b.vy || 0) || 1;
++          ctx.strokeStyle = b.ampTorqueSnap ? 'rgba(217,70,239,.55)' : (b.hyperVisual ? 'rgba(255,215,90,.55)' : 'rgba(255,192,77,.5)');
++          ctx.lineWidth = 3;
++          ctx.beginPath();
++          ctx.moveTo(b.x - Math.cos(a) * 26, b.y - Math.sin(a) * 26);
++          ctx.lineTo(b.x - Math.cos(a) * 8, b.y - Math.sin(a) * 8);
++          ctx.stroke();
++          ctx.translate(b.x, b.y);
++          ctx.rotate(a);
++          ctx.shadowColor = b.ampTorqueSnap ? '#d946ef' : '#ffc04d';
++          ctx.shadowBlur = 14;
++          ctx.fillStyle = b.hyperVisual ? '#ffe08a' : '#ffc04d';
++          ctx.strokeStyle = '#7a4a00';
++          ctx.lineWidth = 2;
++          const hw = b.hyperVisual ? 15 : 12, hh = b.hyperVisual ? 11 : 9;
++          ctx.beginPath();
++          ctx.roundRect(-hw, -hh, hw * 2, hh * 2, 3);
++          ctx.fill();
++          ctx.stroke();
++          ctx.shadowBlur = 0;
++          ctx.strokeStyle = '#5b3a00';
++          ctx.beginPath();
++          ctx.arc(0, -hh, 5, Math.PI, 0);
++          ctx.stroke();
++          ctx.fillStyle = '#7a4a00';
++          ctx.beginPath();
++          ctx.arc(0, 0, 3, 0, Math.PI * 2);
++          ctx.fill();
++          ctx.restore();
++          continue;
++      }
+       else if (b.isBadBatWave) {
+           ctx.save();
+           const lifePct = clamp((b.life || 0) / Math.max(b.maxLife || 0.6, 0.001), 0, 1);
+@@ -75141,7 +75251,7 @@ function checkHit(target, b, i){
+           // Conical sonic wave body
+           ctx.beginPath();
+           ctx.moveTo(0, 0);
+-          ctx.arc(0, 0, cr, -Math.PI * 0.54, Math.PI * 0.54);
++          ctx.arc(0, 0, cr, -0.18, 0.18); // Sheet round 41: straight narrow wave (visual only; hitbox unchanged)
+           ctx.closePath();
+           const waveGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, cr);
+           waveGrad.addColorStop(0, b.isHyper ? 'rgba(240, 90, 255, 0.95)' : 'rgba(168, 85, 247, 0.92)');
+diff --git a/tests/sheet-round-41-group-A-regression.mjs b/tests/sheet-round-41-group-A-regression.mjs
+new file mode 100644
+index 0000000..8fd41aa
+--- /dev/null
++++ b/tests/sheet-round-41-group-A-regression.mjs
+@@ -0,0 +1,146 @@
++// Sheet Round 41 — GROUP A regression (base a8e8aee).
++// Covers ONLY: aegis, amplifier, angel, anti_royal, awakenator, axeywaxy,
++// badbat, beam, beast, blinkeye. All numbers are POWER 11 values; code
++// base stats are P11 x the getScaledStats curve (P11 scale = 1.0), so a
++// P11 sheet value lands verbatim in the base — except where a brawler
++// hardcodes its fire damage (angel, awakenator, blinkeye, beast claws),
++// where the same P11 value (or its documented ratio) is asserted there.
++// Charge-rate mismatches vs the sheet are REPORTED, not changed (the
++// Balance text never orders a charge change): see the footer comments.
++import fs from 'node:fs';
++
++const game = fs.readFileSync(new URL('../game.js', import.meta.url), 'utf8');
++let passed = 0;
++const failures = [];
++function check(name, cond) {
++  if (cond) passed++;
++  else failures.push(name);
++}
++const has = (s) => game.includes(s);
++const notHas = (s) => !game.includes(s);
++
++// ---------- AEGIS (row 1: FIX G1 as designed, DMG; no number changes) ----------
++// G1 Shield Charge dashes 240px (3 tiles) dealing 900 damage. The live bug:
++// updateAegisDash skipped training dummies, so in training G1 dealt no
++// damage at all. Dummies are now hittable (structures/pets still excluded).
++check('aegis G1 dash no longer skips dummies',
++  has("if (target.isStructure || (target.isPet && !target.isTowerDefenseMinion)) continue;"));
++check('aegis G1 damage still 900', has('const AEGIS_GADGET1_DAMAGE = 900;'));
++check('aegis G1 shield still 1500', has('const AEGIS_GADGET1_SHIELD = 1500;'));
++check('aegis main unchanged 900', /brawlerId === 'aegis'\)\s*\{\s*const scale = 0\.55 \+ \(level - 1\) \* 0\.045;\s*return \{ hp: Math\.round\(7400 \* scale\), dmg: Math\.round\(900 \* scale\), speed: 270 \};/.test(game));
++
++// ---------- AMPLIFIER (row 2: minimal main-attack visuals, FLAG treatment) ----------
++check('amplifier toolbox has a dedicated draw branch', has('else if (b.isAmplifierToolboxShot) {'));
++check('amplifier visual draws a toolbox body', has("ctx.roundRect(-hw, -hh, hw * 2, hh * 2, 3);"));
++check('amplifier visual keeps torque-snap glow distinct', has("b.ampTorqueSnap ? 'rgba(217,70,239,.55)'"));
++check('amplifier main damage untouched (bot 605 / player 980)', has('damage: isBot ? 605 : 980,'));
++
++// ---------- ANGEL (row 3: FIX G1 + SP2 Knockback; main 1600>1200 P11; HC 3>2) ----------
++check('angel scaledStats P11 dmg 1200 (was 1600)', has("dmg:brawlerId==='angel'?1200:"));
++check('angel fire normal player 1200 (was 1600)', has('(isBot?840:1200)'));
++check('angel fire normal bot 840 (was 1120, same 0.75 ratio)', has('(isBot?840:1200)'));
++check('angel fire hyper player 885 (was 1180, same ratio)', has('(isBot?638:885)'));
++check('angel fire hyper bot 638 (was 850, same ratio)', has('(isBot?638:885)'));
++check('angel HC burst 3>2 shots', has('const count = (hyper ? 2 : 1)'));
++check('angel G1 player transfer preserves blessing owner', has('ally.angelSecondLifeOwnerId=player.id;player.angelSecondLifeUntil=0;'));
++check('angel G1 bot transfer exists', has("bot.brawler === 'angel' && g === 'g1'"));
++check('angel G1 bot transfer preserves blessing owner', has('ally.angelSecondLifeOwnerId = bot.id; bot.angelSecondLifeUntil = 0;'));
++check('angel SP2 gate accepts legacy sp2 (path 1)', has("(selectedStar==='long'||selectedStar==='sp2')"));
++check('angel SP2 path 2 uses blessing owner, not revived entity', has('const angelOwner = entity.angelSecondLifeOwnerId===player.id ? player : bots.find(b=>b.id===entity.angelSecondLifeOwnerId);'));
++check('angel SP2 knockback applied on activation', has('applyKnockback(foe,target.x,target.y,180,performance.now())'));
++check('angel G2 heal untouched 1600', has('doHeal(ally,1600)'));
++
++// ---------- ANTI-ROYAL (row 4: reload 30% slower, unload 40% slower, FLAG sign) ----------
++// Reload speed x0.70 => reload time 1800/0.70 = 2571ms.
++// Unload (mortar fire) interval x1.40: sustained 1300>1820, barrage 220>308.
++check('anti_royal reload 1800>2571', has("else if (brawler === 'anti_royal') base = 2571;"));
++check('anti_royal reload arithmetic 1800/0.70 = 2571', Math.round(1800 / 0.70) === 2571);
++check('anti_royal mortar sustained 1300>1820', has('const ANTI_ROYAL_MORTAR_FIRE_MS = 1820;'));
++check('anti_royal mortar barrage 220>308', has('const ANTI_ROYAL_OPENING_BARRAGE_FIRE_MS = 308;'));
++check('anti_royal unload arithmetic 1300x1.4=1820, 220x1.4=308', Math.round(1300 * 1.4) === 1820 && Math.round(220 * 1.4) === 308);
++check('anti_royal main dmg untouched 1550', has('dmg: Math.round(1550 * scale)'));
++
++// ---------- AWAKENATOR (row 5: DMG 950>1050) ----------
++check('awakenator scaledStats 950>1050', has('dmg: Math.round(1050 * scale), speed: 260 };'));
++check('awakenator fire 950>1050', has('const damage = Math.round(1050 * getLevelDamageScale(level));'));
++check('awakenator tooltip 1050', has("attackDesc:'Fire a 1050-damage dream bolt."));
++
++// ---------- AXEYWAXY (row 6: super DMG 250>200) ----------
++check('axeywaxy super tick 250>200 (non-hyper)', has('const tickDamage = hyper ? 150 : 200;'));
++check('axeywaxy hyper tick untouched 150', has('const tickDamage = hyper ? 150 : 200;'));
++check('axeywaxy super tooltip 200', has('dealing 200 damage per tick every 0.2s (1,000 DPS)'));
++check('axeywaxy main cleave untouched 1400', has('(hyper ? 1600 : 1400)'));
++
++// ---------- BADBAT (row 7: straight telegraph main; bat HP decays, FLAG numbers) ----------
++check('badbat telegraph list exists', has('const badbatTelegraphs = [];'));
++check('badbat fire pushes a straight telegraph', has('badbatTelegraphs.push({ x: fromEntity.x, y: fromEntity.y, ang, until: now + 450 });'));
++check('badbat telegraph drawn as a dashed straight line', has("ctx.setLineDash([14, 10]);"));
++check('badbat wave visual narrowed to a straight wedge', has('ctx.arc(0, 0, cr, -0.18, 0.18);'));
++check('badbat wave hitbox untouched (baseRadius still 42/84)', has('const baseRadius = isG1 ? 84 : 42;'));
++check('badbat bat HP decay 28/s', has('bat.hp -= 28 * dt;'));
++check('badbat decay arithmetic: 560 HP at 28/s lasts 20s', 560 / 28 === 20);
++check('badbat bat max HP untouched 560', has('hp: 560,\n                maxHp: 560,') || has('hp: 560,'));
++check('badbat main dmg untouched 1400 (scaledStats)', has('dmg: Math.round(1400 * scale), batDmg: Math.round(300 * scale)'));
++
++// ---------- BEAM (row 8: FIX SP1 + SP2; super stun 1x per super, FLAG reading) ----------
++check('beam SP gates accept legacy sp1/sp2', has("const hasSP1 = (star === 'slow' || star === 'sp1');") && has("const hasSP2 = (star === 'long' || star === 'sp2');"));
++check('beam SP1 grants literal 25% max-HP shield at max ramp', has('const shieldAmt = Math.round((entity.maxHp || 0) * 0.25);'));
++check('beam SP1 shield granted once per ramp', has('if (!entity.beamSP1ShieldGranted) {'));
++check('beam SP1 25% DR preserved', has('dealtDamage *= 0.75;'));
++check('beam SP2 slowed-target refraction now deals damage', has('let slowRefDmg = Math.round(baseDmg * 0.45);'));
++check('beam SP2 slowed refraction excludes the origin target', has('rt.id === target.id) continue;'));
++check('beam golden super id stamped at cast (player)', has('player.beamGoldenSuperId = (player.beamGoldenSuperId || 0) + 1;'));
++check('beam golden super id stamped at cast (bot)', has('bot.beamGoldenSuperId = (bot.beamGoldenSuperId || 0) + 1;'));
++check('beam stun gated once per super per target', has('target.beamStunnedGoldenId !== goldenId'));
++check('beam old 3s stun window removed', notHas('if (now - lastStun >= 3000)'));
++check('beam super still 5s golden', has('player.beamSuperGoldenUntil = now + 5000;'));
++check('beam ramp stages untouched', has('const stageDmgPerSec = [120, 300, 500, 850, 1250, 1980][stage];'));
++
++// ---------- BEAST (row 9: main 750>650; SP1 30% decaying shield; SP2 ammo 0.08-0.12) ----------
++// Full regular hit = primary + small (0.58x): old 475+276=751~=750;
++// new 412+239=651~=650 (bot 216+125=341, same ratio as old 250+145=395).
++check('beast primary claw P11 475>412 player / 250>216 bot', has('const p11RawDamage = isBot ? 216 : 412;'));
++check('beast full-hit arithmetic 412+round(412*0.58)=651 ~= 650', 412 + Math.round(412 * 0.58) === 651);
++check('beast SP1 shield grant 30% max HP on beast-mode start', has('const beastShieldAmt = Math.round((entity.maxHp || 0) * 0.30);'));
++check('beast SP1 shield granted after the 15% beast HP boost', (() => {
++  const grantAt = game.indexOf('const beastShieldAmt');
++  const boostAt = game.indexOf('entity.maxHp = Math.round(baseMaxHp * 1.15);');
++  return grantAt > boostAt && grantAt - boostAt < 2000;
++})());
++check('beast SP1 decay 5% max HP/s', has('Math.round((entity.maxHp || 0) * 0.05)'));
++check('beast SP1 gate accepts slow or sp1', has("(getEntityStarChoice(entity) === 'slow' || getEntityStarChoice(entity) === 'sp1')"));
++check('beast SP1 tooltip reworked (no placeholder)', has("sp1: 'Primal Guard (Gain a 30% decaying shield when starting beast mode)'"));
++check('beast SP2 ammo 0.25>0.10 (sheet range 0.08-0.12 midpoint)', has('ammo+.10)') && has('(owner.ammo||0)+.10)'));
++check('beast SP2 gate accepts long or sp2', has("(getEntityStarChoice(owner)==='long'||getEntityStarChoice(owner)==='sp2')"));
++check('beast old SP1 knockback text gone', notHas("sp1: 'Razor Pounce (Main attack gains tiny knockback)'"));
++
++// ---------- BLINKEYE (row 10: main 1850>1400) ----------
++check('blinkeye scaledStats 1850>1400', has('dmg: Math.round(1400 * scale), speed: 265 };'));
++check('blinkeye fire player normal 1400 (was 1850)', has('(isHyper ? 1665 : 1400)'));
++check('blinkeye fire bot normal 832 (was 1100, same ratio)', has('(isHyper ? 1059 : 832)'));
++check('blinkeye ratio arithmetic', Math.round(1100 * 1400 / 1850) === 832 && Math.round(2200 * 1400 / 1850) === 1665);
++check('blinkeye boss damage untouched (separate boss entity, 580)', has('blinkeyeBaseDmg: 580,'));
++
++// ---------- GUARD: untouched neighbours still at base values ----------
++// Spot-checks that no other brawler was edited: nightshade (Group D, not
++// Group A), runner (no-change row), mallow (not in this round's Group A).
++check('guard: nightshade main still 640', has('dmg: Math.round(640 * scale), speed: 300 };'));
++check('guard: runner main still 950', has('dmg: Math.round(950 * scale), speed: 290 };'));
++check('guard: mallow main still 320', has('dmg: Math.round(320 * scale), speed: 270 };'));
++
++if (failures.length) {
++  console.error(`GROUP A REGRESSION: ${passed} passed, ${failures.length} FAILED:`);
++  for (const f of failures) console.error('  FAIL: ' + f);
++  process.exit(1);
++}
++console.log(`GROUP A REGRESSION: all ${passed} checks passed.`);
++// Charge-rate report (NOT changed — Balance text orders no charge change):
++// aegis: sheet 5, code default 6 (not in registry) — MISMATCH.
++// amplifier: sheet 5, code 6 — MISMATCH. angel: sheet 6, code 6 — match.
++// anti_royal: sheet 5, code 6 — MISMATCH. awakenator: sheet 6, code 8 — MISMATCH.
++// axeywaxy: sheet 6, code 6 — match. badbat: sheet 7, code 5 — MISMATCH.
++// beam: sheet "Same", code registry 8 + per-tick 2%/3% golden/normal charge —
++//   no change (sheet says Same). beast: sheet "8 Full Hits", code registry
++//   20 — MISMATCH (charge dedupes per activation, not per claw; a full
++//   attack is 2 swings, so even 8 full hits != 8 activations). blinkeye:
++//   sheet 6, code 4 — MISMATCH.

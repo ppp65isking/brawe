@@ -34,7 +34,7 @@ check('roster includes nightshade after mallow', game.includes("'feathers', 'spi
 check('rarity Mythic (count bumped 12 -> 13)', game.includes('// Mythic (13)') && game.includes("nightshade: 'Mythic',"));
 check('role Assassin', game.includes("nightshade:'Assassin',"));
 check('portrait icon present', game.includes("nightshade: '🗡️',"));
-check('stats branch 6400/640/300 (main dmg -20% 2026-10-28)', game.includes("if (brawlerId === 'nightshade') {") && game.includes('hp: Math.round(6400 * scale), dmg: Math.round(640 * scale), speed: 300'));
+check('stats branch 6400/560/300 (main dmg 640>560 Round 41)', game.includes("if (brawlerId === 'nightshade') {") && game.includes('hp: Math.round(6400 * scale), dmg: Math.round(560 * scale), speed: 300'));
 check('super charge 6 hits', game.includes('nightshade: 6'));
 check('reload 1600ms', game.includes('nightshade: 1600,'));
 check('fire delay 300ms', game.includes('nightshade: 300,'));
@@ -47,7 +47,7 @@ check('fire branch exists with 4-dagger fan + poison flag', game.includes("brawl
 check('dagger constants 4 / 560px / 700px-s (-30%) / 0.36 rad', game.includes('const NIGHTSHADE_DAGGER_COUNT = 4;') && game.includes('const NIGHTSHADE_DAGGER_RANGE = 560;') && game.includes('const NIGHTSHADE_DAGGER_SPEED = 700;') && game.includes('const NIGHTSHADE_DAGGER_FAN_ARC = 0.36;'));
 check('poison constants 60 dps / 250ms tick / 8s / cap 4', game.includes('const NIGHTSHADE_POISON_DPS = 60;') && game.includes('const NIGHTSHADE_POISON_TICK_MS = 250;') && game.includes('const NIGHTSHADE_POISON_DURATION_MS = 8000;') && game.includes('const NIGHTSHADE_POISON_MAX_STACKS = 4;'));
 check('SP1 poison duration is 10s', game.includes('const NIGHTSHADE_POISON_DURATION_SP1_MS = 10000;'));
-check('blade constants 12 / 640px / 630px-s (-30%) / 1100 dmg', game.includes('const NIGHTSHADE_BLADE_COUNT = 12;') && game.includes('const NIGHTSHADE_BLADE_RANGE = 640;') && game.includes('const NIGHTSHADE_BLADE_SPEED = 630;') && game.includes('const NIGHTSHADE_BLADE_DAMAGE = 1100;'));
+check('blade constants 12 / 640px / 630px-s (-30%) / 800 dmg (Round 41)', game.includes('const NIGHTSHADE_BLADE_COUNT = 12;') && game.includes('const NIGHTSHADE_BLADE_RANGE = 640;') && game.includes('const NIGHTSHADE_BLADE_SPEED = 630;') && game.includes('const NIGHTSHADE_BLADE_DAMAGE = 800;'));
 check('blade lifetime cap constant 4000ms', game.includes('const NIGHTSHADE_BLADE_MAX_LIFE_MS = 4000;'));
 check('hyper puddles removed (no puddle constants, state, or updater)', !game.includes('NIGHTSHADE_PUDDLE') && !game.includes('nightshadePuddles') && !game.includes('updateNightshadePuddles') && !game.includes('nightshadePuddleTick'));
 check('gadget constants dash 240px/200ms, purge 400px/200hp', game.includes('const NIGHTSHADE_GADGET1_DASH_DISTANCE = 240;') && game.includes('const NIGHTSHADE_GADGET1_DASH_DURATION_MS = 200;') && game.includes('const NIGHTSHADE_GADGET2_RADIUS = 400;') && game.includes('const NIGHTSHADE_GADGET2_HEAL_PER_STACK = 200;'));
@@ -225,12 +225,12 @@ try {
     Math,
     player: { id: 0 },
     getSelectedBrawlerLevel: () => 11,
-    NIGHTSHADE_BLADE_DAMAGE: 1100,
+    NIGHTSHADE_BLADE_DAMAGE: 800,
   };
   vm.createContext(sandbox);
   vm.runInContext(extractFn(game, 'nightshadeBladeLevelDamage'), sandbox);
-  check('blade: 1100 damage at Power 11', sandbox.nightshadeBladeLevelDamage({ id: 0 }) === 1100);
-  check('blade: 605 damage at Power 1 (0.55x scale)', sandbox.nightshadeBladeLevelDamage({ id: 5, level: 1 }) === 605);
+  check('blade: 800 damage at Power 11 (Round 41)', sandbox.nightshadeBladeLevelDamage({ id: 0 }) === 800);
+  check('blade: 440 damage at Power 1 (0.55x scale, Round 41)', sandbox.nightshadeBladeLevelDamage({ id: 5, level: 1 }) === 440);
 } catch (e) { failures.push('blade scaling vm block threw: ' + e.message); }
 
 // --- pure draw code: dagger art writes no combat state ---

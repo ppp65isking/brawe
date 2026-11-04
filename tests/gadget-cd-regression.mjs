@@ -5,9 +5,9 @@ const gameCode = fs.readFileSync('game.js', 'utf8');
 
 console.log('--- Running Gadget CD / Activation Register & Beam Stun Nerf Regression Tests ---');
 
-// 1. Beam Super Stun internal cooldown (nerfed to >= 3.0s)
-assert(gameCode.includes('now - lastStun >= 3000'), 'Beam stun internal cooldown must be >= 3000ms (every 3 sec)');
-assert(!gameCode.includes('now - lastStun > 2800'), 'Old 2800ms stun threshold must be removed');
+// 1. Beam Super Stun is once per super per target (Round 41: replaces the old 3.0s cooldown)
+assert(gameCode.includes('beamGoldenSuperId'), 'Beam stun must be stamped per golden super (once per super per target)');
+assert(!gameCode.includes('now - lastStun >= 3000'), 'Old 3000ms stun cooldown must be removed (Round 41: once per super)');
 
 // 2. GADGET_COOLDOWN_BY_BRAWLER contains all brawlers including beam
 assert(gameCode.includes('beam: { g1: 13000, g2: 14000 }'), 'GADGET_COOLDOWN_BY_BRAWLER must contain beam');
