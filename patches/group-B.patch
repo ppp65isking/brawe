@@ -1,0 +1,451 @@
+diff --git a/game.js b/game.js
+index 56727dd..af96287 100644
+--- a/game.js
++++ b/game.js
+@@ -261,7 +261,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
+       }
+       if (brawlerId === 'bolznstien') {
+             const scale = 0.55 + (level - 1) * 0.045;
+-            return { hp: Math.round(7200 * scale), dmg: Math.round(1320 * scale), strikeDmg: Math.round(1650 * scale), speed: 265 };
++            return { hp: Math.round(7200 * scale), dmg: Math.round(990 * scale), strikeDmg: Math.round(1650 * scale), speed: 265 };
+         }
+         if (brawlerId === 'electrostien') {
+             const scale = 0.55 + (level - 1) * 0.045;
+@@ -404,7 +404,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
+         if (brawlerId === 'angel' || brawlerId === 'demon' || brawlerId === 'warrior' || brawlerId === 'relay' || brawlerId === 'upiedown' || brawlerId === 'chickpig' || brawlerId === 'jetpack' || brawlerId === 'snapper') {
+             const scale = 0.55 + (level - 1) * 0.045;
+             const p11Hp = brawlerId === 'angel' ? 7200 : (brawlerId === 'demon' ? 7700 : (brawlerId === 'relay' ? 5200 : (brawlerId === 'upiedown' ? 6800 : (brawlerId === 'chickpig' ? 7200 : (brawlerId === 'jetpack' ? 6600 : (brawlerId === 'snapper' ? 6500 : 7600))))));
+-            return { hp:Math.round(p11Hp*scale), dmg:brawlerId==='angel'?1600:(brawlerId==='demon'?1900:(brawlerId==='relay'?1250:(brawlerId==='upiedown'?1700:(brawlerId==='chickpig'?1150:(brawlerId==='jetpack'?2550:(brawlerId==='snapper'?1650:950)))))), speed:brawlerId==='angel'?255:(brawlerId==='demon'?300:(brawlerId==='relay'?265:(brawlerId==='upiedown'?250:(brawlerId==='chickpig'?255:(brawlerId==='jetpack'?270:(brawlerId==='snapper'?250:260)))))) };
++            return { hp:Math.round(p11Hp*scale), dmg:brawlerId==='angel'?1600:(brawlerId==='demon'?1900:(brawlerId==='relay'?1250:(brawlerId==='upiedown'?1700:(brawlerId==='chickpig'?1000:(brawlerId==='jetpack'?2550:(brawlerId==='snapper'?1650:950)))))), speed:brawlerId==='angel'?255:(brawlerId==='demon'?300:(brawlerId==='relay'?265:(brawlerId==='upiedown'?250:(brawlerId==='chickpig'?255:(brawlerId==='jetpack'?270:(brawlerId==='snapper'?250:260)))))) };
+         }
+         const data = brawlerData[brawlerId] || {};
+         const role = String(data.role || '').toLowerCase();
+@@ -9826,7 +9826,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
+           hyper: 'Franken-Overload: Main attack is 30% larger, and the secondary strike triggers 4 times (center + 3 in a tighter triangle) with 30% bigger blasts. Super lasts 6s, gains massive range, and weakens enemies so they deal 40% less damage for 4s.',
+           g1: 'Instant Discharge (Instantly detonates all pending 0.8s electric strikes with +30% damage and releases a defensive electric pulse)',
+           g2: 'Conductive Surge (Overcharges neck bolts for 4s, granting +30% movement speed and electrifying the ground beneath his feet)',
+-          sp1: 'High Voltage (Secondary delayed electric strikes deal +25% bonus damage and slow enemies hit by 35% for 1.5s)',
++          sp1: 'High Voltage (Secondary delayed electric strikes deal +12.5% bonus damage and slow enemies hit by 35% for 1.5s)',
+           sp2: 'Thunder Tempo (Consecutive lightning called onto the same target arrives up to 80% faster at 5 stacks)'
+       },
+ 
+@@ -12321,7 +12321,7 @@ function isPowerPlayModifierActive(entity = player) {
+             ? Math.max(160, 800 - 160 * (tempoStacks - 1))
+             : 800;
+         const triggerAt = now + strikeDelay;
+-        const finalDmg = Math.round(strikeDmg * (sp1 ? 1.25 : 1.0));
++        const finalDmg = Math.round(strikeDmg * (sp1 ? 1.125 : 1.0));
+         const strikeRadius = (isHyper ? 85 : 65) * (isHyper ? 1.3 : 1.0); // 30% bigger strike during HC
+         const ownerSkinId = getActiveSkinForBrawler(owner?.brawler || (owner?.id === player.id ? selectedBrawler : 'bolznstien'))?.id;
+ 
+@@ -34617,19 +34617,23 @@ let heistFeverActive = false;
+             if (isHyper) carmelaHandChargeSpeed *= 1.30;
+ 
+             const chargePct = fromEntity.carmelaChargePct !== undefined ? fromEntity.carmelaChargePct : (fromEntity.id !== player.id ? 0.5 : 0.0);
+-            let handDmg = 1600;
++            // Sheet Round 41: Carmela-form hand damage range 1600-2500 > 900-1750.
++            // The sheet names the min/max across charge tiers, so the middle
++            // tiers are linearly interpolated between the new endpoints and
++            // rounded to the game's 5-damage breakpoint grid.
++            let handDmg = 900;
+             let pullType = 'none';
+             if (chargePct <= 0.15) {
+-                handDmg = 1600;
++                handDmg = 900;
+                 pullType = 'none';
+             } else if (chargePct <= 0.60) {
+-                handDmg = 1900;
++                handDmg = 1185;
+                 pullType = 'half';
+             } else if (chargePct <= 0.90) {
+-                handDmg = 2200;
++                handDmg = 1465;
+                 pullType = 'all';
+             } else {
+-                handDmg = 2500;
++                handDmg = 1750;
+                 pullType = 'pullSelf';
+             }
+             const range = 360 + chargePct * 260;
+@@ -35166,7 +35170,7 @@ let heistFeverActive = false;
+         const sideY = Math.sin(ang + Math.PI/2) * side;
+         bullets.push({ownerBrawler:'chickpig',isChickpigEgg:true,x:fromEntity.x+sideX,y:fromEntity.y+sideY,vx:Math.cos(ang)*speed,vy:Math.sin(ang)*speed,life:0,maxLife:rangeLife,damage:isBot?650:900,pierce:false,ownerId:fromEntity.id,hitIds:{},hitboxMod:1.8,hyperVisual:hyper,chickpigLeaveZone:hyper,chickpigSunny:!!fromEntity.chickpigSunnyArmed});
+         fromEntity.chickpigSunnyArmed=false;
+-        bullets.push({ownerBrawler:'chickpig',isChickpigBacon:true,x:fromEntity.x-sideX,y:fromEntity.y-sideY,vx:Math.cos(ang)*speed,vy:Math.sin(ang)*speed,life:0,maxLife:rangeLife,damage:isBot?800:1150,pierce:false,ownerId:fromEntity.id,hitIds:{},hitboxMod:1.65,hyperVisual:hyper,chickpigBurn:hyper});
++        bullets.push({ownerBrawler:'chickpig',isChickpigBacon:true,x:fromEntity.x-sideX,y:fromEntity.y-sideY,vx:Math.cos(ang)*speed,vy:Math.sin(ang)*speed,life:0,maxLife:rangeLife,damage:isBot?696:1000,pierce:false,ownerId:fromEntity.id,hitIds:{},hitboxMod:1.65,hyperVisual:hyper,chickpigBurn:hyper});
+     } else if (brawler === 'upiedown') {
+         const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
+         const throwDistance = Math.min(610, Math.hypot(targetX-fromEntity.x,targetY-fromEntity.y));
+@@ -35985,13 +35989,25 @@ let heistFeverActive = false;
+         } else if (brawler === 'cheseypuff') {
+           const isHyper = !isBot ? isHypercharged : fromEntity.isHypercharged;
+           const bigForever = !isBot ? (gadgetArmed && selectedGadget === 'g1') : (fromEntity.gadgetArmed && fromEntity.selectedGadget === 'g1');
+-          const sp2 = (!isBot && selectedStar === 'long') || (isBot && fromEntity.selectedStar === 'long');
++          const sp2 = (!isBot && (selectedStar === 'long' || selectedStar === 'sp2')) || (isBot && (fromEntity.selectedStar === 'long' || fromEntity.selectedStar === 'sp2'));
+           const sp2Attach = sp2 && hasEntityAttachie(fromEntity, 'star', 'long');
+           const stageCount = sp2 ? 3 : 2;
+           const stageRanges = stageCount === 3 ? [159, 267, 364] : [170, 313];
+           if (sp2Attach) for (let sr = 0; sr < stageRanges.length; sr++) stageRanges[sr] = Math.round(stageRanges[sr] * 1.22);
+           const stageRadius = (isHyper || bigForever) ? [23, 23, 23] : (stageCount === 3 ? [23, 15.3, 9.2] : [23, 10.3]);
+           const stageDamage = bigForever ? [1300, 1300, 1300] : (stageCount === 3 ? [1300, 1090, 890] : [1300, 985]);
++          // Sheet Round 41 SP2: third attack stage +30% range, -20% DMG (890 > 712).
++          // stageRanges[2] is the recorded third-stage range (364 > 473 before
++          // the attachie multiplier). The final stage has no advance threshold
++          // — its travel is capped by maxLife — so entering stage 3 also
++          // extends maxLife by 30% (see advanceCheeseyPuffBullet and the
++          // distance-advance block). G1 Big Forever shots keep 1300s.
++          let cheseySp2Stage3 = false;
++          if (sp2 && !bigForever && stageCount === 3) {
++              stageDamage[2] = 712;
++              stageRanges[2] = Math.round(stageRanges[2] * 1.30);
++              cheseySp2Stage3 = true;
++          }
+ 
+           bullets.push({
+             ownerBrawler: 'cheseypuff',
+@@ -36020,6 +36036,7 @@ let heistFeverActive = false;
+             ownerId: fromEntity.id,
+             angle: ang,
+             stageRanges,
++            cheseySp2Stage3,
+             cheeseyHyperBurst: isHyper,
+             cheeseyPullOnHit: bigForever && hasEntityAttachie(fromEntity, 'gadget', 'g1'),
+             cheeseyMiniFieldOnEnd: ((!isBot && selectedStar === 'slow') || (isBot && fromEntity.selectedStar === 'slow')) && hasEntityAttachie(fromEntity, 'star', 'slow')
+@@ -36874,12 +36891,12 @@ let heistFeverActive = false;
+         // base range for every wall bounce.
+         const rangeMult = (g1 ? 1.5 : 1.0) * (isHyper ? 1.2 : 1.0) * (transformed ? 1.35 : 1.0) * (1+sushiBounceRange);
+         const speedMult = (isHyper ? 1.2 : 1.0) * (transformed ? 1.18 : 1.0) * (isPowerPlayShowdownMode ? 2.0 : 1.0);
+-        const damageBase = isBot ? 194 : (transformed ? 335 : 285);
++        const damageBase = isBot ? 129 : (transformed ? 335 : 190);
+         const canSplit = !!isHyper || transformed || sushiSplit;
+-        lockMainAttackSequence(fromEntity,(balls-1)*88,now);
++        lockMainAttackSequence(fromEntity,(balls-1)*88,now); // Volley cadence lock kept: balls launch together but the next volley waits the same window.
+ 
+         for (let i = 0; i < balls; i++) {
+-            setTimeout(() => { // +10% Delay (80ms -> 88ms)
++            setTimeout(() => { // Sheet Round 41: balls now fire in sync (no 88ms stagger).
+                 if (isBot && fromEntity.hp <= 0) return;
+                 const isShiny = (balls === 7 && i === 6);
+                 const shotAng = ang;
+@@ -36904,7 +36921,7 @@ let heistFeverActive = false;
+                     b.fxKind = 'signature';
+                 }
+                 if (signatureFollowup > 0) { b.bouncySignatureFollowup = true; b.hyperVisual = true; b.fxKind = 'signatureFollowup'; }
+-            }, i * 88);
++            }, 0);
+         }
+     } else if (brawler === 'goonbob') {
+         const hc = !isBot ? isHypercharged : fromEntity.isHypercharged;
+@@ -37366,7 +37383,7 @@ let heistFeverActive = false;
+         const ownerMult = 1.0 + ((fromEntity.powerCubes || 0) * 0.1);
+         // Projectile hit resolution applies the Power 1–11 damage curve once.
+         const levelMult = 1.0;
+-        const bulletDmg = Math.round(1100 * ownerMult * levelMult);
++        const bulletDmg = Math.round(1000 * ownerMult * levelMult);
+ 
+         const rider = ensureBoomArangInstinctState(fromEntity, now);
+         const ride = !!rider?.ready;
+@@ -39048,10 +39065,17 @@ let heistFeverActive = false;
+         if (layer < 0) return false;
+         const longBurn = getCinderionStar(owner) === 'long';
+         const duration = bonus ? 8000 : (longBurn ? 20000 : CINDERION_BASE_ORBIT_MS);
+-        const index = counts[layer];
++        // Sheet Round 41: each flame keeps a FIXED angular slot for life.
++        // A new flame takes the smallest free slot in its layer (not the
++        // live count), so adding or removing a flame never re-shifts the
++        // others and can never stack two flames on one angle.
++        const usedSlots = new Set(owner.cinderionOrbitFlames.filter(f => f.layer === layer && f.expiresAt > now && !f.spent && Number.isFinite(f.fixedSlot)).map(f => f.fixedSlot));
++        let fixedSlot = 0;
++        while (fixedSlot < CINDERION_LAYER_CAPS[layer] && usedSlots.has(fixedSlot)) fixedSlot++;
++        if (fixedSlot >= CINDERION_LAYER_CAPS[layer]) fixedSlot = counts[layer] % CINDERION_LAYER_CAPS[layer];
+         owner.cinderionOrbitFlames.push({
+-            id: nextCinderionFlameId++, layer, createdAt: now, expiresAt: now + duration,
+-            phase: index * Math.PI * 2 / CINDERION_LAYER_CAPS[layer] + layer * 0.37,
++            id: nextCinderionFlameId++, layer, fixedSlot, createdAt: now, expiresAt: now + duration,
++            phase: fixedSlot * Math.PI * 2 / CINDERION_LAYER_CAPS[layer] + layer * 0.37,
+             radius: CINDERION_LAYER_RADII[layer], expanding: false, homing: false,
+             homingOffsetX: 0, homingOffsetY: 0,
+             hitCooldowns: Object.create(null), renderX: owner.x, renderY: owner.y, spent: false
+@@ -39107,16 +39131,25 @@ let heistFeverActive = false;
+             ensureCinderionState(owner);
+             if (owner.hp <= 0) { owner.cinderionOrbitFlames.length = 0; owner.cinderionSuperActive = false; continue; }
+             const targets = entities.filter(target => target && target.hp > 0 && target.id !== owner.id && !areAlliedEntities(owner, target));
+-            // Repack every occupied ring on every frame. Expired or consumed
+-            // embers leave no lopsided hole: the remaining flames stay exactly
+-            // symmetrical while retaining their own independent lifetimes.
++            // Sheet Round 41: NO re-packing. Each flame keeps its fixed
++            // angular slot for life, so adding a flame or losing one (hit /
++            // expiry) leaves the others exactly where they are — no jump to
++            // re-form symmetry, just a gap where the flame was. Only
++            // backfill slots for flames predating this change.
+             const layerGroups = [[], [], [], []];
+             for (const flame of owner.cinderionOrbitFlames) {
+                 if (!flame.spent && flame.expiresAt > now && layerGroups[flame.layer]) layerGroups[flame.layer].push(flame);
+             }
+             for (const group of layerGroups) {
+                 group.sort((a,b)=>a.createdAt-b.createdAt || a.id-b.id);
+-                group.forEach((flame,index)=>{ flame.symmetricSlot=index; flame.symmetricCount=group.length; });
++                for (const flame of group) {
++                    if (!Number.isFinite(flame.fixedSlot)) {
++                        const used = new Set(group.filter(f => f !== flame && Number.isFinite(f.fixedSlot)).map(f => f.fixedSlot));
++                        let slot = 0;
++                        while (slot < CINDERION_LAYER_CAPS[flame.layer] && used.has(slot)) slot++;
++                        flame.fixedSlot = slot < CINDERION_LAYER_CAPS[flame.layer] ? slot : 0;
++                    }
++                }
+             }
+             const activeFlameCount=layerGroups.reduce((sum,group)=>sum+group.length,0);
+             const formationCap=layerGroups[3].length>0?27:17;
+@@ -39127,7 +39160,7 @@ let heistFeverActive = false;
+                 if (flame.spent || flame.expiresAt <= now) continue;
+                 const spinSpeed = (flame.layer % 2 ? -1 : 1) * (1.62 - flame.layer * .16) * orbitSpeedMult;
+                 flame.phase = now * .001 * spinSpeed
+-                    + (flame.symmetricSlot || 0) * Math.PI * 2 / Math.max(1, flame.symmetricCount || 1)
++                    + (Number.isFinite(flame.fixedSlot) ? flame.fixedSlot : 0) * Math.PI * 2 / CINDERION_LAYER_CAPS[flame.layer]
+                     + flame.layer * .37;
+                 if (flame.expanding) {
+                     // Slower expansion keeps the rotating wheel on-screen and
+@@ -40544,6 +40577,7 @@ let heistFeverActive = false;
+                 super: true,
+                 returning: false,
+                 pullEnemies: true,
++                pullMult: 0.75, // Sheet Round 41: super pull strength -25% (player + bot).
+                 bounceCount: 0,
+                 targetEnemyIndex: idx,
+                 hitIds: {},
+@@ -41581,6 +41615,7 @@ let heistFeverActive = false;
+                     super: true,
+                     returning: false,
+                     pullEnemies: true,
++                    pullMult: 0.75, // Sheet Round 41: super pull strength -25% (player + bot).
+                     bounceCount: 0,
+                     targetEnemyIndex: idx,
+                     hitIds: {},
+@@ -52484,9 +52519,9 @@ function checkHit(target, b, i){
+ 
+     if (b.isClassyNote && !b.isClassySuperShot) {
+         const classyStar = getClassyStar(owner);
+-        if (classyStar === 'slow') {
++        if (classyStar === 'slow' || classyStar === 'sp1') {
+             const comboHits = owner ? (owner.classyComboHits || 0) : 0;
+-            dealtDamage *= 1 + Math.min(0.28, comboHits * 0.035);
++            dealtDamage *= 1 + Math.min(0.24, comboHits * 0.03); // Sheet Round 41: SP1 is now 3% per hit (was 3.5%), cap 24% at 8 hits.
+         }
+     }
+ 
+@@ -53312,7 +53347,7 @@ function checkHit(target, b, i){
+     if (b.isChickpigEgg) {
+         if(b.chickpigSunny&&owner)doHeal(owner,1200);
+         const nowHit=performance.now();
+-        target.poisonDamage=Math.max(target.poisonDamage||0,250);
++        target.poisonDamage=Math.max(target.poisonDamage||0,150);
+         target.poisonUntil=Math.max(target.poisonUntil||0,nowHit+3000);
+         target.poisonTickAt=Math.min(target.poisonTickAt||(nowHit+1000),nowHit+1000);
+         target.poisonTicksLeft=Math.max(target.poisonTicksLeft||0,3);
+@@ -53374,6 +53409,10 @@ function checkHit(target, b, i){
+       if(!b.isCheeseyPuff) return false;
+       if(b.stage >= b.stageCount - 1) return false;
+       b.stage += 1;
++      // Sheet Round 41: SP2 third stage travels 30% further (maxLife extended
++      // once on entering the final stage; life resets below, so this is a
++      // fresh, 30%-longer stage-3 window).
++      if (b.cheseySp2Stage3 && b.stage === b.stageCount - 1 && !b.cheseySp2RangeApplied) { b.maxLife = Math.round(b.maxLife * 1.30 * 1000) / 1000; b.cheseySp2RangeApplied = true; }
+       b.stageTimer = 0;
+       b.life = 0;
+       b.distanceTravelled = 0;
+@@ -57084,7 +57123,7 @@ function checkHit(target, b, i){
+                     if(Math.hypot(target.x-zone.x,target.y-zone.y)>zone.radius+(target.radius||14))continue;
+                     if(zone.greaseRoot){target.stunUntil=Math.max(target.stunUntil||0,now+800);spawnFloatingText(target.x,target.y-30,'GREASE TRAP','#ffd37f');chickpigEggZones.splice(i,1);break;}
+                     checkHit(target,{ownerBrawler:'chickpig',ownerId:zone.ownerId,damage:zone.damage,pierce:true,hitIds:{},isChickpigEggZone:true},-1);
+-                    target.poisonDamage=Math.max(target.poisonDamage||0,250);target.poisonUntil=Math.max(target.poisonUntil||0,now+1200);target.poisonTickAt=Math.min(target.poisonTickAt||(now+500),now+500);target.poisonTicksLeft=Math.max(target.poisonTicksLeft||0,2);
++                    target.poisonDamage=Math.max(target.poisonDamage||0,150);target.poisonUntil=Math.max(target.poisonUntil||0,now+1200);target.poisonTickAt=Math.min(target.poisonTickAt||(now+500),now+500);target.poisonTicksLeft=Math.max(target.poisonTicksLeft||0,2);
+                 }
+             }
+         }
+@@ -57523,7 +57562,7 @@ function checkHit(target, b, i){
+                       const d = Math.hypot(dx, dy);
+                       const pullRadius = b.hyperVisual ? 138 : 86;
+                       if (d < pullRadius) {
+-                          const pullForce = (b.hyperVisual ? 450 : 320) * dt;
++                          const pullForce = (b.hyperVisual ? 450 : 320) * (b.pullMult ?? 1) * dt;
+                           t.x = clamp(t.x + (dx / d) * pullForce, t.radius, WORLD_W - t.radius);
+                           t.y = clamp(t.y + (dy / d) * pullForce, t.radius, WORLD_H - t.radius);
+                       }
+@@ -58426,6 +58465,7 @@ function checkHit(target, b, i){
+       if(b.isCheeseyPuff){
+         if(!b.bigForever && b.stage < b.stageCount - 1 && b.distanceTravelled >= b.stageRanges[b.stage]){
+           b.stage += 1;
++          if (b.cheseySp2Stage3 && b.stage === b.stageCount - 1 && !b.cheseySp2RangeApplied) { b.maxLife = Math.round(b.maxLife * 1.30 * 1000) / 1000; b.cheseySp2RangeApplied = true; }
+           b.distanceTravelled = 0;
+           b.radius = b.stageRadius[b.stage];
+           b.damage = b.stageDamage[b.stage];
+@@ -60762,8 +60802,8 @@ function checkHit(target, b, i){
+               const nx=clamp(t.x+Math.cos(angle)*travel,t.radius,WORLD_W-t.radius),ny=clamp(t.y+Math.sin(angle)*travel,t.radius,WORLD_H-t.radius);
+               if(travel>0&&canMoveToPosition(t,nx,ny)){t.x=nx;t.y=ny;}
+               if(best<=contactDistance+9&&now>=(t.ramCooldownUntil||0)){
+-                  t.ramCooldownUntil=now+900;
+-                  checkHit(target,{ownerBrawler:'chickpig',ownerId:t.ownerId,damage:1200,pierce:true,isChickpigRam:true},-1);
++                  t.ramCooldownUntil=now+692; // Sheet Round 41: pig hits 30% faster (900ms > 900/1.3 = 692ms).
++                  checkHit(target,{ownerBrawler:'chickpig',ownerId:t.ownerId,damage:600,pierce:true,isChickpigRam:true},-1);
+                   const knock=Math.atan2(target.y-t.y,target.x-t.x);target.x=clamp(target.x+Math.cos(knock)*70,target.radius,WORLD_W-target.radius);target.y=clamp(target.y+Math.sin(knock)*70,target.radius,WORLD_H-target.radius);
+                   // Recoil keeps the pig beside its victim instead of stacked on top of it.
+                   t.x=clamp(t.x-Math.cos(knock)*24,t.radius,WORLD_W-t.radius);
+diff --git a/tests/sheet-round-41-group-B-regression.mjs b/tests/sheet-round-41-group-B-regression.mjs
+new file mode 100644
+index 0000000..7074faa
+--- /dev/null
++++ b/tests/sheet-round-41-group-B-regression.mjs
+@@ -0,0 +1,153 @@
++// Sheet Round 41 — Group B regression (2026-11-04, base a8e8aee).
++// Applies ONLY to: Blobert (no change), Bolznstien, Boom-Arang,
++// Bouncin' Balls, Carmela & Fudge, Chaird (no change), Cheseypuff,
++// Chickpig, Cinderion, Classy.
++// Sheet numbers are Power 11 values; getScaledStats P11 = 1.0x base, and
++// the flat-damage brawlers below use P11 literals directly (verified:
++// getLevelDamageScale(11) = 0.55 + 10*0.045 = 1.0).
++// FLAGS baked into this file (see coordinator report for full detail):
++//  - Classy main damage is NOT raised to the sheet's 350: code P11 is 320
++//    (note literal), already below 350, and the sheet's ~480 premise matches
++//    no code value — raising it would be a buff against a nerf row.
++//  - Bouncin' bot ball 194 > 129 and Chickpig bot bacon 800 > 696 are
++//    proportional keeps (same bot/player ratio) so the nerf does not leave
++//    bots hitting harder than players (Bouncin') or silently rebalanced.
++//  - Super charge rates are PINNED as coded, not changed: the sheet column
++//    disagrees with code for 7/10 Group B rows (listed below); charge
++//    mechanics were explicitly out of scope, so mismatches are reported,
++//    not "fixed" here.
++import assert from 'node:assert/strict';
++import fs from 'node:fs';
++
++const game = fs.readFileSync(new URL('../game.js', import.meta.url), 'utf8');
++let passed = 0;
++const failures = [];
++function check(name, cond) {
++  if (cond) passed++;
++  else failures.push(name);
++}
++function count(re) {
++  return (game.match(re) || []).length;
++}
++// Slice of the Bouncin' main volley: from its fire() branch to Goonbob's.
++const bouncinMain = game.slice(
++  game.indexOf("} else if (brawler === 'bouncin_balls')"),
++  game.indexOf("} else if (brawler === 'goonbob')")
++);
++assert.ok(bouncinMain.length > 1000, 'bouncin main block slice found');
++
++// ---------- Blobert (row 11, NO CHANGE) ----------
++check('blobert def present', game.includes("'goonbob': { name: 'Blobert'"));
++check('blobert main damage pinned 530/265', game.includes('damage: isBot ? 265 : 530'));
++check('blobert charge table pinned 6', game.includes('goonbob:6'));
++
++// ---------- Bolznstien (row 12: main 1320>990; SP1 25%>12.5%) ----------
++check('bolz base main 1320>990', game.includes('dmg: Math.round(990 * scale), strikeDmg'));
++check('bolz old 1320 gone from scaled stats', !game.includes('dmg: Math.round(1320 * scale)'));
++check('bolz SP1 strike bonus 1.25>1.125', game.includes('strikeDmg * (sp1 ? 1.125 : 1.0)'));
++check('bolz SP1 tooltip +12.5%', game.includes('deal +12.5% bonus damage and slow enemies hit by 35% for 1.5s'));
++check('bolz SP1 gate still accepts live slow + legacy sp1',
++  /selectedStar\) === 'slow' \|\| \(owner\.id === player\.id \? selectedStar : owner\.selectedStar\) === 'sp1'/.test(game));
++
++// ---------- Boom-Arang (row 13: 1st main 1100>1000; super pull -25%) ----------
++check('boom main 1100>1000', game.includes('Math.round(1000 * ownerMult * levelMult)'));
++check('boom old main 1100 gone', !game.includes('Math.round(1100 * ownerMult * levelMult)'));
++check('boom super pullMult 0.75 on both spawns (player + bot)', count(/pullMult: 0\.75/g) === 2);
++check('boom pull loop applies pullMult (default 1, others unaffected)',
++  game.includes('const pullForce = (b.hyperVisual ? 450 : 320) * (b.pullMult ?? 1) * dt;'));
++
++// ---------- Bouncin' Balls (row 14: ball 285>190; balls in sync) ----------
++check('bouncin ball 285>190 (player), bot 194>129 proportional, crystal 335 kept',
++  game.includes('const damageBase = isBot ? 129 : (transformed ? 335 : 190);'));
++check('bouncin volley no longer staggered in main block', !bouncinMain.includes('i * 88'));
++check('bouncin volley launches together (delay 0)', bouncinMain.includes('}, 0);'));
++check('bouncin volley cadence lock kept (same next-volley window)',
++  bouncinMain.includes('lockMainAttackSequence(fromEntity,(balls-1)*88,now);'));
++check('bouncin crystal super staggers untouched (both remaining i*88 are supers)',
++  count(/\}, i \* 88\);/g) === 2);
++
++// ---------- Carmela & Fudge (row 15: hand dmg range 1600-2500 > 900-1750) ----------
++// Reading: the 1600-2500 range is exactly the Carmela-form charge-tier
++// damage spread (1600/1900/2200/2500), NOT travel range (360-620px).
++// Middle tiers linearly interpolated between the new endpoints, rounded
++// to the game's 5-damage breakpoint grid. Fudge glob (1200) untouched.
++check('carmela hand tiers 900/1185/1465/1750',
++  game.includes('handDmg = 900;') && game.includes('handDmg = 1185;') &&
++  game.includes('handDmg = 1465;') && game.includes('handDmg = 1750;'));
++check('carmela old hand tiers gone',
++  !game.includes('handDmg = 1600;') && !game.includes('handDmg = 1900;') &&
++  !game.includes('handDmg = 2200;') && !game.includes('handDmg = 2500;'));
++check('carmela fudge glob 1200 untouched', game.includes('damage: 1200,'));
++
++// ---------- Chaird (row 16, NO CHANGE) ----------
++check('chaird def present', game.includes("'chaird': { name: 'Chaird'"));
++check('chaird main damage pinned 970/580', game.includes('damage: isBot ? 580 : 970'));
++check('chaird charge table pinned 5', game.includes('chaird:5'));
++
++// ---------- Cheseypuff (row 17: SP2 third stage +30% range, -20% DMG) ----------
++check('chesey SP2 gate accepts live long + legacy sp2',
++  game.includes("(selectedStar === 'long' || selectedStar === 'sp2')"));
++check('chesey SP2 third-stage dmg 890>712', game.includes('stageDamage[2] = 712;'));
++check('chesey SP2 third-stage range +30% recorded', game.includes('stageRanges[2] = Math.round(stageRanges[2] * 1.30);'));
++check('chesey SP2 stage-3 flag on bullet', game.includes('cheseySp2Stage3,'));
++check('chesey SP2 stage-3 travel extended once on entry (both advance paths)',
++  count(/cheseySp2RangeApplied/g) >= 3);
++check('chesey base third-stage dmg 890 still the pre-nerf literal',
++  game.includes('[1300, 1090, 890]'));
++check('chesey G1 big-forever 1300s untouched', game.includes('[1300, 1300, 1300]'));
++
++// ---------- Chickpig (row 18: poison 250>150; bacon 1150>1000; pig 1200>600, 30% faster) ----------
++check('chickpig poison 250>150 at both application sites (direct egg + egg zone)',
++  count(/poisonDamage\|\|0,150/g) === 2 && !game.includes('poisonDamage||0,250'));
++check('chickpig bacon 1150>1000 (player), bot 800>696 proportional',
++  game.includes('damage:isBot?696:1000'));
++check('chickpig scaled-stats dmg kept consistent 1150>1000',
++  game.includes("(brawlerId==='chickpig'?1000:"));
++check('chickpig super pig ram 1200>600', game.includes('damage:600,pierce:true,isChickpigRam:true'));
++check('chickpig pig hits 30% faster: 900ms > 900/1.3 = 692ms',
++  game.includes('t.ramCooldownUntil=now+692;'));
++check('chickpig egg damage 900 + zone tick 180 untouched (not in row)',
++  game.includes('damage:isBot?650:900') && game.includes('damage:180'));
++
++// ---------- Cinderion (row 19: no re-shift to symmetry; smooth add/remove) ----------
++// Mechanism: the update loop used to re-pack every layer every frame
++// (symmetricSlot/symmetricCount), so every add/remove jumped all other
++// flames. Now each flame keeps a fixed cap-grid slot for life.
++check('cinderion fixedSlot assigned at flame creation', game.includes('let fixedSlot = 0;'));
++check('cinderion flame object carries fixedSlot', game.includes('layer, fixedSlot, createdAt: now'));
++check('cinderion update loop no longer assigns symmetric slots',
++  !game.includes('symmetricSlot=index'));
++check('cinderion phase uses fixed cap-grid slot, not live count',
++  game.includes('(Number.isFinite(flame.fixedSlot) ? flame.fixedSlot : 0) * Math.PI * 2 / CINDERION_LAYER_CAPS[flame.layer]'));
++check('cinderion layer caps unchanged [3,6,8,10]',
++  game.includes('const CINDERION_LAYER_CAPS = Object.freeze([3, 6, 8, 10]);'));
++
++// ---------- Classy (row 20: main ~480>350 FLAGGED; SP1 3%/hit) ----------
++// Main note literal stays 320: it is already below the sheet's 350 target
++// and no code value matches the sheet's ~480 premise, so writing 350
++// would be a +9% buff against a nerf row. See coordinator report.
++check('classy main note damage deliberately kept at 320 (flagged, not 350)',
++  count(/damage:\s*isBotFire\s*\?\s*170\s*:\s*320/g) === 2);
++check('classy SP1 per-hit 3.5%>3%', game.includes('comboHits * 0.03'));
++check('classy SP1 cap 28%>24% (8 hits x 3%)', game.includes('Math.min(0.24, comboHits * 0.03)'));
++check('classy SP1 gate accepts live slow + legacy sp1',
++  game.includes("if (classyStar === 'slow' || classyStar === 'sp1')"));
++
++// ---------- Super charge rates: PINNED as coded (sheet mismatches reported) ----------
++// Code SUPER_CHARGE_HITS_BY_BRAWLER vs sheet: goonbob 6=6 OK; chaird 5=5 OK;
++// bolznstien 5 vs 7; boom_arang 4 vs 8; bouncin_balls 6 vs 5; carmela 5 vs 6;
++// cheseypuff 6 vs 7; chickpig 12 vs 7; cinderion 10 vs 30 flames; classy 6 vs
++// 30 notes. Charge mechanics unchanged by design (out of scope).
++const chargeTable = game.slice(game.indexOf('SUPER_CHARGE_HITS_BY_BRAWLER'), game.indexOf('let nextMainAttackActivationId'));
++for (const [id, hits] of [['goonbob', 6], ['bolznstien', 5], ['boom_arang', 4],
++  ['bouncin_balls', 6], ['carmela_fudge', 5], ['chaird', 5], ['cheseypuff', 6],
++  ['chickpig', 12], ['cinderion', 10], ['classy', 6]]) {
++  check(`charge table pinned ${id}=${hits}`, chargeTable.includes(`${id}:${hits}`) || chargeTable.includes(`${id}: ${hits}`));
++}
++
++console.log(`sheet-round-41-group-B: ${passed} passed, ${failures.length} failed`);
++if (failures.length) {
++  console.log('FAILURES:');
++  for (const f of failures) console.log(' - ' + f);
++  process.exit(1);
++}

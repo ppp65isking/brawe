@@ -20,7 +20,7 @@ assert.match(source, /cinderionSweptRectHit/, 'fast scatter flames need swept bo
 assert.match(source, /const range = 464/, 'Solar Scatter must have double the 232px aerial-flame range');
 assert.match(source, /CINDERION_LAYER_RADII\s*=\s*Object\.freeze\(\[75, 122, 172, 226\]\)/, 'resting orbit radii must include the 30% range buff');
 assert.match(source, /flame\.expanding = true[\s\S]*?flame\.homing = !!hyper/, 'Power Move must expand every stored flame and Hyper must enable homing');
-assert.match(source, /flame\.symmetricSlot=index; flame\.symmetricCount=group\.length/, 'active flames must repack into symmetrical layers');
+assert.match(source, /phase: fixedSlot \* Math\.PI \* 2 \/ CINDERION_LAYER_CAPS/, 'orbit flames keep a fixed slot for life and do not repack to symmetry');
 assert.match(source, /flame\.radius \+= \(54 \+ flame\.layer \* 5\) \* dt/, 'Power Move expansion must use the slower on-map speed');
 assert.match(source, /let closest = null, best = 220/, 'Hyper homing must only engage nearby enemies');
 assert.match(source, /flame\.renderX = baseX \+ flame\.homingOffsetX/, 'Hyper homing must preserve the base spiral and use a local offset');

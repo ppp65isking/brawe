@@ -15,7 +15,7 @@ for(const hyper of [false,true])for(const ice of [false,true]){
  assert.equal(context.bullets.length,4);
  for(const shard of context.bullets){
   assert.equal(shard.skinId,shot.skinId);assert.equal(shard.skinColor,shot.skinColor);
-  assert.equal(shard.hyperVisual,hyper);assert.equal(shard.damage,60);
+  assert.equal(shard.hyperVisual,hyper);assert.equal(shard.damage,200);
   assert.equal(context.renderUniversalSkinProjectile(shard,{attackEffect:{color:'#f00'},brawler:'fightnfire'}),false);
  }
  assert.equal(context.renderUniversalSkinProjectile({...shot,isFightnFireShot:true},{attackEffect:{color:'#f00'}}),false);
@@ -24,4 +24,4 @@ vm.runInContext(fs.readFileSync(new URL('../modules/visuals/roster-2p5d.js',impo
 const normal=context.BraweRosterVisuals.portrait('fightnfire');
 const spice=context.BraweRosterVisuals.portrait('fightnfire','fightn-spice');
 assert(normal.includes('<svg'));assert.notEqual(normal,spice);assert(!normal.includes('undefined'));
-console.log('Fight’nFire visuals passed: dedicated routing, 4 fire/ice/Hyper combinations, shard metadata, unchanged damage, distinct portraits.');
+console.log('Fight’nFire visuals passed: dedicated routing, 4 fire/ice/Hyper combinations, shard metadata, 200-damage shards, distinct portraits.');

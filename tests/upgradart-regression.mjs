@@ -18,24 +18,24 @@ assert.match(game, /function recordUpgradartDamage\(entity, dmg\)/, 'recordUpgra
 
 // 3. Main Attack firing
 assert.match(game, /\} else if \(brawler === 'upgradart'\) \{[\s\S]{0,1500}diagAngleOffset[\s\S]{0,500}centerCount/, 'Main attack implements stage-based dart counts and diagonal offsets');
-assert.match(game, /const baseDamage = stage === 1 \? 960 : 320/, 'Stage 1 dart damage is buffed by 200% to 960');
+assert.match(game, /const baseDamage = stage === 1 \? 960 : 170/, 'Stage 1 dart damage is buffed by 200% to 960');
 assert.match(game, /const diagAngleOffset = 0\.14/, 'Diagonal dart spread is reduced by 50%');
 assert.match(game, /upgradartStage:\s*stage/, 'Darts carry their stage for custom visuals');
 assert.match(game, /if \(b\.isUpgradartDart\)[\s\S]{0,500}const colors = \['#00ff88', '#28d8ff', '#8b72ff', '#d85cff', '#ffd45c'\]/, 'Each stage has distinct dart visuals');
-assert.match(game, /damage:\s*dartDamage,[\s\S]{0,80}pierce:\s*hyper/, 'Hypercharge main attack darts pierce');
+assert.match(game, /damage:\s*(?:isHealDart \? 0 : )?dartDamage,[\s\S]{0,80}pierce:\s*hyper/, 'Hypercharge main attack darts pierce');
 assert.match(game, /hitboxMod:\s*1\.8/, 'Main attack dart size is increased by 80%');
 assert.match(game, /if \(hyper && isSuperActive\) \{[\s\S]{0,200}centerCount \+= 1;[\s\S]{0,100}leftCount \+= 1;[\s\S]{0,100}rightCount \+= 1;/, 'Core Surge adds +1 dart to every direction during Super');
 
 // 4. Super / Power Move
-assert.match(game, /function castUpgradartSuper\(owner, hyper, targetX, targetY\) \{[\s\S]{0,500}const durationMs = stage >= 4 \? 5000 : 4000;/, 'Super duration is 4.0s for Stages 1-3 and 5.0s for Stages 4-5');
+assert.match(game, /function castUpgradartSuper\(owner, hyper, targetX, targetY\) \{[\s\S]{0,800}const durationMs = stage >= 4 \? 3500 : 2800;/, 'Super duration is 2.8s for Stages 1-3 and 3.5s for Stages 4-5 (Round 41: 30% shorter)');
 assert.match(game, /target\.upgradartPoisonValue = Math\.min\(1000, \(target\.upgradartPoisonValue \|\| 0\) \+ poisonStackGain\);/, 'Poison darts stack poison up to 1000 damage');
 
 // 5. Core Surge / Returning Darts
-assert.match(game, /if \(b\.isUpgradartDart && b\.upgradartReturns\) \{[\s\S]{0,400}b\.damage = 96;[\s\S]{0,400}Math\.atan2\(dartOwner\.y - b\.y, dartOwner\.x - b\.x\)/, 'Returning darts deal 30% damage (96 dmg) and home toward owner');
+assert.match(game, /if \(b\.isUpgradartDart && b\.upgradartReturns\) \{[\s\S]{0,800}b\.damage = Math\.round\(\(b\.damage \|\| 0\) \* 0\.15\);[\s\S]{0,400}Math\.atan2\(dartOwner\.y - b\.y, dartOwner\.x - b\.x\)/, 'Returning darts deal 15% of outbound damage (Round 41) and home toward owner');
 
 // 6. Gadgets (G1 & G2)
 assert.match(game, /curBrawler === 'upgradart' && curGadget === 'g1'[\s\S]{0,800}recordUpgradartDamage\(player, 3000\)[\s\S]{0,300}ammo = Math\.min\(maxAmmo, ammo \+ 2\)/, 'Gadget 1 adds +3,000 progress and reloads 2 ammo');
-assert.match(game, /curBrawler === 'upgradart' && curGadget === 'g2'[\s\S]{0,800}upgradartCaltrops\.push[\s\S]{0,500}damage: 450/, 'Gadget 2 drops 5 toxic caltrops dealing 450 damage');
+assert.match(game, /curBrawler === 'upgradart' && curGadget === 'g2'[\s\S]{0,800}upgradartG2Armed = true/, 'Gadget 2 arms a healing dart (Round 41: caltrops retired)');
 assert.match(game, /bot\.brawler === 'upgradart' && g === 'g1'[\s\S]{0,800}bot\.brawler === 'upgradart' && g === 'g2'/, 'Bots can use both Upgradart gadgets');
 
 // 7. Star Powers (SP1 & SP2)

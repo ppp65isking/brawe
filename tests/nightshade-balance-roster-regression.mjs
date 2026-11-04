@@ -72,7 +72,7 @@ check('fan half-spread is now 0.18 rad (was 0.36)', near(0.36 / 2, 0.18));
 check('poison dps halved 120 -> 60', game.includes('const NIGHTSHADE_POISON_DPS = 60;') && !game.includes('NIGHTSHADE_POISON_DPS = 120'));
 check('poison cap 4 kept for non-hyper attacks', game.includes('const NIGHTSHADE_POISON_MAX_STACKS = 4;'));
 check('blade count 2 -> 12', game.includes('const NIGHTSHADE_BLADE_COUNT = 12;') && !game.includes('NIGHTSHADE_BLADE_COUNT = 2;'));
-check('blade range/damage kept 640/1100, speed nerfed 900 -> 630 (-30%)', game.includes('const NIGHTSHADE_BLADE_RANGE = 640;') && game.includes('const NIGHTSHADE_BLADE_SPEED = 630;') && game.includes('const NIGHTSHADE_BLADE_DAMAGE = 1100;'));
+check('blade range/damage kept 640/800, speed nerfed 900 -> 630 (-30%)', game.includes('const NIGHTSHADE_BLADE_RANGE = 640;') && game.includes('const NIGHTSHADE_BLADE_SPEED = 630;') && game.includes('const NIGHTSHADE_BLADE_DAMAGE = 800;'));
 check('blade lifetime cap 4000ms exists', game.includes('const NIGHTSHADE_BLADE_MAX_LIFE_MS = 4000;'));
 check('blade lifetime cap enforced in update loop', game.includes('if (now - blade.bornAt > NIGHTSHADE_BLADE_MAX_LIFE_MS) { nightshadeBlades.splice(i, 1); continue; }'));
 check('lifetime budget covers legit flights (640 out + 640 back = 1280px at 630px/s ~ 2.1s < 4.0s)', 4000 > (640 + 640) / 630 * 1000);
@@ -97,11 +97,11 @@ const nightshadeIdx = game.indexOf("'nightshade': {", brawlerDataIdx);
 const kitLine = nightshadeIdx > 0 ? game.slice(nightshadeIdx, nightshadeIdx + 2500) : '';
 check('kit def entry found in brawlerData', !!kitLine);
 if (kitLine) {
-  check('attackDesc: tight cone, 640 each (-20%), 60/s, cap 4, hyper uncapped note', kitLine.includes('Throws 4 daggers in a tight super-short cone (640 damage each)') && kitLine.includes('60 damage per second for 8 seconds, stacking up to 4 times (no limit while Hypercharged)'));
-  check('superDesc: spin in place, ring of 12, out + return, 1100 each way, once per target each way', kitLine.includes('spins in place and releases a ring of 12 daggers in all directions') && kitLine.includes('flies out 8 tiles and returns to her, dealing 1,100 damage on the way out and 1,100 on the way back, at most once per target each way'));
+  check('attackDesc: tight cone, 560 each (Round 41), 60/s, cap 4, hyper uncapped note', kitLine.includes('Throws 4 daggers in a tight super-short cone (560 damage each)') && kitLine.includes('60 damage per second for 8 seconds, stacking up to 4 times (no limit while Hypercharged)'));
+  check('superDesc: spin in place, ring of 12, out + return, 800 each way (Round 41), once per target each way', kitLine.includes('spins in place and releases a ring of 12 daggers in all directions') && kitLine.includes('flies out 8 tiles and returns to her, dealing 800 damage on the way out and 800 on the way back, at most once per target each way'));
   check('hyper text: pierce + shield zone + infinite stacks, NO homing/puddle mention', kitLine.includes('Super blades pierce walls') && kitLine.includes('shield zone around Nightshade blocks enemy projectiles until the daggers return') && kitLine.includes('stack poison without limit') && !kitLine.toLowerCase().includes('puddle') && !kitLine.includes('home toward'));
   check('gadgets unchanged (Backstab Dash / Purge Vial, 200 HP per stack)', kitLine.includes("g1: 'Backstab Dash") && kitLine.includes("g2: 'Purge Vial") && kitLine.includes('heal 200 HP per stack detonated'));
-  check('star powers unchanged (Lingering Toxin 10s / Fresh Wounds +20%)', kitLine.includes("sp1: 'Lingering Toxin (Poison lasts 10 seconds instead of 8 seconds.)") && kitLine.includes("sp2: 'Fresh Wounds (Daggers deal +20% damage to enemies that are already poisoned.)"));
+  check('star powers (Lingering Toxin 10s / Fresh Wounds +18% Round 41)', kitLine.includes("sp1: 'Lingering Toxin (Poison lasts 10 seconds instead of 8 seconds.)") && kitLine.includes("sp2: 'Fresh Wounds (Daggers deal +18% damage to enemies that are already poisoned.)"));
   check('no stale 120/s or 2-blade text in nightshade kit line', !kitLine.includes('120 damage per second') && !kitLine.includes('Throws 2 spinning'));
 }
 check('mallow kit untouched (attack text still 8 x 320 Pam fan)', game.includes("attackDesc: 'Fires 8 marshmallows in a wide Pam-style fan (320 damage each)"));

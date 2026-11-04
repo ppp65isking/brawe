@@ -7,7 +7,7 @@ const towerCards = fs.readFileSync(new URL('../slopsushi-cards.js', import.meta.
 
 assert.match(exotic, /'jacktrade'/, 'JackTrade is registered in the Exotic roster');
 assert.match(game, /'jacktrade':\s*\{[\s\S]*?name:'JackTrade'[\s\S]*?attack:'Double or Nothing'[\s\S]*?super:'Trade of Fate'/, 'JackTrade has complete roster and UI metadata');
-assert.match(game, /Math\.round\(7200 \* scale\)[\s\S]*?Math\.round\(900 \* scale\)[\s\S]*?speed: 260/, 'JackTrade has the requested Power 11 stats');
+assert.match(game, /Math\.round\(7200 \* scale\)[\s\S]*?Math\.round\(750 \* scale\)[\s\S]*?speed: 260/, 'JackTrade has the requested Power 11 stats');
 assert.match(game, /brawler === 'jacktrade'\) base = 1650/, 'JackTrade reloads in 1.65 seconds');
 assert.match(game, /entity\.jackTradeRushUntil\|\|0\) \? 217 : 644/, 'JackTrade unloads both normally and during Rush Order 30 percent faster');
 
@@ -46,9 +46,11 @@ assert.match(game, /'hyperPuddle'[\s\S]*?radius:42[\s\S]*?JACKTRADE_HYPER_PUDDLE
 
 assert.match(game, /jackTradeJackpotArmed=true/, 'Jackpot can be armed by the player or AI');
 assert.match(game, /jackTradeSafeBetArmed=true/, 'Safe Bet can be armed by the player or AI');
-assert.match(game, /jackTradeHotStreak \|\| 0\) === 2[\s\S]*?1\.15[\s\S]*?1\.10/, 'Hot Streak buffs every third successful Stage 3 attack');
-assert.match(game, /getEntityStarChoice\(owner\)==='long'\)owner\.jackTradeLuckyUntil=now\+2500/, 'Lucky Break activates after a normal random Super');
-assert.match(game, /jackTradeLuckyUntil[\s\S]*?hcSpd \*= 1\.12/, 'Lucky Break applies its movement-speed bonus');
+assert.match(game, /jackTradeSp1FiveCardArmed=true/, 'Fifth Card arms after a Super (Round 41 SP1)');
+assert.match(game, /const fiveCard = !hyper && !!owner\.jackTradeSp1FiveCardArmed/, 'Fifth Card throws five cards on the next non-hyper attack (Round 41 SP1)');
+assert.match(game, /function shareJackTradeSp2\(owner, outcome, now\)/, 'Shared Pot shares Super outcomes with nearby teammates (Round 41 SP2)');
+assert.match(game, /ally\.jackTradeRushStrength=0\.2/, 'Shared Pot rush reaches allies at 20% strength');
+assert.match(game, /ally\.jackTradeRegenRemaining=\(ally\.jackTradeRegenRemaining\|\|0\)\+1200/, 'Shared Pot regen reaches allies at 1200 HP');
 
 assert.match(game, /bot\.brawler === 'jacktrade'[\s\S]*?getJackTradeStage\(bot\)===4/, 'JackTrade AI understands its attack progression');
 assert.match(game, /botCombatBrawler === 'jacktrade'[\s\S]*?castJackTradeSuper/, 'JackTrade bots can cast Trade of Fate and ALL IN');
