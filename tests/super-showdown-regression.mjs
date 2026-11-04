@@ -47,14 +47,24 @@ for (const name of ['Crown Collapse', 'Four Corners', 'Neon Labyrinth', 'Frost C
 assert.match(source, /function buildSuperShowdownMap\(\)/, 'mega-map builder must exist');
 assert.match(source, /buildNextShowdownMap\(themeIdx\)/, 'builder must reuse the existing per-theme builder');
 assert.match(source, /x: w\.x \+ ox, y: w\.y \+ oy/, 'builder must translate captured walls into their sector');
-assert.match(source, /const SUPER_SHOWDOWN_WORLD_W = 12000;/, 'mega world width must be 12000');
-assert.match(source, /const SUPER_SHOWDOWN_WORLD_H = 8000;/, 'mega world height must be 8000');
-// Layout simulation from the source constants: 3 cols x 2 rows of 4000x4000.
+assert.match(source, /const SUPER_SHOWDOWN_SECTOR_COLS = 10;/, 'sector columns must be 10');
+assert.match(source, /const SUPER_SHOWDOWN_SECTOR_ROWS = 6;/, 'sector rows must be 6');
+assert.match(source, /const SUPER_SHOWDOWN_WORLD_W = 40000;/, 'mega world width must be 40000');
+assert.match(source, /const SUPER_SHOWDOWN_WORLD_H = 24000;/, 'mega world height must be 24000');
+assert.match(source, /SUPER_SHOWDOWN_MAP_THEMES\[sector % SUPER_SHOWDOWN_MAP_THEMES\.length\]/, 'sectors must cycle the 6 themes in order');
+// Layout simulation from the source constants: 10 cols x 6 rows of 4000x4000
+// = 60 sectors, 40000x24000 = exactly 10x the old 12000x8000 area.
 {
-    const cols = 3, sectorW = 4000, sectorH = 4000;
-    const rects = themes.map((_, sector) => ({
-        x: (sector % cols) * sectorW, y: Math.floor(sector / cols) * sectorH, w: sectorW, h: sectorH,
-    }));
+    const cols = 10, rows = 6, sectorW = 4000, sectorH = 4000;
+    const sectorCount = cols * rows;
+    assert.equal(sectorCount, 60, 'sector grid must hold 60 sectors');
+    const rects = [];
+    for (let sector = 0; sector < sectorCount; sector++) {
+        rects.push({
+            x: (sector % cols) * sectorW, y: Math.floor(sector / cols) * sectorH, w: sectorW, h: sectorH,
+            theme: themes[sector % themes.length],
+        });
+    }
     for (let a = 0; a < rects.length; a++) {
         for (let b = a + 1; b < rects.length; b++) {
             const overlap = rects[a].x < rects[b].x + rects[b].w && rects[b].x < rects[a].x + rects[a].w
@@ -63,9 +73,36 @@ assert.match(source, /const SUPER_SHOWDOWN_WORLD_H = 8000;/, 'mega world height 
         }
     }
     const covered = rects.reduce((sum, r) => sum + r.w * r.h, 0);
-    assert.equal(covered, 12000 * 8000, 'sectors must tile exactly the 12000x8000 mega world');
-    assert.equal(Math.max(...rects.map((r) => r.x + r.w)), 12000, 'tiling must reach the mega width');
-    assert.equal(Math.max(...rects.map((r) => r.y + r.h)), 8000, 'tiling must reach the mega height');
+    assert.equal(covered, 40000 * 24000, 'sectors must tile exactly the 40000x24000 mega world');
+    assert.equal(covered, 10 * 12000 * 8000, 'new area must be exactly 10x the old 12000x8000 area');
+    assert.equal(Math.max(...rects.map((r) => r.x + r.w)), 40000, 'tiling must reach the mega width');
+    assert.equal(Math.max(...rects.map((r) => r.y + r.h)), 24000, 'tiling must reach the mega height');
+    // Each theme appears exactly 10 times; the mega centre is a 4-sector junction.
+    for (const t of themes) {
+        assert.equal(rects.filter((r) => r.theme === t).length, 10, `theme ${t} must appear exactly 10 times`);
+    }
+    assert.equal(40000 / 2 % sectorW, 0, 'mega centre x must fall on a sector boundary');
+    assert.equal(24000 / 2 % sectorH, 0, 'mega centre y must fall on a sector boundary');
+    // Storm pacing: 32000 initial radius shrinking over 380s ≈ old 80px/s pace.
+    const shrinkSpeed = (40000 * 0.8) / 380;
+    assert.ok(shrinkSpeed > 75 && shrinkSpeed < 95, `storm shrink speed must stay near the old ~80px/s (got ${shrinkSpeed.toFixed(1)})`);
+    assert.ok(shrinkSpeed < 140, 'storm shrink speed must stay below bot move speed so bots can outrun it');
+}
+// Storm duration + power-box count retunes for the 10x map.
+assert.match(source, /const SUPER_SHOWDOWN_STORM_DURATION_S = 380;/, 'storm duration constant must be 380s');
+assert.match(source, /if \(showdownMode === 'super_showdown'\) return SUPER_SHOWDOWN_STORM_DURATION_S;/, 'storm duration must branch to 380s for this mode');
+assert.match(source, /const SUPER_SHOWDOWN_BOX_COUNT = 750;/, 'power-box count constant must be 750');
+assert.match(source, /isSuperShowdownMode \? SUPER_SHOWDOWN_BOX_COUNT/, 'box count must branch to 750 for this mode');
+// Stratified bot spawns: one bot per grid cell + jitter, same rejections.
+assert.match(source, /else if \(isSuperShowdownMode\) \{/, 'bot spawn loop must branch for this mode');
+assert.match(source, /const spawnGridCols = 10;/, 'spawn grid must be 10 columns');
+assert.match(source, /const cellX = i % spawnGridCols, cellY = Math\.floor\(i \/ spawnGridCols\);/, 'spawn cell must derive from the bot index');
+assert.match(source, /bx = \(cellX \+ 0\.15 \+ Math\.random\(\) \* 0\.7\) \* cellW;/, 'spawn x must jitter inside its cell');
+{
+    // Simulation: 99 bots across the 10x10 grid land at most one per cell.
+    const cells = new Set();
+    for (let i = 0; i < 99; i++) cells.add(`${i % 10},${Math.floor(i / 10)}`);
+    assert.equal(cells.size, 99, '99 bots must occupy 99 distinct grid cells');
 }
 // Spawn safety: player spawn avoids walls AND water; bot spawns avoid both.
 {
