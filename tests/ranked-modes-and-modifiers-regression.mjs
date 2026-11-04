@@ -14,9 +14,9 @@ const checks = [
 
   // 2. Ranked Modifiers: Bug Fixes & Always Hyper
   ['always_hyper modifier registered in RANKED_MODIFIERS', /'always_hyper':\s*\{\s*id:\s*'always_hyper',\s*name:\s*'Always Hyper'/],
-  ['always_hyper continuously hypercharges player and bots in update loop', /activeRankedModifier === 'always_hyper'[\s\S]*?isHypercharged = true;[\s\S]*?b\.isHypercharged = true;/],
+  ['always_hyper continuously hypercharges player and bots in update loop', /activeRankedModifier === 'always_hyper'[\s\S]*?isHypercharged = true;[\s\S]*?(b\.isHypercharged = true;|setEntityHypercharged\(b, now \+ 999999999, now\);)/],
   ['always_hyper initializes hypercharge on match start', /activeRankedModifier === 'always_hyper'[\s\S]*?isHypercharged = true;[\s\S]*?hyperChargeCharge = 100;/],
-  ['always_hyper persists hypercharge across respawns', /activeRankedModifier === 'always_hyper'[\s\S]*?entity\.isHypercharged = true;/],
+  ['always_hyper persists hypercharge across respawns', /activeRankedModifier === 'always_hyper'[\s\S]*?(entity\.isHypercharged = true;|setEntityHypercharged\(entity, now \+ 999999999, now\);)/],
   ['always_hyper exempted from player and bot hypercharge expiration', /!\(isRankedMatch && activeRankedModifier === 'always_hyper'\)/],
   ['timed_detonation crash fixed: uses bushZones and bushes without grassZones', !game.includes('grassZones') && game.includes("activeRankedModifier !== 'timed_detonation'") && game.includes('bushZones.splice(i, 1);')],
   ['hyper_overdrive passive charge fixed to call updateHyperButton', /hyperChargeCharge = Math\.min\(100,\s*hyperChargeCharge \+ 4\.0 \* dt\);[\s\S]*?if \(typeof updateHyperButton === 'function'\) updateHyperButton\(\);/],

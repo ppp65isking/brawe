@@ -8322,6 +8322,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
       }
 
       const GOLD_EVENT_ID = 'gold-event-2026-08';
+      const GOLD_EVENT_RETIRED = true; // RETIRED (Core Surge Overdrive build) — state, view and commit code preserved; conversion and Quest HQ presence hidden.
       const GOLD_EVENT_DURATION_MS=7*24*60*60*1000;
       const GOLD_EVENT_MATCH_COIN_CAP=25000;
       const GOLD_EVENT_DAMAGE_PER_COIN=100;
@@ -8349,6 +8350,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
       }
 
       function isGoldEventActive(now = Date.now()) {
+          if (GOLD_EVENT_RETIRED) return false;
           const event = ensureGoldEventState();
           return now < (event.endAt || 0);
       }
@@ -8397,6 +8399,98 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           return coins;
       }
 
+      // === CORE SURGE OVERDRIVE (event bars) — BEGIN ===
+      // Community event: Core Surge (Hypercharge) activations feed the main
+      // bar; attacks landed while Core Surged feed the daily bar. Worker C
+      // owns the reward tables that read mainClaimed / dailyClaimed.
+      const OVERDRIVE_MAIN_TIERS = [100, 250, 500, 1000, 2500, 5000, 10000];
+      const OVERDRIVE_DAILY_TIERS = [500, 1000, 2500, 5000, 11500];
+      const OVERDRIVE_DURATION_MS = 14 * 24 * 60 * 60 * 1000;
+      let overdriveDirty = false;
+      let overdriveLastSaveAt = 0;
+      function getOverdriveDayKey(ts = Date.now()) {
+          return new Date(ts).toDateString();
+      }
+      function ensureOverdriveState(now = Date.now()) {
+          if (!playerData.overdrive || typeof playerData.overdrive !== 'object') {
+              playerData.overdrive = { startAt: now, endAt: now + OVERDRIVE_DURATION_MS, mainTotal: 0, mainClaimed: [], dailyKey: getOverdriveDayKey(now), dailyTotal: 0, dailyClaimed: [], surgeDrops: 0 };
+          }
+          const od = playerData.overdrive;
+          if (!Number.isFinite(od.startAt)) od.startAt = now;
+          if (!Number.isFinite(od.endAt)) od.endAt = od.startAt + OVERDRIVE_DURATION_MS;
+          od.mainTotal = Math.max(0, Math.floor(Number(od.mainTotal) || 0));
+          if (!Array.isArray(od.mainClaimed)) od.mainClaimed = [];
+          od.dailyTotal = Math.max(0, Math.floor(Number(od.dailyTotal) || 0));
+          if (!Array.isArray(od.dailyClaimed)) od.dailyClaimed = [];
+          if (!Number.isFinite(od.surgeDrops)) od.surgeDrops = 0;
+          const dayKey = getOverdriveDayKey(now);
+          if (od.dailyKey !== dayKey) { od.dailyKey = dayKey; od.dailyTotal = 0; od.dailyClaimed = []; }
+          return od;
+      }
+      function isOverdriveActive(now = Date.now()) {
+          const od = ensureOverdriveState(now);
+          return now >= (od.startAt || 0) && now < (od.endAt || 0);
+      }
+      function flushOverdriveProgress() {
+          if (!overdriveDirty) return;
+          overdriveDirty = false;
+          overdriveLastSaveAt = Date.now();
+          saveProgress();
+      }
+      function markOverdriveDirty() {
+          overdriveDirty = true;
+          if (Date.now() - overdriveLastSaveAt > 5000) flushOverdriveProgress();
+      }
+      function recordOverdriveActivation(now = Date.now()) {
+          if (isTraining || isTutorialMode || !isOverdriveActive(now)) return false;
+          const od = ensureOverdriveState(now);
+          od.mainTotal += 1;
+          markOverdriveDirty();
+          return true;
+      }
+      function isOverdriveAttackerSurged(attacker, perfNow) {
+          if (!attacker) return false;
+          try { if (typeof player !== 'undefined' && attacker.id === player.id && typeof isHypercharged !== 'undefined') return !!isHypercharged; } catch (_) {}
+          if (typeof isEntityHyperchargedNow === 'function') {
+              try { return !!isEntityHyperchargedNow(attacker, perfNow); } catch (_) {}
+          }
+          const now = Number.isFinite(perfNow) ? perfNow : (typeof performance !== 'undefined' ? performance.now() : Date.now());
+          return !!(attacker.isHypercharged && (!attacker.hyperchargeUntil || attacker.hyperchargeUntil > now));
+      }
+      function recordOverdriveSurgedHit(attacker, perfNow) {
+          if (isTraining || isTutorialMode || !attacker) return false;
+          if (!isOverdriveActive()) return false;
+          if (!isOverdriveAttackerSurged(attacker, perfNow)) return false;
+          const od = ensureOverdriveState();
+          od.dailyTotal += 1;
+          markOverdriveDirty();
+          return true;
+      }
+      function getOverdriveTierProgress(total, tiers) {
+          const reached = tiers.filter((t) => total >= t).length;
+          const next = reached < tiers.length ? tiers[reached] : null;
+          const prev = reached > 0 ? tiers[reached - 1] : 0;
+          return { reached, total, next, intoTier: total - prev, needed: next === null ? 0 : next - prev };
+      }
+      function getOverdriveMainTier() {
+          return getOverdriveTierProgress(ensureOverdriveState().mainTotal, OVERDRIVE_MAIN_TIERS);
+      }
+      function getOverdriveDailyTier() {
+          return getOverdriveTierProgress(ensureOverdriveState().dailyTotal, OVERDRIVE_DAILY_TIERS);
+      }
+      // Sets a bot's Core Surge state and counts the activation only on the
+      // transition from not-surged to surged, so per-frame always-hyper
+      // enforcement and until-refreshes never double-count one activation.
+      function setEntityHypercharged(entity, untilMs, perfNow) {
+          if (!entity) return false;
+          const now = Number.isFinite(perfNow) ? perfNow : (typeof performance !== 'undefined' ? performance.now() : Date.now());
+          const wasSurged = !!(entity.isHypercharged && (!entity.hyperchargeUntil || entity.hyperchargeUntil > now));
+          entity.isHypercharged = true;
+          entity.hyperchargeUntil = untilMs;
+          if (!wasSurged) return recordOverdriveActivation();
+          return false;
+      }
+      // === CORE SURGE OVERDRIVE (event bars) — END ===
       function grantContractXP(amount) {
           if (!amount || amount <= 0) return;
           ensureDailyWeeklyQuestData();
@@ -9370,6 +9464,48 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
               return view;
           }
 
+
+          function createOverdriveView() {
+              const od = ensureOverdriveState();
+              const active = isOverdriveActive();
+              const main = getOverdriveMainTier();
+              const daily = getOverdriveDailyTier();
+              const daysLeft = Math.max(0, Math.ceil(((od.endAt || 0) - Date.now()) / 86400000));
+              const bar = (into, needed, color) => `<div style="height:10px;border-radius:99px;background:#07111d;overflow:hidden;margin-top:6px;"><div style="height:100%;width:${needed ? Math.min(100, Math.round((into / needed) * 100)) : 100}%;background:${color};"></div></div>`;
+              const tierRows = (tiers, prog, claimed, label) => tiers.map((t, i) => {
+                  const done = prog.total >= t;
+                  const isClaimed = claimed.includes(i);
+                  const status = isClaimed ? 'CLAIMED' : (done ? 'READY IN SHOP' : 'LOCKED');
+                  return `<div style="display:flex;justify-content:space-between;gap:8px;padding:8px 10px;border:1px solid ${isClaimed ? '#4e6c85' : (done ? '#58e4b6' : '#2f4f70')};border-radius:10px;background:rgba(12,22,36,0.6);"><span style="font-weight:800;color:#e7dcff;font-size:13px;">${label} Tier ${i + 1}: ${t.toLocaleString()}</span><b style="font-size:11px;color:${isClaimed ? '#9fb6cc' : (done ? '#58e4b6' : '#8fb4d6')};">${status}</b></div>`;
+              }).join('');
+              const view = document.createElement('div');
+              view.className = 'overdrive-view';
+              view.style.height = '100%';
+              view.style.overflowY = 'auto';
+              view.style.padding = '4px 6px 18px';
+              view.innerHTML = `
+                  <div style="padding:18px;border:2px solid #e78cff;border-radius:16px;background:linear-gradient(125deg,#2b1038,#10182b);margin-bottom:14px;color:#fff;">
+                      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+                          <div style="font-size:26px;font-weight:900;color:#f0c6ff;">⚡ CORE SURGE OVERDRIVE</div>
+                          <strong style="padding:6px 10px;border-radius:8px;background:#e78cff;color:#1d0626;">${active ? `${daysLeft}d left` : 'EVENT ENDED'}</strong>
+                      </div>
+                      <p style="margin:6px 0 0;color:#e8c6e8;font-size:13px;">Every Core Surge activation in every match feeds the community bar. Every attack landed while Core Surged feeds today's bar. Tier rewards are claimed from the shop, and stay claimable after the event ends.</p>
+                  </div>
+                  <div style="padding:14px;border:1px solid #e78cff;border-radius:12px;background:rgba(231,140,255,0.08);margin-bottom:14px;color:#fff;">
+                      <div style="display:flex;justify-content:space-between;"><b>COMMUNITY CORE SURGE BAR</b><span>${main.total.toLocaleString()} activations</span></div>
+                      <div style="font-size:12px;color:#d7c2e8;margin-top:2px;">Tier ${main.reached} of ${OVERDRIVE_MAIN_TIERS.length}${main.next ? ` — next tier at ${main.next.toLocaleString()} activations` : ' — all tiers reached!'}</div>
+                      ${bar(main.intoTier, main.needed, 'linear-gradient(90deg,#e78cff,#5ec4ff)')}
+                  </div>
+                  <div style="padding:14px;border:1px solid #5ec4ff;border-radius:12px;background:rgba(94,196,255,0.08);margin-bottom:14px;color:#fff;">
+                      <div style="display:flex;justify-content:space-between;"><b>TODAY'S SURGED-HIT BAR</b><span>${daily.total.toLocaleString()} hits</span></div>
+                      <div style="font-size:12px;color:#c2d4e7;margin-top:2px;">Tier ${daily.reached} of ${OVERDRIVE_DAILY_TIERS.length}${daily.next ? ` — next tier at ${daily.next.toLocaleString()} hits` : ' — all tiers reached!'} Resets daily.</div>
+                      ${bar(daily.intoTier, daily.needed, 'linear-gradient(90deg,#5ec4ff,#58e4b6)')}
+                  </div>
+                  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;">${tierRows(OVERDRIVE_MAIN_TIERS, main, od.mainClaimed, 'Community')}${tierRows(OVERDRIVE_DAILY_TIERS, daily, od.dailyClaimed, 'Daily')}</div>
+              `;
+              return view;
+          }
+
           function createFullOnDamageView() {
               const event = ensureFullOnDamageEventState();
               const container = document.createElement('div');
@@ -9449,6 +9585,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           const views = {
               core: createCoreView,
               gold: createGoldEventView,
+              overdrive: createOverdriveView,
               damage: createFullOnDamageView,
               special: createSpecialBreakthroughView,
               season: createSeasonView
@@ -9491,7 +9628,8 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           }
 
           makeTab('core', '📋 Contracts');
-          makeTab('gold', '🪙 Gold Event');
+          if (!GOLD_EVENT_RETIRED) makeTab('gold', '🪙 Gold Event');
+          makeTab('overdrive', '⚡ Core Surge Overdrive');
           makeTab('special', '💠 Core Pieces');
           if (ENABLE_SEASON_QUESTS) makeTab('season', '⚡ Core Circuit Pass');
           setActiveTab(views[initialTab] ? initialTab : 'core');
@@ -11630,6 +11768,20 @@ let isWeeFeeBossMode = false;
 let weefeeBossState = null;
     let isCorruptedShowdownMode = false;
     let isPowerPlayShowdownMode = false;
+    // Super Showdown (Core Surge Overdrive): 100-player last-one-standing
+    // mega brawl. All tuning lives here so no other mode's numbers move.
+    let isSuperShowdownMode = false;
+    let superShowdownAiSlice = 0;
+    let superShowdownWorldSaved = null;
+    const SUPER_SHOWDOWN_BOT_COUNT = 99;
+    // BUILDER PICK (flagged): 6 of the 10 showdown themes, tiled 3 cols x 2
+    // rows at full 4000x4000 scale (no shrinking, so wall HP / tile size /
+    // cover geometry stay exactly as designed in each theme).
+    const SUPER_SHOWDOWN_MAP_THEMES = [0, 2, 3, 4, 6, 7];
+    const SUPER_SHOWDOWN_SECTOR_W = 4000;
+    const SUPER_SHOWDOWN_SECTOR_H = 4000;
+    const SUPER_SHOWDOWN_WORLD_W = 12000;
+    const SUPER_SHOWDOWN_WORLD_H = 8000;
     let isMagnatarShowdownMode = false;
 function isPowerPlayModifierActive(entity = player) {
     if (isOrboBossMode && orboBossState?.hasPowerPlayModifier) {
@@ -13706,7 +13858,7 @@ function isPowerPlayModifierActive(entity = player) {
                 : !!entity.hyperchargeUnlocked;
             if (ownsHyper) {
                 if (entity.id === player.id) { hyperChargeCharge = 100; activateHypercharge(); }
-                else { entity.isHypercharged = true; entity.hyperchargeUntil = now + 5000; entity.hyperChargeCharge = 0; }
+                else { setEntityHypercharged(entity, now + 5000, now); entity.hyperChargeCharge = 0; }
             } else if (entity.id === player.id) {
                 superCharge = 100; updateSuperButton();
             } else entity.superCharge = 100;
@@ -13828,8 +13980,7 @@ function isPowerPlayModifierActive(entity = player) {
             entity.hp = Math.max(1, Number(entity.maxHp) || 1);
         }
         if (((isRankedMatch || isCustomMutatorMatch) && (activeRankedModifier === 'always_hyper' || activeRankedModifierSecondary === 'always_hyper' || activeRankedModifierTertiary === 'always_hyper')) || isHyperForgeLTM) {
-            entity.isHypercharged = true;
-            entity.hyperchargeUntil = now + 999999999;
+            setEntityHypercharged(entity, now + 999999999, now);
             entity.hyperChargeCharge = 100;
         }
         entity.z = 0;
@@ -14525,6 +14676,10 @@ let heistFeverActive = false;
   }
 
   function getModeSuperGainMultiplier() {
+      // BUILDER PICK (flagged): Super Showdown charges Supers 2x so the
+      // Overdrive bars farm noticeably faster; it overrides power_surge
+      // rather than stacking with it.
+      if (showdownMode === 'super_showdown') return 2.0;
       return activeShowdownModifier === 'power_surge' ? 1.2 : 1.0;
   }
 
@@ -14532,6 +14687,9 @@ let heistFeverActive = false;
   // mode multiplier instead of only inheriting the Super multiplier through
   // the shared gain derivation in grantMainAttackCharge.
   function getModeHyperGainMultiplier() {
+      // BUILDER PICK (flagged): Super Showdown charges Core Surge
+      // (Hypercharge) 3x; overrides power_surge rather than stacking.
+      if (showdownMode === 'super_showdown') return 3.0;
       return activeShowdownModifier === 'power_surge' ? 1.2 : 1.0;
   }
 
@@ -16292,6 +16450,8 @@ let heistFeverActive = false;
                   if (data.persistent.soulSummoner) playerData.soulSummoner = data.persistent.soulSummoner;
                   if (data.persistent.evilDoctorUnlockEndAt != null) playerData.evilDoctorUnlockEndAt = data.persistent.evilDoctorUnlockEndAt;
                   if (data.persistent.ranked) playerData.ranked = data.persistent.ranked;
+                  // [Worker C] Restore Overdrive milestones/claims/drops.
+                  if (data.persistent.overdrive) playerData.overdrive = data.persistent.overdrive;
                   if (data.persistent.attachies) playerData.attachies = data.persistent.attachies;
                   if (data.persistent.slopSushi) playerData.slopSushi = data.persistent.slopSushi;
                   mergeProfileProgressionSave(data.persistent.profile, data.persistent.brickBonV2);
@@ -16406,6 +16566,8 @@ let heistFeverActive = false;
           if (!playerData.skinFeaturedRotationStart) playerData.skinFeaturedRotationStart = 0;
           ensureSeasonPassState();
           ensurePinsState();
+          // [Worker C] Normalize Overdrive state on load (non-destructive).
+          if (typeof ensureOverdriveState === 'function') ensureOverdriveState();
           if (ENABLE_EVENT_HUB && (!playerData.event || playerData.event.questSchemaVersion !== EVENT_QUEST_SCHEMA_VERSION)) resetEventQuests();
           ensureSoulSummonerData();
           ensureSlopSushiState();
@@ -16467,6 +16629,8 @@ let heistFeverActive = false;
                     electrostienSignatureWins: playerData.electrostienSignatureWins || 0,
                     presentCount: playerData.presentCount || 0,
                     xplodemisDaily: playerData.xplodemisDaily || null,
+                    // [Worker C] Persist Overdrive milestones/claims/drops.
+                    overdrive: playerData.overdrive || null,
                     majorUpdateVNext: playerData.majorUpdateVNext,
                      packets: playerData.packets,
                      season3: playerData.season3,
@@ -18735,6 +18899,129 @@ let heistFeverActive = false;
   function getShopCycleBounds(days,referenceMs=Date.now()){const cycleMs=days*86400000;const d=new Date(referenceMs);d.setHours(0,0,0,0);const start=Math.floor(d.getTime()/cycleMs)*cycleMs;return{startMs:start,endMs:start+cycleMs,cycleKey:String(start)};}
   function getShopClaimKey(prefix,cycleKey){return `${prefix}::${cycleKey}`;}
   function pickTimedEntry(entries,seed){return entries[hashShopKey(seed)%entries.length];}
+  // ===== Core Surge Overdrive — REWARDS + SHOP =====
+  // Reward tables, milestone claims, and the Core Surge drop use/spawn/
+  // collect path. State, tier arrays, tier getters, and the active-window
+  // check live in the canonical event-bars block above (=== CORE SURGE
+  // OVERDRIVE (event bars) ===) — this block reads them, never redefines them.
+  // [BUILDER PICK] Reward tables — existing currencies/items only, escalating
+  // per tier. Field shape per entry: { coins, gems, corePieces, pins, souls,
+  // surgeDrops }. `pins` = pins granted via grantPinPack(pins); a missing
+  // field counts as 0. Daily top tiers include up to 2 Core Surge drops.
+  const OVERDRIVE_MAIN_REWARDS = [
+      { coins: 500, gems: 5 },
+      { coins: 1000, gems: 10, corePieces: 10 },
+      { coins: 2000, gems: 15, corePieces: 25, pins: 3 },
+      { coins: 4000, gems: 25, corePieces: 50, pins: 3, souls: 50 },
+      { coins: 8000, gems: 40, corePieces: 100, pins: 6, souls: 100 },
+      { coins: 15000, gems: 60, corePieces: 200, pins: 6, souls: 200, surgeDrops: 1 },
+      { coins: 30000, gems: 100, corePieces: 400, pins: 9, souls: 400, surgeDrops: 2 },
+  ];
+  const OVERDRIVE_DAILY_REWARDS = [
+      { coins: 250, gems: 3 },
+      { coins: 750, gems: 8, corePieces: 15 },
+      { coins: 2000, gems: 15, corePieces: 40, pins: 3 },
+      { coins: 5000, gems: 30, corePieces: 100, pins: 3, souls: 100, surgeDrops: 1 },
+      { coins: 12000, gems: 50, corePieces: 250, pins: 6, souls: 250, surgeDrops: 2 },
+  ];
+  
+  
+  
+  
+  function describeOverdriveReward(r) {
+      r = r || {};
+      const parts = [];
+      if (r.coins) parts.push(`🪙 ${r.coins.toLocaleString()}`);
+      if (r.gems) parts.push(`💎 ${r.gems}`);
+      if (r.corePieces) parts.push(`${r.corePieces} Core Pieces`);
+      if (r.pins) parts.push(`📌 ${r.pins} pins`);
+      if (r.souls) parts.push(`🧪 ${r.souls} Souls`);
+      if (r.surgeDrops) parts.push(`⚡ ${r.surgeDrops} Core Surge Drop${r.surgeDrops > 1 ? 's' : ''}`);
+      return parts.length ? parts.join(' · ') : 'No reward';
+  }
+  function grantOverdriveRewardParts(r) {
+      r = r || {};
+      const granted = { coins: 0, gems: 0, corePieces: 0, pins: 0, souls: 0, surgeDrops: 0 };
+      if (r.coins) { playerData.coins = (playerData.coins || 0) + r.coins; granted.coins = r.coins; }
+      if (r.gems) { playerData.gems = (playerData.gems || 0) + r.gems; granted.gems = r.gems; }
+      if (r.corePieces) { addCorePieces(r.corePieces); granted.corePieces = r.corePieces; }
+      if (r.pins) { if (typeof grantPinPack === 'function') grantPinPack(r.pins); granted.pins = r.pins; }
+      if (r.souls) { playerData.souls = (playerData.souls || 0) + r.souls; granted.souls = r.souls; }
+      if (r.surgeDrops) { const s = ensureOverdriveState(); s.surgeDrops = (s.surgeDrops || 0) + r.surgeDrops; granted.surgeDrops = r.surgeDrops; }
+      return granted;
+  }
+  // Claim a milestone the moment its goal is reached — never held until the
+  // event ends, and never gated on isOverdriveActive() (a goal reached
+  // during the window stays claimable). Returns the granted summary, or
+  // false when the tier is unreached, out of range, or already claimed.
+  function claimOverdriveReward(kind, tierIdx) {
+      const s = ensureOverdriveState();
+      const isMain = kind === 'main';
+      const isDaily = kind === 'daily';
+      if (!isMain && !isDaily) return false;
+      const tiers = isMain ? OVERDRIVE_MAIN_TIERS : OVERDRIVE_DAILY_TIERS;
+      const rewards = isMain ? OVERDRIVE_MAIN_REWARDS : OVERDRIVE_DAILY_REWARDS;
+      const claimed = isMain ? s.mainClaimed : s.dailyClaimed;
+      const total = isMain ? s.mainTotal : s.dailyTotal;
+      if (!Number.isInteger(tierIdx) || tierIdx < 0 || tierIdx >= tiers.length) return false;
+      if (total < tiers[tierIdx]) return false;
+      if (claimed.includes(tierIdx)) return false;
+      const claimKey = isMain ? `overdrive_main_${tierIdx}` : `overdrive_daily_${tierIdx}`;
+      if (playerData.shopClaims && playerData.shopClaims[claimKey]) return false;
+      const granted = grantOverdriveRewardParts(rewards[tierIdx]);
+      claimed.push(tierIdx);
+      if (!playerData.shopClaims) playerData.shopClaims = {};
+      playerData.shopClaims[claimKey] = true;
+      if (typeof saveProgress === 'function') saveProgress();
+      return granted;
+  }
+  // [BUILDER PICK — Core Surge drop design] A claimed drop is inventory, not
+  // a dead number: USE consumes one drop and arms the next match. At the
+  // first update tick of a live match, maybeSpawnOverdriveSurgeDropPickup()
+  // spawns one `overdrive_surge` pickup 70px beside the player; walking over
+  // it (player only — bots cannot take it) sets hyperChargeCharge = 100 and
+  // calls activateHypercharge(), mirroring the existing overlord_crystal
+  // pickup (which also fills hyper charge to 100). If the fighter's Core
+  // Surge is not unlocked, activateHypercharge() declines and the 100 charge
+  // simply stays banked — the same behaviour as any other hyper-charge
+  // pickup for a locked fighter. Reuse check: no existing instant-surge
+  // inventory item exists — the only instant fills are the overlord_crystal
+  // pickup, Tug Zone checkpoints, and training refill buttons, none of which
+  // is an ownable, claimable item — so this pickup kind is new, but its
+  // collection effect reuses the existing hyper-charge machinery.
+  function useOverdriveSurgeDrop() {
+      const s = ensureOverdriveState();
+      if (s.surgeDropArmed) return false;
+      if ((s.surgeDrops || 0) <= 0) return false;
+      s.surgeDrops -= 1;
+      s.surgeDropArmed = true;
+      if (typeof saveProgress === 'function') saveProgress();
+      return true;
+  }
+  function maybeSpawnOverdriveSurgeDropPickup() {
+      const s = ensureOverdriveState();
+      if (!s.surgeDropArmed) return false;
+      if (typeof playing === 'undefined' || !playing || gameOver) return false;
+      if (!player || player.hp <= 0) return false;
+      if (powerups.some(p => p && p.kind === 'overdrive_surge')) return false;
+      const x = clamp(player.x + 70, 40, WORLD_W - 40);
+      const y = clamp(player.y, 40, WORLD_H - 40);
+      powerups.push({ x, y, kind: 'overdrive_surge' });
+      s.surgeDropArmed = false;
+      return true;
+  }
+  function collectOverdriveSurgePickup(collector) {
+      if (collector !== player) return false;
+      hyperChargeCharge = 100;
+      player.hyperChargeCharge = 100;
+      if (typeof updateHyperButton === 'function') updateHyperButton();
+      // Activates Core Surge when available; otherwise the 100 charge stays
+      // banked (activateHypercharge() itself enforces availability).
+      if (typeof activateHypercharge === 'function') activateHypercharge();
+      if (typeof spawnFloatingText === 'function') spawnFloatingText(player.x, player.y - 30, '⚡ CORE SURGE DROP!', '#ff77e9');
+      return true;
+  }
+  // ----- end Overdrive rewards core (Worker C) -----
   function syncShopState(){if(playerData.gems==null)playerData.gems=0;if(!playerData.shopClaims)playerData.shopClaims={};}
   function trySkinInTraining(skinId){
       const skin=skinsDatabase[skinId]; if(!skin) return;
@@ -18857,6 +19144,8 @@ let heistFeverActive = false;
       sidebar.appendChild(createSidebarButton('🎭 SKIN CATALOGUE', 'skins'));
       sidebar.appendChild(createSidebarButton('🎡 LUCKY WHEEL', 'wheel'));
       sidebar.appendChild(createSidebarButton('🪙 CONVERSIONS', 'exchange'));
+      // [BUILDER PICK — Worker C] Shop tab label for Overdrive milestones.
+      sidebar.appendChild(createSidebarButton('⚡ OVERDRIVE REWARDS', 'overdrive'));
 
       const makeShopCard = ({ titleText, accent, descText, priceText, buttonText, buttonColor, onBuy, isOwned, isLocked, lockedText = 'LOCKED', footerText }) => {
           const card = document.createElement('div');
@@ -19712,6 +20001,78 @@ let heistFeverActive = false;
           return grid;
       };
 
+      // [Worker C] Overdrive milestone shop: every milestone entry is listed
+      // with its real tier label and live progress. Reached-but-unclaimed
+      // entries get a CLAIM button that grants immediately (claimable the
+      // moment a goal is reached, not at event end); unreached tiers show
+      // locked with the remaining amount. No placeholder text anywhere.
+      const renderOverdriveTab = () => {
+          const s = ensureOverdriveState();
+          const grid = cardGrid();
+          const status = document.createElement('div');
+          status.style.gridColumn = '1 / -1';
+          status.style.color = isOverdriveActive() ? '#ff77e9' : '#9dc0e4';
+          status.style.fontSize = '13px';
+          status.style.fontWeight = '800';
+          status.textContent = isOverdriveActive()
+              ? '⚡ CORE SURGE OVERDRIVE IS LIVE — claim each milestone the moment you reach it.'
+              : '⚡ CORE SURGE OVERDRIVE — milestones below show your live progress; claim each one the moment you reach it.';
+          grid.appendChild(status);
+          addSection(grid, 'Core Surge Drops');
+          const armed = !!s.surgeDropArmed;
+          const drops = s.surgeDrops || 0;
+          grid.appendChild(makeShopCard({
+              titleText: '⚡ Core Surge Drop',
+              accent: '#ff77e9',
+              descText: 'Arm one for your next match: a Core Surge pickup spawns beside you at match start. Walk over it to fill Core Surge charge to 100 and activate Core Surge if your fighter has it unlocked.',
+              priceText: armed ? 'ARMED FOR YOUR NEXT MATCH' : `${drops} IN INVENTORY`,
+              buttonText: 'USE — ARM NEXT MATCH',
+              buttonColor: '#ff77e9',
+              isOwned: false,
+              isLocked: armed || drops <= 0,
+              lockedText: armed ? 'ARMED FOR NEXT MATCH' : 'NO DROPS YET — EARN THEM FROM MILESTONES BELOW',
+              footerText: 'One armed drop per match. Bots cannot pick it up.',
+              onBuy: () => { if (useOverdriveSurgeDrop()) { ensureShopButtonRefresh(); renderTabContent(); } }
+          }));
+          addSection(grid, 'Main Milestones — Total Surge');
+          OVERDRIVE_MAIN_TIERS.forEach((tier, i) => {
+              const reached = s.mainTotal >= tier;
+              const claimed = s.mainClaimed.includes(i) || !!(playerData.shopClaims && playerData.shopClaims[`overdrive_main_${i}`]);
+              grid.appendChild(makeShopCard({
+                  titleText: `⚡ MAIN MILESTONE ${i + 1} — ${tier.toLocaleString()} SURGE`,
+                  accent: '#ff77e9',
+                  descText: `${describeOverdriveReward(OVERDRIVE_MAIN_REWARDS[i])}. Progress: ${s.mainTotal.toLocaleString()} / ${tier.toLocaleString()} Surge.`,
+                  priceText: claimed ? 'CLAIMED' : (reached ? 'READY TO CLAIM' : `${s.mainTotal.toLocaleString()} / ${tier.toLocaleString()} SURGE`),
+                  buttonText: 'CLAIM',
+                  buttonColor: '#ff77e9',
+                  isOwned: claimed,
+                  isLocked: !reached,
+                  lockedText: `${(tier - s.mainTotal).toLocaleString()} MORE SURGE TO UNLOCK`,
+                  footerText: 'Main milestone reward.',
+                  onBuy: () => { if (claimOverdriveReward('main', i)) { ensureShopButtonRefresh(); renderTabContent(); } }
+              }));
+          });
+          addSection(grid, 'Daily Milestones — Surge Today');
+          OVERDRIVE_DAILY_TIERS.forEach((tier, i) => {
+              const reached = s.dailyTotal >= tier;
+              const claimed = s.dailyClaimed.includes(i) || !!(playerData.shopClaims && playerData.shopClaims[`overdrive_daily_${i}`]);
+              grid.appendChild(makeShopCard({
+                  titleText: `☀ DAILY MILESTONE ${i + 1} — ${tier.toLocaleString()} SURGE`,
+                  accent: '#ffd166',
+                  descText: `${describeOverdriveReward(OVERDRIVE_DAILY_REWARDS[i])}. Progress: ${s.dailyTotal.toLocaleString()} / ${tier.toLocaleString()} Surge today.`,
+                  priceText: claimed ? 'CLAIMED' : (reached ? 'READY TO CLAIM' : `${s.dailyTotal.toLocaleString()} / ${tier.toLocaleString()} SURGE`),
+                  buttonText: 'CLAIM',
+                  buttonColor: '#ffd166',
+                  isOwned: claimed,
+                  isLocked: !reached,
+                  lockedText: `${(tier - s.dailyTotal).toLocaleString()} MORE SURGE TO UNLOCK`,
+                  footerText: 'Daily milestone reward. Daily progress resets with each new day.',
+                  onBuy: () => { if (claimOverdriveReward('daily', i)) { ensureShopButtonRefresh(); renderTabContent(); } }
+              }));
+          });
+          return grid;
+      };
+
       const renderTabContent = () => {
           shopContent.innerHTML = '';
           if (activeTab === 'featured') {
@@ -19726,6 +20087,8 @@ let heistFeverActive = false;
               shopContent.appendChild(renderWheelTab());
           } else if (activeTab === 'exchange') {
               shopContent.appendChild(renderExchangeTab());
+          } else if (activeTab === 'overdrive') {
+              shopContent.appendChild(renderOverdriveTab());
           }
       };
 
@@ -26621,6 +26984,58 @@ let heistFeverActive = false;
         buildSeasonalDecor();
     }
 
+
+    // Super Showdown mega map (BUILDER PICK, flagged — approach (b), full-scale
+    // tiling). buildNextShowdownMap() clears the terrain stores on every call
+    // and bakes each theme at absolute 4000x4000 coordinates, so it cannot be
+    // offset directly. Instead, each of the 6 picked themes is built once at
+    // its native size (WORLD temporarily 4000x4000 so its water-lane carving
+    // and decor land per-theme), snapshotted, translated into its sector,
+    // and appended. Nothing in buildNextShowdownMap or any other mode is
+    // modified. Themes have no perimeter walls, so sector borders stay
+    // crossable; only a 240px box around the mega centre (a 4-sector
+    // junction and the storm's endgame point) is cleared of wall cells so
+    // the final circle can never be fully walled off.
+    let superShowdownBuiltThemes = [];
+    function buildSuperShowdownMap() {
+        const megaWalls = [];
+        const megaBush = [];
+        const megaWater = [];
+        const megaProps = [];
+        const cols = 3;
+        SUPER_SHOWDOWN_MAP_THEMES.forEach((themeIdx, sector) => {
+            WORLD_W = SUPER_SHOWDOWN_SECTOR_W;
+            WORLD_H = SUPER_SHOWDOWN_SECTOR_H;
+            buildNextShowdownMap(themeIdx);
+            const ox = (sector % cols) * SUPER_SHOWDOWN_SECTOR_W;
+            const oy = Math.floor(sector / cols) * SUPER_SHOWDOWN_SECTOR_H;
+            for (const w of destructibleWalls) megaWalls.push({ ...w, x: w.x + ox, y: w.y + oy, superShowdownTheme: themeIdx, superShowdownSector: sector });
+            for (const z of bushZones) megaBush.push({ ...z, x: z.x + ox, y: z.y + oy, superShowdownTheme: themeIdx, superShowdownSector: sector });
+            for (const z of waterZones) megaWater.push({ ...z, x: z.x + ox, y: z.y + oy, superShowdownTheme: themeIdx, superShowdownSector: sector });
+            for (const p of mapProps) megaProps.push({ ...p, x: p.x + ox, y: p.y + oy, superShowdownTheme: themeIdx, superShowdownSector: sector });
+        });
+        cubes.length = 0; bushZones.length = 0; waterZones.length = 0; destructibleWalls.length = 0; mapProps.length = 0;
+        const cx = SUPER_SHOWDOWN_WORLD_W / 2, cy = SUPER_SHOWDOWN_WORLD_H / 2;
+        destructibleWalls.push(...megaWalls.filter((w) => !(w.x < cx + 120 && w.x + w.w > cx - 120 && w.y < cy + 120 && w.y + w.h > cy - 120)));
+        bushZones.push(...megaBush);
+        waterZones.push(...megaWater);
+        mapProps.push(...megaProps);
+        WORLD_W = SUPER_SHOWDOWN_WORLD_W;
+        WORLD_H = SUPER_SHOWDOWN_WORLD_H;
+        superShowdownBuiltThemes = [...SUPER_SHOWDOWN_MAP_THEMES];
+    }
+
+    // Restores the standard bounds after a Super Showdown match so the next
+    // match in any other mode starts from normal bounds even if the mega
+    // world was still active. No-op unless a mega world was actually saved.
+    function restoreSuperShowdownWorld() {
+        if (!superShowdownWorldSaved) return;
+        WORLD_W = superShowdownWorldSaved.w;
+        WORLD_H = superShowdownWorldSaved.h;
+        superShowdownWorldSaved = null;
+        superShowdownBuiltThemes = [];
+    }
+
     function buildHandmadeShowdownMap(mapIndex) {
         buildNextShowdownMap(mapIndex);
         return;
@@ -27136,6 +27551,10 @@ let heistFeverActive = false;
             bushZones.length = 0;
             waterZones.length = 0;
             destructibleWalls.length = 0;
+            return;
+        }
+        if (isSuperShowdownMode) {
+            buildSuperShowdownMap();
             return;
         }
         buildHandmadeShowdownMap(isPropHuntMode ? 0 : getActiveShowdownMapIndex());
@@ -27809,6 +28228,7 @@ let heistFeverActive = false;
                 else if (isTugZoneMode) enemyCount = 3;
                 else if (isKnockDonateMode) enemyCount = KNOCK_DONATE_TEAM_SIZE;
                 else if (isTrioShowdownMode) enemyCount = 16;
+                else if (isSuperShowdownMode) enemyCount = SUPER_SHOWDOWN_BOT_COUNT;
                 else if (isDuoShowdown) enemyCount = 18;
                 else if (!isBossFight && !isSoloTrial) enemyCount = 19;
         const showdownEnemyTeamAnchors = new Map();
@@ -32079,6 +32499,7 @@ let heistFeverActive = false;
     hyperChargeCharge = 0;
     isHypercharged = true;
     addEventQuestProgress('activate_hypers');
+    recordOverdriveActivation();
     const extraHyperMs = (isSplitterPoweredMode && selectedBrawler === 'splitter') ? 2000 : 0;
     hyperchargeUntil = performance.now() + Math.round((5000 + extraHyperMs) * (getCorePerk(selectedBrawler) === 'surge' ? 1.4 : 1));
     if (selectedBrawler === 'oil_maker' || (player && player.brawler === 'oil_maker')) {
@@ -42777,6 +43198,7 @@ let heistFeverActive = false;
       ['slop_sushi_gauntlet', '🗼', 'Tower Trouble: Grand Tour', '20 floors • multi-mode • choose four'],
       ['chaos_crown', '🎲', 'Chaos Crown', '10 mystery guests • 10 unique rules • 3 strikes'],
       ['solo', '⚔️', 'Solo Showdown', '20-player FFA'],
+      ['super_showdown', '💯', 'Super Showdown', '100-player last-one-standing mega brawl • faster Super and Core Surge charges'],
       ['duo', '👥', 'Duo Showdown', '10 teams of 2'],
       ['trio', '4️⃣', 'Quad Showdown', '5 teams of 4'],
       ['objective', '🏆', 'Control Clash', 'Control the zone'],
@@ -42807,8 +43229,12 @@ let heistFeverActive = false;
   const HOME_PERMANENT_MODE_IDS = ['blink_eye_dodge', 'headless_boss_s4', 'tombstone_boss', 'orbo_boss', 'ramage_boss', 'weefee_boss', 'demon_villains_boss', 'custom_clash', 'brawe_ball', 'knockout_3v3', 'duels', 'power_play_showdown', 'corrupted_showdown', 'slop_sushi', 'slop_sushi_gauntlet', 'chaos_crown', 'arena_forge', 'arena_forge_overclocked', 'tug_zone', 'construction', 'knock_donate', 'damage_filler', 'capture_turkey', 'prop_hunt'];
   HOME_PERMANENT_MODE_IDS.push('arena_forge_minion_surge');
   HOME_PERMANENT_MODE_IDS.push('arena_forge_hyper');
+  // BUILDER PICK (flagged): Super Showdown is always available during the
+  // event, so it joins both the permanent registry and the POPULAR EVENTS
+  // (always-available) home section below, never the daily rotation pool.
+  HOME_PERMANENT_MODE_IDS.push('super_showdown');
   const HOME_ROTATING_MODE_IDS = ['marked_mayhem', 'objective', 'brick_vault', 'mirror', 'power_gods', 'solo_td', 'impossible'];
-  const HOME_POPULAR_MODE_IDS = ['solo', 'duo', 'trio',
+  const HOME_POPULAR_MODE_IDS = ['solo', 'super_showdown', 'duo', 'trio',
     'arena_forge', 'arena_forge_overclocked', 'arena_forge_minion_surge', 'arena_forge_hyper',
     'brawe_ball', 'knockout_3v3', 'duels',
     'tug_zone', 'construction', 'knock_donate', 'damage_filler',
@@ -44722,6 +45148,35 @@ let heistFeverActive = false;
           return { section, heading, grid };
       }
 
+      if (isOverdriveActive()) {
+          const odSection = createSection('CORE SURGE OVERDRIVE', 'COMMUNITY EVENT — SURGE TOGETHER.', 'overdrive-section');
+          const odState = ensureOverdriveState();
+          const odMain = getOverdriveMainTier();
+          const odDaily = getOverdriveDailyTier();
+          const odCard = document.createElement('div');
+          odCard.tabIndex = 0;
+          odCard.setAttribute('role', 'button');
+          odCard.className = 'home-mode-card overdrive-event-card';
+          odCard.style.width = '100%';
+          odCard.style.textAlign = 'left';
+          odCard.style.position = 'relative';
+          odCard.style.overflow = 'hidden';
+          odCard.style.cursor = 'pointer';
+          odCard.innerHTML = `
+              <div style="position:absolute;left:0;top:0;width:3px;height:100%;background:#e78cff;"></div>
+              <div style="display:flex;align-items:center;gap:9px;">
+                  <div style="width:30px;height:30px;border-radius:8px;background:rgba(231,140,255,0.15);border:1px solid rgba(231,140,255,0.4);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">⚡</div>
+                  <div style="min-width:0;flex:1;">
+                      <div style="font-size:13px;font-weight:800;color:#f0c6ff;">CORE SURGE OVERDRIVE</div>
+                      <div style="font-size:10px;color:#d7b8e8;margin-top:2px;">Community: ${odMain.total.toLocaleString()} Surges · Tier ${odMain.reached}/${OVERDRIVE_MAIN_TIERS.length} · Today: ${odDaily.total.toLocaleString()} Surged hits</div>
+                  </div>
+                  <div style="font-size:8px;font-weight:900;color:#e78cff;background:#e78cff15;border:1px solid #e78cff44;border-radius:5px;padding:2px 5px;letter-spacing:0.05em;flex-shrink:0;">EVENT</div>
+              </div>`;
+          const openOd = () => openQuestBoard('overdrive');
+          odCard.onclick = openOd;
+          odCard.onkeydown = (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openOd(); } };
+          odSection.grid.appendChild(odCard);
+      }
       const showdownSection = createSection('SHOWDOWN', 'ONE MODE. YOUR TEAM SIZE.', 'showdown-section');
       homeShowdownHub = document.createElement('div');
       homeShowdownHub.className = 'home-showdown-hub';
@@ -46918,6 +47373,7 @@ let heistFeverActive = false;
       }
       isCorruptedShowdownMode = showdownMode === 'corrupted_showdown';
       isPowerPlayShowdownMode = showdownMode === 'power_play_showdown';
+      isSuperShowdownMode = showdownMode === 'super_showdown';
       if (isPowerPlayShowdownMode && !POWER_PLAY_BRAWLERS.has(selectedBrawler)) {
           selectedBrawler = 'blinkeye';
           normalizeSelectedBrawler();
@@ -47004,6 +47460,7 @@ let heistFeverActive = false;
           else if (isDuoShowdown) baseTitle = 'Arena Forge - Duo Showdown';
           else if (isImpossibleMode) baseTitle = 'Arena Forge - The Impossible';
           else if (isPowerPlayShowdownMode) baseTitle = 'Arena Forge - ⚡ Power Play Showdown (3-Powers LTM)';
+          else if (isSuperShowdownMode) baseTitle = 'Arena Forge - Super Showdown (100 Players)';
           else if (isCorruptedShowdownMode) baseTitle = 'Arena Forge - Corrupted Showdown';
           else if (isLavaBossEvent) baseTitle = `Arena Forge - Lava Villain Boss • ${getLavaBossDifficulty().name}`;
           if (isSlopSushiMode && showdownMode !== 'slop_sushi' && showdownMode !== 'slop_sushi_plus') baseTitle += ' 🗼 Tower Transformations';
@@ -47023,7 +47480,13 @@ let heistFeverActive = false;
           showdownMapIndex=(floor-1)%TOWER_TROUBLE_FLOORS;
       }
     constructionMapIndex = getRotatingConstructionMapIndex();
-      if (isLavaBossEvent || isHeadlessBossEvent || isTombstoneBossEvent || isTowerDefenseEvent) {
+      // A previous mega world must never leak into the next match.
+      restoreSuperShowdownWorld();
+      if (isSuperShowdownMode) {
+          superShowdownWorldSaved = { w: WORLD_W, h: WORLD_H };
+          WORLD_W = SUPER_SHOWDOWN_WORLD_W;
+          WORLD_H = SUPER_SHOWDOWN_WORLD_H;
+      } else if (isLavaBossEvent || isHeadlessBossEvent || isTombstoneBossEvent || isTowerDefenseEvent) {
           WORLD_W = 2400;
           WORLD_H = 2200;
       } else if (isTurkeyCaptureMode) {
@@ -47122,6 +47585,11 @@ let heistFeverActive = false;
             spawnPos = getMarkedMayhemSpawnPoint('player', 0, MARKED_MAYHEM_TEAM_SIZE);
         } else if (isDamageFillerMode || isKnockDonateMode) {
             spawnPos = getDamageFillerSpawnPoint('player', 0, isDamageFillerMode ? damageFillerTeamSize : 3);
+        } else if (isSuperShowdownMode) {
+            // Mega-map corners are theme corners, not guaranteed open: use
+            // the wall-and-water-aware search so the player never spawns
+            // inside a wall cell.
+            spawnPos = findNearestOpenSpot(WORLD_W * 0.5, WORLD_H * 0.5, player.radius || 16, 4000);
         } else {
             spawnPos = getShowdownSpawnPosition();
         }
@@ -47173,14 +47641,14 @@ let heistFeverActive = false;
               }
           }
           if (activeRankedModifier === 'always_hyper' || activeRankedModifierSecondary === 'always_hyper' || activeRankedModifierTertiary === 'always_hyper' || isHyperForgeLTM) {
+              if (!isHypercharged) recordOverdriveActivation();
               isHypercharged = true;
               hyperchargeUntil = performance.now() + 999999999;
               hyperChargeCharge = 100;
               if (typeof updateHyperButton === 'function') updateHyperButton();
               for (const b of bots) {
                   if (b && !b.isDummy && !b.isStructure) {
-                      b.isHypercharged = true;
-                      b.hyperchargeUntil = performance.now() + 999999999;
+                      setEntityHypercharged(b, performance.now() + 999999999, performance.now());
                       b.hyperChargeCharge = 100;
                   }
               }
@@ -52320,6 +52788,7 @@ function checkHit(target, b, i){
     const rawDmg = dealtDamage;
     dealtDamage = applyShieldDamage(target, dealtDamage);
     target.hp -= dealtDamage;
+    if (dealtDamage > 0) recordOverdriveSurgedHit(owner, performance.now());
     if (dealtDamage > 0 && target.hp > 0 && ELECTROSTIEN_ENABLED && !(b && (b.electrostienRoar || b.electrostienChainTick || b.electrostienMiniChainTick))) {
         if (owner && !areAlliedEntities(owner, target)) triggerElectrostienRoar(target);
     }
@@ -54001,6 +54470,9 @@ function checkHit(target, b, i){
 
   function update(dt){
     if(!playing || gameOver) return;
+    // Super Showdown lag guard: rotates which third of distant bots may
+    // pay the full target-scan cost this frame (see bot loop below).
+    if (isSuperShowdownMode) superShowdownAiSlice = (superShowdownAiSlice + 1) % 3;
     stabilizeActiveMatchState();
     const now = performance.now();
     updateTrainingSpeedTest(now);
@@ -54176,6 +54648,15 @@ function checkHit(target, b, i){
     if (bullets.length > MAX_ACTIVE_BULLETS) {
         bullets.splice(0, bullets.length - MAX_ACTIVE_BULLETS);
     }
+    // Super Showdown lag guard 2 (mode-gated): with 100 fighters, cap live
+    // projectiles / explosions / floating texts tighter than the global
+    // caps so effect storms cannot grow unbounded. Simulation stays intact;
+    // only the oldest excess visuals are dropped.
+    if (isSuperShowdownMode) {
+        if (bullets.length > 1200) bullets.splice(0, bullets.length - 1200);
+        if (explosions.length > 120) explosions.splice(0, explosions.length - 120);
+        if (floatingTexts.length > 60) floatingTexts.splice(0, floatingTexts.length - 60);
+    }
     if (rings.length > MAX_ACTIVE_RINGS) {
         rings.splice(0, rings.length - MAX_ACTIVE_RINGS);
     }
@@ -54259,6 +54740,7 @@ function checkHit(target, b, i){
     if ((isRankedMatch || isCustomMutatorMatch || isHyperForgeLTM) && playing && !gameOver) {
         if (activeRankedModifier === 'always_hyper' || activeRankedModifierSecondary === 'always_hyper' || activeRankedModifierTertiary === 'always_hyper' || isHyperForgeLTM) {
             if (player.hp > 0) {
+                if (!isHypercharged) recordOverdriveActivation();
                 isHypercharged = true;
                 hyperchargeUntil = now + 999999999;
                 hyperChargeCharge = 100;
@@ -54266,8 +54748,7 @@ function checkHit(target, b, i){
             }
             for (const b of bots) {
                 if (b && b.hp > 0 && !b.isDummy && !b.isStructure) {
-                    b.isHypercharged = true;
-                    b.hyperchargeUntil = now + 999999999;
+                    setEntityHypercharged(b, now + 999999999, now);
                     b.hyperChargeCharge = 100;
                 }
             }
@@ -55195,6 +55676,9 @@ function checkHit(target, b, i){
     }
 
     // Powerup collection
+    // [Worker C] Arm a claimed Core Surge drop: spawn its pickup beside the
+    // player on the first live-match tick after USE (not in menus).
+    if (typeof maybeSpawnOverdriveSurgeDropPickup === 'function') maybeSpawnOverdriveSurgeDropPickup();
     for(let i=powerups.length-1; i>=0; i--){
         const p = powerups[i];
         let collectedBy = null;
@@ -55202,8 +55686,13 @@ function checkHit(target, b, i){
             if(e.isBoss) continue; // Boss cannot collect cubes or crystals
             if(e.hp > 0 && Math.hypot(e.x - p.x, e.y - p.y) < e.radius + 20){ collectedBy = e; break; }
         }
+        // [Worker C] The player's Core Surge drop is player-only: a bot
+        // walking over it must not consume it — leave it on the field.
+        if (p.kind === 'overdrive_surge' && collectedBy !== player) continue;
         if(collectedBy){
-            if (p.kind === 'christmas_dmg' || p.kind === 'christmas_speed' || p.kind === 'christmas_hp') {
+            if (p.kind === 'overdrive_surge') {
+                collectOverdriveSurgePickup(collectedBy);
+            } else if (p.kind === 'christmas_dmg' || p.kind === 'christmas_speed' || p.kind === 'christmas_hp') {
                 applyChristmasBuff(collectedBy, p.kind);
             } else if (p.kind === 'overlord_crystal') {
                 triggerOverlordTrialCrystal(collectedBy, 8000);
@@ -60380,10 +60869,17 @@ function checkHit(target, b, i){
       let bestScore = 999999;
       const nowTarget = performance.now();
       const botAi = getBotModeAiContext(t, nowTarget);
-      const botTargetScanDue = nowTarget >= (t.nextTargetScanAt || 0);
+      // Super Showdown lag guard 1 (mode-gated): distant bots (>1200px from
+      // the player) only rescan enemies on their slice's frame, so at most
+      // ~1/3 of far bots run the O(alive) scan per frame; near bots scan
+      // normally so combat around the player stays responsive. Throttled
+      // bots keep moving via the objective/farm fallback below — they are
+      // never frozen, only their retargeting is deferred.
+      const superShowdownAiThrottled = isSuperShowdownMode && Math.hypot(t.x - player.x, t.y - player.y) > 1200 && (Math.abs(Number(t.id) || 0) % 3) !== superShowdownAiSlice;
+      const botTargetScanDue = nowTarget >= (t.nextTargetScanAt || 0) && !superShowdownAiThrottled;
       if (botTargetScanDue) {
           const stagger = Math.abs(Number(t.id) || 0) % 70;
-          t.nextTargetScanAt = nowTarget + (LOW_POWER_DEVICE || aliveBots.length > 24 ? 250 : 140) + stagger;
+          t.nextTargetScanAt = nowTarget + (isSuperShowdownMode ? 600 : (LOW_POWER_DEVICE || aliveBots.length > 24 ? 250 : 140)) + stagger;
       }
 
       if (isSoloTdMode && t.team === 'enemy') {
@@ -61159,9 +61655,8 @@ function checkHit(target, b, i){
 
           if (!t.isArenaForgeMinion && shouldBotActivateHyper(t, target, botAi)) {
               t.hyperChargeCharge = 0;
-              t.isHypercharged = true;
               const extraHyperMs = (isSplitterPoweredMode && t.brawler === 'splitter') ? 2000 : 0;
-              t.hyperchargeUntil = nowTarget + 5000 + extraHyperMs;
+              setEntityHypercharged(t, nowTarget + 5000 + extraHyperMs, nowTarget);
           }
 
           if (!t.isArenaForgeMinion && t.gadgetUnlocked) {
@@ -65918,7 +66413,10 @@ function checkHit(target, b, i){
     for(const t of aliveBots){
             if (isRealmHiddenFromViewer(t)) continue; // Electric Realm pair is invisible to outsiders (and outsiders to the pair)
             if (isPropHuntMode && t.propHuntMorphed) continue; // morphed hiders render only as their prop wall: no nameplate, bar or silhouette
-            if (!isWorldVisualVisible(t.x, t.y, Math.max(150, Number(t.radius) || 0) + 90)) continue;
+            // Super Showdown lag guard 3 (mode-gated): tighter viewport
+            // cull margin (90px vs the usual ~240px) so bots just outside
+            // the visible frame skip their full draw pass.
+            if (!isWorldVisualVisible(t.x, t.y, isSuperShowdownMode ? 90 : (Math.max(150, Number(t.radius) || 0) + 90))) continue;
             const liftAmt = (t.hyperoriginLiftUntil && performance.now() < t.hyperoriginLiftUntil) ? (18 + Math.sin(performance.now() / 70) * 3) : 0;
             const drawY = t.y - (t.z || 0) - liftAmt;
       const isInvis = t.invisUntil && performance.now() < t.invisUntil;
@@ -76310,6 +76808,21 @@ function checkHit(target, b, i){
             ctx.lineWidth = 2;
             ctx.stroke();
             ctx.restore();
+        } else if (p.kind === 'overdrive_surge') {
+            // [Worker C] Core Surge drop pickup: pulsing purple-gold bolt.
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            const odPulse = 1 + Math.sin(performance.now() / 180) * 0.12;
+            ctx.scale(odPulse, odPulse);
+            ctx.shadowColor = '#ff77e9';
+            ctx.shadowBlur = 14;
+            ctx.fillStyle = '#b45cff';
+            ctx.beginPath(); ctx.arc(0, 0, 14, 0, Math.PI * 2); ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = '#ffe66d'; ctx.lineWidth = 2; ctx.stroke();
+            ctx.fillStyle = '#ffffff'; ctx.font = '13px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText('⚡', 0, 1);
+            ctx.restore();
         } else if (p.kind === 'christmas_dmg' || p.kind === 'christmas_speed' || p.kind === 'christmas_hp') {
             const buffCfg = p.kind === 'christmas_dmg' ? ['#ff4757', '\uD83D\uDCA5'] : p.kind === 'christmas_speed' ? ['#f5b921', '\u26A1'] : ['#ff5d8f', '\u2764\uFE0F'];
             ctx.save();
@@ -79749,6 +80262,7 @@ function checkHit(target, b, i){
                 playerData.slopSushi.tappers = (playerData.slopSushi.tappers || 0) + rotationReward.amount;
             }
             const goldEventReward = commitGoldEventMatch(won);
+            flushOverdriveProgress();
             // This is the existing once-only, non-training match reward settlement.
             awardSeasonPassXp(won ? 25 : 15);
             if (goldEventReward > 0) rewardCoins += goldEventReward;
@@ -79782,6 +80296,9 @@ function checkHit(target, b, i){
                 else endCareer.soloWins += 1;
             }
             saveProgress();
+            // Match settled: drop the mega bounds now so the results screen
+            // and any next match start from standard bounds.
+            restoreSuperShowdownWorld();
 
             removePinButton(); // match over: pin HUD button leaves with the match
             document.getElementById('matchIntroCards')?.remove();
