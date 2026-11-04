@@ -11804,14 +11804,27 @@ let weefeeBossState = null;
     let superShowdownAiSlice = 0;
     let superShowdownWorldSaved = null;
     const SUPER_SHOWDOWN_BOT_COUNT = 99;
-    // BUILDER PICK (flagged): 6 of the 10 showdown themes, tiled 3 cols x 2
+    // BUILDER PICK (flagged): 6 of the 10 showdown themes, tiled 10 cols x 6
     // rows at full 4000x4000 scale (no shrinking, so wall HP / tile size /
-    // cover geometry stay exactly as designed in each theme).
+    // cover geometry stay exactly as designed in each theme). 60 sectors =
+    // 40000x24000 = 960,000,000, exactly 10x the old 12000x8000 area
+    // (96,000,000). Themes repeat in cycle order (sector s uses
+    // THEMES[s % 6]), so each theme appears 10 times.
     const SUPER_SHOWDOWN_MAP_THEMES = [0, 2, 3, 4, 6, 7];
     const SUPER_SHOWDOWN_SECTOR_W = 4000;
     const SUPER_SHOWDOWN_SECTOR_H = 4000;
-    const SUPER_SHOWDOWN_WORLD_W = 12000;
-    const SUPER_SHOWDOWN_WORLD_H = 8000;
+    const SUPER_SHOWDOWN_SECTOR_COLS = 10;
+    const SUPER_SHOWDOWN_SECTOR_ROWS = 6;
+    const SUPER_SHOWDOWN_WORLD_W = 40000;
+    const SUPER_SHOWDOWN_WORLD_H = 24000;
+    // BUILDER PICK (flagged): storm lasts 380s here (vs 120s elsewhere) so
+    // the shrink speed (~84px/s) matches the old map's (~80px/s) — bots can
+    // still outrun the closing circle. 120s on this map would close at
+    // ~267px/s, faster than any bot moves.
+    const SUPER_SHOWDOWN_STORM_DURATION_S = 380;
+    // BUILDER PICK (flagged): 750 power boxes = old 75 x 10, so box density
+    // per area is unchanged on the 10x map (findable, not flooded).
+    const SUPER_SHOWDOWN_BOX_COUNT = 750;
     let isMagnatarShowdownMode = false;
 function isPowerPlayModifierActive(entity = player) {
     if (isOrboBossMode && orboBossState?.hasPowerPlayModifier) {
@@ -14724,6 +14737,9 @@ let heistFeverActive = false;
   }
 
   function getModeStormDurationSeconds() {
+      // BUILDER PICK (flagged): Super Showdown's storm lasts 380s so the
+      // shrink speed matches the old map's pacing on the 10x world.
+      if (showdownMode === 'super_showdown') return SUPER_SHOWDOWN_STORM_DURATION_S;
       return activeShowdownModifier === 'heavy_storm' ? 90 : 120;
   }
 
@@ -27016,22 +27032,25 @@ let heistFeverActive = false;
     // Super Showdown mega map (BUILDER PICK, flagged — approach (b), full-scale
     // tiling). buildNextShowdownMap() clears the terrain stores on every call
     // and bakes each theme at absolute 4000x4000 coordinates, so it cannot be
-    // offset directly. Instead, each of the 6 picked themes is built once at
-    // its native size (WORLD temporarily 4000x4000 so its water-lane carving
+    // offset directly. Instead, each of the 6 picked themes is built 10 times
+    // at its native size (WORLD temporarily 4000x4000 so its water-lane carving
     // and decor land per-theme), snapshotted, translated into its sector,
-    // and appended. Nothing in buildNextShowdownMap or any other mode is
-    // modified. Themes have no perimeter walls, so sector borders stay
-    // crossable; only a 240px box around the mega centre (a 4-sector
-    // junction and the storm's endgame point) is cleared of wall cells so
-    // the final circle can never be fully walled off.
+    // and appended — 60 sectors, 10 cols x 6 rows, exactly 10x the old area.
+    // Nothing in buildNextShowdownMap or any other mode is modified. Themes
+    // have no perimeter walls, so sector borders stay crossable; only a
+    // 240px box around the mega centre (a 4-sector junction and the storm's
+    // endgame point) is cleared of wall cells so the final circle can never
+    // be fully walled off.
     let superShowdownBuiltThemes = [];
     function buildSuperShowdownMap() {
         const megaWalls = [];
         const megaBush = [];
         const megaWater = [];
         const megaProps = [];
-        const cols = 3;
-        SUPER_SHOWDOWN_MAP_THEMES.forEach((themeIdx, sector) => {
+        const cols = SUPER_SHOWDOWN_SECTOR_COLS;
+        const totalSectors = SUPER_SHOWDOWN_SECTOR_COLS * SUPER_SHOWDOWN_SECTOR_ROWS;
+        for (let sector = 0; sector < totalSectors; sector++) {
+            const themeIdx = SUPER_SHOWDOWN_MAP_THEMES[sector % SUPER_SHOWDOWN_MAP_THEMES.length];
             WORLD_W = SUPER_SHOWDOWN_SECTOR_W;
             WORLD_H = SUPER_SHOWDOWN_SECTOR_H;
             buildNextShowdownMap(themeIdx);
@@ -27041,7 +27060,7 @@ let heistFeverActive = false;
             for (const z of bushZones) megaBush.push({ ...z, x: z.x + ox, y: z.y + oy, superShowdownTheme: themeIdx, superShowdownSector: sector });
             for (const z of waterZones) megaWater.push({ ...z, x: z.x + ox, y: z.y + oy, superShowdownTheme: themeIdx, superShowdownSector: sector });
             for (const p of mapProps) megaProps.push({ ...p, x: p.x + ox, y: p.y + oy, superShowdownTheme: themeIdx, superShowdownSector: sector });
-        });
+        }
         cubes.length = 0; bushZones.length = 0; waterZones.length = 0; destructibleWalls.length = 0; mapProps.length = 0;
         const cx = SUPER_SHOWDOWN_WORLD_W / 2, cy = SUPER_SHOWDOWN_WORLD_H / 2;
         destructibleWalls.push(...megaWalls.filter((w) => !(w.x < cx + 120 && w.x + w.w > cx - 120 && w.y < cy + 120 && w.y + w.h > cy - 120)));
@@ -28311,6 +28330,19 @@ let heistFeverActive = false;
                 const spawn = findNearestOpenSpot(anchor.x + Math.cos(angle) * 105, anchor.y + Math.sin(angle) * 105, 18, 420);
                 bx = spawn.x;
                 by = spawn.y;
+            } else if (isSuperShowdownMode) {
+                // Stratified spawns (BUILDER PICK, flagged): a 10x10 grid over
+                // the mega world, one bot per cell + jitter, so 99 bots spread
+                // across all 60 sectors instead of clumping. The same
+                // terrain/water/player-distance retries still apply.
+                const spawnGridCols = 10;
+                const cellW = WORLD_W / spawnGridCols, cellH = WORLD_H / spawnGridCols;
+                const cellX = i % spawnGridCols, cellY = Math.floor(i / spawnGridCols);
+                do {
+                    bx = (cellX + 0.15 + Math.random() * 0.7) * cellW;
+                    by = (cellY + 0.15 + Math.random() * 0.7) * cellH;
+                    tries++;
+                } while((isCircleBlockedByTerrain(null, bx, by, 14) || isCircleInWaterAt(bx, by, 14) || Math.hypot(bx-player.x,by-player.y)<800) && tries < 200);
             } else {
                 do{
                     bx = Math.random()*WORLD_W;
@@ -28454,7 +28486,9 @@ let heistFeverActive = false;
     }
     if(isBlinkEyeDodgeMode || isDuels || isTraining || isBraweBallMode || isKnockoutMode || isImpossibleMode || isDamageFillerMode || isMirrorMode || isKnockDonateMode || isBrickVaultMode || isArenaForgeMode || isMarkedMayhemMode || isTugZoneMode || isTurkeyCaptureMode || isOrboBossMode || isRamageBossMode || isDemonVillainsBossMode || isWeeFeeBossMode || isPropHuntMode) return;
       const towerBoxMult=isTowerTroubleMode&&towerTroubleVariant!=='gauntlet'?(towerTroubleVariant==='chaos'?(getChaosCrownRule(playerData.slopSushi?.chaosRun?.floor||1).boxMult||1):(TOWER_FLOOR_CHALLENGES[Math.max(0,(playerData.slopSushi?.run?.floor||1)-1)]?.boxMult||1)):1;
-      const showdownBoxCount = Math.round(((isDuoShowdown || isTrioShowdownMode) ? 90 : 75)*towerBoxMult*getShowdownBoxScarcityMultiplier());
+      // BUILDER PICK (flagged): Super Showdown gets 750 boxes (old 75 x 10)
+      // so box density per area is unchanged on the 10x map.
+      const showdownBoxCount = Math.round((isSuperShowdownMode ? SUPER_SHOWDOWN_BOX_COUNT : ((isDuoShowdown || isTrioShowdownMode) ? 90 : 75))*towerBoxMult*getShowdownBoxScarcityMultiplier());
       for(let i=0; i<showdownBoxCount; i++){
         let bx, by, tries=0;
         do {
