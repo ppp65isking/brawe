@@ -388,3 +388,5 @@ button,select,input{font:inherit}
 #homeModesSection{flex:1 1 auto;min-height:0;overflow-y:auto!important;overflow-x:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
 #homeModesSection::-webkit-scrollbar{width:8px}
 #homeModesSection::-webkit-scrollbar-thumb{background:rgba(110,180,255,.35);border-radius:99px}
+.overdrive-view{display:flex;flex-direction:column;gap:12px;color:#e8f4ff}
+.overdrive-event-card{background:linear-gradient(125deg,#2b1038,#10182b);border:1px solid #e78cff66}

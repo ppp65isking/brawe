@@ -93,7 +93,7 @@ check('B: start button text Hyper Forge', game.includes("showdownMode === 'arena
 check('B: in-match panel header shows HYPER FORGE', game.includes("showdownMode === 'arena_forge_hyper' ? '• HYPER FORGE'"));
 check('B: match-start banner shows both modifiers', game.includes("HYPER FORGE: ALWAYS HYPERCHARGED • 3x RELOAD SPEED!"));
 check('B: match start sets isArenaForgeMode + isHyperForgeLTM', game.includes("isArenaForgeMode = showdownMode === 'arena_forge' || showdownMode === 'arena_forge_overclocked' || showdownMode === 'arena_forge_minion_surge' || showdownMode === 'arena_forge_hyper';") && game.includes("isHyperForgeLTM = showdownMode === 'arena_forge_hyper';"));
-check('B: spawn grants permanent hyper in LTM', game.includes("|| isHyperForgeLTM) {") && game.includes("entity.isHypercharged = true;\n            entity.hyperchargeUntil = now + 999999999;"));
+check('B: spawn grants permanent hyper in LTM', game.includes("|| isHyperForgeLTM) {") && game.includes("setEntityHypercharged(entity, now + 999999999, now);") && game.includes("entity.isHypercharged = true;") && game.includes("entity.hyperchargeUntil = untilMs;"));
 check('B: match-start hyper block covers LTM', game.includes("activeRankedModifierTertiary === 'always_hyper' || isHyperForgeLTM) {"));
 check('B: per-frame enforcement outer covers LTM', game.includes("if ((isRankedMatch || isCustomMutatorMatch || isHyperForgeLTM) && playing && !gameOver) {"));
 check('B: player hyper expiry suppressed in LTM', game.includes("&& !isHyperForgeLTM){\n        isHypercharged = false;"));
