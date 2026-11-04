@@ -169,11 +169,73 @@ check('hotfix: card pseudo-elements never eat clicks', /#homeBrawlerCard::after\
 check('hotfix: desktop panel fits screen (height auto, overflow visible)', /@media\s*\(min-width:\s*981px\)/.test(css) && /#homePanel\.home-bs-panel\s*\{[^}]*height:\s*auto/.test(css) && /#homePanel\.home-bs-panel\s*\{[^}]*overflow:\s*visible/.test(css));
 check('hotfix: desktop screen scrolls', /@media\s*\(min-width:\s*981px\)[\s\S]*?#homeScreen\s*\{[^}]*overflow-y:\s*auto/.test(css));
 check('hotfix: desktop fullscreen button shows text label', /#homeScreen\s+#fullscreenBtn\s*\{[^}]*text-indent:\s*0/.test(css) && /#fullscreenBtn::after\s*\{[^}]*content:\s*none/.test(css));
-check('hotfix: home stylesheet cache-buster bumped', html.includes('home-brawl-style.css?v=20261104-home-hotfix1') && !html.includes('20261103-home-bs1'));
+check('hotfix: home stylesheet cache-buster bumped', html.includes('home-brawl-style.css?v=20261104-home-cleanup1') && !html.includes('20261103-home-bs1') && !html.includes('20261104-home-hotfix1'));
 {
   const restoreFn = extractFn(game, 'armFullscreenRestoreOnGesture');
   check('hotfix: fullscreen restore skips real in-match button id', restoreFn.includes('#mobileFullscreenBtn') && !restoreFn.includes('#matchFullscreenBtn'));
 }
+
+// ---------- (i) CLEANUP 2026-11-04: smarter home screen ----------
+// Drawer toggle restored, 44px tap floor, dead strip row gone, and a
+// phone path for every shortcut that used to die with a hidden zone.
+// (The coordinator's brief said Ranked/Duels/Brawler Lab/Training/
+// Tutorial live in #homeQuickActions; verified in code they actually
+// live in #homeActionRow inside the hidden left rail — so the phone
+// path covers BOTH the dock and the rail, not just the dock.)
+const mediaBlock = (startMarker) => {
+  const start = css.indexOf(startMarker);
+  assert.notEqual(start, -1, startMarker + ' not found');
+  const next = css.indexOf('@media', start + startMarker.length);
+  return next === -1 ? css.slice(start) : css.slice(start, next);
+};
+check('cleanup: drawer summary restored as a visible toggle',
+  /#homeScreen\s+#homeUtilityDetails\s*>\s*summary\s*\{[^}]*display:\s*flex/.test(css) &&
+  css.includes('#homeUtilityDetails > summary::after'));
+check('cleanup: drawer defaults to collapsed (no open attr, boot closes it)',
+  !/id="homeUtilityDetails"[^>]*\bopen\b/.test(html) &&
+  game.includes('homeUtilityDetails.open = false'));
+check('cleanup: menu + MORE still toggle the drawer',
+  game.includes("getElementById('homeMenuBtn')?.addEventListener('click',toggleHomeTools)") &&
+  game.includes("getElementById('homeMobileMore')?.addEventListener('click',toggleHomeTools)"));
+check('cleanup: 44px floor on quick-action buttons',
+  /#homeScreen\s+#homeQuickActions\s+(button|a)[^}]*min-height:\s*44px/.test(css));
+check('cleanup: 44px floor on utility-drawer buttons',
+  /#homeScreen\s+#homeUtilityRow\s+(button|a)[^}]*min-height:\s*44px/.test(css));
+check('cleanup: 44px floor on mobile-nav buttons',
+  /#homeMobileNav\s+button\s*\{[^}]*min-height:\s*44px/.test(css));
+check('cleanup: mode-info close button is 44x44 (overlay lives on body, unprefixed rule)',
+  /\.home-mode-info-close\s*\{[^}]*width:\s*44px[^}]*height:\s*44px/.test(css));
+check('cleanup: no absolute float left on the action row in this sheet',
+  !/#homeActionRow[^}]*position:\s*absolute/.test(css));
+{
+  const stripBlock = mediaBlock('@media (max-width: 850px)');
+  check('cleanup: dead strip row gone at ≤850px (strip hidden AND no strip grid row)',
+    stripBlock.includes('.home-command-strip { display: none') && !stripBlock.includes('"strip'));
+}
+{
+  const phoneBlock = mediaBlock('@media (max-width: 700px)');
+  check('cleanup: phone path — progression dock visible in the bottom bar, not hidden',
+    phoneBlock.includes('#homeProgressDock { display: flex') && !phoneBlock.includes('#homeProgressDock { display: none'));
+  check('cleanup: phone path — left rail becomes an action strip (nav stays hidden, action row shown)',
+    phoneBlock.includes('#homeBsLeft #homeActionRow') && phoneBlock.includes('#homeBsLeft .home-top-nav { display: none') && !phoneBlock.includes('#homeBsLeft { display: none'));
+  check('cleanup: phone grid keeps a row for the action strip',
+    phoneBlock.includes('"left"'));
+}
+{
+  const landscapeBlock = mediaBlock('@media (pointer: coarse)');
+  check('cleanup: landscape phone path — dock spans a full bottom row, action strip row present',
+    landscapeBlock.includes('"left left"') && landscapeBlock.includes('grid-column: 1 / -1'));
+}
+check('cleanup: empty right-rail zones collapse instead of blank boxes',
+  /#homeScreen\s+#homeBsRight\s+\.home-season-pulse:empty[^}]*display:\s*none/.test(css) &&
+  /#homeScreen\s+#homeBsRight\s+\.home-career-snapshot:empty[^}]*display:\s*none/.test(css));
+for (const id of ['brickBonBtn', 'playerProfileBtn', 'pinsHubBtn', 'brickRoadBtn',
+  'soulSummonerBtn', 'gemShopBtn', 'downloadSaveBtn', 'importSaveBtn',
+  'dailyBrickRushBtn', 'eventHubBtn', 'seasonPassBtn', 'dailyWeeklyQuestBtn']) {
+  const assigns = game.match(new RegExp("\\.id\\s*=\\s*['\"]" + id + "['\"]", 'g')) || [];
+  check('cleanup: JS home button created exactly once: ' + id, assigns.length === 1);
+}
+check('cleanup: no "Brawl Stars" phrase in cleanup rules', !/Brawl Stars/i.test(css));
 
 console.log(`home-screen-brawl-style: ${passed} passed, ${failures.length} failed`);
 if (failures.length) {

@@ -508,11 +508,31 @@
   }
 }
 
+/* ---- Narrow tablets: the command strip is already display:none here
+   (styles.css ≤850px), so drop its grid row too — otherwise the panel
+   keeps a dead auto row plus its 12px gap between top bar and content. - */
+@media (max-width: 850px) {
+  #homeScreen .home-command-strip { display: none !important; }
+
+  #homeScreen #homePanel.home-bs-panel {
+    grid-template-rows: auto auto auto auto auto auto !important;
+    grid-template-areas:
+      "top"
+      "left"
+      "center"
+      "right"
+      "bottom"
+      "tools" !important;
+  }
+}
+
 /* ---- Phones: single column, mobile nav owns navigation ---------------- */
 @media (max-width: 700px) {
   #homeScreen #homePanel.home-bs-panel {
+    grid-template-rows: auto auto auto auto auto auto !important;
     grid-template-areas:
       "top"
+      "left"
       "center"
       "bottom"
       "right"
@@ -520,14 +540,37 @@
     padding: 0 8px calc(78px + env(safe-area-inset-bottom)) !important;
   }
 
-  #homeScreen #homeBsLeft { display: none !important; }
+  /* CLEANUP 2026-11-04: the left rail is NOT hidden on phones anymore.
+     Mobile nav owns HOME/FIGHTERS/EVENTS/SHOP, so the rail nav stays
+     hidden — but the rail itself becomes an action strip under the top
+     bar. That is the phone path for the action-row shortcuts (Ranked,
+     Duels, Brawler Lab, Training, Rookie Course), which previously died
+     with the hidden rail; the FIGHTERS button duplicates the mobile-nav
+     path exactly as it already does on desktop. */
+  #homeScreen #homeBsLeft {
+    display: flex !important;
+    flex-direction: column !important;
+  }
 
-  /* The older layers already hide the quick actions and the fullscreen
-     button on phones; hiding the now-empty progression dock too so the
-     bottom bar is not left with a bare label. */
-  #homeScreen #homeProgressDock { display: none !important; }
+  #homeScreen #homeBsLeft .home-top-nav { display: none !important; }
+
+  #homeScreen #homeBsLeft #homeActionRow {
+    flex: none !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  #homeScreen #homeBsLeft .home-action-btn { min-height: 48px !important; }
+
+  /* CLEANUP 2026-11-04: the progression dock stays visible on phones,
+     stacked in the bottom bar above PLAY. That is the phone path for
+     the quick-action shortcuts (Season Pass, Quests, Brick Road, Brick
+     Bon, Profile, Pins, Balance Blog, Brick Rush, save up/down), which
+     previously died with the hidden dock. PLAY stays last, full-width,
+     and most prominent. */
+  #homeScreen #homeProgressDock { display: flex !important; }
 
   #homeScreen #homeHeader.home-bs-topbar { gap: 8px !important; }
+  #homeScreen .home-menu-btn { min-width: 44px !important; min-height: 44px !important; }
   #homeScreen .home-bs-profile-chip { padding: 6px 10px 6px 6px !important; }
   #homeScreen #homeProfileChipName { font-size: 11px !important; }
 
@@ -545,6 +588,14 @@
     display: flex !important;
     flex-direction: column !important;
   }
+
+  /* Mobile nav buttons were ~40px tall (5px padding + 19px icon + label);
+     the 44px floor below matches the rest of the home screen. */
+  #homeMobileNav button {
+    min-height: 44px !important;
+    padding-top: 6px !important;
+    padding-bottom: 8px !important;
+  }
 }
 
 @media (max-width: 390px) {
@@ -557,9 +608,10 @@
 
   #homeScreen #homePanel.home-bs-panel {
     grid-template-columns: minmax(0, 1fr) 280px !important;
-    grid-template-rows: auto minmax(0, 1fr) auto auto !important;
+    grid-template-rows: auto auto minmax(0, 1fr) auto auto !important;
     grid-template-areas:
       "top top"
+      "left left"
       "center right"
       "bottom bottom"
       "tools tools" !important;
@@ -582,8 +634,35 @@
   #homeScreen #homeCurrencyBar { grid-column: 3 !important; grid-row: 1 !important; }
   #homeScreen #fullscreenBtn { grid-column: 4 !important; grid-row: 1 !important; }
 
-  #homeScreen #homeBsLeft { display: none !important; }
-  #homeScreen #homeProgressDock { display: none !important; }
+  /* CLEANUP 2026-11-04: same phone paths as portrait — the action strip
+     gets its own row under the top bar (scrollable, so six shortcuts fit
+     a short landscape width) and the progression dock spans a full row
+     under the main bottom row, so PLAY keeps its top-row slot. */
+  #homeScreen #homeBsLeft {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  #homeScreen #homeBsLeft .home-top-nav { display: none !important; }
+
+  #homeScreen #homeBsLeft #homeActionRow {
+    display: flex !important;
+    flex: none !important;
+    flex-direction: row !important;
+    overflow-x: auto !important;
+  }
+
+  #homeScreen #homeBsLeft .home-action-btn {
+    flex: 0 0 auto !important;
+    min-width: 150px !important;
+    min-height: 48px !important;
+  }
+
+  #homeScreen #homeProgressDock {
+    display: flex !important;
+    grid-column: 1 / -1 !important;
+  }
+
   #homeScreen #homeBsRight .home-featured-offer,
   #homeScreen #homeBsRight .home-season-pulse { display: none !important; }
 
@@ -668,4 +747,71 @@
   }
 
   #homeScreen #fullscreenBtn::after { content: none !important; }
+}
+
+/* ==========================================================================
+   CLEANUP 2026-11-04 — "smarter home screen, click targets sized sensibly
+   and placed where a player would expect them". Home screen only; no
+   feature, button, or id removed. All hotfix repairs above are kept.
+   ========================================================================== */
+
+/* 1. Drawer summary restored: two plain layers in styles.css
+   (#homeUtilityDetails>summary{display:none}) killed the "More tools"
+   toggle at every width, leaving the drawer permanently open with no
+   way to close it except the menu/MORE buttons. The summary is a real
+   collapsible toggle again; default state stays collapsed, because
+   boot code already sets homeUtilityDetails.open = false and the
+   markup carries no open attribute. The chevron flips when open. */
+#homeScreen #homeUtilityDetails > summary {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-height: 44px !important;
+  cursor: pointer !important;
+}
+
+#homeScreen #homeUtilityDetails > summary::after {
+  content: "▾" !important;
+  margin-left: auto !important;
+  transition: transform 0.15s !important;
+}
+
+#homeScreen #homeUtilityDetails[open] > summary::after {
+  transform: rotate(180deg) !important;
+}
+
+/* 2. 44px tap-size floor for the home interactive elements the older
+   layers undersized. Already fine and untouched: PLAY (88/64px), left
+   nav (56/48px), action buttons (64/48px), selected-event card (64px),
+   featured offer (84px+), mode cards (100px+), profile chip (46px),
+   fullscreen (46px desktop). Currency pills are display-only divs
+   (updateHomeCurrencyBar renders divs, no click handler), so they are
+   deliberately left alone. */
+#homeScreen #homeQuickActions button,
+#homeScreen #homeQuickActions a {
+  min-height: 44px !important;
+}
+
+#homeScreen #homeUtilityRow button,
+#homeScreen #homeUtilityRow a {
+  min-height: 44px !important;
+}
+
+/* Mode-info overlay is appended to document.body, not #homeScreen, so
+   this rule is unprefixed on purpose; this sheet loads last, so it
+   still wins the tie against the 34px rule in styles.css. */
+.home-mode-info-close {
+  width: 44px !important;
+  height: 44px !important;
+  min-height: 44px !important;
+}
+
+/* 3. Collapse right-rail zones that render empty instead of leaving
+   blank boxes. Both zones are always filled by JS once the home UI
+   refreshes (refreshPersonalizedHome / updateCurrencies set innerHTML
+   unconditionally), so this only hides the pre-fill first paint — no
+   feature or content is removed. */
+#homeScreen #homeBsRight .home-season-pulse:empty,
+#homeScreen #homeBsRight .home-career-snapshot:empty {
+  display: none !important;
 }
