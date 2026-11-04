@@ -40,7 +40,8 @@
     mallow:['round','#ffdfb0','#ff8fb0'],
     nightshade:['hood','#9b5cff','#b6ff5e'],
     aegis:['helmet','#f0b429','#fff3b0'],
-    runner:['visor','#b06bff','#ffffff']
+    runner:['visor','#b06bff','#ffffff'],
+    aura_charmer:['hood','#c084fc','#ffd76b']
   };
   const skins = {
     'fightn-spice':['firekeeper','#b63753','#ffbd79'],
@@ -48,6 +49,7 @@
     'neon-jacktrade':['dealer','#47377a','#74ffda'],
     'abyss-trapper':['diver','#071d3a','#42f5d7'],
     'reactor-decayer':['hazmat','#27382f','#a8ff3e'],
+    'aura-farmer-aura-charmer':['farmer','#f5c542','#7ec850'],
     'prism-seraph-angel':['seraph','#fff2b8','#79e9ff']
   };
   // Every fighter owns a visual identity assembled from kit-specific geometry.
@@ -107,7 +109,8 @@
     mallow:'puff_cap|marshmallow_fan|mallow_swirl|round',
     nightshade:'night_veil|viper_daggers|venom_mark|robe',
     aegis:'bulwark_helm|bulwark_shield|bubble_mark|wide',
-    runner:'sprint_cap|runner_shoe|speed_streak|lean'
+    runner:'sprint_cap|runner_shoe|speed_streak|lean',
+    aura_charmer:'charm_hood|aura_orb|charm_sigil|robe'
   });
   function hash(text){let value=2166136261;for(const ch of String(text)){value^=ch.charCodeAt(0);value=Math.imul(value,16777619);}return value>>>0;}
   function model(id, skin) { return skins[skin] || looks[id]; }
