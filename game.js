@@ -283,6 +283,10 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             const scale = 0.55 + (level - 1) * 0.045;
             return { hp: Math.round(6600 * scale), dmg: Math.round(950 * scale), speed: 290 };
         }
+        if (brawlerId === 'aura_charmer') {
+            const scale = 0.55 + (level - 1) * 0.045;
+            return { hp: Math.round(6400 * scale), dmg: Math.round(1050 * scale), speed: 280 };
+        }
         if (brawlerId === 'looma') {
             const scale = 0.55 + (level - 1) * 0.045;
             return { hp: Math.round(6600 * scale), dmg: Math.round(1450 * scale), speed: 270 };
@@ -5016,6 +5020,7 @@ const bolznstienPendingStrikes = [];
             mallow: 1500,
             nightshade: 1600,
             runner: 1500,
+            aura_charmer: 1500,
             carmela_fudge: 1400,
             oil_maker: 90,
             magnatar: 1450,
@@ -5079,6 +5084,7 @@ const bolznstienPendingStrikes = [];
             mallow: 550,
             nightshade: 300,
             runner: 300,
+            aura_charmer: 300,
             carmela_fudge: 180,
             oil_maker: 112,
             magnatar: 200,
@@ -5170,6 +5176,7 @@ const bolznstienPendingStrikes = [];
         if (now < (entity.electrostienRealmSlowUntil || 0)) baseSlow = Math.min(baseSlow, 0.70);
         if (now < (entity.mallowSlowUntil || 0)) baseSlow = Math.min(baseSlow, getMallowSlowMultiplier(entity, now));
         if (now < (entity.runnerSlowUntil || 0)) baseSlow = Math.min(baseSlow, RUNNER_TRAIL_SLOW_MULT);
+        if (now < (entity.auraCharmerSlowUntil || 0)) baseSlow = Math.min(baseSlow, AURA_CHARMER_G1_SLOW_MULT);
         if (now < (entity.decayerSlowUntil || 0)) baseSlow = Math.min(baseSlow, 0.20);
         if (now < (entity.oilMakerSp1SlowUntil || 0)) baseSlow = Math.min(baseSlow, 0.85); // Round 41 Oil SP1: 15% slow (generic oil slow 0.35 still dominates while standing in oil).
         if (now < (entity.beamSlowUntil || 0)) baseSlow = Math.min(baseSlow, 0.50);
@@ -5373,7 +5380,7 @@ const bolznstienPendingStrikes = [];
         'boom_arang', 'teether', 'fuel', 'xray', 'angel', 'demon', 'warrior', 'relay',
         'upiedown', 'chickpig', 'jetpack', 'snapper', 'robber', 'rocketeer',
         'carmela_fudge', 'peter_pickle', 'unstable', 'homer', 'orbo', 'predator', 'fastpass', 'freestyle', 'portalo', 'ghoul', 'jacktrade', 'darkener', 'awakenator', 'adlof', 'cluster', 'witch', 'boomer', 'blade_vane', 'daggershard', 'ice_cream', 'swimmer', 'kage', 'drainbow', 'draflygon', 'axeywaxy', 'trampaheal', 'mageny', 'ramage', 'upgradart', 'cinderion', 'cursed', 'king', 'anti_royal', 'sir_cheeseburger', 'weefee', 'blinkeye', 'bolznstien', 'magnatar', 'oil_maker', 'rager', 'badbat', 'looma',
-        'feathers', 'spikey', 'electrostien', 'mallow', 'nightshade', 'aegis', 'runner'
+        'feathers', 'spikey', 'electrostien', 'mallow', 'nightshade', 'aegis', 'runner', 'aura_charmer'
     ];
     const registeredBrawlerModules = window.ArenaForgeModules?.brawlers || Object.create(null);
     for (const moduleId of Object.keys(registeredBrawlerModules)) {
@@ -5481,6 +5488,7 @@ const bolznstienPendingStrikes = [];
             nightshade: 'Mythic',
             aegis: 'Mythic',
             runner: 'Mythic',
+            aura_charmer: 'Mythic',
 
             // Exotic (10)
             the_deleter: 'Exotic',
@@ -6614,6 +6622,26 @@ const bolznstienPendingStrikes = [];
             spawnEffect: { type: 'nightmareManifest', color: '#e000ff', glow: true },
             takedownEffect: { type: 'abyssalExecution', color: '#ff007f', glow: true },
             deathEffect: { type: 'nightmareDissolve', color: '#2a1a47', glow: false }
+        },
+        'aura-farmer-aura-charmer': {
+            id: 'aura-farmer-aura-charmer',
+            name: 'Aura Farmer',
+            brawler: 'aura_charmer',
+            rarity: 'hypercharge',
+            set: 'Harvest Charm',
+            price: 349,
+            currency: 'gems',
+            icon: '🌾',
+            description: 'A golden-harvest charmer in a straw hat, trailing wheat-gold charm light. Transfigures during Hypercharge into a radiant harvest sovereign with a blazing golden aura!',
+            _displayColor: '#f5c542',
+            hyperTransform: true,
+            isHyperchargeSkin: true,
+            isAlwaysAvailable: true,
+            attackEffect: { type: 'harvestSlam', color: '#f5c542', glow: true, trailColor: '#7ec850' },
+            superEffect: { type: 'harvestSweep', color: '#ffd76b', glow: true, trailColor: '#f5c542' },
+            spawnEffect: { type: 'harvestArrival', color: '#f5c542', glow: true },
+            takedownEffect: { type: 'harvestReaping', color: '#ffd76b', glow: true },
+            deathEffect: { type: 'harvestWilt', color: '#7ec850', glow: false }
         },
         'abyss-trapper': {
             id: 'abyss-trapper',
@@ -10284,6 +10312,17 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           g2: 'Team Soles (For 3 seconds, shoes passing through allies grant them an 800 shield, once per ally.)',
           sp1: 'Home Stretch (Your super passively charges 5% per second while you stand on your own trail.)',
           sp2: 'Dreaded Sprint (Every 6 seconds, your next main attack also inflicts FEAR for 0.8 seconds, making enemies run away from you.)'
+      },
+      'aura_charmer': {
+          name: 'Aura Charmer', role: 'Support', rarity: 'Mythic', color: '#c084fc',
+          desc: 'A beguiling Support who carries a charm aura everywhere he goes, slamming it to wound foes and mend allies, and sweeping it like a clock hand to expose what hides.',
+          attack: 'Charm Slam', attackDesc: 'Slams the aura around him (1,050 damage to enemies in it). Teammates in the aura are healed for 450 HP, and teammates standing in the aura gain +60 max HP every 0.9 seconds (up to +600, resets when they die).',
+          super: 'Aura Charma', superDesc: 'A clock-hand sweep scans the aura, revealing enemies in nearby bushes or invisible and marking them to take +30% damage for 4 seconds. If nobody is hiding, the aura instead gains +30% damage on the next slam.',
+          hyper: 'Charmed Overdrive: Aura Charma scans twice as far and marks anyone, not just hidden enemies. Moving toward a marked enemy is 80% faster. Charm Slam strikes twice, the second slam after a quick delay.',
+          g1: 'Irresistible Pull (Your next Charm Slam pulls enemies in the aura toward you and slows them 30% for 2 seconds)',
+          g2: 'Guardian Glow (Teammates in the aura gain a 1,200 HP shield for 5 seconds)',
+          sp1: 'Growing Charm (The aura grows while teammates stand in it, up to 80% bigger, and shrinks back when they leave)',
+          sp2: 'Stinging Aura (The aura passively damages enemies inside it for 120 damage every 0.9 seconds)'
       }
   };
 
@@ -10309,7 +10348,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
 
     // V4 standardized primary-role organization: exactly one gameplay role per brawler.
     const PRIMARY_ROLE_BY_BRAWLER = {
-        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank', rager:'Controller', looma:'Controller', feathers:'Controller', spikey:'Damage Dealer', electrostien:'Assassin', mallow:'Controller', nightshade:'Assassin', runner:'Controller',
+        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank', rager:'Controller', looma:'Controller', feathers:'Controller', spikey:'Damage Dealer', electrostien:'Assassin', mallow:'Controller', nightshade:'Assassin', runner:'Controller', aura_charmer:'Support',
     carmela_fudge:'Damage Dealer', bolznstien:'Damage Dealer', badbat:'Damage Dealer', magnatar:'Controller', oil_maker:'Controller', sir_cheeseburger:'Tank',
         blade_vane:'Assassin', kage:'Assassin', drainbow:'Controller', bowlin_rida:'Assassin', dashaholic:'Assassin', demon:'Assassin', jetpack:'Assassin', malakor:'Assassin', predator:'Assassin', swimmer:'Assassin', teether:'Assassin',
         boom_arang:'Marksman', cheseypuff:'Marksman', crystila:'Marksman', homer:'Marksman', hunter:'Marksman', orbo:'Marksman', snapper:'Marksman', xray:'Marksman',
@@ -10334,6 +10373,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
             electrostien: '⚡👊',
             mallow: '🍡',
             nightshade: '🗡️',
+            aura_charmer: '✨',
     looma: '🪡🧵',
         sir_cheeseburger: '🛡️',
         anti_royal: '🏴‍☠️',
@@ -11485,6 +11525,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
       nightshade: { g1: 16000, g2: 18000 },
       aegis: { g1: 16000, g2: 14000 },
       runner: { g1: 15000, g2: 15000 },
+      aura_charmer: { g1: 15000, g2: 15000 },
       carmela_fudge: { g1: 8000, g2: 8000 },
       bolznstien: { g1: 14000, g2: 15000 },
       sir_cheeseburger: { g1: 13000, g2: 14000 },
@@ -28955,7 +28996,7 @@ let heistFeverActive = false;
       beam:8, fuser:24, heater_miser:20, minigunnin:72, money_and_tax:24, outlit:30, steamer:8,
       bouncin_balls:6, chickpig:12, classy:6, copyphase:6, goonbob:6, hoop:5, hyperorigin:5, robber:42,
       portalo:7, ghoul:6, jacktrade:18, darkener:6, awakenator:8, trampaheal:6, axeywaxy:6, mageny:6, draflygon:6, ramage:6, upgradart:10, cinderion:10, cursed:7, king:6, anti_royal:6, weefee:6, rager:4,
-    carmela_fudge:5, bolznstien:5, sir_cheeseburger:4, blinkeye:4, magnatar:6, oil_maker:16, badbat:5, looma:7, feathers:5, spikey:6, electrostien:14, mallow:12, nightshade: 6, runner: 6
+    carmela_fudge:5, bolznstien:5, sir_cheeseburger:4, blinkeye:4, magnatar:6, oil_maker:16, badbat:5, looma:7, feathers:5, spikey:6, electrostien:14, mallow:12, nightshade: 6, runner: 6, aura_charmer: 6
   });
   let nextMainAttackActivationId = 1;
   function getSuperChargeHitsForBrawler(brawler) {
@@ -37668,6 +37709,14 @@ let heistFeverActive = false;
             damage: dmg, pierce: wallBreak, pierceWalls: wallBreak, breakWallsInstantly: wallBreak,
             ownerId: fromEntity.id, hitIds: {}, hitboxMod: 1.3, hyperVisual: runnerHyper });
         return;
+    } else if (brawler === 'aura_charmer') {
+        const auraCharmerHyper = isEntityHyperchargedNow(fromEntity, now);
+        auraCharmerSlam(fromEntity);
+        if (auraCharmerHyper) {
+            const slamOwner = fromEntity;
+            setTimeout(() => { if (typeof playing !== 'undefined' && !playing) return; if (slamOwner && slamOwner.hp > 0) auraCharmerSlam(slamOwner); }, AURA_CHARMER_HYPER_DOUBLE_SLAM_DELAY_MS);
+        }
+        return;
     }
   }
 
@@ -39948,6 +39997,7 @@ let heistFeverActive = false;
     if (combatBrawler === 'nightshade') { castNightshadeSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'aegis') { castAegisSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'runner') { castRunnerSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
+    if (combatBrawler === 'aura_charmer') { castAuraCharmerSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'ramage') { castRamageSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
         if (combatBrawler === 'upgradart') { if(!castUpgradartSuper(player, !!isHypercharged, wm.x, wm.y))superCharge=100; updateSuperButton(); return; }
     if (combatBrawler === 'axeywaxy') { castAxeyWaxySuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
@@ -41270,6 +41320,10 @@ let heistFeverActive = false;
       executeRunnerG1(bot);
     } else if (bot.brawler === 'runner' && g === 'g2') {
       executeRunnerG2(bot);
+    } else if (bot.brawler === 'aura_charmer' && g === 'g1') {
+      executeAuraCharmerG1(bot);
+    } else if (bot.brawler === 'aura_charmer' && g === 'g2') {
+      executeAuraCharmerG2(bot);
     } else if (bot.brawler === 'rager' && g === 'g1') {
       executeRagerG1(bot);
     } else if (bot.brawler === 'rager' && g === 'g2') {
@@ -41791,6 +41845,7 @@ let heistFeverActive = false;
     if (botCombatBrawler === 'nightshade') { castNightshadeSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'aegis') { castAegisSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'runner') { castRunnerSuper(bot, isHyper, targetX, targetY); return; }
+    if (botCombatBrawler === 'aura_charmer') { castAuraCharmerSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'ramage') { castRamageSuper(bot, isHyper, targetX, targetY); return; }
             if (botCombatBrawler === 'upgradart') { if(!castUpgradartSuper(bot, isHyper, targetX, targetY))bot.superCharge=100; return; }
     if (botCombatBrawler === 'axeywaxy') { castAxeyWaxySuper(bot, isHyper, targetX, targetY); return; }
@@ -43384,6 +43439,18 @@ let heistFeverActive = false;
         setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
         updateGadgetButton();
         return;
+    } else if (curBrawler === 'aura_charmer' && curGadget === 'g1') {
+        executeAuraCharmerG1(player);
+        gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
+        setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
+        updateGadgetButton();
+        return;
+    } else if (curBrawler === 'aura_charmer' && curGadget === 'g2') {
+        executeAuraCharmerG2(player);
+        gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
+        setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
+        updateGadgetButton();
+        return;
     } else if (curBrawler === 'rager' && curGadget === 'g1') {
         executeRagerG1(player);
         gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
@@ -44791,6 +44858,251 @@ let heistFeverActive = false;
           }
       }
   }
+  // ---- Aura Charmer (Mythic Support, added 2026-11-04) ----
+  // Persistent charm aura: exactly half of Decayer's code aura radius.
+  // NOTE: Anthony frames Decayer's aura as 2.6 tiles, which conflicts with
+  // the 80px/tile convention (260px = 3.25 tiles). The shipped code value is
+  // DECAYER_AURA_RADIUS / 2 = 130px; the tile framing is flagged for him.
+  const AURA_CHARMER_RADIUS = DECAYER_AURA_RADIUS / 2; // 130
+  const AURA_CHARMER_TICK_MS = 900;
+  const AURA_CHARMER_HEAL = 450;
+  const AURA_CHARMER_MAX_HP_PER_TICK = 60;
+  const AURA_CHARMER_MAX_HP_BONUS_CAP = 600;
+  const AURA_CHARMER_SP2_TICK_DMG = 120;
+  const AURA_CHARMER_SP1_GROWTH_PER_SEC = 0.10;
+  const AURA_CHARMER_SP1_GROWTH_CAP = 0.80;
+  const AURA_CHARMER_MARK_MS = 4000;
+  const AURA_CHARMER_MARK_DMG_MULT = 1.30;
+  const AURA_CHARMER_HYPER_SCAN_MULT = 2.0;
+  const AURA_CHARMER_CHASE_SPEED_MULT = 1.80;
+  const AURA_CHARMER_CHASE_RANGE = 800;
+  const AURA_CHARMER_HYPER_DOUBLE_SLAM_DELAY_MS = 350;
+  const AURA_CHARMER_G1_PULL_PX = 100;
+  const AURA_CHARMER_G1_SLOW_MULT = 0.70;
+  const AURA_CHARMER_G1_SLOW_MS = 2000;
+  const AURA_CHARMER_G2_SHIELD = 1200;
+  const AURA_CHARMER_G2_SHIELD_MS = 5000;
+  const AURA_CHARMER_SWEEP_MS = 600;
+
+  function isAuraCharmerEntity(entity) {
+      return !!entity && getEntityBrawlerId(entity) === 'aura_charmer';
+  }
+  function auraCharmerHasSP1(entity) {
+      const c = getEntityStarChoice(entity);
+      return c === 'slow' || c === 'sp1';
+  }
+  function auraCharmerHasSP2(entity) {
+      const c = getEntityStarChoice(entity);
+      return c === 'long' || c === 'sp2';
+  }
+  function getAuraCharmerRadius(entity, now) {
+      if (!entity) return AURA_CHARMER_RADIUS;
+      const grown = entity.auraCharmerGrowth || 0;
+      return AURA_CHARMER_RADIUS * (1 + clamp(grown, 0, AURA_CHARMER_SP1_GROWTH_CAP));
+  }
+  function auraCharmerIsHidden(target, now) {
+      if (!target) return false;
+      if (typeof isEntityInsideBush === 'function' && isEntityInsideBush(target)) return true;
+      if ((target.invisibleUntil || 0) > now) return true;
+      if (typeof isGhoulInvisible === 'function' && isGhoulInvisible(target, now)) return true;
+      return false;
+  }
+  function auraCharmerWearsAuraFarmer(entity) {
+      if (!entity || entity.id !== player.id) return false;
+      try { return getActiveSkinForBrawler('aura_charmer')?.id === 'aura-farmer-aura-charmer'; } catch (e) { return false; }
+  }
+
+  // Charm Slam: instant aura burst. Enemies in the aura take damage, allies
+  // in the aura are healed, and power boxes in the aura break (Anthony's
+  // ruling: the Charmer needs to break boxes). Towers, Core, and metal
+  // walls are still untouched.
+  function auraCharmerSlam(owner) {
+      if (!owner || owner.hp <= 0) return 0;
+      const now = performance.now();
+      const level = owner.id === player.id ? getSelectedBrawlerLevel() : (owner.level || 11);
+      const stats = getScaledStats('aura_charmer', level);
+      let dmg = stats.dmg;
+      if (owner.auraCharmerNextAttackBoost) {
+          owner.auraCharmerNextAttackBoost = false;
+          dmg = Math.round(dmg * AURA_CHARMER_MARK_DMG_MULT);
+      }
+      const radius = getAuraCharmerRadius(owner, now);
+      const pull = !!owner.auraCharmerPullNext;
+      if (pull) owner.auraCharmerPullNext = false;
+      let hits = 0;
+      for (const target of [player, ...bots]) {
+          if (!target || target.hp <= 0 || target.id === owner.id) continue;
+          if (target.isArenaForgeTower || target.isArenaForgeCore) continue;
+          const dist = Math.hypot(target.x - owner.x, target.y - owner.y);
+          if (dist > radius + (target.radius || 14)) continue;
+          if (areAlliedEntities(owner, target)) {
+              doHeal(target, AURA_CHARMER_HEAL);
+              continue;
+          }
+          checkHit(target, { ownerBrawler: 'aura_charmer', ownerId: owner.id, damage: dmg, pierce: true, hitIds: {}, isAuraCharmerSlam: true }, -1);
+          if (!target.isPet) grantMainAttackCharge(owner, { ownerBrawler: owner.currentMainAttackBrawler, mainAttackActivationId: owner.currentMainAttackActivationId });
+          hits++;
+          if (pull && !isEntityCcImmune(target, now)) {
+              const dx = owner.x - target.x, dy = owner.y - target.y;
+              const len = Math.hypot(dx, dy) || 1;
+              const step = Math.min(AURA_CHARMER_G1_PULL_PX, Math.max(0, len - 40));
+              const nx = target.x + (dx / len) * step, ny = target.y + (dy / len) * step;
+              const spot = (typeof findNearestOpenSpot === 'function') ? findNearestOpenSpot(nx, ny, (target.radius || 14) + 2, 360) : { x: nx, y: ny };
+              target.x = spot.x; target.y = spot.y;
+              target.auraCharmerSlowUntil = Math.max(target.auraCharmerSlowUntil || 0, now + AURA_CHARMER_G1_SLOW_MS);
+          }
+      }
+      explosions.push({ x: owner.x, y: owner.y, radius, life: 0, maxLife: 0.28, color: 'rgba(192,132,252,.55)', fxKind: 'auraCharmerSlam' });
+      // Boxes break: power boxes in the aura take the slam's damage through
+      // the engine's standard box-damage path (rewards + destruction handled
+      // there, same as other attacks). Towers, Core, and metal walls are not
+      // in this loop, so they stay untouched.
+      for (let wallIndex = destructibleWalls.length - 1; wallIndex >= 0; wallIndex--) {
+          const wall = destructibleWalls[wallIndex];
+          if (!wall || wall.hp <= 0 || !isHeaterLockableBox(wall)) continue;
+          if (!rectCircleCollides(wall.x, wall.y, wall.w, wall.h, owner.x, owner.y, radius)) continue;
+          applyHeaterBoxDamage(owner, wall, dmg);
+      }
+      return hits;
+  }
+
+  // Super: Aura Charma. Clock-hand sweep visual; instant application.
+  // Base: marks hidden (bush/invisible) enemies in the aura. Hyper: scans
+  // further and marks anyone. No marks at all -> +30% on the next slam.
+  function castAuraCharmerSuper(entity, isHyper, targetX, targetY) {
+      if (!entity || entity.hp <= 0) return false;
+      const now = performance.now();
+      const radius = getAuraCharmerRadius(entity, now) * (isHyper ? AURA_CHARMER_HYPER_SCAN_MULT : 1);
+      let marked = 0;
+      for (const target of [player, ...bots]) {
+          if (!target || target.hp <= 0 || target.id === entity.id) continue;
+          if (target.isArenaForgeTower || target.isArenaForgeCore) continue;
+          if (areAlliedEntities(entity, target)) continue;
+          const dist = Math.hypot(target.x - entity.x, target.y - entity.y);
+          if (dist > radius + (target.radius || 14)) continue;
+          if (!isHyper && !auraCharmerIsHidden(target, now)) continue;
+          target.auraCharmerMarkUntil = now + AURA_CHARMER_MARK_MS;
+          target.auraCharmerMarkedById = entity.id;
+          spawnFloatingText(target.x, target.y - 38, 'MARKED! +30% DMG', '#ffd76b');
+          marked++;
+      }
+      if (marked === 0) {
+          entity.auraCharmerNextAttackBoost = true;
+          spawnFloatingText(entity.x, entity.y - 40, 'AURA +30% NEXT SLAM', '#ffd76b');
+      }
+      entity.auraCharmerSweepUntil = now + AURA_CHARMER_SWEEP_MS;
+      entity.auraCharmerSweepStartedAt = now;
+      entity.auraCharmerSweepRadius = radius;
+      if (isHyper && auraCharmerWearsAuraFarmer(entity)) spawnFloatingText(entity.x, entity.y - 56, '🌾 AURA FARMER!', '#f5c542');
+      explosions.push({ x: entity.x, y: entity.y, radius, life: 0, maxLife: 0.4, color: isHyper ? 'rgba(245,197,66,.5)' : 'rgba(192,132,252,.5)', fxKind: 'auraCharmerSweep' });
+      return true;
+  }
+
+  function executeAuraCharmerG1(entity) {
+      if (!entity || entity.hp <= 0) return false;
+      entity.auraCharmerPullNext = true;
+      spawnFloatingText(entity.x, entity.y - 34, 'IRRESISTIBLE PULL', '#c084fc');
+      return true;
+  }
+  function executeAuraCharmerG2(entity) {
+      if (!entity || entity.hp <= 0) return false;
+      const now = performance.now();
+      const radius = getAuraCharmerRadius(entity, now);
+      let granted = 0;
+      for (const ally of [player, ...bots]) {
+          if (!ally || ally.hp <= 0 || ally.id === entity.id) continue;
+          if (!areAlliedEntities(entity, ally)) continue;
+          if (Math.hypot(ally.x - entity.x, ally.y - entity.y) > radius + (ally.radius || 14)) continue;
+          grantShield(ally, AURA_CHARMER_G2_SHIELD, Math.max(AURA_CHARMER_G2_SHIELD, ally.shieldMax || 0));
+          ally.auraCharmerShieldGranted = AURA_CHARMER_G2_SHIELD;
+          ally.auraCharmerShieldExpiresAt = now + AURA_CHARMER_G2_SHIELD_MS;
+          granted++;
+      }
+      spawnFloatingText(entity.x, entity.y - 34, granted > 0 ? 'GUARDIAN GLOW!' : 'GUARDIAN GLOW (NO ALLIES NEAR)', '#ffd76b');
+      return true;
+  }
+
+  // +80% speed while moving toward a marked enemy (within chase range).
+  function getAuraCharmerChaseSpeedMult(entity, now) {
+      if (!entity || entity.hp <= 0 || !entity.auraCharmerMoving || entity.auraCharmerMoveAngle == null) return 1.0;
+      for (const target of [player, ...bots]) {
+          if (!target || target.hp <= 0 || target.id === entity.id) continue;
+          if ((target.auraCharmerMarkUntil || 0) <= now) continue;
+          if (areAlliedEntities(entity, target)) continue;
+          const dist = Math.hypot(target.x - entity.x, target.y - entity.y);
+          if (dist > AURA_CHARMER_CHASE_RANGE) continue;
+          const toAng = Math.atan2(target.y - entity.y, target.x - entity.x);
+          let diff = Math.abs(toAng - entity.auraCharmerMoveAngle);
+          if (diff > Math.PI) diff = Math.PI * 2 - diff;
+          if (diff < Math.PI / 3) return AURA_CHARMER_CHASE_SPEED_MULT;
+      }
+      return 1.0;
+  }
+
+  // Per-frame aura systems. Always runs (death/shield cleanup must not wait
+  // on a living Charmer); the caster loop only processes living Charmers.
+  function updateAuraCharmerAura(now) {
+      // Death reset: a fighter's max-HP bonus resets when they die, even if
+      // no Charmer is alive to tick. G2 shield grants expire after 5s.
+      for (const e of [player, ...bots]) {
+          if (!e) continue;
+          if ((e.auraCharmerBonusMaxHp || 0) > 0 && (e.hp <= 0 || e.isDead)) {
+              e.maxHp = Math.max(1, (e.maxHp || 1) - e.auraCharmerBonusMaxHp);
+              e.auraCharmerBonusMaxHp = 0;
+          }
+          if ((e.auraCharmerShieldGranted || 0) > 0 && now >= (e.auraCharmerShieldExpiresAt || 0)) {
+              e.shield = Math.max(0, (e.shield || 0) - e.auraCharmerShieldGranted);
+              e.auraCharmerShieldGranted = 0;
+          }
+      }
+      for (const caster of [player, ...bots]) {
+          if (!caster || caster.hp <= 0 || !isAuraCharmerEntity(caster)) continue;
+          // Track movement direction for the hyper chase-speed bonus.
+          const px = caster.auraCharmerPrevX, py = caster.auraCharmerPrevY;
+          if (px != null && py != null) {
+              const mdx = caster.x - px, mdy = caster.y - py;
+              if (Math.hypot(mdx, mdy) > 1) { caster.auraCharmerMoving = true; caster.auraCharmerMoveAngle = Math.atan2(mdy, mdx); }
+              else caster.auraCharmerMoving = false;
+          }
+          caster.auraCharmerPrevX = caster.x; caster.auraCharmerPrevY = caster.y;
+          if (now < (caster.auraCharmerNextTickAt || 0)) continue;
+          caster.auraCharmerNextTickAt = now + AURA_CHARMER_TICK_MS;
+          const radius = getAuraCharmerRadius(caster, now);
+          const hasSP1 = auraCharmerHasSP1(caster);
+          const hasSP2 = auraCharmerHasSP2(caster);
+          let teammatesInside = 0;
+          for (const ally of [player, ...bots]) {
+              if (!ally || ally.hp <= 0 || ally.id === caster.id) continue;
+              if (!areAlliedEntities(caster, ally)) continue;
+              if (Math.hypot(ally.x - caster.x, ally.y - caster.y) > radius + (ally.radius || 14)) continue;
+              teammatesInside++;
+              const bonus = ally.auraCharmerBonusMaxHp || 0;
+              if (bonus < AURA_CHARMER_MAX_HP_BONUS_CAP) {
+                  const add = Math.min(AURA_CHARMER_MAX_HP_PER_TICK, AURA_CHARMER_MAX_HP_BONUS_CAP - bonus);
+                  ally.auraCharmerBonusMaxHp = bonus + add;
+                  ally.maxHp = (ally.maxHp || 0) + add;
+                  ally.hp = Math.min(ally.maxHp, (ally.hp || 0) + add);
+              }
+          }
+          // SP1: aura grows while teammates stand in it, shrinks back when alone.
+          if (hasSP1) {
+              const step = AURA_CHARMER_SP1_GROWTH_PER_SEC * (AURA_CHARMER_TICK_MS / 1000);
+              if (teammatesInside > 0) caster.auraCharmerGrowth = Math.min(AURA_CHARMER_SP1_GROWTH_CAP, (caster.auraCharmerGrowth || 0) + step * teammatesInside);
+              else caster.auraCharmerGrowth = Math.max(0, (caster.auraCharmerGrowth || 0) - step);
+          }
+          // SP2: the aura passively damages enemies inside it (brawlers only).
+          if (hasSP2) {
+              for (const target of [player, ...bots]) {
+                  if (!target || target.hp <= 0 || target.id === caster.id) continue;
+                  if (target.isArenaForgeTower || target.isArenaForgeCore) continue;
+                  if (areAlliedEntities(caster, target)) continue;
+                  if (Math.hypot(target.x - caster.x, target.y - caster.y) > radius + (target.radius || 14)) continue;
+                  checkHit(target, { ownerBrawler: 'aura_charmer', ownerId: caster.id, damage: AURA_CHARMER_SP2_TICK_DMG, pierce: true, hitIds: {}, isAuraCharmerAuraTick: true }, -1);
+              }
+          }
+      }
+  }
+
   function updateCursedSystems(now, dt) {
       for (let i = cursedStorms.length - 1; i >= 0; i--) {
           const storm = cursedStorms[i], owner = getEntityById(storm.ownerId);
@@ -52054,6 +52366,11 @@ function checkHit(target, b, i){
             }
         }
 
+        // Aura Charmer mark: marked fighters take +30% damage from any source.
+        if (target && (target.auraCharmerMarkUntil || 0) > performance.now() && b && typeof b.damage === 'number') {
+            b.damage = Math.round(b.damage * AURA_CHARMER_MARK_DMG_MULT);
+        }
+
         // Ramage Power Play 90% Damage Reduction during Super Dash
         if (target && target.ramageIsDashing && isPowerPlayModifierActive(target) && (target.brawler === 'ramage' || target.id === player.id)) {
             b.damage = Math.round((b.damage || 0) * 0.10);
@@ -56952,7 +57269,7 @@ function checkHit(target, b, i){
               }
           }
       }
-    const playerSlowMult = getEntitySlowMultiplier(player, now) * playerCheeseSlow * getMallowSp1SpeedMult(player, now) * getRunnerTrailSpeedMult(player, now);
+    const playerSlowMult = getEntitySlowMultiplier(player, now) * playerCheeseSlow * getMallowSp1SpeedMult(player, now) * getRunnerTrailSpeedMult(player, now) * getAuraCharmerChaseSpeedMult(player, now);
 
       let vx=0, vy=0;
       if(keys['w']||keys['arrowup']) vy -= 1;
@@ -57453,6 +57770,7 @@ function checkHit(target, b, i){
         updateDarkenerSystems(now, dt);
         updateCursedSystems(now, dt);
         updateDecayerAura(now);
+        updateAuraCharmerAura(now);
         updateKingSystems(now, dt);
         updateAntiRoyalSystems(now, dt);
         updateJackTradeSystems(now, dt);
@@ -61318,7 +61636,7 @@ function checkHit(target, b, i){
         }
       }
     const upiedownMapSlow = now < upiedownPieUntil && t.brawler !== 'upiedown' ? 0.72 : 1;
-    const slow = getEntitySlowMultiplier(t, now) * cheeseSlow * upiedownMapSlow * getMallowSp1SpeedMult(t, now) * getRunnerTrailSpeedMult(t, now);
+    const slow = getEntitySlowMultiplier(t, now) * cheeseSlow * upiedownMapSlow * getMallowSp1SpeedMult(t, now) * getRunnerTrailSpeedMult(t, now) * getAuraCharmerChaseSpeedMult(t, now);
       
       // find nearest enemy (player or other bot), biased toward low HP targets
       let target = null;
@@ -62216,6 +62534,8 @@ function checkHit(target, b, i){
                           fire(t, aimX, aimY, true, false);
                       }
                   }
+             } else if (t.brawler === 'aura_charmer') {
+                 wantToShoot = distToTarget <= getAuraCharmerRadius(t, nowTarget) + (target.radius || 14);
              } else if (t.brawler === 'skeletrooper') {
                  wantToShoot = distToTarget <= 62;
              }
@@ -72367,6 +72687,34 @@ function checkHit(target, b, i){
             ctx.beginPath(); ctx.arc(entity.x, entity.y, DECAYER_AURA_RADIUS * pulse, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
             ctx.globalAlpha = 0.6; ctx.lineWidth = 2; ctx.setLineDash([10, 8]);
             ctx.beginPath(); ctx.arc(entity.x, entity.y, DECAYER_AURA_RADIUS * (2 - pulse), 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); ctx.restore();
+        if (entity && entity.hp > 0 && isAuraCharmerEntity(entity)) {
+            const now = performance.now();
+            const hyper = isEntityHyperchargedNow(entity, now);
+            const farmer = hyper && auraCharmerWearsAuraFarmer(entity);
+            const r = getAuraCharmerRadius(entity, now);
+            ctx.save();
+            ctx.globalAlpha = 0.85;
+            ctx.fillStyle = farmer ? 'rgba(245,197,66,.14)' : 'rgba(192,132,252,.10)';
+            ctx.strokeStyle = farmer ? '#f5c542' : '#c084fc';
+            ctx.shadowColor = ctx.strokeStyle; ctx.shadowBlur = farmer ? 26 : 16; ctx.lineWidth = farmer ? 5 : 3;
+            ctx.beginPath(); ctx.arc(entity.x, entity.y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.restore();
+            // Steady ring on purpose: unlike Decayer's pulsing ring, the
+            // charm aura does not pulse.
+        }
+        if (entity && entity.hp > 0 && performance.now() < (entity.auraCharmerMarkUntil || 0)) {
+            ctx.save(); ctx.globalAlpha = 0.9; ctx.strokeStyle = '#ffd76b'; ctx.shadowColor = '#ffd76b'; ctx.shadowBlur = 12; ctx.lineWidth = 2.5;
+            ctx.beginPath(); ctx.arc(entity.x, entity.y, (entity.radius || 14) + 10, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+        }
+        if (entity && entity.hp > 0 && performance.now() < (entity.auraCharmerSweepUntil || 0)) {
+            const now = performance.now();
+            const progress = clamp((now - (entity.auraCharmerSweepStartedAt || now)) / AURA_CHARMER_SWEEP_MS, 0, 1);
+            const sweepR = entity.auraCharmerSweepRadius || AURA_CHARMER_RADIUS;
+            const ang = progress * Math.PI * 2 - Math.PI / 2;
+            ctx.save(); ctx.globalAlpha = 0.9 * (1 - progress * 0.5); ctx.strokeStyle = '#e9d5ff'; ctx.lineWidth = 3; ctx.shadowColor = '#c084fc'; ctx.shadowBlur = 14;
+            ctx.beginPath(); ctx.moveTo(entity.x, entity.y); ctx.lineTo(entity.x + Math.cos(ang) * sweepR, entity.y + Math.sin(ang) * sweepR); ctx.stroke();
+            ctx.beginPath(); ctx.arc(entity.x, entity.y, sweepR * progress, 0, Math.PI * 2); ctx.globalAlpha = 0.25; ctx.stroke(); ctx.restore();
+        }
         }
         if (entity && entity.hp > 0 && performance.now() < (entity.chickpigChickenUntil||0)) {
             const flap=Math.sin(performance.now()/75)*5;ctx.save();ctx.translate(entity.x,entity.y+entity.radius*.55);ctx.shadowColor=entity.chickpigChickenSpeedMult>=1.5?'#d66cff':'#ffd16b';ctx.shadowBlur=16;ctx.fillStyle='#fff4cf';ctx.beginPath();ctx.ellipse(0,0,entity.radius+8,11,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#ffbd32';ctx.beginPath();ctx.moveTo(entity.radius+5,-2);ctx.lineTo(entity.radius+15,2);ctx.lineTo(entity.radius+5,6);ctx.closePath();ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-5,0);ctx.lineTo(-18,-8-flap);ctx.moveTo(5,0);ctx.lineTo(18,-8+flap);ctx.stroke();ctx.restore();
