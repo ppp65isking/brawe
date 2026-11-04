@@ -8423,6 +8423,15 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           od.dailyTotal = Math.max(0, Math.floor(Number(od.dailyTotal) || 0));
           if (!Array.isArray(od.dailyClaimed)) od.dailyClaimed = [];
           if (!Number.isFinite(od.surgeDrops)) od.surgeDrops = 0;
+          // Legacy pickup inventory from PR #76 is retired:
+          // any unspent drops — including one armed for a match — convert
+          // once into Surge Tappers (the tap-to-open equivalent) instead
+          // of stranding them. Fresh state is untouched (surgeDrops 0).
+          if ((od.surgeDrops || 0) > 0 || od.surgeDropArmed) {
+              playerData.hyperTapperCount = (playerData.hyperTapperCount || 0) + Math.max(0, Math.floor(od.surgeDrops || 0)) + (od.surgeDropArmed ? 1 : 0);
+              od.surgeDrops = 0;
+              delete od.surgeDropArmed;
+          }
           const dayKey = getOverdriveDayKey(now);
           if (od.dailyKey !== dayKey) { od.dailyKey = dayKey; od.dailyTotal = 0; od.dailyClaimed = []; }
           return od;
@@ -9490,6 +9499,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
                           <strong style="padding:6px 10px;border-radius:8px;background:#e78cff;color:#1d0626;">${active ? `${daysLeft}d left` : 'EVENT ENDED'}</strong>
                       </div>
                       <p style="margin:6px 0 0;color:#e8c6e8;font-size:13px;">Every Core Surge activation in every match feeds the community bar. Every attack landed while Core Surged feeds today's bar. Tier rewards are claimed from the shop, and stay claimable after the event ends.</p>
+                      <p style="margin:6px 0 0;color:#ffd166;font-size:13px;font-weight:800;">⚡ Surge Tappers: ${playerData.hyperTapperCount || 0} — milestone rewards grant Surge Tappers; open them from the shop's Surge Tappers card or the Fighters screen.</p>
                   </div>
                   <div style="padding:14px;border:1px solid #e78cff;border-radius:12px;background:rgba(231,140,255,0.08);margin-bottom:14px;color:#fff;">
                       <div style="display:flex;justify-content:space-between;"><b>COMMUNITY CORE SURGE BAR</b><span>${main.total.toLocaleString()} activations</span></div>
@@ -18900,29 +18910,34 @@ let heistFeverActive = false;
   function getShopClaimKey(prefix,cycleKey){return `${prefix}::${cycleKey}`;}
   function pickTimedEntry(entries,seed){return entries[hashShopKey(seed)%entries.length];}
   // ===== Core Surge Overdrive — REWARDS + SHOP =====
-  // Reward tables, milestone claims, and the Core Surge drop use/spawn/
-  // collect path. State, tier arrays, tier getters, and the active-window
+  // Reward tables, milestone claims, and Surge Tapper grants. State, tier
+  // arrays, tier getters, and the active-window
   // check live in the canonical event-bars block above (=== CORE SURGE
   // OVERDRIVE (event bars) ===) — this block reads them, never redefines them.
-  // [BUILDER PICK] Reward tables — existing currencies/items only, escalating
-  // per tier. Field shape per entry: { coins, gems, corePieces, pins, souls,
-  // surgeDrops }. `pins` = pins granted via grantPinPack(pins); a missing
-  // field counts as 0. Daily top tiers include up to 2 Core Surge drops.
+  // Reward tables — existing currencies/items only, escalating per tier.
+  // Field shape per entry: { coins, gems, corePieces, pins, souls,
+  // surgeTappers }. `pins` = pins granted via grantPinPack(pins); a missing
+  // field counts as 0. `surgeTappers` = existing Surge Tappers granted to
+  // playerData.hyperTapperCount (opened via openHyperStarrDrop()).
+  // [BUILDER PICK — nerfed 2026-11-04] Same thresholds, same reward types,
+  // non-decreasing across tiers; early tiers kept, middle trimmed, top
+  // tiers cut hardest (main top: 30000 -> 18000 coins; daily top:
+  // 12000 -> 7000 coins). Every value is a builder pick for Anthony.
   const OVERDRIVE_MAIN_REWARDS = [
       { coins: 500, gems: 5 },
       { coins: 1000, gems: 10, corePieces: 10 },
-      { coins: 2000, gems: 15, corePieces: 25, pins: 3 },
-      { coins: 4000, gems: 25, corePieces: 50, pins: 3, souls: 50 },
-      { coins: 8000, gems: 40, corePieces: 100, pins: 6, souls: 100 },
-      { coins: 15000, gems: 60, corePieces: 200, pins: 6, souls: 200, surgeDrops: 1 },
-      { coins: 30000, gems: 100, corePieces: 400, pins: 9, souls: 400, surgeDrops: 2 },
+      { coins: 1500, gems: 12, corePieces: 20, pins: 2 },
+      { coins: 3000, gems: 20, corePieces: 40, pins: 3, souls: 40 },
+      { coins: 5000, gems: 30, corePieces: 75, pins: 4, souls: 75 },
+      { coins: 9000, gems: 40, corePieces: 125, pins: 5, souls: 125, surgeTappers: 1 },
+      { coins: 18000, gems: 60, corePieces: 250, pins: 6, souls: 250, surgeTappers: 2 },
   ];
   const OVERDRIVE_DAILY_REWARDS = [
       { coins: 250, gems: 3 },
       { coins: 750, gems: 8, corePieces: 15 },
-      { coins: 2000, gems: 15, corePieces: 40, pins: 3 },
-      { coins: 5000, gems: 30, corePieces: 100, pins: 3, souls: 100, surgeDrops: 1 },
-      { coins: 12000, gems: 50, corePieces: 250, pins: 6, souls: 250, surgeDrops: 2 },
+      { coins: 1500, gems: 12, corePieces: 30, pins: 2 },
+      { coins: 3000, gems: 20, corePieces: 60, pins: 3, souls: 60, surgeTappers: 1 },
+      { coins: 7000, gems: 30, corePieces: 150, pins: 4, souls: 150, surgeTappers: 2 },
   ];
   
   
@@ -18936,18 +18951,18 @@ let heistFeverActive = false;
       if (r.corePieces) parts.push(`${r.corePieces} Core Pieces`);
       if (r.pins) parts.push(`📌 ${r.pins} pins`);
       if (r.souls) parts.push(`🧪 ${r.souls} Souls`);
-      if (r.surgeDrops) parts.push(`⚡ ${r.surgeDrops} Core Surge Drop${r.surgeDrops > 1 ? 's' : ''}`);
+      if (r.surgeTappers) parts.push(`⚡ ${r.surgeTappers} Surge Tapper${r.surgeTappers > 1 ? 's' : ''}`);
       return parts.length ? parts.join(' · ') : 'No reward';
   }
   function grantOverdriveRewardParts(r) {
       r = r || {};
-      const granted = { coins: 0, gems: 0, corePieces: 0, pins: 0, souls: 0, surgeDrops: 0 };
+      const granted = { coins: 0, gems: 0, corePieces: 0, pins: 0, souls: 0, surgeTappers: 0 };
       if (r.coins) { playerData.coins = (playerData.coins || 0) + r.coins; granted.coins = r.coins; }
       if (r.gems) { playerData.gems = (playerData.gems || 0) + r.gems; granted.gems = r.gems; }
       if (r.corePieces) { addCorePieces(r.corePieces); granted.corePieces = r.corePieces; }
       if (r.pins) { if (typeof grantPinPack === 'function') grantPinPack(r.pins); granted.pins = r.pins; }
       if (r.souls) { playerData.souls = (playerData.souls || 0) + r.souls; granted.souls = r.souls; }
-      if (r.surgeDrops) { const s = ensureOverdriveState(); s.surgeDrops = (s.surgeDrops || 0) + r.surgeDrops; granted.surgeDrops = r.surgeDrops; }
+      if (r.surgeTappers) { playerData.hyperTapperCount = (playerData.hyperTapperCount || 0) + r.surgeTappers; granted.surgeTappers = r.surgeTappers; }
       return granted;
   }
   // Claim a milestone the moment its goal is reached — never held until the
@@ -18975,52 +18990,17 @@ let heistFeverActive = false;
       if (typeof saveProgress === 'function') saveProgress();
       return granted;
   }
-  // [BUILDER PICK — Core Surge drop design] A claimed drop is inventory, not
-  // a dead number: USE consumes one drop and arms the next match. At the
-  // first update tick of a live match, maybeSpawnOverdriveSurgeDropPickup()
-  // spawns one `overdrive_surge` pickup 70px beside the player; walking over
-  // it (player only — bots cannot take it) sets hyperChargeCharge = 100 and
-  // calls activateHypercharge(), mirroring the existing overlord_crystal
-  // pickup (which also fills hyper charge to 100). If the fighter's Core
-  // Surge is not unlocked, activateHypercharge() declines and the 100 charge
-  // simply stays banked — the same behaviour as any other hyper-charge
-  // pickup for a locked fighter. Reuse check: no existing instant-surge
-  // inventory item exists — the only instant fills are the overlord_crystal
-  // pickup, Tug Zone checkpoints, and training refill buttons, none of which
-  // is an ownable, claimable item — so this pickup kind is new, but its
-  // collection effect reuses the existing hyper-charge machinery.
-  function useOverdriveSurgeDrop() {
-      const s = ensureOverdriveState();
-      if (s.surgeDropArmed) return false;
-      if ((s.surgeDrops || 0) <= 0) return false;
-      s.surgeDrops -= 1;
-      s.surgeDropArmed = true;
-      if (typeof saveProgress === 'function') saveProgress();
-      return true;
-  }
-  function maybeSpawnOverdriveSurgeDropPickup() {
-      const s = ensureOverdriveState();
-      if (!s.surgeDropArmed) return false;
-      if (typeof playing === 'undefined' || !playing || gameOver) return false;
-      if (!player || player.hp <= 0) return false;
-      if (powerups.some(p => p && p.kind === 'overdrive_surge')) return false;
-      const x = clamp(player.x + 70, 40, WORLD_W - 40);
-      const y = clamp(player.y, 40, WORLD_H - 40);
-      powerups.push({ x, y, kind: 'overdrive_surge' });
-      s.surgeDropArmed = false;
-      return true;
-  }
-  function collectOverdriveSurgePickup(collector) {
-      if (collector !== player) return false;
-      hyperChargeCharge = 100;
-      player.hyperChargeCharge = 100;
-      if (typeof updateHyperButton === 'function') updateHyperButton();
-      // Activates Core Surge when available; otherwise the 100 charge stays
-      // banked (activateHypercharge() itself enforces availability).
-      if (typeof activateHypercharge === 'function') activateHypercharge();
-      if (typeof spawnFloatingText === 'function') spawnFloatingText(player.x, player.y - 30, '⚡ CORE SURGE DROP!', '#ff77e9');
-      return true;
-  }
+  // [BUILDER PICK — Surge Tappers, not pickups] A claimed Surge Tapper is
+  // the existing Surge Tapper inventory (playerData.hyperTapperCount),
+  // opened with the existing tap-to-reveal overlay openHyperStarrDrop():
+  // tap to reveal a Core Surge unlock for a fighter that lacks one, or
+  // Core Pieces overflow when every Core Surge is already unlocked. There
+  // is deliberately NO in-match pickup: no spawn, no walk-over collection,
+  // no shop USE arming. The PR #76 pickup kind and its use/spawn/collect
+  // functions were deleted with this change; the
+  // shop's Surge Tappers card opens the existing Tapper overlay instead
+  // (closing the shop first, since the shop sits at z-index 1300 above
+  // the Tapper overlay's 1000).
   // ----- end Overdrive rewards core (Worker C) -----
   function syncShopState(){if(playerData.gems==null)playerData.gems=0;if(!playerData.shopClaims)playerData.shopClaims={};}
   function trySkinInTraining(skinId){
@@ -20018,21 +19998,20 @@ let heistFeverActive = false;
               ? '⚡ CORE SURGE OVERDRIVE IS LIVE — claim each milestone the moment you reach it.'
               : '⚡ CORE SURGE OVERDRIVE — milestones below show your live progress; claim each one the moment you reach it.';
           grid.appendChild(status);
-          addSection(grid, 'Core Surge Drops');
-          const armed = !!s.surgeDropArmed;
-          const drops = s.surgeDrops || 0;
+          addSection(grid, 'Surge Tappers');
+          const tappers = playerData.hyperTapperCount || 0;
           grid.appendChild(makeShopCard({
-              titleText: '⚡ Core Surge Drop',
+              titleText: '⚡ Surge Tapper',
               accent: '#ff77e9',
-              descText: 'Arm one for your next match: a Core Surge pickup spawns beside you at match start. Walk over it to fill Core Surge charge to 100 and activate Core Surge if your fighter has it unlocked.',
-              priceText: armed ? 'ARMED FOR YOUR NEXT MATCH' : `${drops} IN INVENTORY`,
-              buttonText: 'USE — ARM NEXT MATCH',
+              descText: 'Tap to reveal: a Core Surge unlock for a fighter that does not have one yet, or Core Pieces overflow if all Core Surges are already unlocked. Milestone rewards below grant Surge Tappers — open them here or from the Fighters screen.',
+              priceText: `${tappers} IN INVENTORY`,
+              buttonText: 'OPEN A SURGE TAPPER',
               buttonColor: '#ff77e9',
               isOwned: false,
-              isLocked: armed || drops <= 0,
-              lockedText: armed ? 'ARMED FOR NEXT MATCH' : 'NO DROPS YET — EARN THEM FROM MILESTONES BELOW',
-              footerText: 'One armed drop per match. Bots cannot pick it up.',
-              onBuy: () => { if (useOverdriveSurgeDrop()) { ensureShopButtonRefresh(); renderTabContent(); } }
+              isLocked: tappers <= 0,
+              lockedText: 'NO SURGE TAPPERS YET — EARN THEM FROM MILESTONES BELOW',
+              footerText: 'Opens the existing Surge Tapper reveal. Tap the overlay to reveal your reward.',
+              onBuy: () => { if (typeof overlay !== 'undefined') overlay.remove(); if (typeof openHyperStarrDrop === 'function') openHyperStarrDrop(); }
           }));
           addSection(grid, 'Main Milestones — Total Surge');
           OVERDRIVE_MAIN_TIERS.forEach((tier, i) => {
@@ -55676,9 +55655,6 @@ function checkHit(target, b, i){
     }
 
     // Powerup collection
-    // [Worker C] Arm a claimed Core Surge drop: spawn its pickup beside the
-    // player on the first live-match tick after USE (not in menus).
-    if (typeof maybeSpawnOverdriveSurgeDropPickup === 'function') maybeSpawnOverdriveSurgeDropPickup();
     for(let i=powerups.length-1; i>=0; i--){
         const p = powerups[i];
         let collectedBy = null;
@@ -55686,13 +55662,8 @@ function checkHit(target, b, i){
             if(e.isBoss) continue; // Boss cannot collect cubes or crystals
             if(e.hp > 0 && Math.hypot(e.x - p.x, e.y - p.y) < e.radius + 20){ collectedBy = e; break; }
         }
-        // [Worker C] The player's Core Surge drop is player-only: a bot
-        // walking over it must not consume it — leave it on the field.
-        if (p.kind === 'overdrive_surge' && collectedBy !== player) continue;
         if(collectedBy){
-            if (p.kind === 'overdrive_surge') {
-                collectOverdriveSurgePickup(collectedBy);
-            } else if (p.kind === 'christmas_dmg' || p.kind === 'christmas_speed' || p.kind === 'christmas_hp') {
+            if (p.kind === 'christmas_dmg' || p.kind === 'christmas_speed' || p.kind === 'christmas_hp') {
                 applyChristmasBuff(collectedBy, p.kind);
             } else if (p.kind === 'overlord_crystal') {
                 triggerOverlordTrialCrystal(collectedBy, 8000);
@@ -76807,21 +76778,6 @@ function checkHit(target, b, i){
             ctx.strokeStyle = '#ffd0ff';
             ctx.lineWidth = 2;
             ctx.stroke();
-            ctx.restore();
-        } else if (p.kind === 'overdrive_surge') {
-            // [Worker C] Core Surge drop pickup: pulsing purple-gold bolt.
-            ctx.save();
-            ctx.translate(p.x, p.y);
-            const odPulse = 1 + Math.sin(performance.now() / 180) * 0.12;
-            ctx.scale(odPulse, odPulse);
-            ctx.shadowColor = '#ff77e9';
-            ctx.shadowBlur = 14;
-            ctx.fillStyle = '#b45cff';
-            ctx.beginPath(); ctx.arc(0, 0, 14, 0, Math.PI * 2); ctx.fill();
-            ctx.shadowBlur = 0;
-            ctx.strokeStyle = '#ffe66d'; ctx.lineWidth = 2; ctx.stroke();
-            ctx.fillStyle = '#ffffff'; ctx.font = '13px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            ctx.fillText('⚡', 0, 1);
             ctx.restore();
         } else if (p.kind === 'christmas_dmg' || p.kind === 'christmas_speed' || p.kind === 'christmas_hp') {
             const buffCfg = p.kind === 'christmas_dmg' ? ['#ff4757', '\uD83D\uDCA5'] : p.kind === 'christmas_speed' ? ['#f5b921', '\u26A1'] : ['#ff5d8f', '\u2764\uFE0F'];
