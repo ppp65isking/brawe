@@ -137,25 +137,23 @@
 
     <div id="homeScreen" style="position:fixed;inset:0;display:flex;align-items:flex-start;justify-content:center;padding:14px 16px 20px;z-index:30;background:linear-gradient(160deg,rgba(3,7,16,0.82),rgba(5,11,22,0.76));font-family:'Trebuchet MS','Gill Sans','Verdana',sans-serif;pointer-events:none;overflow-y:auto;">
       <div class="home-atmosphere" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
-      <div id="homePanel" style="width:min(1060px,calc(100vw - 28px));display:flex;flex-direction:column;gap:12px;pointer-events:auto;background:linear-gradient(165deg,rgba(8,16,34,0.94),rgba(6,11,24,0.92));border:1px solid rgba(140,190,255,0.24);border-radius:18px;box-shadow:0 16px 40px rgba(0,0,0,0.35);padding:14px;">
+      <div id="homePanel" class="home-bs-panel">
 
-        <!-- Header -->
-        <div id="homeHeader" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding-bottom:10px;border-bottom:1px solid rgba(120,170,240,0.14);">
+        <!-- Top bar: brand, player chip, currencies, fullscreen -->
+        <div id="homeHeader" class="home-bs-topbar">
           <div class="home-brand-lockup">
             <button id="homeMenuBtn" class="home-menu-btn" type="button" aria-label="Open more tools">☰</button>
             <div>
-              <h1 id="homeTitle" style="margin:0;font-size:32px;font-family:inherit;letter-spacing:0.03em;color:#e8f8ff;">BRAWE</h1>
+              <h1 id="homeTitle">BRAWE</h1>
               <div id="homeWelcomeLine" class="home-brand-subtitle">Your arena. Your fighter. Your run.</div>
             </div>
           </div>
-          <nav class="home-top-nav" aria-label="Main navigation">
-            <button id="homeLobbyNav" type="button" class="is-active" aria-current="page">HOME</button>
-            <button id="homeCollectionNav" type="button">FIGHTERS</button>
-            <button id="homeEventsNav" type="button">EVENTS</button>
-            <button id="homeShopNav" type="button">SHOP</button>
-          </nav>
-          <div id="homeCurrencyBar" style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;"></div>
-          <button id="fullscreenBtn" type="button" aria-label="Enter fullscreen" style="min-height:44px;padding:9px 13px;border-radius:12px;border:1px solid rgba(93,220,255,.45);background:rgba(16,39,68,.92);color:#e8f8ff;font-weight:900;cursor:pointer;">⛶ Fullscreen</button>
+          <button id="homeProfileChip" class="home-bs-profile-chip" type="button" aria-label="Open player profile">
+            <span class="home-bs-profile-avatar" aria-hidden="true">👤</span>
+            <span id="homeProfileChipName">BRAWLER</span>
+          </button>
+          <div id="homeCurrencyBar"></div>
+          <button id="fullscreenBtn" type="button" aria-label="Enter fullscreen">⛶ Fullscreen</button>
         </div>
 
         <div class="home-command-strip">
@@ -164,51 +162,61 @@
           <div class="home-command-strip__hint">SEASON 6 · XPLODEMIS</div>
         </div>
 
-        <div id="homeProgressDock" class="home-progress-dock" aria-label="Progression shortcuts">
-          <span class="home-progress-dock__label">PROGRESSION</span>
-          <div id="homeQuickActions" aria-label="Progress and quest shortcuts"></div>
-        </div>
-
-        <div id="homeMain">
-          <section id="homeLobbyView" class="home-tab-view is-active" aria-label="Home lobby">
-
-          <!-- Left column: brawler card, rank card, play button, secondary actions -->
-          <div id="homePlaySection" style="display:flex;flex-direction:column;gap:9px;">
-            <div class="home-section-kicker">SELECTED FIGHTER</div>
-            <div id="homeBrawlerCard" style="background:linear-gradient(145deg,rgba(8,18,42,0.96),rgba(6,13,30,0.92));border:1px solid rgba(140,190,255,0.2);border-radius:13px;padding:13px;min-height:78px;"></div>
-            <div id="homeRankCard" style="background:linear-gradient(145deg,rgba(28,20,6,0.96),rgba(18,13,4,0.92));border:1px solid rgba(255,209,100,0.24);border-radius:13px;padding:11px;"></div>
-            <button id="startMatch" style="padding:13px 16px;border-radius:12px;background:linear-gradient(135deg,#5df2c2,#29c996);border:none;font-weight:900;cursor:pointer;font-family:inherit;font-size:15px;color:#041810;width:100%;box-shadow:0 4px 20px rgba(93,242,194,0.26);letter-spacing:0.02em;">PLAY</button>
-            <div id="homeActionRow" style="display:grid;grid-template-columns:1fr 1fr;gap:7px;">
-              <button id="brawlerBtn" class="home-action-btn" style="background:rgba(244,162,97,0.12);border-color:rgba(244,162,97,0.38);color:#f4a261;"><span class="home-nav-icon">👤</span><span><b>FIGHTERS</b><small>Choose & upgrade</small></span></button>
+        <!-- Brawl-style zones: left rail | center stage | right rail (grid areas on #homePanel) -->
+          <aside id="homeBsLeft" class="home-bs-left" aria-label="Menu">
+            <nav class="home-top-nav" aria-label="Main navigation">
+              <button id="homeLobbyNav" type="button" class="is-active" aria-current="page">HOME</button>
+              <button id="homeCollectionNav" type="button">FIGHTERS</button>
+              <button id="homeEventsNav" type="button">EVENTS</button>
+              <button id="homeShopNav" type="button">SHOP</button>
+            </nav>
+            <div id="homeActionRow">
+              <button id="brawlerBtn" class="home-action-btn"><span class="home-nav-icon">👤</span><span><b>FIGHTERS</b><small>Choose &amp; upgrade</small></span></button>
             </div>
+          </aside>
+
+          <div id="homeBsCenter" class="home-bs-center">
+            <section id="homeLobbyView" class="home-tab-view is-active" aria-label="Home lobby">
+              <div class="home-section-kicker">SELECTED FIGHTER</div>
+              <div id="homeBrawlerCard"></div>
+            </section>
+
+            <section id="homeEventsView" class="home-tab-view" aria-label="Events">
+              <div id="homeModesSection" style="display:flex;flex-direction:column;gap:9px;">
+                <div class="home-event-heading"><span>EVENTS</span><small>POPULAR EVENTS - ALWAYS AVAILABLE</small></div>
+                <div id="homeModeCompactRow" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px;"></div>
+                <div id="showdownModeRow" style="display:none;gap:8px;flex-wrap:wrap;"></div>
+              </div>
+            </section>
           </div>
 
-            <aside id="homePersonalPanel" class="home-personal-panel">
-              <div class="home-personal-panel__eyebrow">NEXT BATTLE</div>
-              <h2 id="homeGreeting">SOLO SHOWDOWN</h2>
-              <p id="homeDailyBrief">Choose your event and enter the arena.</p>
-              <button id="homeSelectedEventCard" class="home-selected-event" type="button">
-                <span id="homeSelectedEventIcon">⚔</span>
-                <b id="homeSelectedEventName">Solo Showdown</b>
-                <small id="homeSelectedEventRule">Last fighter standing wins</small>
-                <i>CHANGE EVENT</i>
-              </button>
-              <div id="homeCareerSnapshot" class="home-career-snapshot"></div>
-              <button id="homeFeaturedOffer" class="home-featured-offer" type="button">
-                <span>DAILY FORGE OFFER</span><b>Open today’s personalized deal</b><small>SHOP →</small>
-              </button>
-              <div id="homeSeasonPulse" class="home-season-pulse"></div>
-            </aside>
-          </section>
+          <aside id="homeBsRight" class="home-bs-right" aria-label="Season and offers">
+            <div id="homeSeasonPulse" class="home-season-pulse"></div>
+            <button id="homeFeaturedOffer" class="home-featured-offer" type="button">
+              <span>DAILY FORGE OFFER</span><b>Open today’s personalized deal</b><small>SHOP →</small>
+            </button>
+            <div id="homeCareerSnapshot" class="home-career-snapshot"></div>
+          </aside>
 
-          <section id="homeEventsView" class="home-tab-view" aria-label="Events">
-          <div id="homeModesSection" style="display:flex;flex-direction:column;gap:9px;">
-            <div class="home-event-heading"><span>EVENTS</span><small>POPULAR EVENTS - ALWAYS AVAILABLE</small></div>
-            <div id="homeModeCompactRow" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px;"></div>
-            <div id="showdownModeRow" style="display:none;gap:8px;flex-wrap:wrap;"></div>
+        <!-- Bottom bar: ranked card, next battle, progression, PLAY -->
+        <div id="homeBsBottom" class="home-bs-bottom">
+          <div id="homeRankCard"></div>
+          <div id="homePersonalPanel" class="home-bs-mode-cluster">
+            <div class="home-personal-panel__eyebrow">NEXT BATTLE</div>
+            <h2 id="homeGreeting">SOLO SHOWDOWN</h2>
+            <p id="homeDailyBrief">Choose your event and enter the arena.</p>
+            <button id="homeSelectedEventCard" class="home-selected-event" type="button">
+              <span id="homeSelectedEventIcon">⚔</span>
+              <b id="homeSelectedEventName">Solo Showdown</b>
+              <small id="homeSelectedEventRule">Last fighter standing wins</small>
+              <i>CHANGE EVENT</i>
+            </button>
           </div>
-          </section>
-
+          <div id="homeProgressDock" class="home-progress-dock" aria-label="Progression shortcuts">
+            <span class="home-progress-dock__label">PROGRESSION</span>
+            <div id="homeQuickActions" aria-label="Progress and quest shortcuts"></div>
+          </div>
+          <button id="startMatch">PLAY</button>
         </div>
 
         <!-- Utility drawer -->
@@ -232,6 +240,7 @@
     <link rel="stylesheet" href="./circuit-pass.css?v=20260904-roster-pass2" />
     <link rel="stylesheet" href="./fighter-gallery.css?v=20260904-gallery1" />
     <link rel="stylesheet" href="./kit-redesign.css?v=20261022-kit1" />
+    <link rel="stylesheet" href="./home-brawl-style.css?v=20261103-home-bs1" />
     <script src="./bootstrap.js?v=20260921-dash-hyper3"></script>
   </body>
 </html>

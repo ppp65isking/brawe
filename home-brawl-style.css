@@ -1,0 +1,609 @@
+/* ==========================================================================
+   Arena Forge home screen — chunky mobile-game home layout (2026-11-03).
+   Layout: top bar | left rail | center brawler stage | right rail | bottom
+   bar with a large PLAY button. Home screen only — the in-match HUD and
+   other screens are untouched. This file loads last on purpose so its
+   layout rules win ties against the older home theme layers.
+   Fill behavior: viewport dynamic units + safe-area insets, no manual
+   fullscreen tap needed just to fill the screen. NOTE: this file never
+   sets #homeScreen display — match code hides the home screen by toggling
+   its inline display, and that must keep working.
+   ========================================================================== */
+
+/* ---- Fill the screen --------------------------------------------------- */
+#homeScreen {
+  height: 100vh !important;
+  height: 100dvh !important;
+  padding: max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)) !important;
+  box-sizing: border-box !important;
+  font-family: 'Outfit', 'Trebuchet MS', 'Gill Sans', 'Verdana', sans-serif !important;
+}
+
+/* ---- Panel grid -------------------------------------------------------- */
+#homeScreen #homePanel.home-bs-panel {
+  display: grid !important;
+  grid-template-columns: 212px minmax(0, 1fr) 300px !important;
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto !important;
+  grid-template-areas:
+    "top top top"
+    "strip strip strip"
+    "left center right"
+    "bottom bottom bottom"
+    "tools tools tools" !important;
+  gap: 12px !important;
+  width: 100% !important;
+  max-width: none !important;
+  height: 100% !important;
+  min-height: 100vh !important;
+  min-height: 100svh !important;
+  min-height: 100dvh !important;
+  padding: 0 34px calc(20px + env(safe-area-inset-bottom)) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}
+
+#homeScreen #homeHeader { grid-area: top !important; }
+#homeScreen .home-command-strip { grid-area: strip !important; flex: none !important; }
+#homeScreen #homeBsLeft { grid-area: left !important; }
+#homeScreen #homeBsCenter { grid-area: center !important; }
+#homeScreen #homeBsRight { grid-area: right !important; }
+#homeScreen #homeBsBottom { grid-area: bottom !important; }
+#homeScreen #homeUtilityDetails { grid-area: tools !important; }
+
+/* ---- Top bar ----------------------------------------------------------- */
+#homeScreen #homeHeader.home-bs-topbar {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  gap: 12px !important;
+  min-height: 64px !important;
+  flex: none !important;
+  padding: 6px 0 10px !important;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.16) !important;
+}
+
+#homeScreen .home-brand-lockup {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  flex: none !important;
+}
+
+#homeScreen #homeTitle {
+  margin: 0 !important;
+  font-size: 34px !important;
+  font-weight: 1000 !important;
+  line-height: 1 !important;
+  letter-spacing: 0.02em !important;
+  color: #fff !important;
+  text-shadow: 0 3px 0 #0a2a5e, 0 6px 18px rgba(0, 0, 0, 0.45) !important;
+}
+
+#homeScreen .home-brand-subtitle {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.06em !important;
+  color: #bfe6ff !important;
+}
+
+#homeScreen .home-menu-btn {
+  width: 46px !important;
+  height: 46px !important;
+  flex: none !important;
+  border: 3px solid rgba(255, 255, 255, 0.85) !important;
+  border-radius: 14px !important;
+  background: linear-gradient(180deg, #2b7de0, #16549e) !important;
+  color: #fff !important;
+  font-size: 20px !important;
+  font-weight: 1000 !important;
+  box-shadow: 0 4px 0 #0a2a5e !important;
+  cursor: pointer !important;
+}
+
+/* Player chip: opens the existing player profile. Name is synced by
+   refreshPersonalizedHome alongside the welcome line. */
+#homeScreen .home-bs-profile-chip {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-height: 46px !important;
+  max-width: 220px !important;
+  padding: 6px 14px 6px 8px !important;
+  border: 3px solid rgba(255, 255, 255, 0.85) !important;
+  border-radius: 999px !important;
+  background: linear-gradient(180deg, #3b2d8f, #221a5e) !important;
+  color: #fff !important;
+  font-size: 13px !important;
+  font-weight: 1000 !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+  box-shadow: 0 4px 0 #120b38 !important;
+  cursor: pointer !important;
+}
+
+#homeScreen .home-bs-profile-avatar {
+  display: grid !important;
+  place-items: center !important;
+  width: 32px !important;
+  height: 32px !important;
+  flex: none !important;
+  border-radius: 50% !important;
+  background: #ffd94d !important;
+  font-size: 17px !important;
+}
+
+#homeScreen #homeProfileChipName {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+#homeScreen #homeCurrencyBar {
+  display: flex !important;
+  gap: 8px !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  margin-left: auto !important;
+}
+
+#homeScreen #fullscreenBtn {
+  min-height: 46px !important;
+  padding: 9px 14px !important;
+  flex: none !important;
+  border: 3px solid rgba(255, 255, 255, 0.85) !important;
+  border-radius: 14px !important;
+  background: linear-gradient(180deg, #2b7de0, #16549e) !important;
+  color: #fff !important;
+  font-size: 13px !important;
+  font-weight: 1000 !important;
+  letter-spacing: 0.04em !important;
+  box-shadow: 0 4px 0 #0a2a5e !important;
+  cursor: pointer !important;
+}
+
+/* ---- Left rail --------------------------------------------------------- */
+#homeScreen #homeBsLeft {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+}
+
+#homeScreen #homeBsLeft .home-top-nav {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+  margin: 0 !important;
+  align-self: stretch !important;
+}
+
+#homeScreen #homeBsLeft .home-top-nav button {
+  min-width: 0 !important;
+  width: 100% !important;
+  min-height: 56px !important;
+  padding: 0 16px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  border: 3px solid rgba(255, 255, 255, 0.85) !important;
+  border-radius: 16px !important;
+  background: linear-gradient(180deg, #2b7de0, #16549e) !important;
+  color: #fff !important;
+  font-size: 15px !important;
+  font-weight: 1000 !important;
+  letter-spacing: 0.08em !important;
+  box-shadow: 0 5px 0 #0a2a5e, 0 10px 22px rgba(0, 0, 0, 0.35) !important;
+  cursor: pointer !important;
+}
+
+#homeScreen #homeBsLeft .home-top-nav button.is-active {
+  background: linear-gradient(180deg, #ffd94d, #ff9d1f) !important;
+  color: #3a2200 !important;
+  border-color: #fff !important;
+}
+
+#homeScreen #homeBsLeft .home-top-nav button:active {
+  transform: translateY(3px) !important;
+  box-shadow: 0 2px 0 #0a2a5e !important;
+}
+
+#homeScreen #homeBsLeft #homeActionRow {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 8px !important;
+  width: 100% !important;
+}
+
+#homeScreen #homeBsLeft .home-action-btn {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  width: 100% !important;
+  min-height: 64px !important;
+  padding: 10px 14px !important;
+  border: 3px solid rgba(255, 255, 255, 0.7) !important;
+  border-radius: 16px !important;
+  text-align: left !important;
+  box-shadow: 0 5px 0 rgba(4, 20, 50, 0.9) !important;
+}
+
+#homeScreen #homeBsLeft .home-action-btn .home-nav-icon {
+  font-size: 24px !important;
+  flex: none !important;
+}
+
+#homeScreen #homeBsLeft .home-action-btn b { display: block !important; }
+#homeScreen #homeBsLeft .home-action-btn small { display: block !important; opacity: 0.8 !important; }
+
+/* ---- Center stage ------------------------------------------------------ */
+#homeScreen #homeBsCenter {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+}
+
+#homeScreen #homeLobbyView.is-active {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+}
+
+#homeScreen #homeEventsView.is-active {
+  display: block !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+}
+
+#homeScreen .home-bs-center .home-section-kicker {
+  position: static !important;
+  align-self: flex-start !important;
+  margin: 0 !important;
+  padding: 8px 12px !important;
+  border-radius: 9px !important;
+  background: rgba(6, 29, 70, 0.85) !important;
+  color: #bdeaff !important;
+  font-size: 11px !important;
+  font-weight: 1000 !important;
+  letter-spacing: 0.16em !important;
+}
+
+#homeScreen #homeBrawlerCard {
+  position: relative !important;
+  flex: 1 1 auto !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: clamp(300px, 55vh, 520px) !important;
+  border: 3px solid rgba(255, 255, 255, 0.85) !important;
+  border-radius: 22px !important;
+  overflow: hidden !important;
+}
+
+/* ---- Right rail -------------------------------------------------------- */
+#homeScreen #homeBsRight {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+}
+
+#homeScreen #homeBsRight .home-season-pulse,
+#homeScreen #homeBsRight .home-featured-offer,
+#homeScreen #homeBsRight .home-career-snapshot {
+  width: 100% !important;
+  box-sizing: border-box !important;
+  border: 2px solid rgba(255, 255, 255, 0.35) !important;
+  border-radius: 16px !important;
+  background: linear-gradient(165deg, rgba(10, 26, 52, 0.94), rgba(6, 15, 32, 0.92)) !important;
+  box-shadow: 0 5px 0 rgba(4, 20, 50, 0.9), 0 12px 26px rgba(0, 0, 0, 0.35) !important;
+}
+
+#homeScreen #homeBsRight .home-season-pulse { padding: 12px 14px !important; }
+#homeScreen #homeBsRight .home-featured-offer {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+  min-height: 84px !important;
+  padding: 12px 14px !important;
+  text-align: left !important;
+  color: #fff !important;
+  cursor: pointer !important;
+}
+
+#homeScreen #homeBsRight .home-career-snapshot {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 8px !important;
+  padding: 12px !important;
+}
+
+/* ---- Bottom bar -------------------------------------------------------- */
+#homeScreen #homeBsBottom {
+  display: grid !important;
+  grid-template-columns: minmax(230px, 1fr) minmax(260px, 1.25fr) minmax(200px, 1fr) auto !important;
+  gap: 12px !important;
+  align-items: stretch !important;
+  flex: none !important;
+}
+
+/* The ranked card was hidden by an older theme layer; the bottom bar is
+   its home again, so it is explicitly re-shown here. */
+#homeScreen #homeBsBottom #homeRankCard {
+  display: block !important;
+  min-width: 0 !important;
+  padding: 12px !important;
+  border-radius: 16px !important;
+}
+
+#homeScreen .home-bs-mode-cluster {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+  min-width: 0 !important;
+  padding: 12px 14px !important;
+  border: 2px solid rgba(255, 255, 255, 0.25) !important;
+  border-radius: 16px !important;
+  background: rgba(6, 23, 48, 0.72) !important;
+}
+
+#homeScreen .home-bs-mode-cluster .home-personal-panel__eyebrow {
+  font-size: 9px !important;
+  font-weight: 1000 !important;
+  letter-spacing: 0.16em !important;
+  color: #8fdfff !important;
+}
+
+#homeScreen #homeGreeting {
+  margin: 0 !important;
+  font-size: 22px !important;
+  font-weight: 1000 !important;
+  color: #fff !important;
+  text-shadow: 0 2px 0 #0a2a5e !important;
+}
+
+#homeScreen #homeDailyBrief {
+  margin: 0 !important;
+  font-size: 12px !important;
+  color: #bfe6ff !important;
+}
+
+#homeScreen #homeSelectedEventCard {
+  width: 100% !important;
+  min-height: 64px !important;
+  padding: 10px 12px !important;
+  border: 2px solid rgba(255, 255, 255, 0.6) !important;
+  border-radius: 14px !important;
+  background: linear-gradient(180deg, #1d5fae, #0f3a75) !important;
+  color: #fff !important;
+  text-align: left !important;
+  cursor: pointer !important;
+}
+
+#homeScreen #homeProgressDock {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+  padding: 12px !important;
+  border: 2px solid rgba(255, 255, 255, 0.22) !important;
+  border-radius: 16px !important;
+  background: rgba(6, 23, 48, 0.6) !important;
+}
+
+#homeScreen #homeProgressDock .home-progress-dock__label {
+  font-size: 10px !important;
+  font-weight: 1000 !important;
+  letter-spacing: 0.14em !important;
+  color: #8fdfff !important;
+}
+
+#homeScreen #homeQuickActions {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  overflow: visible !important;
+}
+
+#homeScreen #startMatch {
+  position: static !important;
+  inset: auto !important;
+  width: 190px !important;
+  min-height: 88px !important;
+  margin: 0 !important;
+  padding: 0 22px !important;
+  border: 3px solid #fff !important;
+  border-radius: 18px !important;
+  background: linear-gradient(180deg, #ffe95c, #ffb61f) !important;
+  color: #291a00 !important;
+  font-size: 26px !important;
+  font-weight: 1000 !important;
+  letter-spacing: 0.04em !important;
+  text-shadow: 0 2px rgba(255, 255, 255, 0.45) !important;
+  box-shadow: 0 7px 0 #a85a08, 0 14px 25px rgba(0, 26, 71, 0.66) !important;
+  clip-path: none !important;
+  cursor: pointer !important;
+  align-self: stretch !important;
+}
+
+#homeScreen #startMatch:active {
+  transform: translateY(5px) !important;
+  box-shadow: 0 2px 0 #a85a08 !important;
+}
+
+/* ---- Medium screens: stack the zones, rail becomes a strip ------------ */
+@media (max-width: 980px) {
+  #homeScreen { overflow-y: auto !important; }
+
+  #homeScreen #homePanel.home-bs-panel {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto auto auto auto auto auto auto !important;
+    grid-template-areas:
+      "top"
+      "strip"
+      "left"
+      "center"
+      "right"
+      "bottom"
+      "tools" !important;
+    height: auto !important;
+    min-height: 100vh !important;
+    min-height: 100dvh !important;
+    overflow-y: auto !important;
+    padding: 0 16px calc(20px + env(safe-area-inset-bottom)) !important;
+  }
+
+  #homeScreen #homeHeader.home-bs-topbar { flex-wrap: wrap !important; }
+
+  #homeScreen #homeBsLeft {
+    flex-direction: row !important;
+    align-items: stretch !important;
+  }
+
+  #homeScreen #homeBsLeft .home-top-nav {
+    flex-direction: row !important;
+    flex: 1 1 auto !important;
+    overflow-x: auto !important;
+  }
+
+  #homeScreen #homeBsLeft .home-top-nav button {
+    flex: 1 0 auto !important;
+    min-height: 48px !important;
+    white-space: nowrap !important;
+  }
+
+  #homeScreen #homeBsLeft #homeActionRow { flex: 0 0 180px !important; }
+  #homeScreen #homeBsLeft .home-action-btn { min-height: 48px !important; }
+
+  #homeScreen #homeBsRight {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    align-items: start !important;
+  }
+
+  #homeScreen #homeBsBottom {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  #homeScreen #startMatch {
+    grid-column: 1 / -1 !important;
+    width: 100% !important;
+    min-height: 64px !important;
+  }
+
+  #homeScreen #homeBrawlerCard {
+    min-height: clamp(300px, 50vh, 460px) !important;
+  }
+}
+
+/* ---- Phones: single column, mobile nav owns navigation ---------------- */
+@media (max-width: 700px) {
+  #homeScreen #homePanel.home-bs-panel {
+    grid-template-areas:
+      "top"
+      "center"
+      "bottom"
+      "right"
+      "tools" !important;
+    padding: 0 8px calc(78px + env(safe-area-inset-bottom)) !important;
+  }
+
+  #homeScreen #homeBsLeft { display: none !important; }
+
+  /* The older layers already hide the quick actions and the fullscreen
+     button on phones; hiding the now-empty progression dock too so the
+     bottom bar is not left with a bare label. */
+  #homeScreen #homeProgressDock { display: none !important; }
+
+  #homeScreen #homeHeader.home-bs-topbar { gap: 8px !important; }
+  #homeScreen .home-bs-profile-chip { padding: 6px 10px 6px 6px !important; }
+  #homeScreen #homeProfileChipName { font-size: 11px !important; }
+
+  #homeScreen #homeBrawlerCard { min-height: 330px !important; }
+
+  #homeScreen #homeBsBottom { grid-template-columns: 1fr !important; }
+
+  #homeScreen #startMatch {
+    width: 100% !important;
+    min-height: 64px !important;
+    font-size: 22px !important;
+  }
+
+  #homeScreen #homeBsRight {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+}
+
+@media (max-width: 390px) {
+  #homeScreen #homeBrawlerCard { min-height: 230px !important; }
+}
+
+/* ---- Short landscape phones: compact strip, nav lives in the side rail - */
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 540px) {
+  #homeScreen { overflow-y: auto !important; }
+
+  #homeScreen #homePanel.home-bs-panel {
+    grid-template-columns: minmax(0, 1fr) 280px !important;
+    grid-template-rows: auto minmax(0, 1fr) auto auto !important;
+    grid-template-areas:
+      "top top"
+      "center right"
+      "bottom bottom"
+      "tools tools" !important;
+    height: auto !important;
+    min-height: 100dvh !important;
+    overflow: visible !important;
+    padding: 0 8px calc(8px + env(safe-area-inset-bottom)) !important;
+  }
+
+  #homeScreen #homeHeader.home-bs-topbar {
+    display: grid !important;
+    grid-template-columns: minmax(150px, 0.7fr) auto minmax(200px, 1.3fr) 42px !important;
+    grid-template-rows: 51px !important;
+    align-items: center !important;
+    min-height: 51px !important;
+  }
+
+  #homeScreen .home-brand-lockup { grid-column: 1 !important; grid-row: 1 !important; }
+  #homeScreen .home-bs-profile-chip { grid-column: 2 !important; grid-row: 1 !important; }
+  #homeScreen #homeCurrencyBar { grid-column: 3 !important; grid-row: 1 !important; }
+  #homeScreen #fullscreenBtn { grid-column: 4 !important; grid-row: 1 !important; }
+
+  #homeScreen #homeBsLeft { display: none !important; }
+  #homeScreen #homeProgressDock { display: none !important; }
+  #homeScreen #homeBsRight .home-featured-offer,
+  #homeScreen #homeBsRight .home-season-pulse { display: none !important; }
+
+  #homeScreen #homeLobbyView.is-active {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  #homeScreen #homeBrawlerCard {
+    height: 230px !important;
+    min-height: 230px !important;
+  }
+
+  #homeScreen #homeBsBottom {
+    grid-template-columns: 1fr 1.2fr auto !important;
+  }
+
+  #homeScreen #startMatch {
+    width: 140px !important;
+    min-height: 56px !important;
+    font-size: 18px !important;
+  }
+}

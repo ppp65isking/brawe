@@ -5268,10 +5268,53 @@ const bolznstienPendingStrikes = [];
     document.documentElement.classList.add(`${deviceMode}-device`);
     document.documentElement.dataset.deviceMode = deviceMode;
 
+    // Fullscreen persistence (home-screen redesign 2026-11-03): remember
+    // the player's fullscreen choice across page reloads. Browsers always
+    // drop fullscreen on reload and only grant it after a user gesture, so
+    // a reload can never silently restore fullscreen — instead the choice
+    // is stored and re-requested on the player's first tap/keypress after
+    // the reload. In-app navigation never exits fullscreen by itself: the
+    // only exit-fullscreen call in the game lives in toggleGameFullscreen.
+    const FULLSCREEN_PREF_KEY = 'arenaForgeFullscreenPref';
+    function setFullscreenPref(value) {
+        try {
+            if (value) localStorage.setItem(FULLSCREEN_PREF_KEY, '1');
+            else localStorage.removeItem(FULLSCREEN_PREF_KEY);
+        } catch (_) {}
+    }
+    function wantsFullscreenRestore() {
+        try { return localStorage.getItem(FULLSCREEN_PREF_KEY) === '1'; } catch (_) { return false; }
+    }
+    async function requestGameFullscreenSilent() {
+        const target = document.documentElement;
+        const request = target.requestFullscreen || target.webkitRequestFullscreen;
+        if (!request) return false;
+        try {
+            await request.call(target);
+            if (deviceMode === 'mobile' && screen.orientation?.lock) {
+                try { await screen.orientation.lock('landscape'); } catch (_) {}
+            }
+            return true;
+        } catch (_) { return false; }
+    }
+    function armFullscreenRestoreOnGesture() {
+        if ((document.fullscreenElement || document.webkitFullscreenElement) || !wantsFullscreenRestore()) return;
+        const isFullscreenButton = (event) => !!(event?.target?.closest && event.target.closest('#fullscreenBtn, #matchFullscreenBtn'));
+        const onFirstGesture = (event) => {
+            if (isFullscreenButton(event)) return;
+            window.removeEventListener('pointerdown', onFirstGesture);
+            window.removeEventListener('keydown', onFirstGesture);
+            void requestGameFullscreenSilent();
+        };
+        window.addEventListener('pointerdown', onFirstGesture);
+        window.addEventListener('keydown', onFirstGesture);
+    }
+
     async function toggleGameFullscreen() {
         if (document.fullscreenElement || document.webkitFullscreenElement) {
             const exit = document.exitFullscreen || document.webkitExitFullscreen;
             if (exit) await exit.call(document);
+            setFullscreenPref(false);
             return;
         }
         const target = document.documentElement;
@@ -5284,8 +5327,15 @@ const bolznstienPendingStrikes = [];
         if (deviceMode === 'mobile' && screen.orientation?.lock) {
             try { await screen.orientation.lock('landscape'); } catch (err) {}
         }
+        setFullscreenPref(true);
     }
     if (fullscreenBtn) fullscreenBtn.addEventListener('click', () => { void toggleGameFullscreen(); });
+    const clearFullscreenPrefOnExit = () => {
+        if (!document.fullscreenElement && !document.webkitFullscreenElement) setFullscreenPref(false);
+    };
+    document.addEventListener('fullscreenchange', clearFullscreenPrefOnExit);
+    document.addEventListener('webkitfullscreenchange', clearFullscreenPrefOnExit);
+    armFullscreenRestoreOnGesture();
     function applyRelayAllyHit(projectile, target, owner) {
         if (!projectile?.isRelayOrb || !target || !owner || target === owner || !areAlliedEntities(owner, target)) return false;
         const hitRadius=(target.radius||14)+Math.max(5,(projectile.hitboxMod||1)*4);
@@ -44487,6 +44537,8 @@ let heistFeverActive = false;
       const modeRule = modeEntry[3] || 'Enter the arena';
       if (greeting) greeting.textContent = modeName.toUpperCase();
       if (welcome) welcome.textContent = `${name}'s lobby · Season 3`;
+      const chipName = document.getElementById('homeProfileChipName');
+      if (chipName) chipName.textContent = name;
       if (brief) brief.textContent = rushLeft > 0 ? `Brick Rush live · ${Math.ceil(rushLeft / 60000)} min remaining` : `${name}, your fighter and loadout are ready.`;
       const eventIcon = document.getElementById('homeSelectedEventIcon');
       const eventName = document.getElementById('homeSelectedEventName');
@@ -48705,6 +48757,7 @@ isBrawlerLabMode = false;
     if (progressionShortcutRow) progressionShortcutRow.appendChild(profileBtn);
     else if (homeUtilityRow) homeUtilityRow.appendChild(profileBtn);
     profileBtn.addEventListener('click', () => openPlayerProfile());
+    document.getElementById('homeProfileChip')?.addEventListener('click', () => openPlayerProfile());
 
     const pinsHubBtn = document.createElement('button');
     pinsHubBtn.id = 'pinsHubBtn';
