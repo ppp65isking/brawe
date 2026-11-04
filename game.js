@@ -32150,6 +32150,16 @@ let heistFeverActive = false;
       target._evilDoctorPoisonKillHandled = false;
   }
 
+  function applyEvilDoctorDnaPoison(target, ownerId) {
+      if (!target || target.hp <= 0) return;
+      const now = performance.now();
+      target.dnaPoisonDamage = 100;
+      target.dnaPoisonTicksLeft = 4;
+      target.dnaPoisonUntil = now + 2800;
+      target.dnaPoisonTickAt = now + 700;
+      target.dnaPoisonOwnerId = ownerId;
+  }
+
   function triggerEvilDoctorMissEffect(ownerId) {
       const missOwner = ownerId === player.id ? player : bots.find(bt => bt.id === ownerId);
       if (!missOwner || missOwner.hp <= 0) return;
@@ -32190,7 +32200,7 @@ let heistFeverActive = false;
       if (areAlliedEntities(dna, target)) return;
       const now = performance.now();
       if (dna.evilDoctorSp1DNA) {
-          applyEvilDoctorPoisonStack(target, dna.ownerId, 100, 4, false, false, false);
+          applyEvilDoctorDnaPoison(target, dna.ownerId);
           spawnFloatingText(target.x, target.y - 38, 'DNA POISON', '#5df29d');
           explosions.push({ x: target.x, y: target.y, radius: 18, life: 0, maxLife: 0.18, color: 'rgba(70, 220, 130, 0.7)' });
           dna.hp = 0;
@@ -37884,10 +37894,15 @@ let heistFeverActive = false;
         // the final 20% of descent. Super flight remains fully airborne.
         owner.isFlying=!!f.superFlight || (f.startAt + f.duration - now) > 150;
         if(f.superFlight){
-            const pattern=[-1,1,-.55,.55,-.18,.18];
-            while(f.nextBomb<6&&p>=(f.nextBomb+1)/7){
-                const i=f.nextBomb++,pathP=(i+1)/7,bx=f.startX+(f.endX-f.startX)*pathP,by=f.startY+(f.endY-f.startY)*pathP;
-                const a=Math.atan2(f.endY-f.startY,f.endX-f.startX)+Math.PI/2,lane=pattern[i]*(42+i*9);
+            // Playtest fix 1: bombs drop across the FULL path (fractions 0..1, not 1/7..6/7)
+            // on alternating +/-70px lanes. Blast radius is 66px, so blasts overlap unless
+            // centers are >132px apart: consecutive centers are sqrt((dash/5)^2 + 140^2) >= 140,
+            // and same-side centers are 2*dash/5 apart, so zero overlap holds for any dash >= 331px
+            // (the 600px min dash covers it; only deep wall-shortened dashes below 331px can
+            // still stack same-side bombs, and lane clamping at world edges can still pinch them).
+            while(f.nextBomb<6&&p>=f.nextBomb/5){
+                const i=f.nextBomb++,pathP=i/5,bx=f.startX+(f.endX-f.startX)*pathP,by=f.startY+(f.endY-f.startY)*pathP;
+                const a=Math.atan2(f.endY-f.startY,f.endX-f.startX)+Math.PI/2,lane=(i%2===0?-70:70);
                 const zx=clamp(bx+Math.cos(a)*lane,20,WORLD_W-20),zy=clamp(by+Math.sin(a)*lane,20,WORLD_H-20);
                 explodeJetpackBomb(zx,zy,owner,950,f.hyper);
                 if(f.hyper)spawnJetpackFireZone(owner.id,zx,zy); // Round 41 HC: super bombs leave fire zones.
@@ -37909,9 +37924,14 @@ let heistFeverActive = false;
     }
 
     function castJetpackSuper(owner, hyper, aimX, aimY) {
-        // Round 41: super requires a minimum 240px dash so bombs don't overlap (pick, flagged; clamped at walls).
+        // Playtest fix 1: super minimum dash raised 240 -> 600px. At 240px the 6 bombs dropped
+        // ~34px apart along the path while each blast radius is 66px, so they still stacked.
+        // At 600px the along-path spacing is ~86px and, with the lane offsets, the bombs read
+        // as a spread carpet line instead of one stack. Full zero-overlap would need ~900px
+        // of path, past the super's 850px max range, so the blasts still touch at the edges.
+        // Near walls the wall clamp can still shorten the dash (landing point is never moved).
         const jdx=aimX-owner.x,jdy=aimY-owner.y,jd=Math.hypot(jdx,jdy);
-        if(jd<240){const ja=jd>1?Math.atan2(jdy,jdx):(owner.dir||0);aimX=clamp(owner.x+Math.cos(ja)*240,30,WORLD_W-30);aimY=clamp(owner.y+Math.sin(ja)*240,30,WORLD_H-30);}
+        if(jd<600){const ja=jd>1?Math.atan2(jdy,jdx):(owner.dir||0);aimX=clamp(owner.x+Math.cos(ja)*600,30,WORLD_W-30);aimY=clamp(owner.y+Math.sin(ja)*600,30,WORLD_H-30);}
         startJetpackFlight(owner,aimX,aimY,{superFlight:true,hyper});
         spawnFloatingText(owner.x,owner.y-40,hyper?'AIR RAID!':'I DROP BOMBS!','#76e6ff');
     }
@@ -40364,8 +40384,7 @@ let heistFeverActive = false;
       grantShield(player, superCap, superCap);
       decayerSuperUntil = now + dur;
       decayerOrbitUntil = 0;
-      player.decayerAuraUntil = now + dur;
-      player.decayerAuraNextAt = 0;
+      if (selectedStar === 'long' || selectedStar === 'sp2') { player.decayerAuraUntil = now + dur; player.decayerAuraNextAt = 0; }
       if (isHypercharged) {
         spawnDecayerAllyShieldShots(player);
         player.decayerNextShotBonusDmg = 1000;
@@ -41989,7 +42008,7 @@ let heistFeverActive = false;
       const dur = 5000;
       grantShield(bot, superCap, superCap);
       bot.decayerSuperUntil = now + dur; bot.decayerOrbitUntil = 0;
-      bot.decayerAuraUntil = now + dur; bot.decayerAuraNextAt = 0;
+      if (getEntityStarChoice(bot) === 'long' || getEntityStarChoice(bot) === 'sp2') { bot.decayerAuraUntil = now + dur; bot.decayerAuraNextAt = 0; }
       if (bot.isHypercharged) {
         spawnDecayerAllyShieldShots(bot);
         bot.decayerNextShotBonusDmg = 1000;
@@ -58518,11 +58537,19 @@ function checkHit(target, b, i){
           b.damage = Math.round((b.baseDamage || b.damage || 0) * (b.cursedDreadExpansion ? (1 + progress * .15) : 1));
       }
       // Sheet Round 41 Group C: minimal main/super-attack visuals (trail particles).
-      if (b.isCopyphaseOrb || b.isElectrostienShock || b.isEvilDoctorSyringe) {
+      if (b.isEvilDoctorSyringe) {
+          const nowMs = performance.now();
+          if (!b.lastTrailAt || nowMs >= b.lastTrailAt + 16) {
+              b.lastTrailAt = nowMs;
+              explosions.push({ x: b.x + (Math.random() - 0.5) * 8, y: b.y + (Math.random() - 0.5) * 8, vx: (Math.random() - 0.5) * 40, vy: (Math.random() - 0.5) * 40, radius: 4 + Math.random() * 3, life: 0, maxLife: 0.6, color: '#5df29d', isParticle: true });
+              explosions.push({ x: b.x, y: b.y, vx: 0, vy: 0, radius: 8 + Math.random() * 3, life: 0, maxLife: 0.3, color: 'rgba(93, 242, 157, 0.25)', isParticle: true });
+          }
+      }
+      if (b.isCopyphaseOrb || b.isElectrostienShock) {
           const nowMs = performance.now();
           if (!b.lastTrailAt || nowMs >= b.lastTrailAt + 40) {
               b.lastTrailAt = nowMs;
-              const trailColor = b.isCopyphaseOrb ? '#56d8ff' : (b.isElectrostienShock ? '#00f5d4' : '#5df29d');
+              const trailColor = b.isCopyphaseOrb ? '#56d8ff' : '#00f5d4';
               explosions.push({ x: b.x + (Math.random() - 0.5) * 8, y: b.y + (Math.random() - 0.5) * 8, vx: (Math.random() - 0.5) * 40, vy: (Math.random() - 0.5) * 40, radius: 2 + Math.random() * 2, life: 0, maxLife: 0.35, color: trailColor, isParticle: true });
           }
       }
@@ -60950,6 +60977,29 @@ function checkHit(target, b, i){
                 }
             }
         }
+    if (e.hp > 0 && e.dnaPoisonUntil && now < e.dnaPoisonUntil) {
+        if (now >= (e.dnaPoisonTickAt || 0)) {
+            const dnaDmg = e.dnaPoisonDamage || 100;
+            const dnaHpDamage = applyShieldDamage(e, dnaDmg);
+            e.hp -= dnaHpDamage;
+            const dnaSourceId = e.dnaPoisonOwnerId;
+            const dnaSource = dnaSourceId === player.id ? player : bots.find(bot => bot.id === dnaSourceId);
+            recordCoreBreachCombatDamage(dnaSource, e, dnaHpDamage);
+            e.dnaPoisonTickAt = now + 700;
+            explosions.push({x: e.x, y: e.y, radius: 20, life: 0, maxLife: 0.3, color: '#5df29d'});
+            spawnDamageText(e, dnaDmg, '#5df29d');
+            if (typeof e.dnaPoisonTicksLeft === 'number') {
+                e.dnaPoisonTicksLeft -= 1;
+                if (e.dnaPoisonTicksLeft <= 0) {
+                    e.dnaPoisonUntil = 0;
+                }
+            }
+            if (e.hp <= 0 && dnaSourceId) {
+                e.evilDoctorPoisonOwnerId = dnaSourceId;
+                handleEvilDoctorPoisonKill(e);
+            }
+        }
+    }
     if(e.hp > 0 && e.fireUntil && now < e.fireUntil) {
         if(now >= (e.fireTickAt || 0)) {
             const burnBase = (e.fuelBurnUntil || 0) > now ? (e.fuelBurnDamage || 310) : 500;
@@ -70381,9 +70431,9 @@ function checkHit(target, b, i){
                         ctx.strokeStyle='rgba(255,255,255,.75)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(player.x,player.y,245*pulse,0,Math.PI*2);ctx.stroke();
                         ctx.fillStyle='#fff';ctx.font='900 18px sans-serif';ctx.textAlign='center';ctx.fillText(isHypercharged?'50% + 10% CURRENT HP':'30% CURRENT HP',player.x,player.y-205);ctx.textAlign='left';
                 } else if (selectedBrawler === 'jetpack') {
-                        const dist=Math.min(850,Math.hypot(dx,dy)),landX=player.x+Math.cos(ang)*dist,landY=player.y+Math.sin(ang)*dist,perp=ang+Math.PI/2;
+                        let dist=Math.hypot(dx,dy);if(dist<600)dist=600;dist=Math.min(850,dist);const landX=clamp(player.x+Math.cos(ang)*dist,30,WORLD_W-30),landY=clamp(player.y+Math.sin(ang)*dist,30,WORLD_H-30),perp=ang+Math.PI/2;
                         ctx.strokeStyle=isHypercharged?'rgba(225,130,255,.96)':'rgba(104,232,255,.96)';ctx.lineWidth=7;ctx.setLineDash([16,9]);ctx.beginPath();ctx.moveTo(player.x,player.y);ctx.lineTo(landX,landY);ctx.stroke();ctx.setLineDash([]);
-                        const pattern=[-1,1,-.55,.55,-.18,.18];for(let i=0;i<6;i++){const p=(i+1)/7,bx=player.x+(landX-player.x)*p+Math.cos(perp)*pattern[i]*(42+i*9),by=player.y+(landY-player.y)*p+Math.sin(perp)*pattern[i]*(42+i*9);ctx.fillStyle=isHypercharged?'rgba(212,92,255,.22)':'rgba(255,155,55,.2)';ctx.strokeStyle=isHypercharged?'#efa7ff':'#ffc779';ctx.lineWidth=3;ctx.beginPath();ctx.arc(bx,by,66,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.font='900 22px sans-serif';ctx.textAlign='center';ctx.fillStyle='#fff';ctx.fillText('💣',bx,by+8);}
+                        for(let i=0;i<6;i++){const p=i/5,bx=player.x+(landX-player.x)*p+Math.cos(perp)*(i%2===0?-70:70),by=player.y+(landY-player.y)*p+Math.sin(perp)*(i%2===0?-70:70);ctx.fillStyle=isHypercharged?'rgba(212,92,255,.22)':'rgba(255,155,55,.2)';ctx.strokeStyle=isHypercharged?'#efa7ff':'#ffc779';ctx.lineWidth=3;ctx.beginPath();ctx.arc(bx,by,66,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.font='900 22px sans-serif';ctx.textAlign='center';ctx.fillStyle='#fff';ctx.fillText('💣',bx,by+8);}
                         ctx.fillStyle='#fff';ctx.font='900 15px sans-serif';ctx.fillText(isHypercharged?'AIR RAID • MINI BOMBS':'LOCKED FLIGHT • 6 BOMBS',landX,landY-94);ctx.textAlign='left';
                 } else if (selectedBrawler === 'chickpig') {
                         const pulse=.85+Math.sin(performance.now()/120)*.1;ctx.fillStyle=isHypercharged?'rgba(210,80,255,.13)':'rgba(255,190,90,.12)';ctx.strokeStyle=isHypercharged?'rgba(229,150,255,.9)':'rgba(255,220,145,.9)';ctx.lineWidth=4;ctx.beginPath();ctx.arc(player.x,player.y,145*pulse,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.font='900 34px sans-serif';ctx.textAlign='center';ctx.fillText('🐔',player.x-42,player.y+12);ctx.fillText('🐖',player.x+42,player.y+12);ctx.textAlign='left';
@@ -72276,6 +72326,13 @@ function checkHit(target, b, i){
         }
         if(entity&&entity.hp>0&&performance.now()<(entity.fastpassHealAuraUntil||0)){
             const now=performance.now(),remaining=clamp(((entity.fastpassHealAuraUntil||0)-now)/500,0,1),pulse=1+Math.sin((now-(entity.fastpassHealAuraPulseAt||now))/60)*.06;ctx.save();ctx.globalAlpha=.38+.42*remaining;ctx.fillStyle='rgba(174,73,255,.18)';ctx.strokeStyle='#d879ff';ctx.shadowColor='#b94dff';ctx.shadowBlur=22;ctx.lineWidth=4;ctx.beginPath();ctx.arc(entity.x,entity.y,117*pulse,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.globalAlpha=.75*remaining;ctx.lineWidth=2;ctx.setLineDash([8,7]);ctx.beginPath();ctx.arc(entity.x,entity.y,93*pulse,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.restore();
+        }
+        if (entity && entity.hp > 0 && performance.now() < (entity.decayerAuraUntil || 0)) {
+            const now = performance.now(), pulse = 1 + Math.sin(now / 90) * 0.07;
+            ctx.save(); ctx.globalAlpha = 0.9; ctx.fillStyle = 'rgba(157, 255, 87, 0.10)'; ctx.strokeStyle = '#9dff57'; ctx.shadowColor = '#9dff57'; ctx.shadowBlur = 18; ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.arc(entity.x, entity.y, DECAYER_AURA_RADIUS * pulse, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.globalAlpha = 0.6; ctx.lineWidth = 2; ctx.setLineDash([10, 8]);
+            ctx.beginPath(); ctx.arc(entity.x, entity.y, DECAYER_AURA_RADIUS * (2 - pulse), 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); ctx.restore();
         }
         if (entity && entity.hp > 0 && performance.now() < (entity.chickpigChickenUntil||0)) {
             const flap=Math.sin(performance.now()/75)*5;ctx.save();ctx.translate(entity.x,entity.y+entity.radius*.55);ctx.shadowColor=entity.chickpigChickenSpeedMult>=1.5?'#d66cff':'#ffd16b';ctx.shadowBlur=16;ctx.fillStyle='#fff4cf';ctx.beginPath();ctx.ellipse(0,0,entity.radius+8,11,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#ffbd32';ctx.beginPath();ctx.moveTo(entity.radius+5,-2);ctx.lineTo(entity.radius+15,2);ctx.lineTo(entity.radius+5,6);ctx.closePath();ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-5,0);ctx.lineTo(-18,-8-flap);ctx.moveTo(5,0);ctx.lineTo(18,-8+flap);ctx.stroke();ctx.restore();
