@@ -607,3 +607,65 @@
     font-size: 18px !important;
   }
 }
+
+/* ==========================================================================
+   HOTFIX 2026-11-04 — home screen dead buttons + clipped layout (live bug:
+   "whole home screen looks awful on web/mobile and no buttons work").
+   Root cause: PR #75 dropped #homePanel's inline pointer-events:auto and
+   this sheet never restored it, so every in-panel button inherited
+   pointer-events:none from #homeScreen. The rest of this block repairs
+   older layers the redesign never overrode (title wrapper, action-row
+   absolute positioning, events flex, desktop clipping, icon-only
+   fullscreen button, card pseudo-element hit-testing). Home screen only.
+   ========================================================================== */
+
+/* 1. Restore clickability: the panel re-enables pointer events that the
+   #homeScreen wrapper (inline pointer-events:none) switches off. */
+#homeScreen #homePanel { pointer-events: auto !important; }
+
+/* 2. Title wrapper: an older layer hides #homeHeader's first div's child,
+   which is now the brand-lockup title wrapper (BRAWE + subtitle). */
+#homeScreen #homeHeader .home-brand-lockup > div { display: block !important; }
+
+/* 3. Action row: older layers pin #homeActionRow absolutely over the
+   header (desktop/tablet); it belongs in-flow inside the left rail. */
+#homeScreen #homeBsLeft #homeActionRow {
+  position: static !important;
+  inset: auto !important;
+  z-index: auto !important;
+}
+
+/* 4. Events tab: restore the flex-column scroll fix the redesign's
+   display:block overrode, so long event lists scroll on desktop. */
+#homeScreen #homeEventsView.is-active {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+}
+
+/* 5. Card pseudo-elements must never eat clicks (the ::after label sits
+   over the card's bottom-right corner). */
+#homeScreen #homeBrawlerCard::before,
+#homeScreen #homeBrawlerCard::after { pointer-events: none !important; }
+
+/* 6. Desktop only: let the panel fit its padded screen and let the
+   screen scroll instead of clipping the bottom bar / PLAY, and restore
+   the fullscreen button's text label (older layer forces icon-only). */
+@media (min-width: 981px) {
+  #homeScreen { overflow-y: auto !important; }
+
+  #homeScreen #homePanel.home-bs-panel {
+    height: auto !important;
+    min-height: calc(100vh - max(10px, env(safe-area-inset-top)) - max(12px, env(safe-area-inset-bottom))) !important;
+    min-height: calc(100dvh - max(10px, env(safe-area-inset-top)) - max(12px, env(safe-area-inset-bottom))) !important;
+    overflow: visible !important;
+  }
+
+  #homeScreen #fullscreenBtn {
+    width: auto !important;
+    text-indent: 0 !important;
+  }
+
+  #homeScreen #fullscreenBtn::after { content: none !important; }
+}

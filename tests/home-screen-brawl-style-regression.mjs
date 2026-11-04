@@ -115,7 +115,7 @@ check('fullscreenchange + webkitfullscreenchange listeners present',
   game.includes("document.addEventListener('webkitfullscreenchange'"));
 check('restore armed at boot', game.includes('armFullscreenRestoreOnGesture();'));
 check('restore skips taps on the fullscreen buttons',
-  game.includes("closest('#fullscreenBtn, #matchFullscreenBtn')"));
+  game.includes("closest('#fullscreenBtn, #mobileFullscreenBtn')"));
 check('silent restore path never alerts',
   !extractFn(game, 'requestGameFullscreenSilent').includes('alert(') &&
   !extractFn(game, 'armFullscreenRestoreOnGesture').includes('alert('));
@@ -154,6 +154,26 @@ check('no exitFullscreen outside toggleGameFullscreen',
 // ---------- (g) wording: no imported terms in the new files ----------
 check('no "Brawl Stars" phrase in index.html', !/Brawl Stars/i.test(html));
 check('no "Brawl Stars" phrase in new stylesheet', !/Brawl Stars/i.test(css));
+
+
+// ---------- (h) HOTFIX 2026-11-04: dead home buttons + clipped layout ----------
+// Root cause: PR #75 dropped #homePanel's inline pointer-events:auto and
+// no stylesheet restored it, so every in-panel button inherited
+// pointer-events:none from #homeScreen. These checks pin the repair.
+check('hotfix: panel re-enables pointer events', /#homeScreen\s+#homePanel\s*\{[^}]*pointer-events:\s*auto/.test(css));
+check('hotfix: wrapper still pointer-events:none (canvas show-through kept)', /id="homeScreen"[^>]*pointer-events:none/.test(html));
+check('hotfix: title wrapper re-shown', /#homeScreen\s+#homeHeader\s+\.home-brand-lockup\s*>\s*div\s*\{[^}]*display:\s*block/.test(css));
+check('hotfix: action row back in-flow (no absolute float over header)', /#homeScreen\s+#homeBsLeft\s+#homeActionRow\s*\{[^}]*position:\s*static/.test(css));
+check('hotfix: events view is flex column again (scrolls on desktop)', /#homeScreen\s+#homeEventsView\.is-active\s*\{[^}]*display:\s*flex/.test(css));
+check('hotfix: card pseudo-elements never eat clicks', /#homeBrawlerCard::after\s*\{[^}]*pointer-events:\s*none/.test(css));
+check('hotfix: desktop panel fits screen (height auto, overflow visible)', /@media\s*\(min-width:\s*981px\)/.test(css) && /#homePanel\.home-bs-panel\s*\{[^}]*height:\s*auto/.test(css) && /#homePanel\.home-bs-panel\s*\{[^}]*overflow:\s*visible/.test(css));
+check('hotfix: desktop screen scrolls', /@media\s*\(min-width:\s*981px\)[\s\S]*?#homeScreen\s*\{[^}]*overflow-y:\s*auto/.test(css));
+check('hotfix: desktop fullscreen button shows text label', /#homeScreen\s+#fullscreenBtn\s*\{[^}]*text-indent:\s*0/.test(css) && /#fullscreenBtn::after\s*\{[^}]*content:\s*none/.test(css));
+check('hotfix: home stylesheet cache-buster bumped', html.includes('home-brawl-style.css?v=20261104-home-hotfix1') && !html.includes('20261103-home-bs1'));
+{
+  const restoreFn = extractFn(game, 'armFullscreenRestoreOnGesture');
+  check('hotfix: fullscreen restore skips real in-match button id', restoreFn.includes('#mobileFullscreenBtn') && !restoreFn.includes('#matchFullscreenBtn'));
+}
 
 console.log(`home-screen-brawl-style: ${passed} passed, ${failures.length} failed`);
 if (failures.length) {
