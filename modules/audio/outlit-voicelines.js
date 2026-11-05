@@ -1,4 +1,7 @@
 // Outlit voice lines — 24 TTS clips, one voice, wired to match triggers.
+// RULE ONE (Anthony, 2026-11-05): voice lines NEVER explain what attacks do —
+// no counts, ranges, damage, or mechanics in any line. Battle-cry NAMES
+// ("Boom Break!", "Overpressure!") are not explanations and stay.
 // Voice: Twenty (avocado_v2:Twenty) — bold, heroic American male. Builder pick:
 // Anthony can veto the voice or rewrite any line (full list in SPEC.md).
 // Loaded as a classic script before game.js (see bootstrap.js). If this file
@@ -20,7 +23,11 @@
     hurt: ['hurt-1.mp3', 'hurt-2.mp3', 'hurt-3.mp3'],
     death: ['death-1.mp3', 'death-2.mp3', 'death-3.mp3'],
     win: ['win-1.mp3', 'win-2.mp3', 'win-3.mp3'],
-    idle: ['idle-1.mp3', 'idle-2.mp3']
+    idle: ['idle-1.mp3', 'idle-2.mp3'],
+    // Mutation trigger (added 2026-11-05): plays when Overpressure arms
+    // (every 8 main attacks -> next 4 at +100% range). Clips are voice lines
+    // with a synthesized pressure-charge whoosh + boom baked in.
+    mutation: ['mutation-1.mp3', 'mutation-2.mp3', 'mutation-3.mp3']
   };
 
   // Spoken text per clip (subtitle source + regression-test reference).
@@ -29,15 +36,15 @@
     'spawn-2.mp3': "Outlit's in the arena. Try and keep up.",
     'spawn-3.mp3': 'Locked, loaded, and lit.',
     'attack-1.mp3': 'Eat buckshot!',
-    'attack-2.mp3': 'Point blank!',
+    'attack-2.mp3': 'Taste the light!',
     'attack-3.mp3': 'Scatter!',
     'attack-4.mp3': 'Pump it up!',
     'super-1.mp3': 'Boom Break!',
     'super-2.mp3': 'Lights out!',
-    'super-3.mp3': 'Three shots. No survivors.',
+    'super-3.mp3': 'Here comes the big one!',
     'kill-1.mp3': 'Lights out for you.',
     'kill-2.mp3': "Down. Who's next?",
-    'kill-3.mp3': 'Point blank. Ouch.',
+    'kill-3.mp3': 'That one left a mark.',
     'hurt-1.mp3': 'Hey! Watch the lamp!',
     'hurt-2.mp3': 'Ow! That actually hurt!',
     'hurt-3.mp3': 'You scratched the paint!',
@@ -48,12 +55,15 @@
     'win-2.mp3': 'Still lit. Still standing.',
     'win-3.mp3': 'Day one, and still number one.',
     'idle-1.mp3': 'Hello? Anyone still out there?',
-    'idle-2.mp3': "My lamp's getting bored."
+    'idle-2.mp3': "My lamp's getting bored.",
+    'mutation-1.mp3': "Overpressure! Light it up!",
+    'mutation-2.mp3': "Pressure's peaking, time to blow this wide open!",
+    'mutation-3.mp3': "Full pressure! Nobody's safe now!"
   };
 
   // Per-trigger minimum gap so chatty triggers (attack/hurt) never spam.
   // Rare triggers (spawn/super/death/win) have no throttle.
-  var COOLDOWN_MS = { spawn: 0, attack: 4500, super: 0, kill: 1200, hurt: 2500, death: 0, win: 0, idle: 20000 };
+  var COOLDOWN_MS = { spawn: 0, attack: 4500, super: 0, kill: 1200, hurt: 2500, death: 0, win: 0, idle: 20000, mutation: 0 };
 
   var enabled = true;
   var cache = new Map();
