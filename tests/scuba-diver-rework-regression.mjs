@@ -48,7 +48,7 @@ function extractFn(src, name) {
 
 // ---------- source checks ----------
 check('volley delay 29.25ms', game.includes('const volleyDelayMs = 29.25;'));
-check('player bubble damage 800 close / 490 far', game.includes('const closeDamage = isBot ? 477 : 800;') && game.includes('const farDamage = isBot ? 291 : 490;'));
+check('player bubble damage 800 close / 490 far', game.includes('const closeDamage = Math.round((isBot ? 477 : 800) * damageMult);') && game.includes('const farDamage = Math.round((isBot ? 291 : 490) * damageMult);'));
 check('hyper bubble floor 0.90, non-hyper floor stays 0.52', game.includes('scubaMinClosePct: isHyper ? 0.90 : 0.52,'));
 check('dash water radius 60 / life 4000', game.includes('const SCUBA_WATER_DASH_RADIUS = 60;') && game.includes('const SCUBA_WATER_DASH_LIFE_MS = 4000;'));
 check('spread water radius 30 / life 1000', game.includes('const SCUBA_WATER_SPREAD_RADIUS = 30;') && game.includes('const SCUBA_WATER_SPREAD_LIFE_MS = 1000;'));
