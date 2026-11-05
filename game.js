@@ -6632,7 +6632,7 @@ const bolznstienPendingStrikes = [];
             price: 349,
             currency: 'gems',
             icon: '🌾',
-            description: 'A golden-harvest charmer in a straw hat, trailing wheat-gold charm light. Transfigures during Hypercharge into a radiant harvest sovereign with a blazing golden aura!',
+            description: 'A golden-harvest charmer in a straw hat, trailing wheat-gold charm light. Transfigures during Hypercharge into a radiant purple harvest sovereign with a blazing purple aura!',
             _displayColor: '#f5c542',
             hyperTransform: true,
             isHyperchargeSkin: true,
@@ -7455,6 +7455,21 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
         if (!entity || !skin) return;
         const effect = skin[kind + 'Effect'];
         if (!effect) return;
+        if (kind === 'takedown' && skin.id === 'aura-farmer-aura-charmer') {
+            // Custom harvest takedown: wheat-gold motes plus a scythe arc
+            // sweep, instead of the generic burst every other skin shares.
+            explosions.push({ x: entity.x, y: entity.y, radius: 46, life: 0, maxLife: 0.55, color: 'rgba(245,197,66,.80)', fxKind: 'harvestReaping', legendary: true, skinId: skin.id, ringCount: 3 });
+            for (let wheatIndex = 0; wheatIndex < 14; wheatIndex++) {
+                const wheatAng = (Math.PI * 2 * wheatIndex) / 14 + (Math.random() * 0.18 - 0.09);
+                const wheatSpeed = 210 + Math.random() * 70;
+                explosions.push({ x: entity.x, y: entity.y, vx: Math.cos(wheatAng) * wheatSpeed, vy: Math.sin(wheatAng) * wheatSpeed, radius: 2.5, life: 0, maxLife: 0.7, color: wheatIndex % 2 ? '#7ec850' : '#f5c542', isParticle: true, legendary: true });
+            }
+            for (let arcIndex = 0; arcIndex < 6; arcIndex++) {
+                const arcAng = -Math.PI / 6 + (arcIndex / 5) * (Math.PI * 0.9);
+                explosions.push({ x: entity.x + Math.cos(arcAng) * 34, y: entity.y + Math.sin(arcAng) * 34, radius: 6, life: 0, maxLife: 0.35, color: 'rgba(255,215,107,.85)', fxKind: 'harvestReapingArc', legendary: true, skinId: skin.id });
+            }
+            return;
+        }
         const color = effect.color || getSkinRarityMeta(skin.rarity).border;
         const radius = kind === 'spawn' ? 42 : (kind === 'death' ? 56 : 46);
         const isBespokeSkin = skin.set === 'Forgeaween' || ['headless-bolznstien', 'boneless-boomarang', 'master-overlord', 'emperor-overlord', 'pumkinomer', 'gentleman-homer', 'nightmare-outlit', 'hyperfusion-fuser', 'back-to-school-classy', 'classic-classy'].includes(skin.id);
@@ -44952,7 +44967,21 @@ let heistFeverActive = false;
               target.auraCharmerSlowUntil = Math.max(target.auraCharmerSlowUntil || 0, now + AURA_CHARMER_G1_SLOW_MS);
           }
       }
-      explosions.push({ x: owner.x, y: owner.y, radius, life: 0, maxLife: 0.28, color: 'rgba(192,132,252,.55)', fxKind: 'auraCharmerSlam' });
+      owner.visualAttackAt = now;
+      // Doug-like slam animation: the burst visibly travels outward from
+      // the Charmer (impact + a slower rolling wave + charm motes flying
+      // out to the aura's edge), instead of a single instant circle.
+      const slamHyper = isEntityHyperchargedNow(owner, now);
+      const slamFarmer = auraCharmerWearsAuraFarmer(owner);
+      const slamColor = slamHyper ? 'rgba(168,85,247,.70)' : (slamFarmer ? 'rgba(245,197,66,.70)' : 'rgba(192,132,252,.55)');
+      const moteColor = slamHyper ? '#c084fc' : (slamFarmer ? '#f5c542' : '#e9d5ff');
+      explosions.push({ x: owner.x, y: owner.y, radius, life: 0, maxLife: 0.28, color: slamColor, fxKind: 'auraCharmerSlam' });
+      explosions.push({ x: owner.x, y: owner.y, radius, life: 0, maxLife: 0.5, color: slamColor, fxKind: 'auraCharmerSlamWave' });
+      for (let moteIndex = 0; moteIndex < 12; moteIndex++) {
+          const moteAng = (Math.PI * 2 * moteIndex) / 12 + Math.random() * 0.3;
+          const moteSpeed = 260 + Math.random() * 120;
+          explosions.push({ x: owner.x, y: owner.y, vx: Math.cos(moteAng) * moteSpeed, vy: Math.sin(moteAng) * moteSpeed, radius: 3, life: 0, maxLife: 0.45, color: moteColor, isParticle: true, fxKind: 'auraCharmerSlamMote' });
+      }
       // Boxes break: power boxes in the aura take the slam's damage through
       // the engine's standard box-damage path (rewards + destruction handled
       // there, same as other attacks). Towers, Core, and metal walls are not
@@ -44993,7 +45022,7 @@ let heistFeverActive = false;
       entity.auraCharmerSweepUntil = now + AURA_CHARMER_SWEEP_MS;
       entity.auraCharmerSweepStartedAt = now;
       entity.auraCharmerSweepRadius = radius;
-      if (isHyper && auraCharmerWearsAuraFarmer(entity)) spawnFloatingText(entity.x, entity.y - 56, '🌾 AURA FARMER!', '#f5c542');
+      if (isHyper && auraCharmerWearsAuraFarmer(entity)) spawnFloatingText(entity.x, entity.y - 56, '🌾 AURA FARMER!', '#a855f7');
       explosions.push({ x: entity.x, y: entity.y, radius, life: 0, maxLife: 0.4, color: isHyper ? 'rgba(245,197,66,.5)' : 'rgba(192,132,252,.5)', fxKind: 'auraCharmerSweep' });
       return true;
   }
@@ -63114,7 +63143,11 @@ function checkHit(target, b, i){
     function drawFeatured2p5DBrawler(entity, drawY, brawlerId, isBoss) {
         if (!hasCustomBrawlerPortrait(brawlerId)) return false;
         if (!Number.isFinite(entity.x) || !Number.isFinite(drawY)) return false;
-        const visualSkin = getActiveSkinForBrawler(brawlerId)?.id;
+        let visualSkin = getActiveSkinForBrawler(brawlerId)?.id;
+        // Hypercharge-skin transform: while Hypercharged, the Aura Farmer
+        // renders its sovereign model instead of the base farmer model.
+        const charmerHyper = entity === player ? !!isHypercharged : !!entity.isHypercharged;
+        if (brawlerId === 'aura_charmer' && visualSkin === 'aura-farmer-aura-charmer' && charmerHyper) visualSkin = 'aura-farmer-hyper-aura-charmer';
         const bespokeSkin = ['back-to-school-classy', 'hyperfusion-fuser', 'possessed-claws-hunter', 'possessed-claws-malakor', 'possessed-claws-predator', 'headless-bolznstien', 'boneless-boomarang', 'master-overlord', 'pumkinomer', 'nightmare-outlit'].includes(visualSkin);
         if (!CUSTOM_BRAWLER_PORTRAITS.includes(brawlerId) && !bespokeSkin) {
             return window.BraweRosterVisuals?.draw(ctx, entity, drawY, brawlerId, visualSkin, performance.now(), isBoss) || false;
@@ -72691,13 +72724,15 @@ function checkHit(target, b, i){
         if (entity && entity.hp > 0 && isAuraCharmerEntity(entity)) {
             const now = performance.now();
             const hyper = isEntityHyperchargedNow(entity, now);
-            const farmer = hyper && auraCharmerWearsAuraFarmer(entity);
+            const farmer = auraCharmerWearsAuraFarmer(entity);
             const r = getAuraCharmerRadius(entity, now);
             ctx.save();
             ctx.globalAlpha = 0.85;
-            ctx.fillStyle = farmer ? 'rgba(245,197,66,.14)' : 'rgba(192,132,252,.10)';
-            ctx.strokeStyle = farmer ? '#f5c542' : '#c084fc';
-            ctx.shadowColor = ctx.strokeStyle; ctx.shadowBlur = farmer ? 26 : 16; ctx.lineWidth = farmer ? 5 : 3;
+            // Hypercharge reads purple for Charmer: the farmer's gold shows
+            // only while NOT hypercharged; hyper overrides it with purple.
+            ctx.fillStyle = hyper ? 'rgba(168,85,247,.16)' : (farmer ? 'rgba(245,197,66,.14)' : 'rgba(192,132,252,.10)');
+            ctx.strokeStyle = hyper ? '#a855f7' : (farmer ? '#f5c542' : '#c084fc');
+            ctx.shadowColor = ctx.strokeStyle; ctx.shadowBlur = (hyper || farmer) ? 26 : 16; ctx.lineWidth = (hyper || farmer) ? 5 : 3;
             ctx.beginPath(); ctx.arc(entity.x, entity.y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
             ctx.restore();
             // Steady ring on purpose: unlike Decayer's pulsing ring, the

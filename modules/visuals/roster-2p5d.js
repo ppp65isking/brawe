@@ -50,6 +50,7 @@
     'abyss-trapper':['diver','#071d3a','#42f5d7'],
     'reactor-decayer':['hazmat','#27382f','#a8ff3e'],
     'aura-farmer-aura-charmer':['farmer','#f5c542','#7ec850'],
+    'aura-farmer-hyper-aura-charmer':['sovereign','#a855f7','#e9d5ff'],
     'prism-seraph-angel':['seraph','#fff2b8','#79e9ff']
   };
   // Every fighter owns a visual identity assembled from kit-specific geometry.
@@ -210,6 +211,18 @@
       list.push(['ring',50,10,27,7,accent,4]);
       poly([[25,49],[4,31],[12,57],[2,72],[30,67]],'#d9fbff');poly([[75,49],[96,31],[88,57],[98,72],[70,67]],'#d9fbff');
       poly([[50,2],[57,17],[50,28],[43,17]],'#ffffff');list.push(['ring',50,67,10,15,accent,3]);
+    }
+    if(type==='farmer'){
+      // Straw hat, harvest vest and a wheat stalk: the skin finally reads
+      // as a farmer instead of a recoloured hood.
+      ellipse(50,22,34,7,coat);poly([[34,22],[38,6],[62,6],[66,22]],coat);rect(38,16,24,4,accent);
+      rect(30,62,40,18,accent);
+      list.push(['line',[[78,50],[88,30]],coat,3]);ellipse(88,28,3,3,coat);ellipse(84,33,2.5,2.5,coat);ellipse(91,34,2.5,2.5,coat);
+    }
+    if(type==='sovereign'){
+      // Hypercharged harvest sovereign: crown, halo and a sweeping robe.
+      poly([[22,26],[20,6],[37,16],[50,0],[63,16],[80,6],[77,26]],accent);list.push(['ring',50,10,30,8,accent,4]);
+      poly([[28,53],[20,88],[50,78],[80,88],[72,53]],coat);list.push(['ring',50,40,10,12,accent,3]);
     }
     addPersonalGeometry(list,id,accent,coat);
     return list;

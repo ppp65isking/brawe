@@ -66,7 +66,7 @@ check('player + bot speed lines multiply chase speed', game.includes('getRunnerT
 // --- Slam / super / aura rules ---
 check('slam heals allies 450 and skips towers/Core', game.includes('doHeal(target, AURA_CHARMER_HEAL)') && game.includes('if (target.isArenaForgeTower || target.isArenaForgeCore) continue;'));
 check('slam breaks power boxes in aura via the standard box-damage path', (() => {
-  const slam = game.slice(game.indexOf('function auraCharmerSlam'), game.indexOf('function auraCharmerSlam') + 3200);
+  const slam = game.slice(game.indexOf('function auraCharmerSlam'), game.indexOf('function auraCharmerSlam') + 4600);
   return slam.includes('destructibleWalls') && slam.includes('isHeaterLockableBox(wall)') && slam.includes('rectCircleCollides(wall.x, wall.y, wall.w, wall.h, owner.x, owner.y, radius)') && slam.includes('applyHeaterBoxDamage(owner, wall, dmg)');
 })());
 check('slam box loop skips dead/non-box walls; old brawlers-only comment gone', game.includes('if (!wall || wall.hp <= 0 || !isHeaterLockableBox(wall)) continue;') && !game.includes('Never touches towers/Core/walls (brawlers only)'));
@@ -91,6 +91,17 @@ check('Aura Farmer copy names the hyper transform', (() => {
   return entry.includes('Aura Farmer') && entry.includes('Transfigures during Hypercharge');
 })());
 check('roster visuals: aura_charmer look + identity + aura-farmer skin', roster.includes("aura_charmer:['hood','#c084fc','#ffd76b']") && roster.includes("aura_charmer:'charm_hood|aura_orb|charm_sigil|robe'") && roster.includes("'aura-farmer-aura-charmer':['farmer','#f5c542','#7ec850']"));
+
+// --- Art batch: Doug-like slam, harvest takedown, purple HC, farmer + sovereign models ---
+check('slam animation: slam sets visualAttackAt for the recoil beat', game.includes('owner.visualAttackAt = now;'));
+check('slam animation: Doug-like rolling wave + outward motes', game.includes("fxKind: 'auraCharmerSlamWave'") && game.includes("fxKind: 'auraCharmerSlamMote'") && game.includes('moteIndex'));
+check('slam colors: hyper purple, farmer gold, base violet', game.includes("slamHyper ? 'rgba(168,85,247,.70)'") && game.includes("slamFarmer ? 'rgba(245,197,66,.70)'"));
+check('takedown: farmer gets a custom harvest takedown, not the generic burst', game.includes("kind === 'takedown' && skin.id === 'aura-farmer-aura-charmer'") && game.includes("fxKind: 'harvestReaping'") && game.includes("fxKind: 'harvestReapingArc'"));
+check('HC purple: hyper ring is purple, farmer gold only off-hyper', game.includes("hyper ? '#a855f7'") && game.includes("farmer ? '#f5c542' : '#c084fc'"));
+check('HC purple: farmer callout is purple on hyper', game.includes("'🌾 AURA FARMER!', '#a855f7'"));
+check('farmer model: roster module draws farmer geometry', roster.includes("if(type==='farmer')") && roster.includes('ellipse(50,22,34,7,coat)') && roster.includes('rect(30,62,40,18,accent)'));
+check('sovereign model: hyper variant + crown/halo geometry + draw swap', roster.includes("if(type==='sovereign')") && roster.includes("'aura-farmer-hyper-aura-charmer':['sovereign','#a855f7','#e9d5ff']") && game.includes("visualSkin = 'aura-farmer-hyper-aura-charmer'"));
+check('skin description promises a purple hyper form', game.includes('radiant purple harvest sovereign'));
 
 console.log(`aura-charmer: ${passed} passed, ${failed} failed`);
 if (failed) { for (const f of failures) console.log('FAIL: ' + f); process.exit(1); }
