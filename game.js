@@ -287,6 +287,14 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             const scale = 0.55 + (level - 1) * 0.045;
             return { hp: Math.round(6400 * scale), dmg: Math.round(1050 * scale), speed: 280 };
         }
+        if (brawlerId === 'voltastein') {
+            const scale = 0.55 + (level - 1) * 0.045;
+            return { hp: Math.round(5800 * scale), dmg: Math.round(900 * scale), speed: 280 };
+        }
+        if (brawlerId === 'staticstein') {
+            const scale = 0.55 + (level - 1) * 0.045;
+            return { hp: Math.round(6200 * scale), dmg: Math.round(800 * scale), speed: 290 };
+        }
         if (brawlerId === 'looma') {
             const scale = 0.55 + (level - 1) * 0.045;
             return { hp: Math.round(6600 * scale), dmg: Math.round(1450 * scale), speed: 270 };
@@ -3485,6 +3493,18 @@ function updateGadgetInfo() {
       return { ready: !entity.electrostienFamilyCircuitArmed, label: entity.electrostienFamilyCircuitArmed ? 'CIRCUIT ARMED' : 'FAMILY CIRCUIT' };
   }
 
+  function getVoltasteinSignatureState(entity) {
+      if (!entity || entity.hp <= 0) return { ready: false, label: 'DOWN' };
+      if (!isSpecialAbilityAvailableForEntity(entity, 'voltastein')) return { ready: false, label: 'LOCKED' };
+      return { ready: !entity.voltasteinFamilyCircuitArmed, label: entity.voltasteinFamilyCircuitArmed ? 'CIRCUIT ARMED' : 'FAMILY CIRCUIT' };
+  }
+
+  function getStaticsteinSignatureState(entity) {
+      if (!entity || entity.hp <= 0) return { ready: false, label: 'DOWN' };
+      if (!isSpecialAbilityAvailableForEntity(entity, 'staticstein')) return { ready: false, label: 'LOCKED' };
+      return { ready: !entity.staticsteinFamilyCircuitArmed, label: entity.staticsteinFamilyCircuitArmed ? 'CIRCUIT ARMED' : 'FAMILY CIRCUIT' };
+  }
+
   function activateSignatureAbility(entity = player) {
       const fighterId = entity.id === player.id ? selectedBrawler : entity.brawler;
       if (fighterId === 'dashaholic') {
@@ -3628,6 +3648,26 @@ function updateGadgetInfo() {
           updateSignatureButton();
           return true;
       }
+      if (fighterId === 'voltastein') {
+          if (!isSpecialAbilityAvailableForEntity(entity, 'voltastein')) return false;
+          const state = getVoltasteinSignatureState(entity);
+          if (!state.ready) return false;
+          entity.voltasteinFamilyCircuitArmed = true;
+          explosions.push({ x: entity.x, y: entity.y, radius: 46, life: 0, maxLife: .24, color: 'rgba(255,211,79,.55)', fxKind: 'familyCircuitArm' });
+          spawnFloatingText(entity.x, entity.y - 44, 'FAMILY CIRCUIT ARMED!', '#ffd34f');
+          updateSignatureButton();
+          return true;
+      }
+      if (fighterId === 'staticstein') {
+          if (!isSpecialAbilityAvailableForEntity(entity, 'staticstein')) return false;
+          const state = getStaticsteinSignatureState(entity);
+          if (!state.ready) return false;
+          entity.staticsteinFamilyCircuitArmed = true;
+          explosions.push({ x: entity.x, y: entity.y, radius: 46, life: 0, maxLife: .24, color: 'rgba(255,211,79,.55)', fxKind: 'familyCircuitArm' });
+          spawnFloatingText(entity.x, entity.y - 44, 'FAMILY CIRCUIT ARMED!', '#ffd34f');
+          updateSignatureButton();
+          return true;
+      }
       if (fighterId !== 'bouncin_balls') return false;
       const state = getBouncinSignatureState(entity);
       if (!state.ready) {
@@ -3652,20 +3692,20 @@ function updateGadgetInfo() {
   }
 
   function updateSignatureButton() {
-      const signatureFighter = selectedBrawler === 'bouncin_balls' || selectedBrawler === 'classy' || selectedBrawler === 'beast' || selectedBrawler === 'mageny' || selectedBrawler === 'beam' || selectedBrawler === 'dashaholic' || selectedBrawler === 'bolznstien' || selectedBrawler === 'electrostien';
+      const signatureFighter = selectedBrawler === 'bouncin_balls' || selectedBrawler === 'classy' || selectedBrawler === 'beast' || selectedBrawler === 'mageny' || selectedBrawler === 'beam' || selectedBrawler === 'dashaholic' || selectedBrawler === 'bolznstien' || selectedBrawler === 'electrostien' || selectedBrawler === 'voltastein' || selectedBrawler === 'staticstein';
       const shouldShow = playing && signatureFighter && isSpecialAbilityAvailableForEntity(player, selectedBrawler);
       if (signatureTouchBtn) signatureTouchBtn.style.display = shouldShow ? 'flex' : 'none';
       if (signatureBtn) signatureBtn.style.display = shouldShow ? '' : 'none';
       if (!shouldShow) return;
-      const state = selectedBrawler === 'dashaholic' ? getDashaholicSignatureState(player) : (selectedBrawler === 'beam' ? getBeamSignatureState(player) : (selectedBrawler === 'classy' ? getClassySignatureState(player) : (selectedBrawler === 'beast' ? getBeastSignatureState(player) : (selectedBrawler === 'mageny' ? getMagenySignatureState(player) : (selectedBrawler === 'bolznstien' ? getBolznstienSignatureState(player) : (selectedBrawler === 'electrostien' ? getElectrostienSignatureState(player) : getBouncinSignatureState(player)))))));
-      const costText = selectedBrawler === 'dashaholic' ? ' - costs up to 1200 HP; empowers selected Gadget; 15s cooldown' : (selectedBrawler === 'beam' ? ' - costs 2300 HP; requires Super ammo bar' : (selectedBrawler === 'classy' ? ' - costs up to 1000 HP' : (selectedBrawler === 'beast' ? ' - consumes full ammo; regular form only' : (selectedBrawler === 'mageny' ? ' - costs 2000 HP; press again to detonate' : (selectedBrawler === 'bolznstien' ? ' - costs 1500 HP; only during Electric Eyes; 14s cooldown' : (selectedBrawler === 'electrostien' ? ' - free to arm; echoes your punches as sky strikes inside the Electric Realm' : ' - costs up to 1000 HP; turret command also costs up to 750 turret HP'))))));
+      const state = selectedBrawler === 'dashaholic' ? getDashaholicSignatureState(player) : (selectedBrawler === 'beam' ? getBeamSignatureState(player) : (selectedBrawler === 'classy' ? getClassySignatureState(player) : (selectedBrawler === 'beast' ? getBeastSignatureState(player) : (selectedBrawler === 'mageny' ? getMagenySignatureState(player) : (selectedBrawler === 'bolznstien' ? getBolznstienSignatureState(player) : (selectedBrawler === 'electrostien' ? getElectrostienSignatureState(player) : (selectedBrawler === 'voltastein' ? getVoltasteinSignatureState(player) : (selectedBrawler === 'staticstein' ? getStaticsteinSignatureState(player) : getBouncinSignatureState(player)))))))));
+      const costText = selectedBrawler === 'dashaholic' ? ' - costs up to 1200 HP; empowers selected Gadget; 15s cooldown' : (selectedBrawler === 'beam' ? ' - costs 2300 HP; requires Super ammo bar' : (selectedBrawler === 'classy' ? ' - costs up to 1000 HP' : (selectedBrawler === 'beast' ? ' - consumes full ammo; regular form only' : (selectedBrawler === 'mageny' ? ' - costs 2000 HP; press again to detonate' : (selectedBrawler === 'bolznstien' ? ' - costs 1500 HP; only during Electric Eyes; 14s cooldown' : (selectedBrawler === 'electrostien' ? ' - free to arm; echoes your punches as sky strikes inside the Electric Realm' : (selectedBrawler === 'voltastein' ? ' - free to arm; your next Power Outage calls a family sky strike' : (selectedBrawler === 'staticstein' ? ' - free to arm; your next Interference shot calls a family sky strike' : ' - costs up to 1000 HP; turret command also costs up to 750 turret HP'))))))));
       if (signatureTouchBtn) {
           signatureTouchBtn.textContent = state.ready ? 'SIG' : '×';
           signatureTouchBtn.title = `Signature: ${state.label}${costText}`;
           signatureTouchBtn.classList.toggle('signature-ready', !!state.ready);
       }
       if (signatureBtn) {
-          signatureBtn.textContent = `Signature: ${state.label}${selectedBrawler === 'dashaholic' ? ' · up to 1200 HP' : (selectedBrawler === 'beam' ? ' · 2300 HP' : (selectedBrawler === 'classy' ? ' · up to 1000 HP' : (selectedBrawler === 'beast' ? ' · FULL AMMO' : (selectedBrawler === 'mageny' ? ' · 2000 HP' : (selectedBrawler === 'bolznstien' ? ' · 1500 HP' : (selectedBrawler === 'electrostien' ? ' · WIN-EARNED' : ' · up to 1000 HP + 750 turret HP'))))))} (R)`;
+          signatureBtn.textContent = `Signature: ${state.label}${selectedBrawler === 'dashaholic' ? ' · up to 1200 HP' : (selectedBrawler === 'beam' ? ' · 2300 HP' : (selectedBrawler === 'classy' ? ' · up to 1000 HP' : (selectedBrawler === 'beast' ? ' · FULL AMMO' : (selectedBrawler === 'mageny' ? ' · 2000 HP' : (selectedBrawler === 'bolznstien' ? ' · 1500 HP' : (selectedBrawler === 'electrostien' ? ' · WIN-EARNED' : (selectedBrawler === 'voltastein' ? ' · WIN-EARNED' : (selectedBrawler === 'staticstein' ? ' · WIN-EARNED' : ' · up to 1000 HP + 750 turret HP'))))))))} (R)`;
           signatureBtn.disabled = !state.ready;
           signatureBtn.classList.toggle('signature-ready', !!state.ready);
       }
@@ -5021,6 +5061,8 @@ const bolznstienPendingStrikes = [];
             nightshade: 1600,
             runner: 1500,
             aura_charmer: 1500,
+            voltastein: 1600,
+            staticstein: 1500,
             carmela_fudge: 1400,
             oil_maker: 90,
             magnatar: 1450,
@@ -5085,6 +5127,8 @@ const bolznstienPendingStrikes = [];
             nightshade: 300,
             runner: 300,
             aura_charmer: 300,
+            voltastein: 300,
+            staticstein: 300,
             carmela_fudge: 180,
             oil_maker: 112,
             magnatar: 200,
@@ -5177,6 +5221,7 @@ const bolznstienPendingStrikes = [];
         if (now < (entity.mallowSlowUntil || 0)) baseSlow = Math.min(baseSlow, getMallowSlowMultiplier(entity, now));
         if (now < (entity.runnerSlowUntil || 0)) baseSlow = Math.min(baseSlow, RUNNER_TRAIL_SLOW_MULT);
         if (now < (entity.auraCharmerSlowUntil || 0)) baseSlow = Math.min(baseSlow, AURA_CHARMER_G1_SLOW_MULT);
+        if (entity.powerOutageUntil && now < entity.powerOutageUntil) baseSlow = Math.min(baseSlow, getPowerOutageSlowMult(entity, now));
         if (now < (entity.decayerSlowUntil || 0)) baseSlow = Math.min(baseSlow, 0.20);
         if (now < (entity.oilMakerSp1SlowUntil || 0)) baseSlow = Math.min(baseSlow, 0.85); // Round 41 Oil SP1: 15% slow (generic oil slow 0.35 still dominates while standing in oil).
         if (now < (entity.beamSlowUntil || 0)) baseSlow = Math.min(baseSlow, 0.50);
@@ -5380,7 +5425,7 @@ const bolznstienPendingStrikes = [];
         'boom_arang', 'teether', 'fuel', 'xray', 'angel', 'demon', 'warrior', 'relay',
         'upiedown', 'chickpig', 'jetpack', 'snapper', 'robber', 'rocketeer',
         'carmela_fudge', 'peter_pickle', 'unstable', 'homer', 'orbo', 'predator', 'fastpass', 'freestyle', 'portalo', 'ghoul', 'jacktrade', 'darkener', 'awakenator', 'adlof', 'cluster', 'witch', 'boomer', 'blade_vane', 'daggershard', 'ice_cream', 'swimmer', 'kage', 'drainbow', 'draflygon', 'axeywaxy', 'trampaheal', 'mageny', 'ramage', 'upgradart', 'cinderion', 'cursed', 'king', 'anti_royal', 'sir_cheeseburger', 'weefee', 'blinkeye', 'bolznstien', 'magnatar', 'oil_maker', 'rager', 'badbat', 'looma',
-        'feathers', 'spikey', 'electrostien', 'mallow', 'nightshade', 'aegis', 'runner', 'aura_charmer'
+        'feathers', 'spikey', 'electrostien', 'mallow', 'nightshade', 'aegis', 'runner', 'aura_charmer', 'voltastein', 'staticstein'
     ];
     const registeredBrawlerModules = window.ArenaForgeModules?.brawlers || Object.create(null);
     for (const moduleId of Object.keys(registeredBrawlerModules)) {
@@ -5489,6 +5534,7 @@ const bolznstienPendingStrikes = [];
             aegis: 'Mythic',
             runner: 'Mythic',
             aura_charmer: 'Mythic',
+            staticstein: 'Mythic',
 
             // Exotic (10)
             the_deleter: 'Exotic',
@@ -5524,6 +5570,7 @@ const bolznstienPendingStrikes = [];
             king: 'Unique',
 
             // Anomaly (4)
+            voltastein: 'Anomaly',
             carmela_fudge: 'Anomaly',
             crystila: 'Anomaly',
             darkener: 'Anomaly',
@@ -10338,6 +10385,28 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           g2: 'Guardian Glow (Teammates in the aura gain a 1,200 HP shield for 5 seconds)',
           sp1: 'Growing Charm (The aura grows while teammates stand in it, up to 80% bigger, and shrinks back when they leave)',
           sp2: 'Stinging Aura (The aura passively damages enemies inside it for 120 damage every 0.9 seconds)'
+      },
+      'voltastein': {
+          name: 'Voltastein', role: 'Thrower', rarity: 'Anomaly', color: '#a855f7',
+          desc: 'The third Stein sibling — Bolznstien and Electrostien\'s sister. She lobs overcharged volts that burst into real volt explosions, and her Power Outage chains lightning that will not let go until it kills someone.',
+          attack: 'Overcharged Volt', attackDesc: 'Lobs an overcharged volt over walls that explodes in a real burst of voltz (900 damage, 120px blast). Enemies caught in the blast are overcharged: their reload is 20% slower for 1 second.',
+          super: 'Power Outage', superDesc: 'Zaps every enemy within 300px for 400 damage, then a chain stays on them: their speed ramps from 10% slower to 50% slower over 4 seconds and they take 150 damage per second. The chain cannot kill healthy enemies (it stops at 1 HP) — but it can finish enemies who started with low HP. If a chained enemy gets near another enemy, the chain travels to them. The chain only goes away when it kills someone (10 second max).',
+          hyper: 'Volt Overdrive: the volt splits into 2 smaller volts on impact (each 70% damage, 100px blast). Power Outage chains 2 enemies together — they break free by getting 450px apart, and one of them randomly keeps the electric.',
+          g1: 'Arc Leap (Your next volt arcs to one extra nearby enemy on impact — a mini explosion plus the overcharge)',
+          g2: 'Static Field (For 4 seconds, enemies within 150px of Voltastein are overcharged)',
+          sp1: 'Deep Charge (Overcharge lasts 2 seconds instead of 1, and slows reloads by 30% instead of 20%)',
+          sp2: 'Feedback Loop (While Power Outage is active on any enemy, the main attack reloads 30% faster)'
+      },
+      'staticstein': {
+          name: 'Staticstein', role: 'Damage Dealer', rarity: 'Mythic', color: '#d1d5db',
+          desc: 'The kid of all three Stein siblings — somehow. He glitches static and fires a wide shot that splits apart mid-flight and comes back together at the end, and his Super turns every shot into somebody else\'s projectile.',
+          attack: 'Static Split', attackDesc: 'Fires a wide static shot that splits into two bolts mid-flight and comes back together at the end (400 damage per bolt — both connecting deals 800).',
+          super: 'Static Interference', superDesc: 'For 2.5 seconds, every shot is a random projectile brawler\'s projectile — a different one every shot — with that brawler\'s damage and look, firing every 0.8 seconds.',
+          hyper: 'Static Overdrive: the main attack fires twice, quickly (150ms apart, full damage). Static Interference projectiles carry hypercharged effects for 3 seconds even if the Core Surge bar runs out.',
+          g1: 'Glitch Step (Teleport a short distance forward, leaving a small static burst at the destination)',
+          g2: 'Lucky Shot (Your next main attack fires a random projectile brawler\'s projectile instead of the static shot)',
+          sp1: 'Reunion Burst (When the split bolts come back together, they detonate for +300 damage at the convergence point)',
+          sp2: 'Signal Boost (During Static Interference, fire rate is 30% faster)'
       }
   };
 
@@ -10363,7 +10432,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
 
     // V4 standardized primary-role organization: exactly one gameplay role per brawler.
     const PRIMARY_ROLE_BY_BRAWLER = {
-        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank', rager:'Controller', looma:'Controller', feathers:'Controller', spikey:'Damage Dealer', electrostien:'Assassin', mallow:'Controller', nightshade:'Assassin', runner:'Controller', aura_charmer:'Support',
+        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank', rager:'Controller', looma:'Controller', feathers:'Controller', spikey:'Damage Dealer', electrostien:'Assassin', mallow:'Controller', nightshade:'Assassin', runner:'Controller', aura_charmer:'Support', voltastein:'Artillery', staticstein:'Damage Dealer',
     carmela_fudge:'Damage Dealer', bolznstien:'Damage Dealer', badbat:'Damage Dealer', magnatar:'Controller', oil_maker:'Controller', sir_cheeseburger:'Tank',
         blade_vane:'Assassin', kage:'Assassin', drainbow:'Controller', bowlin_rida:'Assassin', dashaholic:'Assassin', demon:'Assassin', jetpack:'Assassin', malakor:'Assassin', predator:'Assassin', swimmer:'Assassin', teether:'Assassin',
         boom_arang:'Marksman', cheseypuff:'Marksman', crystila:'Marksman', homer:'Marksman', hunter:'Marksman', orbo:'Marksman', snapper:'Marksman', xray:'Marksman',
@@ -10389,6 +10458,8 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
             mallow: '🍡',
             nightshade: '🗡️',
             aura_charmer: '✨',
+            voltastein: '⚡🔮',
+            staticstein: '⚡📺',
     looma: '🪡🧵',
         sir_cheeseburger: '🛡️',
         anti_royal: '🏴‍☠️',
@@ -11541,6 +11612,8 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
       aegis: { g1: 16000, g2: 14000 },
       runner: { g1: 15000, g2: 15000 },
       aura_charmer: { g1: 15000, g2: 15000 },
+      voltastein: { g1: 15000, g2: 15000 },
+      staticstein: { g1: 15000, g2: 15000 },
       carmela_fudge: { g1: 8000, g2: 8000 },
       bolznstien: { g1: 14000, g2: 15000 },
       sir_cheeseburger: { g1: 13000, g2: 14000 },
@@ -18568,6 +18641,22 @@ let heistFeverActive = false;
           pieceName: 'Electrostien Signature Piece',
           shortDesc: 'Arm the Family Circuit with the Signature button (R): while Electrostien is inside the Electric Realm, every punch he lands echoes as a Bolznstien-style sky strike (500 damage) on the realm victim. His Pieces are EARNED, never bought: win 3 battles with Electrostien (1 Piece per win). No Core Piece cost.'
       },
+      voltastein: {
+          type: 'signature',
+          name: 'Family Circuit',
+          icon: 'FC',
+          color: '#ffd34f',
+          pieceName: 'Voltastein Signature Piece',
+          shortDesc: 'Arm the Family Circuit with the Signature button (R): your next Power Outage calls a Bolznstien-style sky strike (500 damage) on the nearest chained enemy. Her Pieces are EARNED, never bought: win 3 battles with Voltastein (1 Piece per win). No Core Piece cost.'
+      },
+      staticstein: {
+          type: 'signature',
+          name: 'Family Circuit',
+          icon: 'FC',
+          color: '#ffd34f',
+          pieceName: 'Staticstein Signature Piece',
+          shortDesc: 'Arm the Family Circuit with the Signature button (R): your next Static Interference shot also calls a Bolznstien-style sky strike (500 damage) on the enemy nearest your aim. His Pieces are EARNED, never bought: win 3 battles with Staticstein (1 Piece per win). No Core Piece cost.'
+      },
       fightnfire: {
           type: 'instinct',
           name: 'Flash Freeze',
@@ -18847,6 +18936,8 @@ let heistFeverActive = false;
       const def = getSpecialAbilityDef(fighterId);
       if (!def) return false;
       if (fighterId === 'electrostien') { alert('Family Circuit Pieces are EARNED by winning battles with Electrostien — they cannot be bought with Core Pieces.'); return false; }
+      if (fighterId === 'voltastein') { alert('Family Circuit Pieces are EARNED by winning battles with Voltastein — they cannot be bought with Core Pieces.'); return false; }
+      if (fighterId === 'staticstein') { alert('Family Circuit Pieces are EARNED by winning battles with Staticstein — they cannot be bought with Core Pieces.'); return false; }
       const ability = getSpecialAbilityState(def.type, fighterId);
       if (ability.unlocked) { alert('That ability is already unlocked!'); return false; }
       if (!spendCorePieces(CORE_PIECE_PRICE)) { alert(`Not enough Core Pieces — one ${def.pieceName} costs ${CORE_PIECE_PRICE} Core Pieces. Earn Core Pieces from Tapper Uppers, Super Tappers, the Season Pass and Presents!`); return false; }
@@ -18870,6 +18961,8 @@ let heistFeverActive = false;
       const def = getSpecialAbilityDef(fighterId);
       if (!def) return false;
       if (fighterId === 'electrostien') { alert('Family Circuit is EARNED by winning battles with Electrostien — it cannot be bought with Core Pieces.'); return false; }
+      if (fighterId === 'voltastein') { alert('Family Circuit is EARNED by winning battles with Voltastein — it cannot be bought with Core Pieces.'); return false; }
+      if (fighterId === 'staticstein') { alert('Family Circuit is EARNED by winning battles with Staticstein — it cannot be bought with Core Pieces.'); return false; }
       const ability = getSpecialAbilityState(def.type, fighterId);
       if (ability.unlocked) { alert('That ability is already unlocked!'); return false; }
       if (!spendCorePieces(CORE_FULL_UNLOCK_PRICE)) { alert(`Not enough Core Pieces — a full unlock costs ${CORE_FULL_UNLOCK_PRICE} Core Pieces. Earn Core Pieces from Tapper Uppers, Super Tappers, the Season Pass and Presents!`); return false; }
@@ -21615,6 +21708,26 @@ let heistFeverActive = false;
         if (!ELECTROSTIEN_ENABLED) return false;
         playerData.electrostienSignatureWins = getElectrostienSignatureWins() + 1;
         const ability = getSpecialAbilityState('signature', 'electrostien');
+        if (!ability.unlocked) {
+            ability.pieces = Math.min(3, ability.pieces + 1);
+            if (ability.pieces >= 3) ability.unlocked = true;
+        }
+        saveProgress();
+        return true;
+    }
+    function grantVoltasteinSignatureWin() {
+        playerData.voltasteinSignatureWins = (playerData.voltasteinSignatureWins || 0) + 1;
+        const ability = getSpecialAbilityState('signature', 'voltastein');
+        if (!ability.unlocked) {
+            ability.pieces = Math.min(3, ability.pieces + 1);
+            if (ability.pieces >= 3) ability.unlocked = true;
+        }
+        saveProgress();
+        return true;
+    }
+    function grantStaticsteinSignatureWin() {
+        playerData.staticsteinSignatureWins = (playerData.staticsteinSignatureWins || 0) + 1;
+        const ability = getSpecialAbilityState('signature', 'staticstein');
         if (!ability.unlocked) {
             ability.pieces = Math.min(3, ability.pieces + 1);
             if (ability.pieces >= 3) ability.unlocked = true;
@@ -26712,6 +26825,7 @@ let heistFeverActive = false;
         if ((target.invulnerableUntil || 0) > context.now || target.isFlying || (target.angelLiftUntil || 0) > context.now) return false;
         const distance = Math.hypot(target.x - bot.x, target.y - bot.y);
         if (bot.brawler === 'electrostien') return distance < ELECTROSTIEN_SUPER_THROW_RANGE - 40; // realm throw range
+        if (bot.brawler === 'voltastein') return distance < VOLTASTEIN_ZAP_RADIUS; // Power Outage zap range
         const targetHpPct = target.hp ? target.hp / Math.max(1, target.maxHp || target.hp) : 1;
         const clustered = getBotLivingEnemies(bot).filter((enemy) => Math.hypot(enemy.x - target.x, enemy.y - target.y) < 190).length;
         const objectiveFight = (isObjectiveMode || isTugZoneMode) && Math.hypot(target.x - (objectiveZone?.x || WORLD_W*0.5), target.y - (objectiveZone?.y || WORLD_H*0.5)) < (objectiveZone?.r || 240) + 80;
@@ -29011,7 +29125,7 @@ let heistFeverActive = false;
       beam:8, fuser:24, heater_miser:20, minigunnin:72, money_and_tax:24, outlit:30, steamer:8,
       bouncin_balls:6, chickpig:12, classy:6, copyphase:6, goonbob:6, hoop:5, hyperorigin:5, robber:42,
       portalo:7, ghoul:6, jacktrade:18, darkener:6, awakenator:8, trampaheal:6, axeywaxy:6, mageny:6, draflygon:6, ramage:6, upgradart:10, cinderion:10, cursed:7, king:6, anti_royal:6, weefee:6, rager:4,
-    carmela_fudge:5, bolznstien:5, sir_cheeseburger:4, blinkeye:4, magnatar:6, oil_maker:16, badbat:5, looma:7, feathers:5, spikey:6, electrostien:14, mallow:12, nightshade: 6, runner: 6, aura_charmer: 6
+    carmela_fudge:5, bolznstien:5, sir_cheeseburger:4, blinkeye:4, magnatar:6, oil_maker:16, badbat:5, looma:7, feathers:5, spikey:6, electrostien:14, mallow:12, nightshade: 6, runner: 6, aura_charmer: 6, voltastein: 6, staticstein: 6
   });
   let nextMainAttackActivationId = 1;
   function getSuperChargeHitsForBrawler(brawler) {
@@ -34530,6 +34644,9 @@ let heistFeverActive = false;
     if(isBot && brawler === 'decayer' && now < (fromEntity.reloadBuffUntil || 0)) fireDelay *= 0.5;
     if(isBot && brawler === 'runner' && now < (fromEntity.runnerReloadBuffUntil || 0)) fireDelay /= RUNNER_HYPER_RELOAD_MULT;
     if(isBot && fromEntity.reloadDebuffUntil && now < fromEntity.reloadDebuffUntil) fireDelay *= 1.4;
+    if(isBot && now < (fromEntity.voltasteinOverchargeUntil || 0)) fireDelay *= (fromEntity.voltasteinOverchargeMult || 1.25);
+    if(isBot && brawler === 'voltastein' && isAnyVoltasteinOutageActive(fromEntity, now) && voltasteinHasSP2(fromEntity)) fireDelay /= 1.30;
+    if(isBot && brawler === 'staticstein' && now < (fromEntity.staticsteinInterferenceUntil || 0)) fireDelay = staticsteinHasSP2(fromEntity) ? 615 : 800;
     if(isBot && brawler === 'oil_maker' && fromEntity.oilMakerSp1ReloadUntil && now < fromEntity.oilMakerSp1ReloadUntil) fireDelay *= 1.22; // Round 41 Oil SP1 reload slow (bot side; player side in reload pipeline).
     if(isBot && brawler === 'oil_maker' && (fromEntity.selectedStar === 'long' || fromEntity.selectedStar === 'sp2') && oilMakerPuddles.some(p => p.ignited && Math.hypot(p.x - fromEntity.x, p.y - fromEntity.y) <= 120)) fireDelay /= 1.10; // Round 41 Oil SP2 reload buff 25% -> 10% (bot side; was player-only).
     if(isBot && brawler === 'hunter') fireDelay = 800;
@@ -37732,6 +37849,35 @@ let heistFeverActive = false;
             setTimeout(() => { if (typeof playing !== 'undefined' && !playing) return; if (slamOwner && slamOwner.hp > 0) auraCharmerSlam(slamOwner); }, AURA_CHARMER_HYPER_DOUBLE_SLAM_DELAY_MS);
         }
         return;
+    } else if (brawler === 'voltastein') {
+        const level = fromEntity.id === player.id ? getSelectedBrawlerLevel() : (fromEntity.level || 11);
+        const stats = getScaledStats('voltastein', level);
+        const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
+        const ang = Math.atan2(targetY - fromEntity.y, targetX - fromEntity.x);
+        bullets.push({ ownerBrawler: 'voltastein', isVoltasteinVolt: true, voltasteinHyper: hyper, x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 7), y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 7), vx: Math.cos(ang) * VOLTASTEIN_BULLET_SPEED, vy: Math.sin(ang) * VOLTASTEIN_BULLET_SPEED, life: 0, maxLife: VOLTASTEIN_RANGE / VOLTASTEIN_BULLET_SPEED, damage: stats.dmg, voltDamage: stats.dmg, voltRadius: VOLTASTEIN_EXPLOSION_RADIUS, pierce: false, pierceWalls: true, ownerId: fromEntity.id, hitIds: {}, hitboxMod: 1.2, hyperVisual: hyper });
+        explosions.push({ x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 10), y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 10), radius: 10, life: 0, maxLife: 0.18, color: hyper ? 'rgba(216,108,255,.9)' : 'rgba(168,85,247,.9)', isParticle: true });
+        return;
+    } else if (brawler === 'staticstein') {
+        const level = fromEntity.id === player.id ? getSelectedBrawlerLevel() : (fromEntity.level || 11);
+        const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
+        // Static Interference: every shot is a random projectile brawler's shot.
+        if (now < (fromEntity.staticsteinInterferenceUntil || 0)) {
+            fireStaticsteinDonorShot(fromEntity, targetX, targetY, level, hyper, true);
+            return;
+        }
+        // Lucky Shot (G2): the next main attack is a random donor projectile.
+        if (fromEntity.staticsteinLuckyShotNext) {
+            fromEntity.staticsteinLuckyShotNext = false;
+            fireStaticsteinDonorShot(fromEntity, targetX, targetY, level, hyper, false);
+            return;
+        }
+        fireStaticsteinSplitPair(fromEntity, targetX, targetY, level, hyper);
+        // Hyper main: a second pair 150ms later, full damage.
+        if (hyper) {
+            const pairOwner = fromEntity, px = targetX, py = targetY, pl = level;
+            setTimeout(() => { if (typeof playing !== 'undefined' && !playing) return; if (pairOwner && pairOwner.hp > 0) fireStaticsteinSplitPair(pairOwner, px, py, pl, true); }, STATICSTEIN_HYPER_DOUBLE_DELAY_MS);
+        }
+        return;
     }
   }
 
@@ -40013,6 +40159,8 @@ let heistFeverActive = false;
     if (combatBrawler === 'aegis') { castAegisSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'runner') { castRunnerSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'aura_charmer') { castAuraCharmerSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
+    if (combatBrawler === 'voltastein') { castVoltasteinSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
+    if (combatBrawler === 'staticstein') { castStaticsteinSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'ramage') { castRamageSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
         if (combatBrawler === 'upgradart') { if(!castUpgradartSuper(player, !!isHypercharged, wm.x, wm.y))superCharge=100; updateSuperButton(); return; }
     if (combatBrawler === 'axeywaxy') { castAxeyWaxySuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
@@ -41339,6 +41487,14 @@ let heistFeverActive = false;
       executeAuraCharmerG1(bot);
     } else if (bot.brawler === 'aura_charmer' && g === 'g2') {
       executeAuraCharmerG2(bot);
+    } else if (bot.brawler === 'voltastein' && g === 'g1') {
+      executeVoltasteinG1(bot);
+    } else if (bot.brawler === 'voltastein' && g === 'g2') {
+      executeVoltasteinG2(bot);
+    } else if (bot.brawler === 'staticstein' && g === 'g1') {
+      executeStaticsteinG1(bot);
+    } else if (bot.brawler === 'staticstein' && g === 'g2') {
+      executeStaticsteinG2(bot);
     } else if (bot.brawler === 'rager' && g === 'g1') {
       executeRagerG1(bot);
     } else if (bot.brawler === 'rager' && g === 'g2') {
@@ -41861,6 +42017,8 @@ let heistFeverActive = false;
     if (botCombatBrawler === 'aegis') { castAegisSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'runner') { castRunnerSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'aura_charmer') { castAuraCharmerSuper(bot, isHyper, targetX, targetY); return; }
+    if (botCombatBrawler === 'voltastein') { castVoltasteinSuper(bot, isHyper, targetX, targetY); return; }
+    if (botCombatBrawler === 'staticstein') { castStaticsteinSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'ramage') { castRamageSuper(bot, isHyper, targetX, targetY); return; }
             if (botCombatBrawler === 'upgradart') { if(!castUpgradartSuper(bot, isHyper, targetX, targetY))bot.superCharge=100; return; }
     if (botCombatBrawler === 'axeywaxy') { castAxeyWaxySuper(bot, isHyper, targetX, targetY); return; }
@@ -43462,6 +43620,30 @@ let heistFeverActive = false;
         return;
     } else if (curBrawler === 'aura_charmer' && curGadget === 'g2') {
         executeAuraCharmerG2(player);
+        gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
+        setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
+        updateGadgetButton();
+        return;
+    } else if (curBrawler === 'voltastein' && curGadget === 'g1') {
+        executeVoltasteinG1(player);
+        gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
+        setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
+        updateGadgetButton();
+        return;
+    } else if (curBrawler === 'voltastein' && curGadget === 'g2') {
+        executeVoltasteinG2(player);
+        gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
+        setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
+        updateGadgetButton();
+        return;
+    } else if (curBrawler === 'staticstein' && curGadget === 'g1') {
+        executeStaticsteinG1(player);
+        gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
+        setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
+        updateGadgetButton();
+        return;
+    } else if (curBrawler === 'staticstein' && curGadget === 'g2') {
+        executeStaticsteinG2(player);
         gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
         setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
         updateGadgetButton();
@@ -45130,6 +45312,385 @@ let heistFeverActive = false;
               }
           }
       }
+  }
+
+
+  // ---- Voltastein: the third Stein sibling (Anomaly Thrower) ----
+  const VOLTASTEIN_BULLET_SPEED = 650;
+  const VOLTASTEIN_RANGE = 700;
+  const VOLTASTEIN_EXPLOSION_RADIUS = 120;
+  const VOLTASTEIN_OVERCHARGE_MS = 1000;
+  const VOLTASTEIN_OVERCHARGE_MULT = 1.25;
+  const VOLTASTEIN_OVERCHARGE_SP1_MS = 2000;
+  const VOLTASTEIN_OVERCHARGE_SP1_MULT = 1.43;
+  const VOLTASTEIN_ZAP_DMG = 400;
+  const VOLTASTEIN_ZAP_RADIUS = 300;
+  const VOLTASTEIN_CHAIN_DOT_PER_TICK = 75; // 150/s at a 500ms tick
+  const VOLTASTEIN_CHAIN_TICK_MS = 500;
+  const VOLTASTEIN_CHAIN_SLOW_START = 0.10;
+  const VOLTASTEIN_CHAIN_SLOW_MAX = 0.50;
+  const VOLTASTEIN_CHAIN_RAMP_MS = 4000;
+  const VOLTASTEIN_CHAIN_JUMP_RADIUS = 200;
+  const VOLTASTEIN_CHAIN_MAX_MS = 10000;
+  const VOLTASTEIN_CHAIN_LOW_HP_FRAC = 0.25;
+  const VOLTASTEIN_HYPER_SPLIT_DMG_MULT = 0.70;
+  const VOLTASTEIN_HYPER_SPLIT_RADIUS = 100;
+  const VOLTASTEIN_HYPER_SPLIT_RANGE = 300;
+  const VOLTASTEIN_HYPER_CHAIN_BREAK_DIST = 450;
+  const VOLTASTEIN_G1_ARC_RADIUS = 250;
+  const VOLTASTEIN_G1_MINI_DMG_MULT = 0.5;
+  const VOLTASTEIN_G1_MINI_RADIUS = 80;
+  const VOLTASTEIN_G2_FIELD_RADIUS = 150;
+  const VOLTASTEIN_G2_FIELD_MS = 4000;
+  const VOLTASTEIN_FAMILY_STRIKE_DMG = 500;
+
+  function isVoltasteinEntity(entity) { return !!entity && getEntityBrawlerId(entity) === 'voltastein'; }
+  function voltasteinHasSP1(entity) { return !!entity && getEntityStarChoice(entity) === 'slow'; }
+  function voltasteinHasSP2(entity) { return !!entity && getEntityStarChoice(entity) === 'long'; }
+  function getVoltasteinOverchargeDuration(owner) { return voltasteinHasSP1(owner) ? VOLTASTEIN_OVERCHARGE_SP1_MS : VOLTASTEIN_OVERCHARGE_MS; }
+  function getVoltasteinOverchargeMult(owner) { return voltasteinHasSP1(owner) ? VOLTASTEIN_OVERCHARGE_SP1_MULT : VOLTASTEIN_OVERCHARGE_MULT; }
+  function applyVoltasteinOvercharge(target, owner, now) {
+      if (!target || target.hp <= 0 || target.isArenaForgeTower || target.isArenaForgeCore) return;
+      target.voltasteinOverchargeUntil = Math.max(target.voltasteinOverchargeUntil || 0, now + getVoltasteinOverchargeDuration(owner));
+      target.voltasteinOverchargeMult = getVoltasteinOverchargeMult(owner);
+  }
+  function getPowerOutageSlowMult(entity, now) {
+      const started = entity.powerOutageStartedAt || now;
+      const elapsedMs = Math.max(0, now - started);
+      const pct = VOLTASTEIN_CHAIN_SLOW_START + (VOLTASTEIN_CHAIN_SLOW_MAX - VOLTASTEIN_CHAIN_SLOW_START) * Math.min(1, elapsedMs / VOLTASTEIN_CHAIN_RAMP_MS);
+      return 1 - pct;
+  }
+  function isAnyVoltasteinOutageActive(owner, now) {
+      if (!owner) return false;
+      const all = [player, ...bots];
+      for (const e of all) if (e && e.hp > 0 && e.powerOutageOwnerId === owner.id && now < (e.powerOutageUntil || 0)) return true;
+      return false;
+  }
+  function clearVoltasteinOutageForOwner(ownerId, now) {
+      const all = [player, ...bots];
+      for (const e of all) {
+          if (!e || e.powerOutageOwnerId !== ownerId) continue;
+          e.powerOutageOwnerId = 0; e.powerOutageStartedAt = 0; e.powerOutageStartHp = 0; e.powerOutageUntil = 0; e.powerOutageNextTickAt = 0;
+      }
+      const caster = getEntityById(ownerId);
+      if (caster) { caster.voltasteinOutageVictimIds = []; caster.voltasteinOutageUntil = 0; caster.voltasteinHyperChainAId = 0; caster.voltasteinHyperChainBId = 0; caster.voltasteinHyperChainUntil = 0; }
+  }
+  function applyVoltasteinOutage(target, owner, now) {
+      target.powerOutageOwnerId = owner.id;
+      target.powerOutageStartedAt = now;
+      target.powerOutageStartHp = target.hp;
+      target.powerOutageUntil = now + VOLTASTEIN_CHAIN_MAX_MS;
+      target.powerOutageNextTickAt = now + VOLTASTEIN_CHAIN_TICK_MS;
+  }
+  function voltasteinVoltExplode(owner, x, y, bullet, excludeId) {
+      const now = performance.now();
+      const dmg = Math.max(1, Math.round(bullet.voltDamage || bullet.damage || 0));
+      const radius = bullet.voltRadius || VOLTASTEIN_EXPLOSION_RADIUS;
+      explosions.push({ x, y, radius, life: 0, maxLife: 0.3, color: 'rgba(168,85,247,.85)', fxKind: 'voltasteinExplosion' });
+      // Overcharge every enemy in the blast, then damage everyone except the
+      // target the bullet itself already hit (no double-dip on the primary).
+      const all = [player, ...bots];
+      for (const target of all) {
+          if (!target || target.hp <= 0 || areAlliedEntities(owner, target)) continue;
+          if (Math.hypot(target.x - x, target.y - y) > radius + (target.radius || 14)) continue;
+          applyVoltasteinOvercharge(target, owner, now);
+          if (excludeId && target.id === excludeId) continue;
+          checkHit(target, { ownerBrawler: 'voltastein', ownerId: owner.id, damage: dmg, pierce: true, hitIds: {}, isVoltasteinExplosion: true }, -1);
+      }
+      // Arc Leap (G1): the next volt arcs to one extra nearby enemy.
+      if (owner.voltasteinArcLeapNext) {
+          owner.voltasteinArcLeapNext = false;
+          let best = null, bestD = Infinity;
+          for (const target of all) {
+              if (!target || target.hp <= 0 || areAlliedEntities(owner, target)) continue;
+              if (excludeId && target.id === excludeId) continue;
+              const d = Math.hypot(target.x - x, target.y - y);
+              if (d <= VOLTASTEIN_G1_ARC_RADIUS && d < bestD) { best = target; bestD = d; }
+          }
+          if (best) {
+              const miniDmg = Math.max(1, Math.round(dmg * VOLTASTEIN_G1_MINI_DMG_MULT));
+              explosions.push({ x: best.x, y: best.y, radius: VOLTASTEIN_G1_MINI_RADIUS, life: 0, maxLife: 0.25, color: 'rgba(255,228,94,.8)', fxKind: 'voltasteinExplosion' });
+              applyVoltasteinOvercharge(best, owner, now);
+              checkHit(best, { ownerBrawler: 'voltastein', ownerId: owner.id, damage: miniDmg, pierce: true, hitIds: {}, isVoltasteinExplosion: true }, -1);
+          }
+      }
+      // Hyper split: the volt forks into two smaller volts on impact.
+      if (bullet.voltasteinHyper && !bullet.voltasteinChild && !bullet._voltSplitDone) {
+          bullet._voltSplitDone = true;
+          const baseAng = Math.atan2(bullet.vy || 0, bullet.vx || 1);
+          const childDmg = Math.max(1, Math.round((bullet.voltDamage || dmg) * VOLTASTEIN_HYPER_SPLIT_DMG_MULT));
+          for (const off of [-0.45, 0.45]) {
+              const a = baseAng + off;
+              bullets.push({ ownerBrawler: 'voltastein', isVoltasteinVolt: true, voltasteinHyper: false, voltasteinChild: true, x, y, vx: Math.cos(a) * VOLTASTEIN_BULLET_SPEED, vy: Math.sin(a) * VOLTASTEIN_BULLET_SPEED, life: 0, maxLife: VOLTASTEIN_HYPER_SPLIT_RANGE / VOLTASTEIN_BULLET_SPEED, damage: childDmg, voltDamage: childDmg, voltRadius: VOLTASTEIN_HYPER_SPLIT_RADIUS, pierce: false, pierceWalls: true, ownerId: owner.id, hitIds: {}, hitboxMod: 1.1, hyperVisual: true });
+          }
+      }
+  }
+  function castVoltasteinSuper(entity, hyper, targetX, targetY) {
+      const now = performance.now();
+      const all = [player, ...bots];
+      const victims = [];
+      for (const target of all) {
+          if (!target || target.hp <= 0 || target === entity || areAlliedEntities(entity, target)) continue;
+          if (target.isArenaForgeTower || target.isArenaForgeCore) continue;
+          if (Math.hypot(target.x - entity.x, target.y - entity.y) > VOLTASTEIN_ZAP_RADIUS + (target.radius || 14)) continue;
+          victims.push(target);
+      }
+      for (const target of victims) {
+          checkHit(target, { ownerBrawler: 'voltastein', ownerId: entity.id, damage: VOLTASTEIN_ZAP_DMG, pierce: true, hitIds: {}, isVoltasteinZap: true, super: true }, -1);
+          if (target.hp > 0) applyVoltasteinOutage(target, entity, now);
+      }
+      const chained = victims.filter(v => v.hp > 0);
+      entity.voltasteinOutageVictimIds = chained.map(v => v.id);
+      entity.voltasteinOutageUntil = chained.length ? now + VOLTASTEIN_CHAIN_MAX_MS : 0;
+      if (hyper && chained.length >= 2) {
+          const sorted = chained.slice().sort((a, b) => Math.hypot(a.x - entity.x, a.y - entity.y) - Math.hypot(b.x - entity.x, b.y - entity.y));
+          entity.voltasteinHyperChainAId = sorted[0].id;
+          entity.voltasteinHyperChainBId = sorted[1].id;
+          entity.voltasteinHyperChainUntil = now + VOLTASTEIN_CHAIN_MAX_MS;
+      } else {
+          entity.voltasteinHyperChainAId = 0; entity.voltasteinHyperChainBId = 0; entity.voltasteinHyperChainUntil = 0;
+      }
+      explosions.push({ x: entity.x, y: entity.y, radius: VOLTASTEIN_ZAP_RADIUS, life: 0, maxLife: 0.35, color: 'rgba(168,85,247,.9)', fxKind: 'voltasteinExplosion' });
+      spawnFloatingText(entity.x, entity.y - 44, 'POWER OUTAGE!', '#a855f7');
+      // Family Circuit (signature): the next Power Outage calls a sky strike.
+      if (entity.voltasteinFamilyCircuitArmed) {
+          entity.voltasteinFamilyCircuitArmed = false;
+          const struck = chained.slice().sort((a, b) => Math.hypot(a.x - entity.x, a.y - entity.y) - Math.hypot(b.x - entity.x, b.y - entity.y))[0];
+          if (struck) {
+              explosions.push({ x: struck.x, y: struck.y, radius: 46, life: 0, maxLife: 0.3, color: 'rgba(255,211,79,.55)', fxKind: 'electrostienFamilyStrike' });
+              checkHit(struck, { ownerBrawler: 'voltastein', ownerId: entity.id, damage: VOLTASTEIN_FAMILY_STRIKE_DMG, pierce: true, hitIds: {}, isVoltasteinFamilyStrike: true }, -1);
+              spawnFloatingText(struck.x, struck.y - 40, 'FAMILY CIRCUIT!', '#ffd34f');
+          }
+      }
+  }
+  function updateVoltasteinSystems(now) {
+      const all = [player, ...bots];
+      // Static Field (G2): overcharge enemies that wander close.
+      for (const e of all) {
+          if (!e || e.hp <= 0 || !isVoltasteinEntity(e) || now >= (e.voltasteinStaticFieldUntil || 0)) continue;
+          for (const target of all) {
+              if (!target || target.hp <= 0 || areAlliedEntities(e, target)) continue;
+              if (target.isArenaForgeTower || target.isArenaForgeCore) continue;
+              if (Math.hypot(target.x - e.x, target.y - e.y) > VOLTASTEIN_G2_FIELD_RADIUS + (target.radius || 14)) continue;
+              if (now < (target.voltasteinOverchargeUntil || 0)) continue;
+              applyVoltasteinOvercharge(target, e, now);
+          }
+      }
+      // Orphan sweep: a chained victim whose caster is gone loses the chain.
+      for (const target of all) {
+          if (!target || !target.powerOutageOwnerId) continue;
+          const owner = getEntityById(target.powerOutageOwnerId);
+          if (!owner || owner.hp <= 0) { target.powerOutageOwnerId = 0; target.powerOutageStartedAt = 0; target.powerOutageStartHp = 0; target.powerOutageUntil = 0; target.powerOutageNextTickAt = 0; }
+      }
+      // Per-caster chain bookkeeping: ticks, spread, expiry, hyper link.
+      for (const caster of all) {
+          if (!caster || caster.hp <= 0 || !isVoltasteinEntity(caster)) continue;
+          const victimIds = caster.voltasteinOutageVictimIds || [];
+          if (!victimIds.length) continue;
+          if (now >= (caster.voltasteinOutageUntil || 0)) { clearVoltasteinOutageForOwner(caster.id, now); continue; }
+          const victims = victimIds.map(id => getEntityById(id)).filter(v => v && v.hp > 0 && v.powerOutageOwnerId === caster.id);
+          if (victims.length !== victimIds.length) {
+              // A victim died (or vanished): the chain killed someone, so it ends.
+              clearVoltasteinOutageForOwner(caster.id, now);
+              continue;
+          }
+          let killed = false;
+          // DoT ticks with the 1-HP floor (only low-start victims can be finished).
+          for (const target of victims) {
+              if (killed) break;
+              if (now < (target.powerOutageNextTickAt || 0)) continue;
+              target.powerOutageNextTickAt = now + VOLTASTEIN_CHAIN_TICK_MS;
+              const startLow = target.powerOutageStartHp <= VOLTASTEIN_CHAIN_LOW_HP_FRAC * Math.max(1, target.maxHp || target.powerOutageStartHp);
+              let dmg = VOLTASTEIN_CHAIN_DOT_PER_TICK;
+              if (!startLow) dmg = Math.min(dmg, Math.max(0, target.hp - 1));
+              if (dmg > 0) {
+                  checkHit(target, { ownerBrawler: 'voltastein', ownerId: caster.id, damage: dmg, pierce: true, hitIds: {}, isVoltasteinChainTick: true }, -1);
+                  if (target.hp <= 0) killed = true;
+              }
+          }
+          if (killed) { clearVoltasteinOutageForOwner(caster.id, now); continue; }
+          // Hyper link: two chained enemies, break past 450px (one keeps it).
+          const aId = caster.voltasteinHyperChainAId || 0, bId = caster.voltasteinHyperChainBId || 0;
+          if (aId && bId && now < (caster.voltasteinHyperChainUntil || 0)) {
+              const a = getEntityById(aId), b = getEntityById(bId);
+              if (!a || !b || a.hp <= 0 || b.hp <= 0) { clearVoltasteinOutageForOwner(caster.id, now); continue; }
+              if (Math.hypot(a.x - b.x, a.y - b.y) > VOLTASTEIN_HYPER_CHAIN_BREAK_DIST) {
+                  const keep = Math.random() < 0.5 ? a : b;
+                  const drop = keep === a ? b : a;
+                  drop.powerOutageOwnerId = 0; drop.powerOutageStartedAt = 0; drop.powerOutageStartHp = 0; drop.powerOutageUntil = 0; drop.powerOutageNextTickAt = 0;
+                  caster.voltasteinOutageVictimIds = (caster.voltasteinOutageVictimIds || []).filter(id => id !== drop.id);
+                  caster.voltasteinHyperChainAId = 0; caster.voltasteinHyperChainBId = 0; caster.voltasteinHyperChainUntil = 0;
+              }
+          }
+          // Spread: a chained enemy near another enemy passes the chain on.
+          const linked = new Set([aId, bId].filter(Boolean));
+          for (const target of victims.slice()) {
+              if (linked.has(target.id)) continue;
+              if (now >= (caster.voltasteinOutageUntil || 0)) break;
+              let best = null, bestD = Infinity;
+              for (const other of all) {
+                  if (!other || other.hp <= 0 || other === target || areAlliedEntities(caster, other)) continue;
+                  if (other.isArenaForgeTower || other.isArenaForgeCore) continue;
+                  if (other.powerOutageOwnerId === caster.id) continue;
+                  const d = Math.hypot(other.x - target.x, other.y - target.y);
+                  if (d <= VOLTASTEIN_CHAIN_JUMP_RADIUS && d < bestD) { best = other; bestD = d; }
+              }
+              if (best) {
+                  target.powerOutageOwnerId = 0; target.powerOutageStartedAt = 0; target.powerOutageStartHp = 0; target.powerOutageUntil = 0; target.powerOutageNextTickAt = 0;
+                  applyVoltasteinOutage(best, caster, now);
+                  caster.voltasteinOutageVictimIds = (caster.voltasteinOutageVictimIds || []).filter(id => id !== target.id);
+                  caster.voltasteinOutageVictimIds.push(best.id);
+                  break; // one jump per frame per caster
+              }
+          }
+      }
+  }
+  function executeVoltasteinG1(entity) {
+      entity.voltasteinArcLeapNext = true;
+      spawnFloatingText(entity.x, entity.y - 40, 'ARC LEAP READY', '#ffe45e');
+  }
+  function executeVoltasteinG2(entity) {
+      entity.voltasteinStaticFieldUntil = performance.now() + VOLTASTEIN_G2_FIELD_MS;
+      explosions.push({ x: entity.x, y: entity.y, radius: VOLTASTEIN_G2_FIELD_RADIUS, life: 0, maxLife: 0.3, color: 'rgba(168,85,247,.6)', fxKind: 'voltasteinExplosion' });
+      spawnFloatingText(entity.x, entity.y - 40, 'STATIC FIELD!', '#a855f7');
+  }
+
+
+  // ---- Staticstein: the Stein kid (Mythic Damage Dealer) ----
+  const STATICSTEIN_BULLET_SPEED = 750;
+  const STATICSTEIN_RANGE = 650;
+  const STATICSTEIN_SPLIT_OFFSET = 60;
+  const STATICSTEIN_SPLIT_ANGLE = 0.0921; // ~5.28deg: the bolts meet exactly at range end (60/tan = 650)
+  const STATICSTEIN_CONVERGE_DIST = 650;
+  const STATICSTEIN_BOLT_DMG = 400;
+  const STATICSTEIN_SUPER_MS = 2500;
+  const STATICSTEIN_SUPER_RELOAD_MS = 800;
+  const STATICSTEIN_HYPER_DOUBLE_DELAY_MS = 150;
+  const STATICSTEIN_HYPER_EFFECT_MS = 3000;
+  const STATICSTEIN_HYPER_DMG_MULT = 1.5;
+  const STATICSTEIN_HYPER_HITBOX_MULT = 1.3;
+  const STATICSTEIN_REUNION_BURST_DMG = 300;
+  const STATICSTEIN_REUNION_BURST_RADIUS = 90;
+  const STATICSTEIN_SIGNAL_BOOST_DIVISOR = 1.30;
+  const STATICSTEIN_GLITCH_STEP_DIST = 240;
+  const STATICSTEIN_GLITCH_BURST_DMG = 150;
+  const STATICSTEIN_GLITCH_BURST_RADIUS = 80;
+  const STATICSTEIN_FAMILY_STRIKE_DMG = 500;
+  // Static Interference donor pool: projectile mains only. No melee, no aura,
+  // no beam/continuous, no deploy/turret brawlers. Speed/range are the donor's
+  // own projectile values where verified (fuser 1710, runner 900/700,
+  // nightshade 700/560, mallow 900, evil_doctor 492/640); the rest are
+  // sensible table values. Damage always comes from the donor's P11 stats.
+  const STATICSTEIN_DONOR_POOL = [
+      { id: 'fuser', speed: 1710, range: 1400, hitboxMod: 1.0 },
+      { id: 'runner', speed: 900, range: 700, hitboxMod: 1.3 },
+      { id: 'nightshade', speed: 700, range: 560, hitboxMod: 1.0 },
+      { id: 'mallow', speed: 900, range: 600, hitboxMod: 1.0 },
+      { id: 'evil_doctor', speed: 492, range: 640, hitboxMod: 1.0 },
+      { id: 'mageny', speed: 760, range: 600, hitboxMod: 1.0 },
+      { id: 'upiedown', speed: 700, range: 650, hitboxMod: 1.0, lobbed: true },
+      { id: 'bowlin_rida', speed: 800, range: 500, hitboxMod: 1.0 },
+      { id: 'rocketeer', speed: 750, range: 700, hitboxMod: 1.0 },
+      { id: 'scuba_diver', speed: 650, range: 550, hitboxMod: 1.0 },
+      { id: 'jetpack', speed: 800, range: 650, hitboxMod: 1.0 },
+      { id: 'outlit', speed: 900, range: 300, hitboxMod: 1.0 }
+  ];
+
+  function isStaticsteinEntity(entity) { return !!entity && getEntityBrawlerId(entity) === 'staticstein'; }
+  function staticsteinHasSP1(entity) { return !!entity && getEntityStarChoice(entity) === 'slow'; }
+  function staticsteinHasSP2(entity) { return !!entity && getEntityStarChoice(entity) === 'long'; }
+  function fireStaticsteinDonorShot(fromEntity, targetX, targetY, level, hyper, isInterference) {
+      const donor = STATICSTEIN_DONOR_POOL[Math.floor(Math.random() * STATICSTEIN_DONOR_POOL.length)];
+      const donorData = brawlerData[donor.id] || {};
+      const donorStats = getScaledStats(donor.id, level);
+      const ang = Math.atan2(targetY - fromEntity.y, targetX - fromEntity.x);
+      // Hyper Super: donor shots carry hypercharged effects for 3s even if
+      // the Core Surge bar runs out (uniform window effect, not per-donor
+      // hyper mechanics — builder simplification, flagged in the PR body).
+      const hyperWindow = hyper || performance.now() < (fromEntity.staticsteinHyperShotsUntil || 0);
+      const dmg = Math.max(1, Math.round(donorStats.dmg * (hyperWindow ? STATICSTEIN_HYPER_DMG_MULT : 1)));
+      bullets.push({ ownerBrawler: donor.id, isStaticsteinDonorShot: true, staticsteinDonor: donor.id, x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 7), y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 7), vx: Math.cos(ang) * donor.speed, vy: Math.sin(ang) * donor.speed, life: 0, maxLife: donor.range / donor.speed, damage: dmg, pierce: false, pierceWalls: !!donor.lobbed, ownerId: fromEntity.id, hitIds: {}, hitboxMod: (hyperWindow ? STATICSTEIN_HYPER_HITBOX_MULT : 1) * (donor.hitboxMod || 1), hyperVisual: hyperWindow });
+      spawnFloatingText(fromEntity.x, fromEntity.y - 34, (donorData.name || donor.id).toUpperCase() + '!', donorData.color || '#d1d5db');
+      // Family Circuit (signature): the next Interference shot calls a sky strike.
+      if (isInterference && fromEntity.staticsteinFamilyCircuitArmed) {
+          fromEntity.staticsteinFamilyCircuitArmed = false;
+          let best = null, bestD = Infinity;
+          const all = [player, ...bots];
+          for (const target of all) {
+              if (!target || target.hp <= 0 || areAlliedEntities(fromEntity, target)) continue;
+              if (target.isArenaForgeTower || target.isArenaForgeCore) continue;
+              const d = Math.hypot(target.x - targetX, target.y - targetY);
+              if (d < bestD) { best = target; bestD = d; }
+          }
+          if (best) {
+              explosions.push({ x: best.x, y: best.y, radius: 46, life: 0, maxLife: 0.3, color: 'rgba(255,211,79,.55)', fxKind: 'electrostienFamilyStrike' });
+              checkHit(best, { ownerBrawler: 'staticstein', ownerId: fromEntity.id, damage: STATICSTEIN_FAMILY_STRIKE_DMG, pierce: true, hitIds: {}, isStaticsteinFamilyStrike: true }, -1);
+              spawnFloatingText(best.x, best.y - 40, 'FAMILY CIRCUIT!', '#ffd34f');
+          }
+      }
+  }
+  function fireStaticsteinSplitPair(fromEntity, targetX, targetY, level, hyper) {
+      const ang = Math.atan2(targetY - fromEntity.y, targetX - fromEntity.x);
+      const speed = STATICSTEIN_BULLET_SPEED;
+      const perp = ang + Math.PI / 2;
+      for (const side of [-1, 1]) {
+          const off = side * STATICSTEIN_SPLIT_OFFSET;
+          const a = ang - side * STATICSTEIN_SPLIT_ANGLE; // angle inward toward the aim line
+          bullets.push({ ownerBrawler: 'staticstein', isStaticsteinBolt: true, x: fromEntity.x + Math.cos(perp) * off + Math.cos(ang) * (fromEntity.radius + 7), y: fromEntity.y + Math.sin(perp) * off + Math.sin(ang) * (fromEntity.radius + 7), vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, life: 0, maxLife: STATICSTEIN_RANGE / speed, damage: STATICSTEIN_BOLT_DMG, pierce: false, ownerId: fromEntity.id, hitIds: {}, hitboxMod: 1.1, hyperVisual: hyper });
+      }
+      // Reunion Burst (SP1): the bolts detonate where they come back together.
+      if (staticsteinHasSP1(fromEntity)) {
+          const convergeX = fromEntity.x + Math.cos(ang) * STATICSTEIN_CONVERGE_DIST;
+          const convergeY = fromEntity.y + Math.sin(ang) * STATICSTEIN_CONVERGE_DIST;
+          const burstOwner = fromEntity;
+          setTimeout(() => {
+              if (typeof playing !== 'undefined' && !playing) return;
+              if (!burstOwner || burstOwner.hp <= 0) return;
+              explosions.push({ x: convergeX, y: convergeY, radius: STATICSTEIN_REUNION_BURST_RADIUS, life: 0, maxLife: 0.25, color: 'rgba(209,213,219,.85)', fxKind: 'voltasteinExplosion' });
+              AOEDamage(convergeX, convergeY, STATICSTEIN_REUNION_BURST_RADIUS, STATICSTEIN_REUNION_BURST_DMG, burstOwner.id, false);
+          }, Math.round(STATICSTEIN_CONVERGE_DIST / STATICSTEIN_BULLET_SPEED * 1000));
+      }
+  }
+  function castStaticsteinSuper(entity, hyper, targetX, targetY) {
+      const now = performance.now();
+      entity.staticsteinInterferenceUntil = now + STATICSTEIN_SUPER_MS;
+      if (hyper) entity.staticsteinHyperShotsUntil = now + STATICSTEIN_HYPER_EFFECT_MS;
+      explosions.push({ x: entity.x, y: entity.y, radius: 120, life: 0, maxLife: 0.3, color: 'rgba(209,213,219,.85)', fxKind: 'voltasteinExplosion' });
+      spawnFloatingText(entity.x, entity.y - 44, 'STATIC INTERFERENCE!', '#d1d5db');
+  }
+  function executeStaticsteinG1(entity) {
+      // Glitch Step: short teleport forward (toward the nearest enemy, else
+      // the direction the entity is moving, else straight right). Step back
+      // in 40px increments if the landing spot is inside terrain.
+      let ang = 0;
+      const all = [player, ...bots];
+      let nearest = null, nearestD = Infinity;
+      for (const target of all) {
+          if (!target || target.hp <= 0 || target === entity || areAlliedEntities(entity, target)) continue;
+          const d = Math.hypot(target.x - entity.x, target.y - entity.y);
+          if (d < nearestD) { nearest = target; nearestD = d; }
+      }
+      if (nearest) ang = Math.atan2(nearest.y - entity.y, nearest.x - entity.x);
+      else if (entity.vx || entity.vy) ang = Math.atan2(entity.vy || 0, entity.vx || 0);
+      let dist = STATICSTEIN_GLITCH_STEP_DIST;
+      let nx = entity.x, ny = entity.y;
+      while (dist >= 80) {
+          nx = entity.x + Math.cos(ang) * dist;
+          ny = entity.y + Math.sin(ang) * dist;
+          nx = Math.max(40, Math.min(WORLD_W - 40, nx));
+          ny = Math.max(40, Math.min(WORLD_H - 40, ny));
+          if (!isCircleBlockedByTerrain(entity, nx, ny, entity.radius || 14)) break;
+          dist -= 40;
+      }
+      if (dist < 80) return;
+      entity.x = nx; entity.y = ny;
+      explosions.push({ x: nx, y: ny, radius: STATICSTEIN_GLITCH_BURST_RADIUS, life: 0, maxLife: 0.25, color: 'rgba(209,213,219,.85)', fxKind: 'voltasteinExplosion' });
+      AOEDamage(nx, ny, STATICSTEIN_GLITCH_BURST_RADIUS, STATICSTEIN_GLITCH_BURST_DMG, entity.id, false);
+      spawnFloatingText(nx, ny - 34, 'GLITCH STEP!', '#d1d5db');
+  }
+  function executeStaticsteinG2(entity) {
+      entity.staticsteinLuckyShotNext = true;
+      spawnFloatingText(entity.x, entity.y - 40, 'LUCKY SHOT READY', '#ffe45e');
   }
 
   function updateCursedSystems(now, dt) {
@@ -52775,6 +53336,13 @@ function checkHit(target, b, i){
         }
       }
     }
+    if (b.isVoltasteinVolt && !b._voltExploded && target && owner && !areAlliedEntities(owner, target)) {
+      // Voltastein volt: the bullet itself deals its damage; the explosion
+      // then overcharges everyone in the blast and damages the rest of them
+      // (the primary target is excluded so it is not hit twice).
+      b._voltExploded = true;
+      voltasteinVoltExplode(owner, b.x, b.y, b, target.id);
+    }
     if (b.isElectrostienShock && !b._esApplied && target && owner && !areAlliedEntities(owner, target)) {
       b._esApplied = true;
       if (b.electrostienRealmMode) enterElectricRealm(owner, target, !!b.electrostienHyperSuper);
@@ -57800,6 +58368,7 @@ function checkHit(target, b, i){
         updateCursedSystems(now, dt);
         updateDecayerAura(now);
         updateAuraCharmerAura(now);
+        updateVoltasteinSystems(now);
         updateKingSystems(now, dt);
         updateAntiRoyalSystems(now, dt);
         updateJackTradeSystems(now, dt);
@@ -58908,6 +59477,13 @@ function checkHit(target, b, i){
                   hitIds:{},hitboxMod:1.25,hyperVisual:!!b.hyperVisual
               });
           }
+      }
+      // Voltastein volt: detonate on range expiry (same pattern as the
+      // Cinderion scatter core above — resolve before generic expiry cleanup).
+      if (b.isVoltasteinVolt && b.life >= b.maxLife && !b._voltExploded) {
+          b._voltExploded = true;
+          const voltOwner = b.ownerId === player.id ? player : bots.find(bt => bt && bt.id === b.ownerId);
+          if (voltOwner) voltasteinVoltExplode(voltOwner, b.x, b.y, b, null);
       }
       if (b.isOilMakerCrude) {
           // Crude bullet does not drop mid-flight trails anymore: forms one puddle at the end
@@ -61252,6 +61828,9 @@ function checkHit(target, b, i){
        }
        if(selectedBrawler==='chickpig'&&selectedStar==='long'&&now<(player.chickpigChickenUntil||0))currentReloadTime*=.85;
        if(player.reloadDebuffUntil && now < player.reloadDebuffUntil) currentReloadTime *= 1.4;
+       if(now < (player.voltasteinOverchargeUntil || 0)) currentReloadTime *= (player.voltasteinOverchargeMult || 1.25);
+       if(selectedBrawler === 'voltastein' && isAnyVoltasteinOutageActive(player, now) && voltasteinHasSP2(player)) currentReloadTime /= 1.30;
+       if(selectedBrawler === 'staticstein' && now < (player.staticsteinInterferenceUntil || 0)) currentReloadTime = staticsteinHasSP2(player) ? 615 : 800;
        if(player.dashaholicSignatureReloadUntil && now < player.dashaholicSignatureReloadUntil) currentReloadTime /= 1.5;
        if(player.trinketHyperReloadUntil && now < player.trinketHyperReloadUntil) currentReloadTime /= 1.10;
        if(player.trinketComebackUntil && now < player.trinketComebackUntil) currentReloadTime /= 1.10;
@@ -62565,6 +63144,10 @@ function checkHit(target, b, i){
                   }
              } else if (t.brawler === 'aura_charmer') {
                  wantToShoot = distToTarget <= getAuraCharmerRadius(t, nowTarget) + (target.radius || 14);
+             } else if (t.brawler === 'voltastein') {
+                 wantToShoot = distToTarget <= VOLTASTEIN_RANGE;
+             } else if (t.brawler === 'staticstein') {
+                 wantToShoot = distToTarget <= STATICSTEIN_RANGE;
              } else if (t.brawler === 'skeletrooper') {
                  wantToShoot = distToTarget <= 62;
              }
@@ -78732,6 +79315,31 @@ function checkHit(target, b, i){
             ctx.restore();
             continue;
         }
+        if (ex.fxKind === 'voltasteinExplosion') {
+            // Voltastein volt blast: jagged purple-gold spokes + a bright ring.
+            const fAlpha = Math.max(0, 1 - ex.life / ex.maxLife);
+            const fR = (ex.radius || 120) * (0.55 + 0.45 * fAlpha);
+            ctx.save();
+            ctx.globalAlpha = fAlpha;
+            ctx.strokeStyle = '#ffe45e'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+            ctx.shadowColor = '#a855f7'; ctx.shadowBlur = 16;
+            for (let s = 0; s < 8; s++) {
+                const a = (s / 8) * Math.PI * 2 + (ex.life * 6);
+                const r1 = fR * 0.35, r2 = fR;
+                ctx.beginPath();
+                ctx.moveTo(ex.x + Math.cos(a) * r1, ex.y + Math.sin(a) * r1);
+                ctx.lineTo(ex.x + Math.cos(a + 0.18) * fR * 0.7, ex.y + Math.sin(a + 0.18) * fR * 0.7);
+                ctx.lineTo(ex.x + Math.cos(a) * r2, ex.y + Math.sin(a) * r2);
+                ctx.stroke();
+            }
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = '#d8b4fe'; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.arc(ex.x, ex.y, fR, 0, Math.PI * 2); ctx.stroke();
+            ctx.fillStyle = 'rgba(255,228,94,.85)';
+            ctx.beginPath(); ctx.arc(ex.x, ex.y, 10 * fAlpha + 4, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+            continue;
+        }
         if (ex.fxKind === 'rankedRocketeerBurst') {
             const progress = clamp(ex.life / ex.maxLife, 0, 1);
             const burst = 1 - Math.pow(1 - progress, 3);
@@ -80999,6 +81607,8 @@ function checkHit(target, b, i){
             let streakBonusCoins = 0;
             let streakDropBonus = 0;
             if (won && !isTraining && completedMatchFighter === 'electrostien') grantElectrostienSignatureWin();
+            if (won && !isTraining && completedMatchFighter === 'voltastein') grantVoltasteinSignatureWin();
+            if (won && !isTraining && completedMatchFighter === 'staticstein') grantStaticsteinSignatureWin();
             if (won) {
                 playerData.winStreak = (playerData.winStreak || 0) + 1;
                 playerData.bestWinStreak = Math.max(playerData.bestWinStreak || 0, playerData.winStreak);
