@@ -890,6 +890,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         if (target && target.hp <= 0 && now - (target.profileCareerKillAt || 0) > 1200) {
             target.profileCareerKillAt = now;
             ensureProfileProgressionState().profile.careerStats.eliminations += 1;
+            // Outlit voice: player kill line.
+            if (selectedBrawler === 'outlit') { try { window.BraweOutlitVoice?.play('kill'); } catch (e) {} }
         }
         if (target && target.hp <= 0 && hasTrinket(owner, 'fresh_magazine')) {
             if (now - (target.trinketFreshMagazineKillAt || 0) > 1000) {
@@ -11951,6 +11953,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
     // Prop Hunt v1: kill switch follows the house *_ENABLED convention.
     let PROP_HUNT_ENABLED = true;
     let TOMBSTONE_BOSS_ENABLED = true;
+    let MEGASTEIN_BOSS_ENABLED = true;
     const PROP_HUNT_MATCH_SECONDS = 150;         // seek-phase timer (starts when seekers activate)
     const PROP_HUNT_HEAD_START_MS = 15000;       // hiders scatter + morph before seekers activate
     const PROP_HUNT_REMORPH_COOLDOWN_MS = 10000; // "10-second morph": re-morph cooldown after a break/drop
@@ -14456,10 +14459,12 @@ let heistFeverActive = false;
         let isLavaBossEvent = false;
     let isHeadlessBossEvent = false;
     let isTombstoneBossEvent = false;
+    let isMegasteinBossEvent = false;
         let activeLavaBossDifficulty = 'hard';
         let activeHeadlessBossDifficulty = 'hard';
         let headlessBossRuntime = null;
         let tombstoneBossRuntime = null;
+        let megasteinBossRuntime = null;
         let lavaBossRuntime = null;
                 let isOverlordTrialEvent = false;
                 let isWarperEvent = false;
@@ -15751,6 +15756,188 @@ let heistFeverActive = false;
       ctx.fillText(`TOMBSTONE TYCOON • ${cfg.name} • PHASE ${Math.max(boss.bossStage||1,rt.frenzyEarly?3:1,rt.lastStand?4:1)}`,boss.x,boss.y-(boss.radius||40)-34);
       ctx.textAlign='left';ctx.restore();
   }
+  // ===== Megastein: fused five-Stein limited-event boss (ONE WEEK) =====
+  // One solo boss with one signature attack from EACH Stein, fused into a
+  // single moveset. Follows the Tombstone boss pattern (PRs #55/#56): a
+  // solo arena, a runtime object, an update/render pair, a difficulty-free
+  // single tier (this boss IS the hardest tier), and win rewards paid on
+  // the normal boss-fight win path. Window follows the Core Surge Overdrive
+  // pattern (PR #76): 7 days from first load/home render after shipping,
+  // then DORMANT — no launch path, no card, no permanent unlock.
+  // BUILDER PICKS (flagged for Anthony in the PR body + SPEC.md):
+  // name 'Megastein'; base brawler 'bolznstien' (generic bot AI gives his
+  // sky-strike main attack free, as Tombstone gets money_and_tax's kit);
+  // HP 500,000 (1.67x Tombstone Impossible's 300,000); NO minions (the five
+  // fused attacks are the whole fight); self-heal is a telegraphed 3s
+  // REMEDY CHANNEL healing 8% max HP, interrupted by >=15,000 damage
+  // dealt during the channel; LAST STAND under 15% HP speeds all attacks
+  // x0.7 interval and DISABLES the heal channel so the finish is real;
+  // rewards +500 Coins & +150 Souls per win, first win also +5 Gems &
+  // +3 Core Pieces (tracked in playerData.megastein.firstWinClaimed).
+  const MEGASTEIN_BOSS_HP = 500000;
+  const MEGASTEIN_BOSS_REWARD_COINS = 500;
+  const MEGASTEIN_BOSS_REWARD_SOULS = 150;
+  const MEGASTEIN_BOSS_FIRST_WIN_GEMS = 5;
+  const MEGASTEIN_BOSS_FIRST_WIN_CORE_PIECES = 3;
+  const MEGASTEIN_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
+  const MEGASTEIN_SKY_STRIKE_DMG = 500;
+  const MEGASTEIN_SKY_STRIKE_INTERVAL_MS = 6000;
+  const MEGASTEIN_SKY_STRIKE_COUNT = 3;
+  const MEGASTEIN_CHAIN_INTERVAL_MS = 8000;
+  const MEGASTEIN_OUTAGE_INTERVAL_MS = 14000;
+  const MEGASTEIN_DONOR_INTERVAL_MS = 9000;
+  const MEGASTEIN_DONOR_BURST = 3;
+  const MEGASTEIN_HEAL_CHANNEL_MS = 3000;
+  const MEGASTEIN_HEAL_INTERVAL_MS = 25000;
+  const MEGASTEIN_HEAL_PCT = 0.08;
+  const MEGASTEIN_HEAL_INTERRUPT_DMG = 15000;
+  const MEGASTEIN_LAST_STAND_HP_PCT = 0.15;
+  const MEGASTEIN_LAST_STAND_INTERVAL_MULT = 0.7;
+  // Event window (Overdrive pattern): created lazily on first load / first
+  // home render after shipping; never re-armed, never extended.
+  function ensureMegasteinEventState(now = Date.now()) {
+      if (!playerData.megastein || typeof playerData.megastein !== 'object') {
+          playerData.megastein = { startAt: now, endAt: now + MEGASTEIN_DURATION_MS, wins: 0, firstWinClaimed: false };
+      }
+      const st = playerData.megastein;
+      if (!Number.isFinite(st.startAt)) st.startAt = now;
+      if (!Number.isFinite(st.endAt)) st.endAt = st.startAt + MEGASTEIN_DURATION_MS;
+      st.wins = Math.max(0, Math.floor(Number(st.wins) || 0));
+      if (typeof st.firstWinClaimed !== 'boolean') st.firstWinClaimed = false;
+      return st;
+  }
+  function isMegasteinEventActive(now = Date.now()) {
+      if (!MEGASTEIN_BOSS_ENABLED) return false;
+      const st = ensureMegasteinEventState(now);
+      return now >= (st.startAt || 0) && now < (st.endAt || 0);
+  }
+  function getMegasteinDaysLeft(now = Date.now()) {
+      const st = ensureMegasteinEventState(now);
+      return Math.max(0, Math.ceil(((st.endAt || 0) - now) / (24 * 60 * 60 * 1000)));
+  }
+  // Souls + first-win Gems/Core Pieces. Coins ride the generic boss-fight
+  // rewardCoins path (MEGASTEIN_BOSS_REWARD_COINS), so they are not paid here.
+  function grantMegasteinBossRewards() {
+      const st = ensureMegasteinEventState();
+      st.wins += 1;
+      let firstWin = false;
+      if (!st.firstWinClaimed) { st.firstWinClaimed = true; firstWin = true; }
+      playerData.souls = (playerData.souls || 0) + MEGASTEIN_BOSS_REWARD_SOULS;
+      if (firstWin) {
+          playerData.gems = (playerData.gems || 0) + MEGASTEIN_BOSS_FIRST_WIN_GEMS;
+          playerData.corePieces = (playerData.corePieces || 0) + MEGASTEIN_BOSS_FIRST_WIN_CORE_PIECES;
+      }
+      saveProgress();
+      return { firstWin, wins: st.wins, coins: MEGASTEIN_BOSS_REWARD_COINS, souls: MEGASTEIN_BOSS_REWARD_SOULS, gems: firstWin ? MEGASTEIN_BOSS_FIRST_WIN_GEMS : 0, corePieces: firstWin ? MEGASTEIN_BOSS_FIRST_WIN_CORE_PIECES : 0 };
+  }
+  function openMegasteinBossEvent(){
+      if (!isMegasteinEventActive()) { alert('⚡🧬 Megastein has gone dormant — the one-week fusion event has ended.'); return; }
+      const overlay=document.createElement('div');overlay.className='season3-overlay';
+      const panel=document.createElement('section');panel.className='season3-panel lava-boss-panel';
+      panel.innerHTML=`<header><div><small>SOLO BOSS FIGHT • ONE-WEEK EVENT • ${getMegasteinDaysLeft()} DAY${getMegasteinDaysLeft()===1?'':'S'} LEFT</small><h1>MEGASTEIN</h1><p>All five Steins fused into ONE boss • sky strikes • Boltz Chain • Power Outage • random donor shots • interruptible remedy channel • LAST STAND under 15% HP</p></div><button aria-label="Close">X</button></header>`;
+      const ladder=document.createElement('div');ladder.className='lava-boss-ladder';
+      const row=document.createElement('button');row.className='lava-boss-tier';
+      row.innerHTML=`<span><b>MEGA-HARD</b><small>READY • SOLO • NO MINIONS • HEAL CHANNEL CAN BE INTERRUPTED</small></span><em>${MEGASTEIN_BOSS_HP.toLocaleString()} HP<br>+${MEGASTEIN_BOSS_REWARD_COINS} Coins & +${MEGASTEIN_BOSS_REWARD_SOULS} Souls<br>First win: +${MEGASTEIN_BOSS_FIRST_WIN_GEMS} Gems & +${MEGASTEIN_BOSS_FIRST_WIN_CORE_PIECES} Core Pieces</em>`;
+      row.onclick=()=>{overlay.remove();showdownMode='megastein_boss';launchShowdownMatch();};ladder.appendChild(row);
+      panel.appendChild(ladder);panel.querySelector('header button').onclick=()=>overlay.remove();overlay.onclick=e=>{if(e.target===overlay)overlay.remove();};overlay.appendChild(panel);document.body.appendChild(overlay);
+  }
+  function initMegasteinBossMatch(){
+      bots.length=0;destructibleWalls.length=0;waterZones.length=0;bushZones.length=0;powerups.length=0;cubes.length=0;
+      player.team='player';player.x=WORLD_W*.5;player.y=WORLD_H-260;player.bossLives=1;player.respawnTimer=0;player.defenseUntil=performance.now()+1500;
+      const boss={id:nextId++,x:WORLD_W*.5,y:360,z:20,vx:0,vy:0,hp:MEGASTEIN_BOSS_HP,maxHp:MEGASTEIN_BOSS_HP,shield:0,shieldMax:0,radius:46,speed:150,brawler:'bolznstien',level:11,team:'megastein_enemy',isBoss:true,isMegasteinBoss:true,noRespawn:true,noPowerupDrop:true,lastShot:0,superCharge:0,hyperChargeCharge:0,isHypercharged:false,gadgetArmed:false,selectedStar:'none',selectedGadget:'g1',ammo:3,maxAmmo:3};
+      bots.push(boss);
+      const now=performance.now();
+      megasteinBossRuntime={bossId:boss.id,startedAt:now,lastStand:false,nextSkyStrikeAt:now+3000,nextChainAt:now+5000,nextOutageAt:now+9000,nextDonorAt:now+7000,nextHealAt:now+MEGASTEIN_HEAL_INTERVAL_MS,healChannelUntil:0,healChannelHpAtStart:0,healInterrupted:false};
+      spawnFloatingText(player.x,player.y-70,'⚡🧬 MEGASTEIN • FIVE STEINS, ONE BOSS • SOLO','#c084fc');
+  }
+  function updateMegasteinBossEvent(now, dt){
+      if(!isMegasteinBossEvent||!megasteinBossRuntime||gameOver)return;
+      const boss=bots.find(b=>b.id===megasteinBossRuntime.bossId);
+      if(!boss||boss.hp<=0){gameOver=true;return;}
+      if(player.hp<=0){gameOver=true;return;}
+      const rt=megasteinBossRuntime;
+      if(!rt.lastStand&&boss.hp<=boss.maxHp*MEGASTEIN_LAST_STAND_HP_PCT){
+          rt.lastStand=true;boss.speed*=1.2;
+          spawnFloatingText(boss.x,boss.y-110,'LAST STAND! NO MORE HEALING!','#c084fc');
+          explosions.push({x:boss.x,y:boss.y,radius:220,life:0,maxLife:.55,color:'rgba(192,132,252,.8)',legendary:true});
+      }
+      const intervalMult=rt.lastStand?MEGASTEIN_LAST_STAND_INTERVAL_MULT:1;
+      // Healnstein fused attack: a telegraphed 3s REMEDY CHANNEL. Any damage
+      // dealt during the channel counts toward the interrupt threshold.
+      if(rt.healChannelUntil){
+          if(now>=rt.healChannelUntil){
+              rt.healChannelUntil=0;
+              if(!rt.healInterrupted){
+                  const heal=Math.round(boss.maxHp*MEGASTEIN_HEAL_PCT);
+                  boss.hp=Math.min(boss.maxHp,boss.hp+heal);
+                  spawnFloatingText(boss.x,boss.y-110,'+'+heal.toLocaleString()+' HP • REMEDY!','#4ade80');
+              }
+          }else if(rt.healChannelHpAtStart-boss.hp>=MEGASTEIN_HEAL_INTERRUPT_DMG){
+              rt.healInterrupted=true;rt.healChannelUntil=0;
+              spawnFloatingText(boss.x,boss.y-110,'REMEDY INTERRUPTED!','#ff5a5a');
+          }
+      }
+      if(!rt.lastStand&&!rt.healChannelUntil&&now>=rt.nextHealAt){
+          rt.nextHealAt=now+MEGASTEIN_HEAL_INTERVAL_MS;
+          rt.healChannelUntil=now+MEGASTEIN_HEAL_CHANNEL_MS;
+          rt.healChannelHpAtStart=boss.hp;
+          rt.healInterrupted=false;
+          spawnFloatingText(boss.x,boss.y-110,'REMEDY CHANNEL — HIT HIM HARD!','#4ade80');
+          explosions.push({x:boss.x,y:boss.y,radius:120,life:0,maxLife:.5,color:'rgba(74,222,128,.6)',legendary:true});
+      }
+      // Bolznstien fused attack: a 3-strike sky-strike triangle on the player.
+      if(now>=rt.nextSkyStrikeAt){
+          rt.nextSkyStrikeAt=now+MEGASTEIN_SKY_STRIKE_INTERVAL_MS*intervalMult;
+          for(let i=0;i<MEGASTEIN_SKY_STRIKE_COUNT;i++){
+              const a=(i/MEGASTEIN_SKY_STRIKE_COUNT)*Math.PI*2;
+              scheduleBolznstienStrikes(boss.id,clamp(player.x+Math.cos(a)*90,60,WORLD_W-60),clamp(player.y+Math.sin(a)*90,60,WORLD_H-60),MEGASTEIN_SKY_STRIKE_DMG,false,player.id);
+          }
+          spawnFloatingText(boss.x,boss.y-110,'SKY STRIKE BARRAGE!','#ffd34f');
+      }
+      // Electrostien fused attack: stick the Boltz Chain (250ms ticks,
+      // 300/120/30 by distance band, breaks past 360px — re-stuck here).
+      if(now>=rt.nextChainAt){
+          rt.nextChainAt=now+MEGASTEIN_CHAIN_INTERVAL_MS*intervalMult;
+          if(stickElectrostienChain(boss,player))spawnFloatingText(boss.x,boss.y-110,'BOLTZ CHAIN!','#7dfcd9');
+      }
+      // Voltastein fused attack: Power Outage — the real Super. Slow ramps
+      // 10%→50% + DoT, floors victims at 1 HP, jumps to nearby enemies on
+      // kill; all of that lives in castVoltasteinSuper /
+      // updateVoltasteinSystems, reused here unchanged.
+      if(now>=rt.nextOutageAt){
+          rt.nextOutageAt=now+MEGASTEIN_OUTAGE_INTERVAL_MS*intervalMult;
+          castVoltasteinSuper(boss,false,player.x,player.y);
+      }
+      // Staticstein fused attack: a burst of random donor shots from the
+      // real STATICSTEIN_DONOR_POOL registry (PR #87).
+      if(now>=rt.nextDonorAt){
+          rt.nextDonorAt=now+MEGASTEIN_DONOR_INTERVAL_MS*intervalMult;
+          for(let i=0;i<MEGASTEIN_DONOR_BURST;i++)fireStaticsteinDonorShot(boss,player.x,player.y,11,true,false);
+          spawnFloatingText(boss.x,boss.y-110,'STATIC INTERFERENCE!','#d1d5db');
+      }
+  }
+  function renderMegasteinBossEvent(){
+      if(!isMegasteinBossEvent||!megasteinBossRuntime)return;
+      const boss=bots.find(b=>b.id===megasteinBossRuntime.bossId);
+      if(!boss)return;
+      const now=performance.now(), pulse=.8+.2*Math.sin(now/140), rt=megasteinBossRuntime;
+      if(rt.healChannelUntil&&now<rt.healChannelUntil){
+          const remain=(rt.healChannelUntil-now)/MEGASTEIN_HEAL_CHANNEL_MS;
+          ctx.save();
+          ctx.strokeStyle='#4ade80';ctx.fillStyle='rgba(74,222,128,.13)';ctx.lineWidth=3;
+          ctx.beginPath();ctx.arc(boss.x,boss.y,90,0,Math.PI*2);ctx.fill();ctx.stroke();
+          ctx.beginPath();ctx.arc(boss.x,boss.y,90*(1-remain),0,Math.PI*2);ctx.stroke();
+          ctx.fillStyle='#4ade80';ctx.font='900 16px sans-serif';ctx.textAlign='center';
+          ctx.fillText('REMEDY CHANNEL — INTERRUPT IT!',boss.x,boss.y-100);
+          ctx.restore();
+      }
+      ctx.save();
+      ctx.strokeStyle='#c084fc';ctx.lineWidth=3;ctx.globalAlpha=.65+.35*pulse;
+      ctx.beginPath();ctx.arc(boss.x,boss.y,(boss.radius||46)+12,0,Math.PI*2);ctx.stroke();
+      ctx.globalAlpha=1;ctx.fillStyle='#c084fc';ctx.font='900 20px sans-serif';ctx.textAlign='center';
+      ctx.fillText(`⚡🧬 MEGASTEIN • MEGA-HARD • PHASE ${boss.bossStage||1}${rt.lastStand?' • LAST STAND':''}`,boss.x,boss.y-(boss.radius||46)-34);
+      ctx.textAlign='left';ctx.restore();
+  }
   function showLavaExtremeUnlockReveal(){
       const overlay=document.createElement('div');overlay.className='lava-extreme-reveal';overlay.innerHTML='<small>THE CORE CRACKS OPEN</small><h1>EXTREME DIFFICULTIES UNLOCKED</h1><p>Impossible III → Impossible XV</p><div><i></i><b>CORE SURGE BEGINS AT IMPOSSIBLE VI</b><i></i></div>';
       Object.assign(overlay.style,{position:'fixed',inset:'0',zIndex:'1500',display:'grid',placeContent:'center',textAlign:'center',color:'#fff4ad',background:'radial-gradient(circle,rgba(105,12,20,.72),rgba(3,5,12,.96))',pointerEvents:'none'});overlay.querySelector('h1').style.cssText='font:900 clamp(28px,6vw,72px) sans-serif;margin:8px;text-shadow:0 0 28px #ff5a24';overlay.querySelector('small').style.cssText='font:900 14px sans-serif;letter-spacing:.3em;color:#ff9b55';overlay.querySelector('p').style.cssText='font:800 20px sans-serif;color:#ffcf70';overlay.querySelector('div').style.cssText='display:flex;gap:18px;align-items:center;justify-content:center;margin-top:18px';document.body.appendChild(overlay);setTimeout(()=>overlay.remove(),3800);
@@ -16708,6 +16895,7 @@ let heistFeverActive = false;
                   if (data.persistent.ranked) playerData.ranked = data.persistent.ranked;
                   // [Worker C] Restore Overdrive milestones/claims/drops.
                   if (data.persistent.overdrive) playerData.overdrive = data.persistent.overdrive;
+                  if (data.persistent.megastein) playerData.megastein = data.persistent.megastein;
                   if (data.persistent.attachies) playerData.attachies = data.persistent.attachies;
                   if (data.persistent.slopSushi) playerData.slopSushi = data.persistent.slopSushi;
                   mergeProfileProgressionSave(data.persistent.profile, data.persistent.brickBonV2);
@@ -16824,6 +17012,7 @@ let heistFeverActive = false;
           ensurePinsState();
           // [Worker C] Normalize Overdrive state on load (non-destructive).
           if (typeof ensureOverdriveState === 'function') ensureOverdriveState();
+          if (typeof ensureMegasteinEventState === 'function') ensureMegasteinEventState();
           if (ENABLE_EVENT_HUB && (!playerData.event || playerData.event.questSchemaVersion !== EVENT_QUEST_SCHEMA_VERSION)) resetEventQuests();
           ensureSoulSummonerData();
           ensureSlopSushiState();
@@ -16887,6 +17076,7 @@ let heistFeverActive = false;
                     xplodemisDaily: playerData.xplodemisDaily || null,
                     // [Worker C] Persist Overdrive milestones/claims/drops.
                     overdrive: playerData.overdrive || null,
+                    megastein: playerData.megastein || null,
                     majorUpdateVNext: playerData.majorUpdateVNext,
                      packets: playerData.packets,
                      season3: playerData.season3,
@@ -34774,6 +34964,8 @@ let heistFeverActive = false;
     const ang = Math.atan2(dy,dx);
     fromEntity.visualAimAngle = ang;
     fromEntity.visualAttackAt = now;
+    // Outlit voice: player attack line (throttled inside the voice module).
+    if (!isBot && fromEntity === player && selectedBrawler === 'outlit') { try { window.BraweOutlitVoice?.play('attack'); } catch (e) {} }
 
     fireArenaForgeCapturedHyperAttacks(fromEntity, ang, now);
 
@@ -39857,6 +40049,8 @@ let heistFeverActive = false;
         spawnFloatingText(player.x, player.y - 42, 'PHASE DRIVE!', '#6ee7ff');
     }
     player.visualSuperAt = now;
+    // Outlit voice: player Super line.
+    if (selectedBrawler === 'outlit') { try { window.BraweOutlitVoice?.play('super'); } catch (e) {} }
     const wm = getMouseWorld();
     if (isBraweBallMode && braweBallState && braweBallState.ball && braweBallState.ball.carrier === player.id) {
         kickBraweBall(player, wm.x, wm.y, true);
@@ -43464,6 +43658,7 @@ let heistFeverActive = false;
       ['corrupted_showdown', 'CS', 'Corrupted Showdown', 'Season 3 unstable Packet signals'],
       ['headless_boss_s4', '🎃', 'Headless Bolznstien Boss', 'Season 4 co-op ladder • Hard to Impossible XV • Spooky Boxes + free skin'],
       ['tombstone_boss', '🪦', 'Boss Battle: Tombstone Tycoon', 'Solo boss fight • 4 difficulties • skull coins, death-tax notes & a tombstone shield ring • up to +350 Coins'],
+      ['megastein_boss', '🧬', 'Boss Battle: Megastein', 'LIMITED • 1 week only • all 5 Steins fused into one mega-hard boss • +500 Coins & +150 Souls'],
       ['tower_defense', '🧱', 'Tower Defense', 'Solo • defend your tower • waves every 30s • kill them all to win'],
       ['beast_boss_god_mode', '💀', 'Beast Boss: God Mode', 'FEATURED • 5v1 vs the Overlord with God Mode active • Oct 30 only'],
       ['capture_turkey', '🦃', 'Capture the Turkey', '3v3 CTF • grab the turkey, haul it home • first to 3 captures • LIVE EARLY'],
@@ -43540,7 +43735,14 @@ let heistFeverActive = false;
       const dayKey = getHomeDailyRotationDayKey(now);
       let state = null;
       try { state = JSON.parse(localStorage.getItem(HOME_DAILY_ROTATION_KEY) || 'null'); } catch (_) {}
-      if (state && state.dayKey === dayKey && Array.isArray(state.ids) && state.ids.length > 0) return state.ids;
+      if (state && state.dayKey === dayKey && Array.isArray(state.ids) && state.ids.length > 0) {
+          // Megastein is a one-week event: a rotation cached before the
+          // event started must still surface it the same day, and it must
+          // vanish from the cached list the day the window closes.
+          if (isMegasteinEventActive(now) && !state.ids.includes('megastein_boss')) { state.ids.unshift('megastein_boss'); try { localStorage.setItem(HOME_DAILY_ROTATION_KEY, JSON.stringify(state)); } catch (_) {} }
+          if (!isMegasteinEventActive(now) && state.ids.includes('megastein_boss')) { state.ids = state.ids.filter((id) => id !== 'megastein_boss'); try { localStorage.setItem(HOME_DAILY_ROTATION_KEY, JSON.stringify(state)); } catch (_) {} }
+          return state.ids;
+      }
       const pool = getHomeDailyRotationPool(now);
       const seed = hashHomeEventSeed(Number(dayKey.replaceAll('-', '')) || 1);
       const ids = [];
@@ -43552,6 +43754,7 @@ let heistFeverActive = false;
           index += 7;
       }
       if (isBeastBossGodModeDay(now)) ids.unshift('beast_boss_god_mode');
+      if (isMegasteinEventActive(now)) ids.unshift('megastein_boss');
       const finalIds = [...new Set(ids)].slice(0, HOME_DAILY_ROTATION_SLOT_COUNT);
       state = { dayKey, ids: finalIds };
       try { localStorage.setItem(HOME_DAILY_ROTATION_KEY, JSON.stringify(state)); } catch (_) {}
@@ -43632,6 +43835,7 @@ let heistFeverActive = false;
       knock_donate: ['Ring-out 3v3 battles with friendly fire', 'Friendly Fire Active'],
       headless_boss_s4: ['3v1 Co-op vs the Headless Bolznstien!', 'Dodge pumpkin bombs, anvil rain and the Ecto Nova', 'First clears pay coins, souls and up to 3 Spooky Boxes', 'Clear Impossible XV to earn his skin FREE'],
       tombstone_boss: ['Solo Boss Battle: 1 vs Tombstone Tycoon!', 'Zero Power Cubes — Pure skill showdown', 'Survive 4 phases: coin fans, death-tax notes, a tombstone shield ring, a graveyard frenzy, then a LAST STAND under 15% HP', 'Defeat him to claim Coins — Normal +60, Hard +120, Extreme +200, Impossible +350!'],
+      megastein_boss: ['Solo Boss Battle: 1 vs Megastein — all five Steins fused into ONE boss!', 'Five fused attacks: sky strikes, Boltz Chain, Power Outage, random donor shots & a healing channel', 'Interrupt the green REMEDY CHANNEL (deal 15,000 damage inside 3s) or he heals 8% of his max HP', 'Win for +500 Coins & +150 Souls — first win also pays +5 Gems & +3 Core Pieces • ONE WEEK ONLY, then dormant'],
       tower_defense: ['Solo tower defense — just you and your tower vs the horde!', 'A minion wave spawns every 30 seconds from the arena edges', 'Win by hitting the kill target: Easy 50, Normal 100, Hard 150, Extreme 250 minions', 'Lose if your tower falls — God Mode toggle available right out of the box, no unlock needed'],
       beast_boss_god_mode: ['5v1 vs the Overlord with GOD MODE active — featured today only, Oct 30, 2026!', 'God Mode means faster, harder-hitting pulse bursts and warp slashes', 'Collect Overlord crystals to empower your team for 5 seconds', 'Win for the standard Beast Boss rewards — a Beast Boss Token and +150 Coins'],
       capture_turkey: ['3v3 Capture the Flag — with a live turkey!', 'Grab the turkey at mid and haul it back to YOUR base', 'Carriers drop the turkey when defeated • it respawns at mid after a capture', 'First team to 3 captures wins • 3:00 match • Released early! Turkey Trouble season quests start Nov 1'],
@@ -46745,6 +46949,7 @@ let heistFeverActive = false;
           christmas_showdown: '#ff5d73',
           prop_hunt: '#ffd166',
           tombstone_boss: '#7dffb0',
+          megastein_boss: '#c084fc',
           tower_defense: '#f5a623',
           beast_boss_god_mode: '#ff2d78',
           objective: '#389eff',
@@ -46793,7 +46998,7 @@ let heistFeverActive = false;
           else if(id==='tower_duels_weekend') tag='5F';
           else if (id === 'duo') tag = 'DUO';
           else if (id === 'trio') tag = 'QUAD';
-          else if (id === 'orbo_boss' || id === 'ramage_boss' || id === 'demon_villains_boss' || id === 'weefee_boss' || id === 'blink_eye_dodge' || id === 'power_gods' || id === 'damage_filler' || id === 'solo_td' || id === 'tombstone_boss' || id === 'tower_defense') tag = 'SOLO';
+          else if (id === 'orbo_boss' || id === 'ramage_boss' || id === 'demon_villains_boss' || id === 'weefee_boss' || id === 'blink_eye_dodge' || id === 'power_gods' || id === 'damage_filler' || id === 'solo_td' || id === 'tombstone_boss' || id === 'megastein_boss' || id === 'tower_defense') tag = 'SOLO';
           else if (id === 'beast_boss_god_mode') tag = '5V1';
           else if (id === 'duels' || id === 'impossible') tag = '1V1';
           else if (id === 'arena_forge') tag = '3V3';
@@ -46829,6 +47034,10 @@ let heistFeverActive = false;
               }
               if (id === 'tombstone_boss') {
                   openTombstoneBossEvent();
+                  return;
+              }
+              if (id === 'megastein_boss') {
+                  openMegasteinBossEvent();
                   return;
               }
               if (id === 'tower_defense') {
@@ -49010,6 +49219,12 @@ let heistFeverActive = false;
           updateShowdownModeUI();
           return;
       }
+      if (showdownMode === 'megastein_boss' && !isMegasteinEventActive()) {
+          alert('⚡🧬 Megastein has gone dormant — the one-week fusion event has ended.');
+          showdownMode = 'solo';
+          updateShowdownModeUI();
+          return;
+      }
       if (showdownMode === 'beast_boss_god_mode' && !isBeastBossGodModeDay()) {
           alert('💀 Beast Boss: God Mode is a one-day featured event — it runs October 30, 2026 only!');
           showdownMode = 'solo';
@@ -49026,7 +49241,8 @@ let heistFeverActive = false;
       isLavaBossEvent = showdownMode === 'lava_boss_s3';
       isHeadlessBossEvent = showdownMode === 'headless_boss_s4';
       isTombstoneBossEvent = showdownMode === 'tombstone_boss';
-      isBossFight = isLavaBossEvent || isBouncinBossEvent || isHeadlessBossEvent || isTombstoneBossEvent || isBeastBossEvent;
+      isMegasteinBossEvent = showdownMode === 'megastein_boss';
+      isBossFight = isLavaBossEvent || isBouncinBossEvent || isHeadlessBossEvent || isTombstoneBossEvent || isMegasteinBossEvent || isBeastBossEvent;
       activeSkinTrial = null; // real matches never use trial skins
       feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = [];
       if (isBouncinBossEvent) {
@@ -49139,6 +49355,7 @@ let heistFeverActive = false;
       isPropHuntMode = showdownMode === 'prop_hunt';
       if (isPropHuntMode && !PROP_HUNT_ENABLED) { showdownMode = 'solo'; isPropHuntMode = false; }
       if (isTombstoneBossEvent && !TOMBSTONE_BOSS_ENABLED) { showdownMode = 'solo'; isTombstoneBossEvent = false; isBossFight = false; }
+      if (isMegasteinBossEvent && !MEGASTEIN_BOSS_ENABLED) { showdownMode = 'solo'; isMegasteinBossEvent = false; isBossFight = false; }
       isObjectiveMode = showdownMode === 'objective' || isTurkeyCaptureMode;
       isConstructionMode = showdownMode === 'construction';
       isDuoShowdown = showdownMode === 'duo';
@@ -49202,7 +49419,7 @@ let heistFeverActive = false;
           superShowdownWorldSaved = { w: WORLD_W, h: WORLD_H };
           WORLD_W = SUPER_SHOWDOWN_WORLD_W;
           WORLD_H = SUPER_SHOWDOWN_WORLD_H;
-      } else if (isLavaBossEvent || isHeadlessBossEvent || isTombstoneBossEvent || isTowerDefenseEvent) {
+      } else if (isLavaBossEvent || isHeadlessBossEvent || isTombstoneBossEvent || isMegasteinBossEvent || isTowerDefenseEvent) {
           WORLD_W = 2400;
           WORLD_H = 2200;
       } else if (isTurkeyCaptureMode) {
@@ -49400,6 +49617,7 @@ let heistFeverActive = false;
       if (isLavaBossEvent) initLavaBossMatch();
       if (isHeadlessBossEvent) initHeadlessBossMatch();
       if (isTombstoneBossEvent) initTombstoneBossMatch();
+      if (isMegasteinBossEvent) initMegasteinBossMatch();
       if (isBeastBossEvent) initBeastBossGodModeMatch();
       if (isTowerDefenseEvent) initTowerDefenseMatch();
       if (isBrickVaultMode) initBrickVaultModeState();
@@ -50695,6 +50913,7 @@ isBrawlerLabMode = false;
       isLavaBossEvent = false;
       isHeadlessBossEvent = false;
       isTombstoneBossEvent = false;
+      isMegasteinBossEvent = false;
       isOverlordTrialEvent = false;
       isHyperEvent = false;
       isBossFight = false;
@@ -50839,6 +51058,7 @@ isBrawlerLabMode = false;
       isLavaBossEvent = false;
       isHeadlessBossEvent = false;
       isTombstoneBossEvent = false;
+      isMegasteinBossEvent = false;
       isOverlordTrialEvent = false;
       isHyperEvent = false;
       isBossFight = false;
@@ -54529,6 +54749,15 @@ function checkHit(target, b, i){
     const rawDmg = dealtDamage;
     dealtDamage = applyShieldDamage(target, dealtDamage);
     target.hp -= dealtDamage;
+    // Outlit animation: stamp hurt/death times so the 2.5D model flinches
+    // and falls. Structures never get the stamp.
+    if (dealtDamage > 0 && target && !target.isArenaForgeStructure) {
+        const outlitStampBrawler = target === player ? selectedBrawler : target.brawler;
+        if (outlitStampBrawler === 'outlit') {
+            target.outlitHurtAt = performance.now();
+            if (target.hp <= 0) target.outlitDeathAt = performance.now();
+        }
+    }
     if (dealtDamage > 0) recordOverdriveSurgedHit(owner, performance.now());
     if (dealtDamage > 0 && target.hp > 0 && ELECTROSTIEN_ENABLED && !(b && (b.electrostienRoar || b.electrostienChainTick || b.electrostienMiniChainTick))) {
         if (owner && !areAlliedEntities(owner, target)) triggerElectrostienRoar(target);
@@ -56320,6 +56549,7 @@ function checkHit(target, b, i){
     updateLavaBossEvent(now,dt);
     updateHeadlessBossEvent(now,dt);
     updateTombstoneBossEvent(now,dt);
+    updateMegasteinBossEvent(now,dt);
 
     updateAngelDemonStates(dt);
       updateWeeFeeSystems(dt);
@@ -64861,6 +65091,13 @@ function checkHit(target, b, i){
             } else if (brawlerId === 'outlit' && getActiveSkinForBrawler('outlit')?.id === 'nightmare-outlit') {
                 const transformed = entity === player ? !!isHypercharged : !!entity.isHypercharged;
                 const pulse = 0.5 + Math.sin(now * (transformed ? 0.02 : 0.009)) * 0.5;
+                // Outlit animation states (same language as the roster draw):
+                // hurt flinch, death fall, win bounce. (Death only shows where
+                // a dead entity is still drawn; in-match the death burst FX
+                // covers the moment instead.)
+                if (entity.hp <= 0 && Number.isFinite(entity.outlitDeathAt)) { const outlitDeathT = Math.min(1, (now - entity.outlitDeathAt) / 450); ctx.translate(0, outlitDeathT * 10); ctx.rotate(outlitDeathT * 1.2); ctx.globalAlpha = 1 - outlitDeathT * .75; }
+                else if ((entity.outlitWinAt || 0) > 0) ctx.translate(0, -Math.abs(Math.sin(now / 240)) * 5);
+                else { const outlitHurtT = Math.max(0, 1 - (now - (entity.outlitHurtAt || -9999)) / 260); if (outlitHurtT > 0) ctx.translate((Math.random() - .5) * outlitHurtT * 7, -outlitHurtT * 2); }
                 ctx.translate(entity.x, drawY - attackKick * 3);
                 ctx.rotate(Math.sin(now * 0.006) * 0.025 + Math.sin(aim) * attackKick * 0.1);
                 ctx.shadowColor = transformed ? '#ff007f' : '#e000ff';
@@ -67070,6 +67307,7 @@ function checkHit(target, b, i){
     renderLavaBossEvent();
     renderHeadlessBossEvent();
     renderTombstoneBossEvent();
+    renderMegasteinBossEvent();
     renderTurkeyCaptureEvent();
     renderFeathersEffects();
     renderSpikeyEffects();
@@ -80392,6 +80630,27 @@ function checkHit(target, b, i){
             ctx.restore();
             continue;
         }
+        // Outlit death burst: the signal lamp gutters out as a dimming ring.
+        // (Dead fighters stop rendering, so the death moment gets this FX.)
+        if (ex.fxKind === 'outlitDeathBurst') {
+            const progress = clamp(ex.life / Math.max(0.01, ex.maxLife || 0.8), 0, 1);
+            ctx.save();
+            ctx.translate(ex.x, ex.y);
+            ctx.globalAlpha = alpha;
+            ctx.shadowColor = '#ff9b42';
+            ctx.shadowBlur = 16;
+            ctx.strokeStyle = `rgba(255, 155, 66, ${alpha * 0.9})`;
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(0, 0, ex.radius * (0.3 + progress * 0.9), 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.fillStyle = `rgba(255, 213, 128, ${alpha * (1 - progress)})`;
+            ctx.beginPath();
+            ctx.arc(0, 0, Math.max(1, ex.radius * 0.22 * (1 - progress)), 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+            continue;
+        }
         if (ex.color) {
             const isLegendary = !!ex.legendary || ex.radius > 45;
             if (isLegendary) {
@@ -81993,11 +82252,11 @@ function checkHit(target, b, i){
                 ctx.fillText(`⚔️ SOLO TRIAL MODE - WAVE ${Math.min(soloTrialWave + 1, SOLO_TRIAL_MAX_WAVES)}/${SOLO_TRIAL_MAX_WAVES} ⚔️`, innerWidth/2, 60);
         ctx.textAlign = 'left';
     } else if (isBossFight) {
-        ctx.fillStyle = isLavaBossEvent ? '#ff9a3d' : isHeadlessBossEvent ? '#7dff6a' : isTombstoneBossEvent ? '#7dffb0' : '#ff6bb2';
+        ctx.fillStyle = isLavaBossEvent ? '#ff9a3d' : isHeadlessBossEvent ? '#7dff6a' : isTombstoneBossEvent ? '#7dffb0' : isMegasteinBossEvent ? '#c084fc' : '#ff6bb2';
         ctx.font = 'bold 14px sans-serif';
         ctx.textAlign = 'center';
         const diffName = getBeastBossDifficultyName(getBeastBossDifficultyIndex());
-        ctx.fillText(isLavaBossEvent?`LAVA VILLAIN 3V1 • ${getLavaBossDifficulty(lavaBossRuntime?.difficulty).name} • ${Math.max(0,Math.ceil((lavaBossRuntime.timeLimitMs-(performance.now()-lavaBossRuntime.startedAt))/1000))}s`:isHeadlessBossEvent?`HEADLESS BOLZNSTIEN 3V1 • ${getHeadlessBossDifficulty(headlessBossRuntime?.difficulty).name} • ${Math.max(0,Math.ceil((headlessBossRuntime.timeLimitMs-(performance.now()-headlessBossRuntime.startedAt))/1000))}s`:isTombstoneBossEvent?`🪦 TOMBSTONE TYCOON • ${getTombstoneBossDifficulty(tombstoneBossRuntime?.difficulty).name} • SOLO BOSS`:`🧬 BEAST BOSS 5V1 [${diffName}] - COLLECT CRYSTALS FOR 5s EMPOWERED BEAST 🧬`, innerWidth/2, 60);
+        ctx.fillText(isLavaBossEvent?`LAVA VILLAIN 3V1 • ${getLavaBossDifficulty(lavaBossRuntime?.difficulty).name} • ${Math.max(0,Math.ceil((lavaBossRuntime.timeLimitMs-(performance.now()-lavaBossRuntime.startedAt))/1000))}s`:isHeadlessBossEvent?`HEADLESS BOLZNSTIEN 3V1 • ${getHeadlessBossDifficulty(headlessBossRuntime?.difficulty).name} • ${Math.max(0,Math.ceil((headlessBossRuntime.timeLimitMs-(performance.now()-headlessBossRuntime.startedAt))/1000))}s`:isTombstoneBossEvent?`🪦 TOMBSTONE TYCOON • ${getTombstoneBossDifficulty(tombstoneBossRuntime?.difficulty).name} • SOLO BOSS`:isMegasteinBossEvent?`🧬 MEGASTEIN • MEGA-HARD • SOLO BOSS`:`🧬 BEAST BOSS 5V1 [${diffName}] - COLLECT CRYSTALS FOR 5s EMPOWERED BEAST 🧬`, innerWidth/2, 60);
         ctx.textAlign = 'left';
     } else if (isConstructionMode) {
         ctx.fillStyle = '#7dd8ff';
@@ -82119,11 +82378,14 @@ function checkHit(target, b, i){
                 } else if (isTombstoneBossEvent) {
                     rankText='Solo Boss Fight';
                     matchText=won?'TOMBSTONE TYCOON DEFEATED!':'THE GRAVEYARD CLAIMS YOU — TRY AGAIN!';
+                } else if (isMegasteinBossEvent) {
+                    rankText='Solo Boss Fight • One-Week Event';
+                    matchText=won?'MEGASTEIN DEFEATED!':'THE FUSION OVERWHELMS YOU — TRY AGAIN!';
                 } else if (isBeastBossEvent) {
                     const diffName = getBeastBossDifficultyName(getBeastBossDifficultyIndex());
                     rankText = `Difficulty: ${diffName}`;
                 }
-                if(!isLavaBossEvent&&!isHeadlessBossEvent&&!isTombstoneBossEvent)matchText = won ? (isBeastBossEvent ? "BEAST BOSS DEFEATED!" : "BOSS DEFEATED!") : "TEAM WIPED OUT!";
+                if(!isLavaBossEvent&&!isHeadlessBossEvent&&!isTombstoneBossEvent&&!isMegasteinBossEvent)matchText = won ? (isBeastBossEvent ? "BEAST BOSS DEFEATED!" : "BOSS DEFEATED!") : "TEAM WIPED OUT!";
             } else if (isTowerDefenseEvent) {
                 const tdCfg = getTowerDefenseDifficulty(towerDefenseRuntime?.difficulty);
                 won = towerDefenseRuntime?.won === true;
@@ -82447,7 +82709,7 @@ function checkHit(target, b, i){
             }
 
             let rewardCoins = won ? 30 : 10;
-            if (isBossFight && won) rewardCoins = isBeastBossEvent ? 150 : (isTombstoneBossEvent ? getTombstoneBossDifficulty(tombstoneBossRuntime?.difficulty).rewardCoins : 100);
+            if (isBossFight && won) rewardCoins = isBeastBossEvent ? 150 : (isTombstoneBossEvent ? getTombstoneBossDifficulty(tombstoneBossRuntime?.difficulty).rewardCoins : (isMegasteinBossEvent ? MEGASTEIN_BOSS_REWARD_COINS : 100));
             if (isTowerDefenseEvent && won) rewardCoins = getTowerDefenseRewardCoins();
             if (isSoloTrial && won) rewardCoins = 80;
             if (isDuels && won) rewardCoins = 50;
@@ -82478,6 +82740,11 @@ function checkHit(target, b, i){
                 } else {
                     beastBossDifficultyText = 'Max Difficulty: IMPOSSIBLE';
                 }
+            }
+
+            if (isMegasteinBossEvent && won) {
+                const mgReward = grantMegasteinBossRewards();
+                rankText += ' • +' + MEGASTEIN_BOSS_REWARD_SOULS + ' Souls' + (mgReward.firstWin ? ' • FIRST WIN: +' + MEGASTEIN_BOSS_FIRST_WIN_GEMS + ' Gems & +' + MEGASTEIN_BOSS_FIRST_WIN_CORE_PIECES + ' Core Pieces' : '');
             }
 
             const placement = isBossFight ? 1 : (isSoloTrial ? (won ? 1 : Math.max(1, soloTrialWave)) : (isDuels ? Math.max(1, botScore + 1) : Math.max(1, rankNum)));
@@ -82815,6 +83082,7 @@ function checkHit(target, b, i){
                 isLavaBossEvent = false;
       isHeadlessBossEvent = false;
       isTombstoneBossEvent = false;
+      isMegasteinBossEvent = false;
                 isOverlordTrialEvent = false;
                 window.location.reload();
             };
@@ -82930,6 +83198,71 @@ function checkHit(target, b, i){
       }
   }
 
+  // Outlit voice-line state watcher (2026-11-05): spawn / win / death / idle
+  // and the hurt voice. Attack, Super and kill fire from their own hooks;
+  // this watcher only owns the transitions with no single call site (match
+  // start/end, idling, HP drops). Runs in loop() after update() because
+  // update() returns early once gameOver is set. Never throws.
+  let outlitVoicePrevPlaying = false;
+  let outlitVoicePrevGameOver = false;
+  let outlitVoiceMatchEndPlayed = false;
+  let outlitVoiceLastHp = null;
+  let outlitVoiceLastActionAt = 0;
+  let outlitVoiceLastIdleAt = 0;
+  function updateOutlitVoiceState() {
+    try {
+      if (typeof selectedBrawler === 'undefined' || !player) return;
+      const now = performance.now();
+      const isOutlit = selectedBrawler === 'outlit';
+      // Match start: playing flips false -> true.
+      if (playing && !outlitVoicePrevPlaying) {
+        outlitVoiceMatchEndPlayed = false;
+        outlitVoiceLastHp = player.hp;
+        outlitVoiceLastActionAt = now;
+        outlitVoiceLastIdleAt = 0;
+        player.outlitWinAt = 0;
+        player.outlitDeathAt = 0;
+        if (isOutlit) window.BraweOutlitVoice?.play('spawn');
+      }
+      // Match end: gameOver flips false -> true.
+      if (gameOver && !outlitVoicePrevGameOver && !outlitVoiceMatchEndPlayed) {
+        outlitVoiceMatchEndPlayed = true;
+        if (isOutlit) {
+          if (player.hp > 0) {
+            player.outlitWinAt = now;
+            window.BraweOutlitVoice?.play('win');
+          } else {
+            player.outlitDeathAt = now;
+            window.BraweOutlitVoice?.play('death');
+            // Dead fighters stop rendering, so the death moment gets a
+            // visible burst: dimming lamp ring + "LIGHTS OUT" text.
+            explosions.push({ x: player.x, y: player.y, radius: 60, life: 0, maxLife: .8, color: 'rgba(255,155,66,.55)', fxKind: 'outlitDeathBurst' });
+            spawnFloatingText(player.x, player.y - 46, '💡 LIGHTS OUT!', '#ff9b42');
+          }
+        }
+      }
+      // Hurt voice: player HP dropped since last frame.
+      if (playing && !gameOver && isOutlit && player.hp > 0 && outlitVoiceLastHp !== null && player.hp < outlitVoiceLastHp) {
+        outlitVoiceLastActionAt = now;
+        window.BraweOutlitVoice?.play('hurt');
+      }
+      if (player) outlitVoiceLastHp = player.hp;
+      // Idle voice: alive, unmoving, no attack and no damage for 20s.
+      if (playing && !gameOver && isOutlit && player.hp > 0) {
+        const moved = Math.hypot((player.x || 0) - (player.outlitVoicePrevX ?? player.x ?? 0), (player.y || 0) - (player.outlitVoicePrevY ?? player.y ?? 0)) > 4;
+        if (moved || (player.lastAttackAt || 0) > outlitVoiceLastActionAt) outlitVoiceLastActionAt = now;
+        player.outlitVoicePrevX = player.x;
+        player.outlitVoicePrevY = player.y;
+        if (now - outlitVoiceLastActionAt > 20000 && now - outlitVoiceLastIdleAt > 25000) {
+          outlitVoiceLastIdleAt = now;
+          window.BraweOutlitVoice?.play('idle');
+        }
+      }
+      outlitVoicePrevPlaying = !!playing;
+      outlitVoicePrevGameOver = !!gameOver;
+    } catch (e) { /* voice must never break the loop */ }
+  }
+
   function loop(){
     if (runtimeLoopCrashed) return;
     try {
@@ -82951,6 +83284,7 @@ function checkHit(target, b, i){
         last = now;
         updateMobileControlsVisibility();
         update(dt);
+        updateOutlitVoiceState();
         const homeVisible = homeScreen && homeScreen.style.display !== 'none';
         if (playing || !homeVisible) render();
     } catch (err) {
@@ -90241,6 +90575,12 @@ function renderBouncinBossEvent(phase) {
     get PROP_HUNT_ENABLED() { return PROP_HUNT_ENABLED; },
     set PROP_HUNT_ENABLED(v) { PROP_HUNT_ENABLED = !!v; },
     set TOMBSTONE_BOSS_ENABLED(v) { TOMBSTONE_BOSS_ENABLED = !!v; },
+    set MEGASTEIN_BOSS_ENABLED(v) { MEGASTEIN_BOSS_ENABLED = !!v; },
+    get ensureMegasteinEventState() { return ensureMegasteinEventState; },
+    get isMegasteinEventActive() { return isMegasteinEventActive; },
+    get grantMegasteinBossRewards() { return grantMegasteinBossRewards; },
+    get initMegasteinBossMatch() { return initMegasteinBossMatch; },
+    get updateMegasteinBossEvent() { return updateMegasteinBossEvent; },
     get morphPropHuntHider() { return morphPropHuntHider; },
     get breakPropHuntMorph() { return breakPropHuntMorph; },
     get canDetectMorphedHider() { return canDetectMorphedHider; },
