@@ -241,194 +241,255 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         const level = Math.max(1, Math.min(MAX_POWER_LEVEL, levelOverride ?? getSelectedBrawlerLevel()));
         if (brawlerId === 'the_deleter') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp: Math.round(6600 * scale), dmg: Math.round(1750 * scale), speed: 260 };
+            const hpScale = getLevelHpScale(level);
+            return { hp: Math.round(6600 * hpScale), dmg: Math.round(1750 * scale), speed: 260 };
         }
         if (brawlerId === 'blinkeye') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp: Math.round(5600 * scale), dmg: Math.round(1400 * scale), speed: 265 };
+            const hpScale = getLevelHpScale(level);
+            return { hp: Math.round(5600 * hpScale), dmg: Math.round(1400 * scale), speed: 265 };
         }
         if (brawlerId === 'weefee') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp: Math.round(6800 * scale), dmg: Math.round(1200 * scale), speed: 270 };
+            const hpScale = getLevelHpScale(level);
+            return { hp: Math.round(6800 * hpScale), dmg: Math.round(1200 * scale), speed: 270 };
         }
         if (brawlerId === 'rager') {
           const scale = 0.55 + (level - 1) * 0.045;
-          return { hp: Math.round(7600 * scale), dmg: Math.round(2200 * scale) };
+          const hpScale = getLevelHpScale(level);
+          return { hp: Math.round(7600 * hpScale), dmg: Math.round(2200 * scale) };
       }
       if (brawlerId === 'carmela_fudge') {
         const scale = 0.55 + (level - 1) * 0.045;
-        return { hp: Math.round(6400 * scale), dmg: Math.round(1800 * scale), speed: 260 };
+        const hpScale = getLevelHpScale(level);
+        return { hp: Math.round(6400 * hpScale), dmg: Math.round(1800 * scale), speed: 260 };
       }
       if (brawlerId === 'bolznstien') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp: Math.round(7200 * scale), dmg: Math.round(990 * scale), strikeDmg: Math.round(1650 * scale), speed: 265 };
+            const hpScale = getLevelHpScale(level);
+            return { hp: Math.round(7200 * hpScale), dmg: Math.round(990 * scale), strikeDmg: Math.round(1650 * scale), speed: 265 };
         }
         if (brawlerId === 'electrostien') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp: Math.round(8200 * scale), dmg: Math.round(700 * scale), speed: 290 };
+            const hpScale = getLevelHpScale(level);
+            return { hp: Math.round(8200 * hpScale), dmg: Math.round(700 * scale), speed: 290 };
         }
         if (brawlerId === 'mallow') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp: Math.round(6800 * scale), dmg: Math.round(320 * scale), speed: 270 };
+            const hpScale = getLevelHpScale(level);
+            return { hp: Math.round(6800 * hpScale), dmg: Math.round(320 * scale), speed: 270 };
         }
         if (brawlerId === 'nightshade') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp: Math.round(6400 * scale), dmg: Math.round(560 * scale), speed: 300 };
+            const hpScale = getLevelHpScale(level);
+            return { hp: Math.round(6400 * hpScale), dmg: Math.round(560 * scale), speed: 300 };
         }
         if (brawlerId === 'aegis') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp: Math.round(7400 * scale), dmg: Math.round(900 * scale), speed: 270 };
+            const hpScale = getLevelHpScale(level);
+            return { hp: Math.round(7400 * hpScale), dmg: Math.round(900 * scale), speed: 270 };
         }
         if (brawlerId === 'runner') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp: Math.round(6600 * scale), dmg: Math.round(950 * scale), speed: 290 };
+            const hpScale = getLevelHpScale(level);
+            return { hp: Math.round(6600 * hpScale), dmg: Math.round(950 * scale), speed: 290 };
         }
         if (brawlerId === 'aura_charmer') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp: Math.round(6400 * scale), dmg: Math.round(1050 * scale), speed: 280 };
+            const hpScale = getLevelHpScale(level);
+            return { hp: Math.round(6400 * hpScale), dmg: Math.round(1050 * scale), speed: 280 };
         }
         if (brawlerId === 'voltastein') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp: Math.round(5800 * scale), dmg: Math.round(900 * scale), speed: 280 };
+            const hpScale = getLevelHpScale(level);
+            return { hp: Math.round(5800 * hpScale), dmg: Math.round(900 * scale), speed: 280 };
         }
         if (brawlerId === 'staticstein') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp: Math.round(6200 * scale), dmg: Math.round(800 * scale), speed: 290 };
+            const hpScale = getLevelHpScale(level);
+            return { hp: Math.round(6200 * hpScale), dmg: Math.round(800 * scale), speed: 290 };
         }
         if (brawlerId === 'healnstein') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp: Math.round(6200 * scale), dmg: Math.round(750 * scale), speed: 280 };
+            const hpScale = getLevelHpScale(level);
+            return { hp: Math.round(6200 * hpScale), dmg: Math.round(750 * scale), speed: 280 };
         }
         if (brawlerId === 'looma') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp: Math.round(6600 * scale), dmg: Math.round(1450 * scale), speed: 270 };
+            const hpScale = getLevelHpScale(level);
+            return { hp: Math.round(6600 * hpScale), dmg: Math.round(1450 * scale), speed: 270 };
         }
         if (brawlerId === 'badbat') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp: Math.round(6400 * scale), dmg: Math.round(1400 * scale), batDmg: Math.round(300 * scale), speed: 280 };
+            const hpScale = getLevelHpScale(level);
+            return { hp: Math.round(6400 * hpScale), dmg: Math.round(1400 * scale), batDmg: Math.round(300 * scale), speed: 280 };
         }
         if (brawlerId === 'feathers') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp: Math.round(5600 * scale), dmg: Math.round(1000 * scale), speed: 268 };
+            const hpScale = getLevelHpScale(level);
+            return { hp: Math.round(5600 * hpScale), dmg: Math.round(1000 * scale), speed: 268 };
         }
         if (brawlerId === 'spikey') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp: Math.round(7000 * scale), dmg: Math.round(950 * scale), recallDmg: Math.round(950 * scale), superDmg: Math.round(1750 * scale), speed: 270 };
+            const hpScale = getLevelHpScale(level);
+            return { hp: Math.round(7000 * hpScale), dmg: Math.round(950 * scale), recallDmg: Math.round(950 * scale), superDmg: Math.round(1750 * scale), speed: 270 };
         }
         if (brawlerId === 'magnatar') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp: Math.round(6600 * scale), dmg: Math.round(864 * scale), speed: 270 };
+            const hpScale = getLevelHpScale(level);
+            return { hp: Math.round(6600 * hpScale), dmg: Math.round(864 * scale), speed: 270 };
         }
         if (brawlerId === 'oil_maker') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp: Math.round(8000 * scale), dmg: Math.round(320 * scale), speed: 260 };
+            const hpScale = getLevelHpScale(level);
+            return { hp: Math.round(8000 * hpScale), dmg: Math.round(320 * scale), speed: 260 };
         }
         if (brawlerId === 'sir_cheeseburger') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp: Math.round(7800 * scale), dmg: Math.round(1650 * scale), speed: 270 };
+            const hpScale = getLevelHpScale(level);
+            return { hp: Math.round(7800 * hpScale), dmg: Math.round(1650 * scale), speed: 270 };
         }
         if (brawlerId === 'anti_royal') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp: Math.round(7600 * scale), dmg: Math.round(1550 * scale), speed: 255 };
+            const hpScale = getLevelHpScale(level);
+            return { hp: Math.round(7600 * hpScale), dmg: Math.round(1550 * scale), speed: 255 };
         }
         if (brawlerId === 'king') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp: Math.round(7600 * scale), dmg: Math.round(1650 * scale), speed: 255 };
+            const hpScale = getLevelHpScale(level);
+            return { hp: Math.round(7600 * hpScale), dmg: Math.round(1650 * scale), speed: 255 };
         }
         if (brawlerId === 'cursed') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp: Math.round(6800 * scale), dmg: Math.round(1350 * scale), speed: 260 };
+            const hpScale = getLevelHpScale(level);
+            return { hp: Math.round(6800 * hpScale), dmg: Math.round(1350 * scale), speed: 260 };
         }
         if (brawlerId === 'cinderion') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp: Math.round(7400 * scale), dmg: Math.round(430 * scale), speed: 260 };
+            const hpScale = getLevelHpScale(level);
+            return { hp: Math.round(7400 * hpScale), dmg: Math.round(430 * scale), speed: 260 };
         }
         if (brawlerId === 'mageny') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp: Math.round(5600 * scale), dmg: Math.round(1800 * scale), speed: 250 };
+            const hpScale = getLevelHpScale(level);
+            return { hp: Math.round(5600 * hpScale), dmg: Math.round(1800 * scale), speed: 250 };
         }
         if (brawlerId === 'awakenator') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp: Math.round(6800 * scale), dmg: Math.round(1050 * scale), speed: 260 };
+            const hpScale = getLevelHpScale(level);
+            return { hp: Math.round(6800 * hpScale), dmg: Math.round(1050 * scale), speed: 260 };
         }
         if (brawlerId === 'darkener') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp: Math.round(7000 * scale), dmg: Math.round(600 * scale), speed: 255 };
+            const hpScale = getLevelHpScale(level);
+            return { hp: Math.round(7000 * hpScale), dmg: Math.round(600 * scale), speed: 255 };
         }
         if (brawlerId === 'jacktrade') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp: Math.round(7200 * scale), dmg: Math.round(750 * scale), speed: 260 };
+            const hpScale = getLevelHpScale(level);
+            return { hp: Math.round(7200 * hpScale), dmg: Math.round(750 * scale), speed: 260 };
         }
         if (brawlerId === 'ghoul') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp: Math.round(6500 * scale), dmg: Math.round(1050 * scale), speed: 300 };
+            const hpScale = getLevelHpScale(level);
+            return { hp: Math.round(6500 * hpScale), dmg: Math.round(1050 * scale), speed: 300 };
         }
         if (brawlerId === 'portalo') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp: Math.round(6800 * scale), dmg: Math.round(1500 * scale), speed: 260 };
+            const hpScale = getLevelHpScale(level);
+            return { hp: Math.round(6800 * hpScale), dmg: Math.round(1500 * scale), speed: 260 };
         }
         if (brawlerId === 'fastpass' || brawlerId === 'freestyle') {
             const scale = 0.55 + (level - 1) * 0.045;
+            const hpScale = getLevelHpScale(level);
             const p11Hp = brawlerId === 'fastpass' ? 6600 : 7400;
             const p11Dmg = brawlerId === 'fastpass' ? 1100 : 1850;
             return {
-                hp: Math.round(p11Hp * scale),
+                hp: Math.round(p11Hp * hpScale),
                 dmg: Math.round(p11Dmg * scale),
                 speed: brawlerId === 'fastpass' ? 305 : 255,
             };
         }
         if (brawlerId === 'robber') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp:Math.round(7200*scale), dmg:Math.round(280*scale), speed:285 };
+            const hpScale = getLevelHpScale(level);
+            return { hp:Math.round(7200*hpScale), dmg:Math.round(280*scale), speed:285 };
         }
         if (brawlerId === 'fuser') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp:Math.round(7000*scale), dmg:Math.round(360*scale), speed:260 };
+            const hpScale = getLevelHpScale(level);
+            return { hp:Math.round(7000*hpScale), dmg:Math.round(360*scale), speed:260 };
         }
         if (brawlerId === 'rocketeer') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp:Math.round(7000*scale), dmg:Math.round(1950*scale), speed:252 };
+            const hpScale = getLevelHpScale(level);
+            return { hp:Math.round(7000*hpScale), dmg:Math.round(1950*scale), speed:252 };
         }
         if (brawlerId === 'peter_pickle') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp:Math.round(7200*scale), dmg:Math.round(1200*scale), speed:255 };
+            const hpScale = getLevelHpScale(level);
+            return { hp:Math.round(7200*hpScale), dmg:Math.round(1200*scale), speed:255 };
         }
         if (brawlerId === 'unstable') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp:Math.round(7600*scale), dmg:0, speed:250 };
+            const hpScale = getLevelHpScale(level);
+            return { hp:Math.round(7600*hpScale), dmg:0, speed:250 };
         }
         if (brawlerId === 'homer') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp:Math.round(5800*scale), dmg:Math.round(1450*scale), speed:250 };
+            const hpScale = getLevelHpScale(level);
+            return { hp:Math.round(5800*hpScale), dmg:Math.round(1450*scale), speed:250 };
         }
         if (brawlerId === 'orbo') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp:Math.round(6500*scale), dmg:Math.round(575*scale), speed:255 };
+            const hpScale = getLevelHpScale(level);
+            return { hp:Math.round(6500*hpScale), dmg:Math.round(575*scale), speed:255 };
         }
         if (brawlerId === 'predator') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp:Math.round(7600*scale), dmg:Math.round(1700*scale), speed:300 };
+            const hpScale = getLevelHpScale(level);
+            return { hp:Math.round(7600*hpScale), dmg:Math.round(1700*scale), speed:300 };
         }
         if (brawlerId === 'kage') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp:Math.round(8500*scale/*hp:Math.round(9200*scale)*/), dmg:Math.round(2350*scale), speed:320 };
+            const hpScale = getLevelHpScale(level);
+            return { hp:Math.round(8500*hpScale/*hp:Math.round(9200*scale)*/), dmg:Math.round(2350*scale), speed:320 };
         }
         if (brawlerId === 'ramage') {
             const scale = 0.55 + (level - 1) * 0.045;
-            return { hp:Math.round(8000*scale), dmg:Math.round(320*scale), speed:300 };
+            const hpScale = getLevelHpScale(level);
+            return { hp:Math.round(8000*hpScale), dmg:Math.round(320*scale), speed:300 };
         }
         if (brawlerId === 'angel' || brawlerId === 'demon' || brawlerId === 'warrior' || brawlerId === 'relay' || brawlerId === 'upiedown' || brawlerId === 'chickpig' || brawlerId === 'jetpack' || brawlerId === 'snapper') {
             const scale = 0.55 + (level - 1) * 0.045;
+            const hpScale = getLevelHpScale(level);
             const p11Hp = brawlerId === 'angel' ? 7200 : (brawlerId === 'demon' ? 7700 : (brawlerId === 'relay' ? 5200 : (brawlerId === 'upiedown' ? 6800 : (brawlerId === 'chickpig' ? 7200 : (brawlerId === 'jetpack' ? 6600 : (brawlerId === 'snapper' ? 6500 : 7600))))));
-            return { hp:Math.round(p11Hp*scale), dmg:brawlerId==='angel'?1200:(brawlerId==='demon'?1900:(brawlerId==='relay'?1250:(brawlerId==='upiedown'?1700:(brawlerId==='chickpig'?1000:(brawlerId==='jetpack'?2550:(brawlerId==='snapper'?1650:950)))))), speed:brawlerId==='angel'?255:(brawlerId==='demon'?300:(brawlerId==='relay'?265:(brawlerId==='upiedown'?250:(brawlerId==='chickpig'?255:(brawlerId==='jetpack'?270:(brawlerId==='snapper'?250:260)))))) };
+            return { hp:Math.round(p11Hp*hpScale), dmg:brawlerId==='angel'?1200:(brawlerId==='demon'?1900:(brawlerId==='relay'?1250:(brawlerId==='upiedown'?1700:(brawlerId==='chickpig'?1000:(brawlerId==='jetpack'?2550:(brawlerId==='snapper'?1650:950)))))), speed:brawlerId==='angel'?255:(brawlerId==='demon'?300:(brawlerId==='relay'?265:(brawlerId==='upiedown'?250:(brawlerId==='chickpig'?255:(brawlerId==='jetpack'?270:(brawlerId==='snapper'?250:260)))))) };
         }
         const data = brawlerData[brawlerId] || {};
         const role = String(data.role || '').toLowerCase();
         const hpBase = role.includes('tank') ? 10000 : role.includes('assassin') ? 6200 : role.includes('marksman') ? 5200 : role.includes('artillery') ? 5600 : role.includes('support') ? 5800 : role.includes('controller') ? 6000 : 5400;
         const dmgBase = role.includes('tank') ? 1200 : role.includes('assassin') ? 1800 : role.includes('marksman') ? 1500 : role.includes('artillery') ? 1650 : role.includes('support') ? 1450 : role.includes('controller') ? 1600 : 1500;
         const speedBase = role.includes('tank') ? 220 : role.includes('assassin') ? 300 : role.includes('marksman') ? 260 : role.includes('artillery') ? 245 : role.includes('support') ? 255 : role.includes('controller') ? 250 : 260;
-        const hp = Math.round(hpBase + (level - 1) * (role.includes('tank') ? 850 : 500));
+        const p11Hp = hpBase + (role.includes('tank') ? 8500 : 5000);
+        // HP CURVE ONLY (rebuild 2026-11-05): damage stays on the ORIGINAL
+        // additive formula — the previous attempt also scaled damage down at
+        // low levels, which left time-to-kill unchanged. HP alone is cut.
         const dmg = Math.round(dmgBase + (level - 1) * (role.includes('tank') ? 70 : 55));
+        // Non-brawler entities routed through getScaledStats keep the ORIGINAL
+        // additive stats at EVERY level — the HP curve is for brawlers only.
+        // (Roster check, not a hardcoded list: brawlerData's non-roster keys
+        // are tower_core / turret / wall_structure / decoy_healer /
+        // chickpig_pig, and summon/entity ids like skeletrooper,
+        // evil_doctor_dna, parrot, egg, prism_bumper never join allBrawlers.
+        // Placed after the brawlerData read above, so allBrawlers — declared
+        // before brawlerData in this scope — is always initialised here.)
+        if (!allBrawlers.includes(brawlerId)) {
+            const hp = Math.round(hpBase + (level - 1) * (role.includes('tank') ? 850 : 500));
+            const speed = Math.round(speedBase + (level - 1) * (role.includes('assassin') ? 4 : 2));
+            return { hp, dmg, speed };
+        }
+        const hp = Math.round(p11Hp * getLevelHpScale(level));
         const speed = Math.round(speedBase + (level - 1) * (role.includes('assassin') ? 4 : 2));
         return { hp, dmg, speed };
     }
@@ -466,6 +527,9 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     }
     function getLevelDamageScale(level) {
         return 0.55 + (level - 1) * 0.045;
+    }
+    function getLevelHpScale(level) {
+        return 0.40 + (level - 1) * 0.06;
     }
     const BRICK_RANK_STAGES = [
         { label:'Brick I', minLifetime:0, maxLifetime:59, color:'#a66336', minPlayerPower:1, botRule:{type:'relative',min:0,max:2} },
@@ -3497,23 +3561,8 @@ function updateGadgetInfo() {
       return { ready: !entity.electrostienFamilyCircuitArmed, label: entity.electrostienFamilyCircuitArmed ? 'CIRCUIT ARMED' : 'FAMILY CIRCUIT' };
   }
 
-  function getVoltasteinSignatureState(entity) {
-      if (!entity || entity.hp <= 0) return { ready: false, label: 'DOWN' };
-      if (!isSpecialAbilityAvailableForEntity(entity, 'voltastein')) return { ready: false, label: 'LOCKED' };
-      return { ready: !entity.voltasteinFamilyCircuitArmed, label: entity.voltasteinFamilyCircuitArmed ? 'CIRCUIT ARMED' : 'FAMILY CIRCUIT' };
-  }
 
-  function getStaticsteinSignatureState(entity) {
-      if (!entity || entity.hp <= 0) return { ready: false, label: 'DOWN' };
-      if (!isSpecialAbilityAvailableForEntity(entity, 'staticstein')) return { ready: false, label: 'LOCKED' };
-      return { ready: !entity.staticsteinFamilyCircuitArmed, label: entity.staticsteinFamilyCircuitArmed ? 'CIRCUIT ARMED' : 'FAMILY CIRCUIT' };
-  }
 
-  function getHealnsteinSignatureState(entity) {
-      if (!entity || entity.hp <= 0) return { ready: false, label: 'DOWN' };
-      if (!isSpecialAbilityAvailableForEntity(entity, 'healnstein')) return { ready: false, label: 'LOCKED' };
-      return { ready: !entity.healnsteinFamilyCircuitArmed, label: entity.healnsteinFamilyCircuitArmed ? 'CIRCUIT ARMED' : 'FAMILY CIRCUIT' };
-  }
 
   function activateSignatureAbility(entity = player) {
       const fighterId = entity.id === player.id ? selectedBrawler : entity.brawler;
@@ -3658,36 +3707,6 @@ function updateGadgetInfo() {
           updateSignatureButton();
           return true;
       }
-      if (fighterId === 'voltastein') {
-          if (!isSpecialAbilityAvailableForEntity(entity, 'voltastein')) return false;
-          const state = getVoltasteinSignatureState(entity);
-          if (!state.ready) return false;
-          entity.voltasteinFamilyCircuitArmed = true;
-          explosions.push({ x: entity.x, y: entity.y, radius: 46, life: 0, maxLife: .24, color: 'rgba(255,211,79,.55)', fxKind: 'familyCircuitArm' });
-          spawnFloatingText(entity.x, entity.y - 44, 'FAMILY CIRCUIT ARMED!', '#ffd34f');
-          updateSignatureButton();
-          return true;
-      }
-      if (fighterId === 'staticstein') {
-          if (!isSpecialAbilityAvailableForEntity(entity, 'staticstein')) return false;
-          const state = getStaticsteinSignatureState(entity);
-          if (!state.ready) return false;
-          entity.staticsteinFamilyCircuitArmed = true;
-          explosions.push({ x: entity.x, y: entity.y, radius: 46, life: 0, maxLife: .24, color: 'rgba(255,211,79,.55)', fxKind: 'familyCircuitArm' });
-          spawnFloatingText(entity.x, entity.y - 44, 'FAMILY CIRCUIT ARMED!', '#ffd34f');
-          updateSignatureButton();
-          return true;
-      }
-      if (fighterId === 'healnstein') {
-          if (!isSpecialAbilityAvailableForEntity(entity, 'healnstein')) return false;
-          const state = getHealnsteinSignatureState(entity);
-          if (!state.ready) return false;
-          entity.healnsteinFamilyCircuitArmed = true;
-          explosions.push({ x: entity.x, y: entity.y, radius: 46, life: 0, maxLife: .24, color: 'rgba(255,211,79,.55)', fxKind: 'familyCircuitArm' });
-          spawnFloatingText(entity.x, entity.y - 44, 'FAMILY CIRCUIT ARMED!', '#ffd34f');
-          updateSignatureButton();
-          return true;
-      }
       if (fighterId !== 'bouncin_balls') return false;
       const state = getBouncinSignatureState(entity);
       if (!state.ready) {
@@ -3712,20 +3731,20 @@ function updateGadgetInfo() {
   }
 
   function updateSignatureButton() {
-      const signatureFighter = selectedBrawler === 'bouncin_balls' || selectedBrawler === 'classy' || selectedBrawler === 'beast' || selectedBrawler === 'mageny' || selectedBrawler === 'beam' || selectedBrawler === 'dashaholic' || selectedBrawler === 'bolznstien' || selectedBrawler === 'electrostien' || selectedBrawler === 'voltastein' || selectedBrawler === 'staticstein' || selectedBrawler === 'healnstein';
+      const signatureFighter = selectedBrawler === 'bouncin_balls' || selectedBrawler === 'classy' || selectedBrawler === 'beast' || selectedBrawler === 'mageny' || selectedBrawler === 'beam' || selectedBrawler === 'dashaholic' || selectedBrawler === 'bolznstien' || selectedBrawler === 'electrostien';
       const shouldShow = playing && signatureFighter && isSpecialAbilityAvailableForEntity(player, selectedBrawler);
       if (signatureTouchBtn) signatureTouchBtn.style.display = shouldShow ? 'flex' : 'none';
       if (signatureBtn) signatureBtn.style.display = shouldShow ? '' : 'none';
       if (!shouldShow) return;
-      const state = selectedBrawler === 'dashaholic' ? getDashaholicSignatureState(player) : (selectedBrawler === 'beam' ? getBeamSignatureState(player) : (selectedBrawler === 'classy' ? getClassySignatureState(player) : (selectedBrawler === 'beast' ? getBeastSignatureState(player) : (selectedBrawler === 'mageny' ? getMagenySignatureState(player) : (selectedBrawler === 'bolznstien' ? getBolznstienSignatureState(player) : (selectedBrawler === 'electrostien' ? getElectrostienSignatureState(player) : (selectedBrawler === 'voltastein' ? getVoltasteinSignatureState(player) : (selectedBrawler === 'staticstein' ? getStaticsteinSignatureState(player) : (selectedBrawler === 'healnstein' ? getHealnsteinSignatureState(player) : getBouncinSignatureState(player))))))))));
-      const costText = selectedBrawler === 'dashaholic' ? ' - costs up to 1200 HP; empowers selected Gadget; 15s cooldown' : (selectedBrawler === 'beam' ? ' - costs 2300 HP; requires Super ammo bar' : (selectedBrawler === 'classy' ? ' - costs up to 1000 HP' : (selectedBrawler === 'beast' ? ' - consumes full ammo; regular form only' : (selectedBrawler === 'mageny' ? ' - costs 2000 HP; press again to detonate' : (selectedBrawler === 'bolznstien' ? ' - costs 1500 HP; only during Electric Eyes; 14s cooldown' : (selectedBrawler === 'electrostien' ? ' - free to arm; echoes your punches as sky strikes inside the Electric Realm' : (selectedBrawler === 'voltastein' ? ' - free to arm; your next Power Outage calls a family sky strike' : (selectedBrawler === 'staticstein' ? ' - free to arm; your next Interference shot calls a family sky strike' : (selectedBrawler === 'healnstein' ? ' - free to arm; your next Healing Poison needle also calls a family sky strike' : ' - costs up to 1000 HP; turret command also costs up to 750 turret HP')))))))));
+      const state = selectedBrawler === 'dashaholic' ? getDashaholicSignatureState(player) : (selectedBrawler === 'beam' ? getBeamSignatureState(player) : (selectedBrawler === 'classy' ? getClassySignatureState(player) : (selectedBrawler === 'beast' ? getBeastSignatureState(player) : (selectedBrawler === 'mageny' ? getMagenySignatureState(player) : (selectedBrawler === 'bolznstien' ? getBolznstienSignatureState(player) : (selectedBrawler === 'electrostien' ? getElectrostienSignatureState(player) : getBouncinSignatureState(player)))))));
+      const costText = selectedBrawler === 'dashaholic' ? ' - costs up to 1200 HP; empowers selected Gadget; 15s cooldown' : (selectedBrawler === 'beam' ? ' - costs 2300 HP; requires Super ammo bar' : (selectedBrawler === 'classy' ? ' - costs up to 1000 HP' : (selectedBrawler === 'beast' ? ' - consumes full ammo; regular form only' : (selectedBrawler === 'mageny' ? ' - costs 2000 HP; press again to detonate' : (selectedBrawler === 'bolznstien' ? ' - costs 1500 HP; only during Electric Eyes; 14s cooldown' : (selectedBrawler === 'electrostien' ? ' - free to arm; echoes your punches as sky strikes inside the Electric Realm' : ' - costs up to 1000 HP; turret command also costs up to 750 turret HP'))))));
       if (signatureTouchBtn) {
           signatureTouchBtn.textContent = state.ready ? 'SIG' : '×';
           signatureTouchBtn.title = `Signature: ${state.label}${costText}`;
           signatureTouchBtn.classList.toggle('signature-ready', !!state.ready);
       }
       if (signatureBtn) {
-          signatureBtn.textContent = `Signature: ${state.label}${selectedBrawler === 'dashaholic' ? ' · up to 1200 HP' : (selectedBrawler === 'beam' ? ' · 2300 HP' : (selectedBrawler === 'classy' ? ' · up to 1000 HP' : (selectedBrawler === 'beast' ? ' · FULL AMMO' : (selectedBrawler === 'mageny' ? ' · 2000 HP' : (selectedBrawler === 'bolznstien' ? ' · 1500 HP' : (selectedBrawler === 'electrostien' ? ' · WIN-EARNED' : (selectedBrawler === 'voltastein' ? ' · WIN-EARNED' : (selectedBrawler === 'staticstein' ? ' · WIN-EARNED' : (selectedBrawler === 'healnstein' ? ' · WIN-EARNED' : ' · up to 1000 HP + 750 turret HP')))))))))} (R)`;
+          signatureBtn.textContent = `Signature: ${state.label}${selectedBrawler === 'dashaholic' ? ' · up to 1200 HP' : (selectedBrawler === 'beam' ? ' · 2300 HP' : (selectedBrawler === 'classy' ? ' · up to 1000 HP' : (selectedBrawler === 'beast' ? ' · FULL AMMO' : (selectedBrawler === 'mageny' ? ' · 2000 HP' : (selectedBrawler === 'bolznstien' ? ' · 1500 HP' : (selectedBrawler === 'electrostien' ? ' · WIN-EARNED' : ' · up to 1000 HP + 750 turret HP'))))))} (R)`;
           signatureBtn.disabled = !state.ready;
           signatureBtn.classList.toggle('signature-ready', !!state.ready);
       }
@@ -18677,30 +18696,6 @@ let heistFeverActive = false;
           pieceName: 'Electrostien Signature Piece',
           shortDesc: 'Arm the Family Circuit with the Signature button (R): while Electrostien is inside the Electric Realm, every punch he lands echoes as a Bolznstien-style sky strike (500 damage) on the realm victim. His Pieces are EARNED, never bought: win 3 battles with Electrostien (1 Piece per win). No Core Piece cost.'
       },
-      voltastein: {
-          type: 'signature',
-          name: 'Family Circuit',
-          icon: 'FC',
-          color: '#ffd34f',
-          pieceName: 'Voltastein Signature Piece',
-          shortDesc: 'Arm the Family Circuit with the Signature button (R): your next Power Outage calls a Bolznstien-style sky strike (500 damage) on the nearest chained enemy. Her Pieces are EARNED, never bought: win 3 battles with Voltastein (1 Piece per win). No Core Piece cost.'
-      },
-      staticstein: {
-          type: 'signature',
-          name: 'Family Circuit',
-          icon: 'FC',
-          color: '#ffd34f',
-          pieceName: 'Staticstein Signature Piece',
-          shortDesc: 'Arm the Family Circuit with the Signature button (R): your next Static Interference shot also calls a Bolznstien-style sky strike (500 damage) on the enemy nearest your aim. His Pieces are EARNED, never bought: win 3 battles with Staticstein (1 Piece per win). No Core Piece cost.'
-      },
-      healnstein: {
-          type: 'signature',
-          name: 'Family Circuit',
-          icon: 'FC',
-          color: '#ffd34f',
-          pieceName: 'Healnstein Signature Piece',
-          shortDesc: 'Arm the Family Circuit with the Signature button (R): your next Healing Poison needle also calls a Bolznstien-style sky strike (500 damage) on the enemy nearest the healed teammate. His Pieces are EARNED, never bought: win 3 battles with Healnstein (1 Piece per win). No Core Piece cost.'
-      },
       fightnfire: {
           type: 'instinct',
           name: 'Flash Freeze',
@@ -18980,9 +18975,6 @@ let heistFeverActive = false;
       const def = getSpecialAbilityDef(fighterId);
       if (!def) return false;
       if (fighterId === 'electrostien') { alert('Family Circuit Pieces are EARNED by winning battles with Electrostien — they cannot be bought with Core Pieces.'); return false; }
-      if (fighterId === 'voltastein') { alert('Family Circuit Pieces are EARNED by winning battles with Voltastein — they cannot be bought with Core Pieces.'); return false; }
-      if (fighterId === 'staticstein') { alert('Family Circuit Pieces are EARNED by winning battles with Staticstein — they cannot be bought with Core Pieces.'); return false; }
-      if (fighterId === 'healnstein') { alert('Family Circuit Pieces are EARNED by winning battles with Healnstein — they cannot be bought with Core Pieces.'); return false; }
       const ability = getSpecialAbilityState(def.type, fighterId);
       if (ability.unlocked) { alert('That ability is already unlocked!'); return false; }
       if (!spendCorePieces(CORE_PIECE_PRICE)) { alert(`Not enough Core Pieces — one ${def.pieceName} costs ${CORE_PIECE_PRICE} Core Pieces. Earn Core Pieces from Tapper Uppers, Super Tappers, the Season Pass and Presents!`); return false; }
@@ -19006,9 +18998,6 @@ let heistFeverActive = false;
       const def = getSpecialAbilityDef(fighterId);
       if (!def) return false;
       if (fighterId === 'electrostien') { alert('Family Circuit is EARNED by winning battles with Electrostien — it cannot be bought with Core Pieces.'); return false; }
-      if (fighterId === 'voltastein') { alert('Family Circuit is EARNED by winning battles with Voltastein — it cannot be bought with Core Pieces.'); return false; }
-      if (fighterId === 'staticstein') { alert('Family Circuit is EARNED by winning battles with Staticstein — it cannot be bought with Core Pieces.'); return false; }
-      if (fighterId === 'healnstein') { alert('Family Circuit is EARNED by winning battles with Healnstein — it cannot be bought with Core Pieces.'); return false; }
       const ability = getSpecialAbilityState(def.type, fighterId);
       if (ability.unlocked) { alert('That ability is already unlocked!'); return false; }
       if (!spendCorePieces(CORE_FULL_UNLOCK_PRICE)) { alert(`Not enough Core Pieces — a full unlock costs ${CORE_FULL_UNLOCK_PRICE} Core Pieces. Earn Core Pieces from Tapper Uppers, Super Tappers, the Season Pass and Presents!`); return false; }
@@ -21770,35 +21759,6 @@ let heistFeverActive = false;
         if (!ELECTROSTIEN_ENABLED) return false;
         playerData.electrostienSignatureWins = getElectrostienSignatureWins() + 1;
         const ability = getSpecialAbilityState('signature', 'electrostien');
-        if (!ability.unlocked) {
-            ability.pieces = Math.min(3, ability.pieces + 1);
-            if (ability.pieces >= 3) ability.unlocked = true;
-        }
-        saveProgress();
-        return true;
-    }
-    function grantVoltasteinSignatureWin() {
-        playerData.voltasteinSignatureWins = (playerData.voltasteinSignatureWins || 0) + 1;
-        const ability = getSpecialAbilityState('signature', 'voltastein');
-        if (!ability.unlocked) {
-            ability.pieces = Math.min(3, ability.pieces + 1);
-            if (ability.pieces >= 3) ability.unlocked = true;
-        }
-        saveProgress();
-        return true;
-    }
-    function grantStaticsteinSignatureWin() {
-        playerData.staticsteinSignatureWins = (playerData.staticsteinSignatureWins || 0) + 1;
-        const ability = getSpecialAbilityState('signature', 'staticstein');
-        if (!ability.unlocked) {
-            ability.pieces = Math.min(3, ability.pieces + 1);
-            if (ability.pieces >= 3) ability.unlocked = true;
-        }
-        saveProgress();
-    }
-    function grantHealnsteinSignatureWin() {
-        playerData.healnsteinSignatureWins = (playerData.healnsteinSignatureWins || 0) + 1;
-        const ability = getSpecialAbilityState('signature', 'healnstein');
         if (!ability.unlocked) {
             ability.pieces = Math.min(3, ability.pieces + 1);
             if (ability.pieces >= 3) ability.unlocked = true;
@@ -45121,7 +45081,6 @@ let heistFeverActive = false;
   const VOLTASTEIN_G1_MINI_RADIUS = 80;
   const VOLTASTEIN_G2_FIELD_RADIUS = 150;
   const VOLTASTEIN_G2_FIELD_MS = 4000;
-  const VOLTASTEIN_FAMILY_STRIKE_DMG = 500;
 
   // Deterministic flicker random: stable per (seed, step) so lightning
   // crackles at ~11fps instead of re-rolling every frame (which would
@@ -45282,16 +45241,6 @@ let heistFeverActive = false;
       // Zap flash: a bright white-purple ring bursting out to zap range.
       explosions.push({ x: entity.x, y: entity.y, radius: VOLTASTEIN_ZAP_RADIUS, life: 0, maxLife: 0.22, color: 'rgba(255,255,255,.95)', fxKind: 'voltasteinZapFlash' });
       spawnFloatingText(entity.x, entity.y - 44, 'POWER OUTAGE!', '#a855f7');
-      // Family Circuit (signature): the next Power Outage calls a sky strike.
-      if (entity.voltasteinFamilyCircuitArmed) {
-          entity.voltasteinFamilyCircuitArmed = false;
-          const struck = chained.slice().sort((a, b) => Math.hypot(a.x - entity.x, a.y - entity.y) - Math.hypot(b.x - entity.x, b.y - entity.y))[0];
-          if (struck) {
-              explosions.push({ x: struck.x, y: struck.y, radius: 46, life: 0, maxLife: 0.3, color: 'rgba(255,211,79,.55)', fxKind: 'electrostienFamilyStrike' });
-              checkHit(struck, { ownerBrawler: 'voltastein', ownerId: entity.id, damage: VOLTASTEIN_FAMILY_STRIKE_DMG, pierce: true, hitIds: {}, isVoltasteinFamilyStrike: true }, -1);
-              spawnFloatingText(struck.x, struck.y - 40, 'FAMILY CIRCUIT!', '#ffd34f');
-          }
-      }
   }
   function updateVoltasteinSystems(now) {
       const all = [player, ...bots];
@@ -45395,9 +45344,7 @@ let heistFeverActive = false;
   // per stack over 4s (8 ticks of 37.5, last tick takes the remainder so the
   // total is exactly 300), hyper main split = 2 (one fork at the first
   // impact, twin mirrors the continuation), G1/G2/SP1/SP2 names + numbers,
-  // needle aim lock 160px, needle range 900px, Family Circuit effect = the
-  // next needle also calls a 500-dmg sky strike on the enemy nearest the
-  // healed teammate.
+  // needle aim lock 160px, needle range 900px.
   const HEALNSTEIN_BULLET_SPEED = 650;
   const HEALNSTEIN_RANGE = 700;
   const HEALNSTEIN_MAIN_DMG = 750;
@@ -45420,7 +45367,6 @@ let heistFeverActive = false;
   const HEALNSTEIN_SP1_RADIUS_MULT = 1.2;
   const HEALNSTEIN_SP1_HEAL_BONUS = 200;
   const HEALNSTEIN_HYPER_DARTS = 3;
-  const HEALNSTEIN_FAMILY_STRIKE_DMG = 500;
 
   // traceLobLeg: walk a lob's ground track; if a wall blocks it, land at the
   // wall face and reflect the remaining travel (wall-bounce). Pure except for
@@ -45568,22 +45514,6 @@ let heistFeverActive = false;
       }
       explosions.push({ x: target.x, y: target.y, radius: 40, life: 0, maxLife: 0.25, color: 'rgba(74,222,128,.8)', fxKind: 'healnsteinRemedy' });
       spawnFloatingText(target.x, target.y - 60, 'HEALING POISON!', '#4ade80');
-      // Family Circuit (shared): the next needle also calls a 500-dmg sky
-      // strike on the enemy nearest the healed teammate.
-      if (owner.healnsteinFamilyCircuitArmed) {
-          owner.healnsteinFamilyCircuitArmed = false;
-          let best = null, bestD = Infinity;
-          for (const e of [player, ...bots]) {
-              if (!e || e.hp <= 0 || areAlliedEntities(owner, e)) continue;
-              if (e.isArenaForgeTower || e.isArenaForgeCore) continue;
-              const d = Math.hypot(e.x - target.x, e.y - target.y);
-              if (d < bestD) { best = e; bestD = d; }
-          }
-          if (best) {
-              explosions.push({ x: best.x, y: best.y, radius: 46, life: 0, maxLife: 0.3, color: 'rgba(255,211,79,.55)', fxKind: 'electrostienFamilyStrike' });
-              checkHit(best, { ownerBrawler: 'healnstein', ownerId: owner.id, damage: HEALNSTEIN_FAMILY_STRIKE_DMG, pierce: true, hitIds: {}, isHealnsteinFamilyStrike: true }, -1);
-          }
-      }
       return true;
   }
 
@@ -45700,7 +45630,6 @@ let heistFeverActive = false;
   const STATICSTEIN_GLITCH_STEP_DIST = 240;
   const STATICSTEIN_GLITCH_BURST_DMG = 150;
   const STATICSTEIN_GLITCH_BURST_RADIUS = 80;
-  const STATICSTEIN_FAMILY_STRIKE_DMG = 500;
   // ---- Staticstein donor mains: each donor's REAL fire() code path ----
   // Every helper below is the donor's own fire() branch, extracted
   // verbatim. Called two ways:
@@ -46185,23 +46114,6 @@ let heistFeverActive = false;
       const donorShot = STATICSTEIN_DONOR_SHOTS[donorId];
       if (donorShot) donorShot(fromEntity, ang, targetX, targetY, { isBot: fromEntity.id !== player.id, now: performance.now(), damageMult: hyperWindow ? STATICSTEIN_HYPER_DMG_MULT : 1, hitboxMult: hyperWindow ? STATICSTEIN_HYPER_HITBOX_MULT : 1, donorMode: true });
       spawnFloatingText(fromEntity.x, fromEntity.y - 34, (donorData.name || donorId).toUpperCase() + '!', donorData.color || '#d1d5db');
-      // Family Circuit (signature): the next Interference shot calls a sky strike.
-      if (isInterference && fromEntity.staticsteinFamilyCircuitArmed) {
-          fromEntity.staticsteinFamilyCircuitArmed = false;
-          let best = null, bestD = Infinity;
-          const all = [player, ...bots];
-          for (const target of all) {
-              if (!target || target.hp <= 0 || areAlliedEntities(fromEntity, target)) continue;
-              if (target.isArenaForgeTower || target.isArenaForgeCore) continue;
-              const d = Math.hypot(target.x - targetX, target.y - targetY);
-              if (d < bestD) { best = target; bestD = d; }
-          }
-          if (best) {
-              explosions.push({ x: best.x, y: best.y, radius: 46, life: 0, maxLife: 0.3, color: 'rgba(255,211,79,.55)', fxKind: 'electrostienFamilyStrike' });
-              checkHit(best, { ownerBrawler: 'staticstein', ownerId: fromEntity.id, damage: STATICSTEIN_FAMILY_STRIKE_DMG, pierce: true, hitIds: {}, isStaticsteinFamilyStrike: true }, -1);
-              spawnFloatingText(best.x, best.y - 40, 'FAMILY CIRCUIT!', '#ffd34f');
-          }
-      }
   }
   function fireStaticsteinSplitPair(fromEntity, targetX, targetY, level, hyper) {
       const ang = Math.atan2(targetY - fromEntity.y, targetX - fromEntity.x);
@@ -82543,9 +82455,6 @@ function checkHit(target, b, i){
             let streakBonusCoins = 0;
             let streakDropBonus = 0;
             if (won && !isTraining && completedMatchFighter === 'electrostien') grantElectrostienSignatureWin();
-            if (won && !isTraining && completedMatchFighter === 'voltastein') grantVoltasteinSignatureWin();
-            if (won && !isTraining && completedMatchFighter === 'staticstein') grantStaticsteinSignatureWin();
-            if (won && !isTraining && completedMatchFighter === 'healnstein') grantHealnsteinSignatureWin();
             if (won) {
                 playerData.winStreak = (playerData.winStreak || 0) + 1;
                 playerData.bestWinStreak = Math.max(playerData.bestWinStreak || 0, playerData.winStreak);
