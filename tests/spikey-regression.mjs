@@ -179,7 +179,7 @@ assert.equal(api.spikeyMegaBalls.length, 0, 'the traveling Mega Ball must never 
 await framesOverTime(700, bot);
 assert.equal(api.spikeyPendingSlams.length, 0, 'all slams must resolve');
 const slamDrop = 100000 - bot.hp;
-assert.ok(slamDrop >= 5000 && slamDrop <= 5300, `a target at the middle slam must take all 3 slams (drop ${slamDrop})`);
+assert.ok(slamDrop >= 5600 && slamDrop <= 5800, `a target at the middle slam must take all 3 slams (1750+1900+2050=5700, drop ${slamDrop})`);
 // Slams stay close: a target well past the last slam is untouched.
 bot._x = 1500; bot._y = 2000; bot.x = bot._x; bot.y = bot._y; bot.hp = 100000;
 api.castSpikeySuper(p, false, p.x + 500, p.y);

@@ -7,7 +7,7 @@ const roster = fs.readFileSync(new URL('../modules/brawlers/exotic/roster.js', i
 assert.ok(roster.includes("'the_deleter'"), 'The Deleter is in the Exotic module roster');
 assert.match(game, /the_deleter:\s*'Exotic'/, 'The Deleter has Exotic rarity');
 assert.match(game, /if\s*\(brawlerId === 'the_deleter'\)[\s\S]{0,150}6600[\s\S]{0,100}1750[\s\S]{0,80}260/, 'P11 stats are 6600 HP, 1750 damage and normal speed');
-assert.match(game, /brawlerId==='the_deleter'\)return 1/, 'Rewrite uses one ammo');
+assert.match(game, /brawlerId==='the_deleter'[^)]*\)return 1/, 'Rewrite uses one ammo');
 assert.match(game, /function launchDeleterRewrite\(/, 'Rewrite has a dedicated launch path');
 assert.match(game, /function redirectDeleterVolley\([\s\S]{0,180}master\.deleterRedirected/, 'Rewrite allows a single second-stage redirect');
 assert.match(game, /deleterWaitingForRelease[\s\S]{0,450}!mouse\.down && !mobileInput\.aimHeld && !mobileInput\.attackActive/, 'Rewrite waits for release before accepting the free redirect input');

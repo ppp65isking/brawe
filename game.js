@@ -295,6 +295,10 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             const scale = 0.55 + (level - 1) * 0.045;
             return { hp: Math.round(6200 * scale), dmg: Math.round(800 * scale), speed: 290 };
         }
+        if (brawlerId === 'healnstein') {
+            const scale = 0.55 + (level - 1) * 0.045;
+            return { hp: Math.round(6200 * scale), dmg: Math.round(750 * scale), speed: 280 };
+        }
         if (brawlerId === 'looma') {
             const scale = 0.55 + (level - 1) * 0.045;
             return { hp: Math.round(6600 * scale), dmg: Math.round(1450 * scale), speed: 270 };
@@ -3079,7 +3083,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
   function getNativeAmmoCapacity(brawlerId){
       if(brawlerId==='oil_maker')return 120;
       if(brawlerId==='minigunnin'||brawlerId==='steamer'||brawlerId==='beam')return 100;
-      if(brawlerId==='bowlin_rida'||brawlerId==='boom_arang'||brawlerId==='jetpack'||brawlerId==='the_deleter')return 1;
+      if(brawlerId==='bowlin_rida'||brawlerId==='boom_arang'||brawlerId==='jetpack'||brawlerId==='the_deleter'||brawlerId==='healnstein')return 1;
       if(brawlerId==='demon'||brawlerId==='fastpass')return 2;
       if(brawlerId==='trampaheal')return 2;
       if(brawlerId==='rocketeer')return 4;
@@ -3505,6 +3509,12 @@ function updateGadgetInfo() {
       return { ready: !entity.staticsteinFamilyCircuitArmed, label: entity.staticsteinFamilyCircuitArmed ? 'CIRCUIT ARMED' : 'FAMILY CIRCUIT' };
   }
 
+  function getHealnsteinSignatureState(entity) {
+      if (!entity || entity.hp <= 0) return { ready: false, label: 'DOWN' };
+      if (!isSpecialAbilityAvailableForEntity(entity, 'healnstein')) return { ready: false, label: 'LOCKED' };
+      return { ready: !entity.healnsteinFamilyCircuitArmed, label: entity.healnsteinFamilyCircuitArmed ? 'CIRCUIT ARMED' : 'FAMILY CIRCUIT' };
+  }
+
   function activateSignatureAbility(entity = player) {
       const fighterId = entity.id === player.id ? selectedBrawler : entity.brawler;
       if (fighterId === 'dashaholic') {
@@ -3668,6 +3678,16 @@ function updateGadgetInfo() {
           updateSignatureButton();
           return true;
       }
+      if (fighterId === 'healnstein') {
+          if (!isSpecialAbilityAvailableForEntity(entity, 'healnstein')) return false;
+          const state = getHealnsteinSignatureState(entity);
+          if (!state.ready) return false;
+          entity.healnsteinFamilyCircuitArmed = true;
+          explosions.push({ x: entity.x, y: entity.y, radius: 46, life: 0, maxLife: .24, color: 'rgba(255,211,79,.55)', fxKind: 'familyCircuitArm' });
+          spawnFloatingText(entity.x, entity.y - 44, 'FAMILY CIRCUIT ARMED!', '#ffd34f');
+          updateSignatureButton();
+          return true;
+      }
       if (fighterId !== 'bouncin_balls') return false;
       const state = getBouncinSignatureState(entity);
       if (!state.ready) {
@@ -3692,20 +3712,20 @@ function updateGadgetInfo() {
   }
 
   function updateSignatureButton() {
-      const signatureFighter = selectedBrawler === 'bouncin_balls' || selectedBrawler === 'classy' || selectedBrawler === 'beast' || selectedBrawler === 'mageny' || selectedBrawler === 'beam' || selectedBrawler === 'dashaholic' || selectedBrawler === 'bolznstien' || selectedBrawler === 'electrostien' || selectedBrawler === 'voltastein' || selectedBrawler === 'staticstein';
+      const signatureFighter = selectedBrawler === 'bouncin_balls' || selectedBrawler === 'classy' || selectedBrawler === 'beast' || selectedBrawler === 'mageny' || selectedBrawler === 'beam' || selectedBrawler === 'dashaholic' || selectedBrawler === 'bolznstien' || selectedBrawler === 'electrostien' || selectedBrawler === 'voltastein' || selectedBrawler === 'staticstein' || selectedBrawler === 'healnstein';
       const shouldShow = playing && signatureFighter && isSpecialAbilityAvailableForEntity(player, selectedBrawler);
       if (signatureTouchBtn) signatureTouchBtn.style.display = shouldShow ? 'flex' : 'none';
       if (signatureBtn) signatureBtn.style.display = shouldShow ? '' : 'none';
       if (!shouldShow) return;
-      const state = selectedBrawler === 'dashaholic' ? getDashaholicSignatureState(player) : (selectedBrawler === 'beam' ? getBeamSignatureState(player) : (selectedBrawler === 'classy' ? getClassySignatureState(player) : (selectedBrawler === 'beast' ? getBeastSignatureState(player) : (selectedBrawler === 'mageny' ? getMagenySignatureState(player) : (selectedBrawler === 'bolznstien' ? getBolznstienSignatureState(player) : (selectedBrawler === 'electrostien' ? getElectrostienSignatureState(player) : (selectedBrawler === 'voltastein' ? getVoltasteinSignatureState(player) : (selectedBrawler === 'staticstein' ? getStaticsteinSignatureState(player) : getBouncinSignatureState(player)))))))));
-      const costText = selectedBrawler === 'dashaholic' ? ' - costs up to 1200 HP; empowers selected Gadget; 15s cooldown' : (selectedBrawler === 'beam' ? ' - costs 2300 HP; requires Super ammo bar' : (selectedBrawler === 'classy' ? ' - costs up to 1000 HP' : (selectedBrawler === 'beast' ? ' - consumes full ammo; regular form only' : (selectedBrawler === 'mageny' ? ' - costs 2000 HP; press again to detonate' : (selectedBrawler === 'bolznstien' ? ' - costs 1500 HP; only during Electric Eyes; 14s cooldown' : (selectedBrawler === 'electrostien' ? ' - free to arm; echoes your punches as sky strikes inside the Electric Realm' : (selectedBrawler === 'voltastein' ? ' - free to arm; your next Power Outage calls a family sky strike' : (selectedBrawler === 'staticstein' ? ' - free to arm; your next Interference shot calls a family sky strike' : ' - costs up to 1000 HP; turret command also costs up to 750 turret HP'))))))));
+      const state = selectedBrawler === 'dashaholic' ? getDashaholicSignatureState(player) : (selectedBrawler === 'beam' ? getBeamSignatureState(player) : (selectedBrawler === 'classy' ? getClassySignatureState(player) : (selectedBrawler === 'beast' ? getBeastSignatureState(player) : (selectedBrawler === 'mageny' ? getMagenySignatureState(player) : (selectedBrawler === 'bolznstien' ? getBolznstienSignatureState(player) : (selectedBrawler === 'electrostien' ? getElectrostienSignatureState(player) : (selectedBrawler === 'voltastein' ? getVoltasteinSignatureState(player) : (selectedBrawler === 'staticstein' ? getStaticsteinSignatureState(player) : (selectedBrawler === 'healnstein' ? getHealnsteinSignatureState(player) : getBouncinSignatureState(player))))))))));
+      const costText = selectedBrawler === 'dashaholic' ? ' - costs up to 1200 HP; empowers selected Gadget; 15s cooldown' : (selectedBrawler === 'beam' ? ' - costs 2300 HP; requires Super ammo bar' : (selectedBrawler === 'classy' ? ' - costs up to 1000 HP' : (selectedBrawler === 'beast' ? ' - consumes full ammo; regular form only' : (selectedBrawler === 'mageny' ? ' - costs 2000 HP; press again to detonate' : (selectedBrawler === 'bolznstien' ? ' - costs 1500 HP; only during Electric Eyes; 14s cooldown' : (selectedBrawler === 'electrostien' ? ' - free to arm; echoes your punches as sky strikes inside the Electric Realm' : (selectedBrawler === 'voltastein' ? ' - free to arm; your next Power Outage calls a family sky strike' : (selectedBrawler === 'staticstein' ? ' - free to arm; your next Interference shot calls a family sky strike' : (selectedBrawler === 'healnstein' ? ' - free to arm; your next Healing Poison needle also calls a family sky strike' : ' - costs up to 1000 HP; turret command also costs up to 750 turret HP')))))))));
       if (signatureTouchBtn) {
           signatureTouchBtn.textContent = state.ready ? 'SIG' : '×';
           signatureTouchBtn.title = `Signature: ${state.label}${costText}`;
           signatureTouchBtn.classList.toggle('signature-ready', !!state.ready);
       }
       if (signatureBtn) {
-          signatureBtn.textContent = `Signature: ${state.label}${selectedBrawler === 'dashaholic' ? ' · up to 1200 HP' : (selectedBrawler === 'beam' ? ' · 2300 HP' : (selectedBrawler === 'classy' ? ' · up to 1000 HP' : (selectedBrawler === 'beast' ? ' · FULL AMMO' : (selectedBrawler === 'mageny' ? ' · 2000 HP' : (selectedBrawler === 'bolznstien' ? ' · 1500 HP' : (selectedBrawler === 'electrostien' ? ' · WIN-EARNED' : (selectedBrawler === 'voltastein' ? ' · WIN-EARNED' : (selectedBrawler === 'staticstein' ? ' · WIN-EARNED' : ' · up to 1000 HP + 750 turret HP'))))))))} (R)`;
+          signatureBtn.textContent = `Signature: ${state.label}${selectedBrawler === 'dashaholic' ? ' · up to 1200 HP' : (selectedBrawler === 'beam' ? ' · 2300 HP' : (selectedBrawler === 'classy' ? ' · up to 1000 HP' : (selectedBrawler === 'beast' ? ' · FULL AMMO' : (selectedBrawler === 'mageny' ? ' · 2000 HP' : (selectedBrawler === 'bolznstien' ? ' · 1500 HP' : (selectedBrawler === 'electrostien' ? ' · WIN-EARNED' : (selectedBrawler === 'voltastein' ? ' · WIN-EARNED' : (selectedBrawler === 'staticstein' ? ' · WIN-EARNED' : (selectedBrawler === 'healnstein' ? ' · WIN-EARNED' : ' · up to 1000 HP + 750 turret HP')))))))))} (R)`;
           signatureBtn.disabled = !state.ready;
           signatureBtn.classList.toggle('signature-ready', !!state.ready);
       }
@@ -5063,6 +5083,7 @@ const bolznstienPendingStrikes = [];
             aura_charmer: 1500,
             voltastein: 1600,
             staticstein: 1500,
+            healnstein: 1600,
             carmela_fudge: 1400,
             oil_maker: 90,
             magnatar: 1450,
@@ -5129,6 +5150,7 @@ const bolznstienPendingStrikes = [];
             aura_charmer: 300,
             voltastein: 300,
             staticstein: 300,
+            healnstein: 300,
             carmela_fudge: 180,
             oil_maker: 112,
             magnatar: 200,
@@ -5425,7 +5447,7 @@ const bolznstienPendingStrikes = [];
         'boom_arang', 'teether', 'fuel', 'xray', 'angel', 'demon', 'warrior', 'relay',
         'upiedown', 'chickpig', 'jetpack', 'snapper', 'robber', 'rocketeer',
         'carmela_fudge', 'peter_pickle', 'unstable', 'homer', 'orbo', 'predator', 'fastpass', 'freestyle', 'portalo', 'ghoul', 'jacktrade', 'darkener', 'awakenator', 'adlof', 'cluster', 'witch', 'boomer', 'blade_vane', 'daggershard', 'ice_cream', 'swimmer', 'kage', 'drainbow', 'draflygon', 'axeywaxy', 'trampaheal', 'mageny', 'ramage', 'upgradart', 'cinderion', 'cursed', 'king', 'anti_royal', 'sir_cheeseburger', 'weefee', 'blinkeye', 'bolznstien', 'magnatar', 'oil_maker', 'rager', 'badbat', 'looma',
-        'feathers', 'spikey', 'electrostien', 'mallow', 'nightshade', 'aegis', 'runner', 'aura_charmer', 'voltastein', 'staticstein'
+        'feathers', 'spikey', 'electrostien', 'mallow', 'nightshade', 'aegis', 'runner', 'aura_charmer', 'voltastein', 'staticstein', 'healnstein'
     ];
     const registeredBrawlerModules = window.ArenaForgeModules?.brawlers || Object.create(null);
     for (const moduleId of Object.keys(registeredBrawlerModules)) {
@@ -5498,6 +5520,7 @@ const bolznstienPendingStrikes = [];
             ramage: 'Epic',
             blinkeye: 'Epic',
             badbat: 'Epic',
+            healnstein: 'Epic',
             looma: 'Epic',
             fastpass: 'Epic',
             draflygon: 'Epic',
@@ -10407,6 +10430,17 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           g2: 'Lucky Shot (Your next main attack fires a random projectile brawler\'s projectile instead of the static shot)',
           sp1: 'Reunion Burst (When the split bolts come back together, they detonate for +300 damage at the convergence point)',
           sp2: 'Signal Boost (During Static Interference, fire rate is 30% faster)'
+      },
+      'healnstein': {
+          name: 'Healnstein', role: 'Support', rarity: 'Epic', color: '#4ade80',
+          desc: 'The fourth Stein sibling \u2014 the family healer. He lobs a bouncing remedy that grows with every bounce, healing allies and hurting enemies, and his Healing Poison needle turns a teammate\'s attacks toxic.',
+          attack: 'Bouncing Remedy', attackDesc: 'Lobs a bouncing remedy over walls (750 damage to enemies, 800 HP healing to allies per impact). It lands, then bounces forward 2 more times, growing 100px, then 130px, then 160px \u2014 the same ally can heal again on a later bounce.',
+          super: 'Healing Poison', superDesc: 'Fires a needle at a teammate (aim it \u2014 it must hit them): instantly heals them for 3,000 HP, and for 6 seconds their attacks apply 2 stacks of 300 poison.',
+          hyper: 'Remedy Overdrive: the remedy splits into 2 on the first impact (a twin orb forks off at an angle and runs its own bounce chain). Healing Poison fires 3 darts at up to 3 different teammates \u2014 and applies the effect to Healnstein himself.',
+          g1: 'Extra Bounce (Your next remedy bounces 1 extra time)',
+          g2: 'Antidote Shield (Your next needle also grants the target a 1,000 HP shield for 5 seconds)',
+          sp1: 'Bigger Bounces (Bounce radius +20% and healing +200 per bounce)',
+          sp2: 'Lingering Toxin (The poison effect lasts 8 seconds instead of 6)'
       }
   };
 
@@ -10432,7 +10466,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
 
     // V4 standardized primary-role organization: exactly one gameplay role per brawler.
     const PRIMARY_ROLE_BY_BRAWLER = {
-        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank', rager:'Controller', looma:'Controller', feathers:'Controller', spikey:'Damage Dealer', electrostien:'Assassin', mallow:'Controller', nightshade:'Assassin', runner:'Controller', aura_charmer:'Support', voltastein:'Artillery', staticstein:'Damage Dealer',
+        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank', rager:'Controller', looma:'Controller', feathers:'Controller', spikey:'Damage Dealer', electrostien:'Assassin', mallow:'Controller', nightshade:'Assassin', runner:'Controller', aura_charmer:'Support', voltastein:'Artillery', staticstein:'Damage Dealer', healnstein:'Support',
     carmela_fudge:'Damage Dealer', bolznstien:'Damage Dealer', badbat:'Damage Dealer', magnatar:'Controller', oil_maker:'Controller', sir_cheeseburger:'Tank',
         blade_vane:'Assassin', kage:'Assassin', drainbow:'Controller', bowlin_rida:'Assassin', dashaholic:'Assassin', demon:'Assassin', jetpack:'Assassin', malakor:'Assassin', predator:'Assassin', swimmer:'Assassin', teether:'Assassin',
         boom_arang:'Marksman', cheseypuff:'Marksman', crystila:'Marksman', homer:'Marksman', hunter:'Marksman', orbo:'Marksman', snapper:'Marksman', xray:'Marksman',
@@ -10460,6 +10494,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
             aura_charmer: '✨',
             voltastein: '⚡🔮',
             staticstein: '⚡📺',
+            healnstein: '💚🩹',
     looma: '🪡🧵',
         sir_cheeseburger: '🛡️',
         anti_royal: '🏴‍☠️',
@@ -11614,6 +11649,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
       aura_charmer: { g1: 15000, g2: 15000 },
       voltastein: { g1: 15000, g2: 15000 },
       staticstein: { g1: 15000, g2: 15000 },
+      healnstein: { g1: 15000, g2: 15000 },
       carmela_fudge: { g1: 8000, g2: 8000 },
       bolznstien: { g1: 14000, g2: 15000 },
       sir_cheeseburger: { g1: 13000, g2: 14000 },
@@ -18657,6 +18693,14 @@ let heistFeverActive = false;
           pieceName: 'Staticstein Signature Piece',
           shortDesc: 'Arm the Family Circuit with the Signature button (R): your next Static Interference shot also calls a Bolznstien-style sky strike (500 damage) on the enemy nearest your aim. His Pieces are EARNED, never bought: win 3 battles with Staticstein (1 Piece per win). No Core Piece cost.'
       },
+      healnstein: {
+          type: 'signature',
+          name: 'Family Circuit',
+          icon: 'FC',
+          color: '#ffd34f',
+          pieceName: 'Healnstein Signature Piece',
+          shortDesc: 'Arm the Family Circuit with the Signature button (R): your next Healing Poison needle also calls a Bolznstien-style sky strike (500 damage) on the enemy nearest the healed teammate. His Pieces are EARNED, never bought: win 3 battles with Healnstein (1 Piece per win). No Core Piece cost.'
+      },
       fightnfire: {
           type: 'instinct',
           name: 'Flash Freeze',
@@ -18938,6 +18982,7 @@ let heistFeverActive = false;
       if (fighterId === 'electrostien') { alert('Family Circuit Pieces are EARNED by winning battles with Electrostien — they cannot be bought with Core Pieces.'); return false; }
       if (fighterId === 'voltastein') { alert('Family Circuit Pieces are EARNED by winning battles with Voltastein — they cannot be bought with Core Pieces.'); return false; }
       if (fighterId === 'staticstein') { alert('Family Circuit Pieces are EARNED by winning battles with Staticstein — they cannot be bought with Core Pieces.'); return false; }
+      if (fighterId === 'healnstein') { alert('Family Circuit Pieces are EARNED by winning battles with Healnstein — they cannot be bought with Core Pieces.'); return false; }
       const ability = getSpecialAbilityState(def.type, fighterId);
       if (ability.unlocked) { alert('That ability is already unlocked!'); return false; }
       if (!spendCorePieces(CORE_PIECE_PRICE)) { alert(`Not enough Core Pieces — one ${def.pieceName} costs ${CORE_PIECE_PRICE} Core Pieces. Earn Core Pieces from Tapper Uppers, Super Tappers, the Season Pass and Presents!`); return false; }
@@ -18963,6 +19008,7 @@ let heistFeverActive = false;
       if (fighterId === 'electrostien') { alert('Family Circuit is EARNED by winning battles with Electrostien — it cannot be bought with Core Pieces.'); return false; }
       if (fighterId === 'voltastein') { alert('Family Circuit is EARNED by winning battles with Voltastein — it cannot be bought with Core Pieces.'); return false; }
       if (fighterId === 'staticstein') { alert('Family Circuit is EARNED by winning battles with Staticstein — it cannot be bought with Core Pieces.'); return false; }
+      if (fighterId === 'healnstein') { alert('Family Circuit is EARNED by winning battles with Healnstein — it cannot be bought with Core Pieces.'); return false; }
       const ability = getSpecialAbilityState(def.type, fighterId);
       if (ability.unlocked) { alert('That ability is already unlocked!'); return false; }
       if (!spendCorePieces(CORE_FULL_UNLOCK_PRICE)) { alert(`Not enough Core Pieces — a full unlock costs ${CORE_FULL_UNLOCK_PRICE} Core Pieces. Earn Core Pieces from Tapper Uppers, Super Tappers, the Season Pass and Presents!`); return false; }
@@ -21267,6 +21313,8 @@ let heistFeverActive = false;
     const SPIKEY_SLAM_FIRST = 110;
     const SPIKEY_SLAM_STEP = 120;
     const SPIKEY_SLAM_DELAY_MS = 160;
+    const SPIKEY_SLAM_RADIUS_GROWTH = 1.2; // +20% radius per bounce (builder pick, 2026-11-05)
+    const SPIKEY_SLAM_DMG_GROWTH = 150; // +150 damage per bounce (builder pick, 2026-11-05)
     const SPIKEY_SIDE_BALL_DMG = 500;
     const SPIKEY_SIDE_BALL_RADIUS = 80;
     const SPIKEY_SIDE_BALL_OFFSET = 175;
@@ -21343,9 +21391,16 @@ let heistFeverActive = false;
         // Slam barrage (rework 2026-10-23): the Mega Spike Ball slams 3 times
         // close to Spikey, each slam a step further forward in the aim
         // direction, staggered so it reads as a walking barrage.
+        // Bounce treatment (2026-11-05): the slam line bounces forward
+        // between slams — each slam grows +20% radius and +150 damage
+        // (builder pick) — and reflects off walls instead of stopping at
+        // them: a leg that would land inside a wall lands at the wall face
+        // and the next slam leaves in the reflected direction.
+        let sx = entity.x, sy = entity.y, sAng = ang, legDist = SPIKEY_SLAM_FIRST;
         for (let s = 0; s < 3; s++) {
-            const dist = SPIKEY_SLAM_FIRST + s * SPIKEY_SLAM_STEP;
-            spikeyPendingSlams.push({ ownerId: entity.id, x: clamp(entity.x + Math.cos(ang) * dist, 30, WORLD_W - 30), y: clamp(entity.y + Math.sin(ang) * dist, 30, WORLD_H - 30), hyper: !!hyper, at: now + s * SPIKEY_SLAM_DELAY_MS, ang });
+            const leg = traceLobLeg(sx, sy, sAng, legDist, (lx, ly) => isCircleBlockedByTerrain(entity, lx, ly, 12));
+            spikeyPendingSlams.push({ ownerId: entity.id, x: clamp(leg.landX, 30, WORLD_W - 30), y: clamp(leg.landY, 30, WORLD_H - 30), hyper: !!hyper, at: now + s * SPIKEY_SLAM_DELAY_MS, ang: sAng, radius: Math.round(SPIKEY_SUPER_RADIUS * Math.pow(SPIKEY_SLAM_RADIUS_GROWTH, s)), dmgBonus: s * SPIKEY_SLAM_DMG_GROWTH });
+            sx = leg.landX; sy = leg.landY; sAng = leg.angle; legDist = SPIKEY_SLAM_STEP;
         }
         spawnFloatingText(entity.x, entity.y - 40, '🦔 MEGA SPIKE SLAM!', hyper ? '#e056fd' : '#a6e34d');
     }
@@ -21353,10 +21408,17 @@ let heistFeverActive = false;
         const owner = findSpikeyOwner(slam.ownerId);
         const level = owner ? (owner.id === player.id ? getSelectedBrawlerLevel() : (owner.level || 11)) : 11;
         const stats = getScaledStats('spikey', level);
-        AOEDamage(slam.x, slam.y, SPIKEY_SUPER_RADIUS, stats.superDmg, slam.ownerId, false);
-        explosions.push({ x: slam.x, y: slam.y, radius: SPIKEY_SUPER_RADIUS, life: 0, maxLife: .3, color: slam.hyper ? 'rgba(224,86,253,.5)' : 'rgba(166,227,77,.5)', fxKind: 'spikeyBounce' });
+        // Bounce growth: each slam is bigger and harder than the last
+        // (slam 1: 130px / 1750, slam 2: 156px / 1900, slam 3: 187px / 2050
+        // at Power 11; older queued slams fall back to the base values).
+        const slamRadius = slam.radius || SPIKEY_SUPER_RADIUS;
+        const slamDmg = stats.superDmg + (slam.dmgBonus || 0);
+        AOEDamage(slam.x, slam.y, slamRadius, slamDmg, slam.ownerId, false);
+        explosions.push({ x: slam.x, y: slam.y, radius: slamRadius, life: 0, maxLife: .3, color: slam.hyper ? 'rgba(224,86,253,.5)' : 'rgba(166,227,77,.5)', fxKind: 'spikeyBounce' });
         if (slam.hyper) {
             // Hypercharge: 2 smaller side balls slam on either side of the main slam.
+            // (Side balls stay 500 damage / 80px — the bounce growth applies
+            // to the main slam only; builder pick, flagged.)
             const px = Math.cos(slam.ang + Math.PI / 2), py = Math.sin(slam.ang + Math.PI / 2);
             for (const side of [-1, 1]) {
                 const sx = clamp(slam.x + px * SPIKEY_SIDE_BALL_OFFSET * side, 24, WORLD_W - 24);
@@ -21728,6 +21790,15 @@ let heistFeverActive = false;
     function grantStaticsteinSignatureWin() {
         playerData.staticsteinSignatureWins = (playerData.staticsteinSignatureWins || 0) + 1;
         const ability = getSpecialAbilityState('signature', 'staticstein');
+        if (!ability.unlocked) {
+            ability.pieces = Math.min(3, ability.pieces + 1);
+            if (ability.pieces >= 3) ability.unlocked = true;
+        }
+        saveProgress();
+    }
+    function grantHealnsteinSignatureWin() {
+        playerData.healnsteinSignatureWins = (playerData.healnsteinSignatureWins || 0) + 1;
+        const ability = getSpecialAbilityState('signature', 'healnstein');
         if (!ability.unlocked) {
             ability.pieces = Math.min(3, ability.pieces + 1);
             if (ability.pieces >= 3) ability.unlocked = true;
@@ -29125,7 +29196,7 @@ let heistFeverActive = false;
       beam:8, fuser:24, heater_miser:20, minigunnin:72, money_and_tax:24, outlit:30, steamer:8,
       bouncin_balls:6, chickpig:12, classy:6, copyphase:6, goonbob:6, hoop:5, hyperorigin:5, robber:42,
       portalo:7, ghoul:6, jacktrade:18, darkener:6, awakenator:8, trampaheal:6, axeywaxy:6, mageny:6, draflygon:6, ramage:6, upgradart:10, cinderion:10, cursed:7, king:6, anti_royal:6, weefee:6, rager:4,
-    carmela_fudge:5, bolznstien:5, sir_cheeseburger:4, blinkeye:4, magnatar:6, oil_maker:16, badbat:5, looma:7, feathers:5, spikey:6, electrostien:14, mallow:12, nightshade: 6, runner: 6, aura_charmer: 6, voltastein: 6, staticstein: 6
+    carmela_fudge:5, bolznstien:5, sir_cheeseburger:4, blinkeye:4, magnatar:6, oil_maker:16, badbat:5, looma:7, feathers:5, spikey:6, electrostien:14, mallow:12, nightshade: 6, runner: 6, aura_charmer: 6, voltastein: 6, staticstein: 6, healnstein: 6
   });
   let nextMainAttackActivationId = 1;
   function getSuperChargeHitsForBrawler(brawler) {
@@ -37543,6 +37614,10 @@ let heistFeverActive = false;
         bullets.push({ ownerBrawler: 'voltastein', isVoltasteinVolt: true, voltasteinHyper: hyper, voltasteinLob: true, voltasteinLandX: voltLandX, voltasteinLandY: voltLandY, x: fromEntity.x + Math.cos(ang) * voltSpawnOffset, y: fromEntity.y + Math.sin(ang) * voltSpawnOffset, vx: Math.cos(ang) * VOLTASTEIN_BULLET_SPEED, vy: Math.sin(ang) * VOLTASTEIN_BULLET_SPEED, life: 0, maxLife: Math.max(.05, voltFlightDistance / VOLTASTEIN_BULLET_SPEED), damage: stats.dmg, voltDamage: stats.dmg, voltRadius: VOLTASTEIN_EXPLOSION_RADIUS, pierce: false, pierceWalls: true, ownerId: fromEntity.id, hitIds: {}, hitboxMod: 1.2, hyperVisual: hyper });
         explosions.push({ x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 10), y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 10), radius: 10, life: 0, maxLife: 0.18, color: hyper ? 'rgba(216,108,255,.9)' : 'rgba(168,85,247,.9)', isParticle: true });
         return;
+    } else if (brawler === 'healnstein') {
+        const hang = Math.atan2(targetY - fromEntity.y, targetX - fromEntity.x);
+        fireHealnsteinMain(fromEntity, hang, targetX, targetY, { isBot, now });
+        return;
     } else if (brawler === 'staticstein') {
         const level = fromEntity.id === player.id ? getSelectedBrawlerLevel() : (fromEntity.level || 11);
         const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
@@ -39847,6 +39922,7 @@ let heistFeverActive = false;
     if (combatBrawler === 'aura_charmer') { castAuraCharmerSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'voltastein') { castVoltasteinSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'staticstein') { castStaticsteinSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
+    if (combatBrawler === 'healnstein') { castHealnsteinSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'ramage') { castRamageSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
         if (combatBrawler === 'upgradart') { if(!castUpgradartSuper(player, !!isHypercharged, wm.x, wm.y))superCharge=100; updateSuperButton(); return; }
     if (combatBrawler === 'axeywaxy') { castAxeyWaxySuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
@@ -41181,6 +41257,10 @@ let heistFeverActive = false;
       executeStaticsteinG1(bot);
     } else if (bot.brawler === 'staticstein' && g === 'g2') {
       executeStaticsteinG2(bot);
+    } else if (bot.brawler === 'healnstein' && g === 'g1') {
+      executeHealnsteinG1(bot);
+    } else if (bot.brawler === 'healnstein' && g === 'g2') {
+      executeHealnsteinG2(bot);
     } else if (bot.brawler === 'rager' && g === 'g1') {
       executeRagerG1(bot);
     } else if (bot.brawler === 'rager' && g === 'g2') {
@@ -41705,6 +41785,7 @@ let heistFeverActive = false;
     if (botCombatBrawler === 'aura_charmer') { castAuraCharmerSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'voltastein') { castVoltasteinSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'staticstein') { castStaticsteinSuper(bot, isHyper, targetX, targetY); return; }
+    if (botCombatBrawler === 'healnstein') { castHealnsteinSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'ramage') { castRamageSuper(bot, isHyper, targetX, targetY); return; }
             if (botCombatBrawler === 'upgradart') { if(!castUpgradartSuper(bot, isHyper, targetX, targetY))bot.superCharge=100; return; }
     if (botCombatBrawler === 'axeywaxy') { castAxeyWaxySuper(bot, isHyper, targetX, targetY); return; }
@@ -43330,6 +43411,18 @@ let heistFeverActive = false;
         return;
     } else if (curBrawler === 'staticstein' && curGadget === 'g2') {
         executeStaticsteinG2(player);
+        gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
+        setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
+        updateGadgetButton();
+        return;
+    } else if (curBrawler === 'healnstein' && curGadget === 'g1') {
+        executeHealnsteinG1(player);
+        gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
+        setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
+        updateGadgetButton();
+        return;
+    } else if (curBrawler === 'healnstein' && curGadget === 'g2') {
+        executeHealnsteinG2(player);
         gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
         setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
         updateGadgetButton();
@@ -45135,15 +45228,28 @@ let heistFeverActive = false;
           }
       }
       // Hyper split: the volt forks into two smaller volts on impact.
+      // Wall-bounce (same rule as Healnstein's remedy): a split volt whose
+      // leg would land inside a wall instead reflects — its remaining
+      // travel continues in the reflected direction (one reflection) and it
+      // arcs over the wall to the reflected landing point, detonating there.
       if (bullet.voltasteinHyper && !bullet.voltasteinChild && !bullet._voltSplitDone) {
           bullet._voltSplitDone = true;
           const baseAng = Math.atan2(bullet.vy || 0, bullet.vx || 1);
           const childDmg = Math.max(1, Math.round((bullet.voltDamage || dmg) * VOLTASTEIN_HYPER_SPLIT_DMG_MULT));
           for (const off of [-0.45, 0.45]) {
               const a = baseAng + off;
-              const childLandX = clamp(x + Math.cos(a) * VOLTASTEIN_HYPER_SPLIT_RANGE, 0, WORLD_W);
-              const childLandY = clamp(y + Math.sin(a) * VOLTASTEIN_HYPER_SPLIT_RANGE, 0, WORLD_H);
-              bullets.push({ ownerBrawler: 'voltastein', isVoltasteinVolt: true, voltasteinHyper: false, voltasteinChild: true, voltasteinLob: true, voltasteinLandX: childLandX, voltasteinLandY: childLandY, x, y, vx: Math.cos(a) * VOLTASTEIN_BULLET_SPEED, vy: Math.sin(a) * VOLTASTEIN_BULLET_SPEED, life: 0, maxLife: VOLTASTEIN_HYPER_SPLIT_RANGE / VOLTASTEIN_BULLET_SPEED, damage: childDmg, voltDamage: childDmg, voltRadius: VOLTASTEIN_HYPER_SPLIT_RADIUS, pierce: false, pierceWalls: true, ownerId: owner.id, hitIds: {}, hitboxMod: 1.1, hyperVisual: true });
+              const leg = traceLobLeg(x, y, a, VOLTASTEIN_HYPER_SPLIT_RANGE, (lx, ly) => isCircleBlockedByTerrain(owner, lx, ly, 12));
+              let childLandX = leg.landX, childLandY = leg.landY;
+              if (leg.hitWall) {
+                  const remaining = VOLTASTEIN_HYPER_SPLIT_RANGE - leg.traveled;
+                  const leg2 = traceLobLeg(leg.landX, leg.landY, leg.angle, remaining, (lx, ly) => isCircleBlockedByTerrain(owner, lx, ly, 12));
+                  childLandX = leg2.landX; childLandY = leg2.landY;
+              }
+              childLandX = clamp(childLandX, 0, WORLD_W);
+              childLandY = clamp(childLandY, 0, WORLD_H);
+              const childFlyAng = Math.atan2(childLandY - y, childLandX - x);
+              const childFlyDist = Math.hypot(childLandX - x, childLandY - y);
+              bullets.push({ ownerBrawler: 'voltastein', isVoltasteinVolt: true, voltasteinHyper: false, voltasteinChild: true, voltasteinLob: true, voltasteinLandX: childLandX, voltasteinLandY: childLandY, x, y, vx: Math.cos(childFlyAng) * VOLTASTEIN_BULLET_SPEED, vy: Math.sin(childFlyAng) * VOLTASTEIN_BULLET_SPEED, life: 0, maxLife: Math.max(.05, childFlyDist / VOLTASTEIN_BULLET_SPEED), damage: childDmg, voltDamage: childDmg, voltRadius: VOLTASTEIN_HYPER_SPLIT_RADIUS, pierce: false, pierceWalls: true, ownerId: owner.id, hitIds: {}, hitboxMod: 1.1, hyperVisual: true });
           }
       }
   }
@@ -45281,6 +45387,298 @@ let heistFeverActive = false;
       explosions.push({ x: entity.x, y: entity.y, radius: VOLTASTEIN_G2_FIELD_RADIUS, life: 0, maxLife: 0.3, color: 'rgba(168,85,247,.6)', fxKind: 'voltasteinExplosion' });
       spawnFloatingText(entity.x, entity.y - 40, 'STATIC FIELD!', '#a855f7');
   }
+
+  // ---- Healnstein: the Stein healer (Epic Support) ----
+  // BUILDER PICKS (flagged for Anthony in the PR body): main damage 750,
+  // bounce radii 100/130/160, bounce hop 180px, 700px total range for the
+  // first lob (bounce legs add up to 180px each), poison 300 total damage
+  // per stack over 4s (8 ticks of 37.5, last tick takes the remainder so the
+  // total is exactly 300), hyper main split = 2 (one fork at the first
+  // impact, twin mirrors the continuation), G1/G2/SP1/SP2 names + numbers,
+  // needle aim lock 160px, needle range 900px, Family Circuit effect = the
+  // next needle also calls a 500-dmg sky strike on the enemy nearest the
+  // healed teammate.
+  const HEALNSTEIN_BULLET_SPEED = 650;
+  const HEALNSTEIN_RANGE = 700;
+  const HEALNSTEIN_MAIN_DMG = 750;
+  const HEALNSTEIN_BOUNCE_RADII = [100, 130, 160];
+  const HEALNSTEIN_BOUNCE_HOP = 180;
+  const HEALNSTEIN_HEAL_PER_HIT = 800;
+  const HEALNSTEIN_NEEDLE_HEAL = 3000;
+  const HEALNSTEIN_NEEDLE_SPEED = 1000;
+  const HEALNSTEIN_NEEDLE_RANGE = 900;
+  const HEALNSTEIN_NEEDLE_AIM_RADIUS = 160;
+  const HEALNSTEIN_POISON_STACKS = 2;
+  const HEALNSTEIN_POISON_PER_STACK = 300;
+  const HEALNSTEIN_POISON_TICK_MS = 500;
+  const HEALNSTEIN_POISON_DMG_MS = 4000;
+  const HEALNSTEIN_POISON_BUFF_MS = 6000;
+  const HEALNSTEIN_POISON_BUFF_SP2_MS = 8000;
+  const HEALNSTEIN_POISON_MAX_STACKS = 2;
+  const HEALNSTEIN_G2_SHIELD = 1000;
+  const HEALNSTEIN_G2_SHIELD_MS = 5000;
+  const HEALNSTEIN_SP1_RADIUS_MULT = 1.2;
+  const HEALNSTEIN_SP1_HEAL_BONUS = 200;
+  const HEALNSTEIN_HYPER_DARTS = 3;
+  const HEALNSTEIN_FAMILY_STRIKE_DMG = 500;
+
+  // traceLobLeg: walk a lob's ground track; if a wall blocks it, land at the
+  // wall face and reflect the remaining travel (wall-bounce). Pure except for
+  // the injected isBlocked(x, y) probe, so tests can drive it with a fake
+  // wall. Returns { landX, landY, angle, hitWall, traveled } where angle is
+  // the direction the NEXT leg leaves in (reflected when a wall was hit).
+  function traceLobLeg(fromX, fromY, ang, dist, isBlocked) {
+      const STEP = 16;
+      const reflectAt = (cx, cy) => {
+          const xBlocked = isBlocked(cx + Math.cos(ang) * STEP, cy);
+          const yBlocked = isBlocked(cx, cy + Math.sin(ang) * STEP);
+          if (xBlocked && !yBlocked) return Math.PI - ang;
+          if (yBlocked && !xBlocked) return -ang;
+          return ang + Math.PI;
+      };
+      let prevX = fromX, prevY = fromY, prevD = 0;
+      for (let d = STEP; d <= dist; d += STEP) {
+          const px = fromX + Math.cos(ang) * d, py = fromY + Math.sin(ang) * d;
+          if (isBlocked(px, py)) return { landX: prevX, landY: prevY, angle: reflectAt(prevX, prevY), hitWall: true, traveled: prevD };
+          prevX = px; prevY = py; prevD = d;
+      }
+      if (prevD < dist) {
+          const px = fromX + Math.cos(ang) * dist, py = fromY + Math.sin(ang) * dist;
+          if (isBlocked(px, py)) return { landX: prevX, landY: prevY, angle: reflectAt(prevX, prevY), hitWall: true, traveled: prevD };
+      }
+      return { landX: fromX + Math.cos(ang) * dist, landY: fromY + Math.sin(ang) * dist, angle: ang, hitWall: false, traveled: dist };
+  }
+
+  function isHealnsteinEntity(entity) { return !!entity && getEntityBrawlerId(entity) === 'healnstein'; }
+  function healnsteinHasSP1(entity) { return !!entity && (getEntityStarChoice(entity) === 'slow' || getEntityStarChoice(entity) === 'sp1'); }
+  function healnsteinHasSP2(entity) { return !!entity && (getEntityStarChoice(entity) === 'long' || getEntityStarChoice(entity) === 'sp2'); }
+  function getHealnsteinBounceRadius(owner, bounceIndex) {
+      const base = HEALNSTEIN_BOUNCE_RADII[Math.min(bounceIndex, HEALNSTEIN_BOUNCE_RADII.length - 1)] || 100;
+      return Math.round(base * (healnsteinHasSP1(owner) ? HEALNSTEIN_SP1_RADIUS_MULT : 1));
+  }
+  function getHealnsteinHealPerHit(owner) { return HEALNSTEIN_HEAL_PER_HIT + (healnsteinHasSP1(owner) ? HEALNSTEIN_SP1_HEAL_BONUS : 0); }
+  function getHealnsteinPoisonBuffMs(owner) { return healnsteinHasSP2(owner) ? HEALNSTEIN_POISON_BUFF_SP2_MS : HEALNSTEIN_POISON_BUFF_MS; }
+
+  function spawnHealnsteinRemedyOrb(owner, fromX, fromY, ang, dist, bouncesLeft, bounceIndex, hyper, splitDone) {
+      // Bounce legs reflect off walls (traceLobLeg). The initial lob from
+      // fireHealnsteinMain lands exactly on the aim point instead, so the
+      // throw can still arc over a wall to reach allies behind it.
+      const leg = traceLobLeg(fromX, fromY, ang, dist, (lx, ly) => isCircleBlockedByTerrain(owner, lx, ly, 12));
+      const flyDist = Math.hypot(leg.landX - fromX, leg.landY - fromY);
+      const flyAng = Math.atan2(leg.landY - fromY, leg.landX - fromX);
+      bullets.push({ ownerBrawler: 'healnstein', isHealnsteinRemedy: true, healnsteinHyper: hyper, healnsteinLob: true, healnsteinLandX: leg.landX, healnsteinLandY: leg.landY, healnsteinBouncesLeft: bouncesLeft, healnsteinBounceIndex: bounceIndex, healnsteinAng: leg.angle, healnsteinSplitDone: splitDone, x: fromX, y: fromY, vx: Math.cos(flyAng) * HEALNSTEIN_BULLET_SPEED, vy: Math.sin(flyAng) * HEALNSTEIN_BULLET_SPEED, life: 0, maxLife: Math.max(.05, flyDist / HEALNSTEIN_BULLET_SPEED), damage: 0, pierce: false, pierceWalls: true, ownerId: owner.id, hitIds: {}, hitboxMod: 1.2, hyperVisual: hyper });
+  }
+
+  function fireHealnsteinMain(fromEntity, ang, targetX, targetY, opts) {
+      const isBot = !!(opts && opts.isBot);
+      const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
+      const spawnOffset = fromEntity.radius + 7;
+      const throwDistance = Math.min(HEALNSTEIN_RANGE, Math.hypot(targetX - fromEntity.x, targetY - fromEntity.y));
+      const flightDistance = Math.max(0, throwDistance - spawnOffset);
+      const landX = clamp(fromEntity.x + Math.cos(ang) * throwDistance, 0, WORLD_W);
+      const landY = clamp(fromEntity.y + Math.sin(ang) * throwDistance, 0, WORLD_H);
+      // ONE ammo, 2 forward bounces (G1 adds a third). The first lob lands
+      // exactly on the aim point; the bounce legs reflect off walls.
+      const bouncesLeft = 2 + (fromEntity.healnsteinExtraBounceNext ? 1 : 0);
+      if (fromEntity.healnsteinExtraBounceNext) fromEntity.healnsteinExtraBounceNext = false;
+      bullets.push({ ownerBrawler: 'healnstein', isHealnsteinRemedy: true, healnsteinHyper: hyper, healnsteinLob: true, healnsteinLandX: landX, healnsteinLandY: landY, healnsteinBouncesLeft: bouncesLeft, healnsteinBounceIndex: 0, healnsteinAng: ang, healnsteinSplitDone: false, x: fromEntity.x + Math.cos(ang) * spawnOffset, y: fromEntity.y + Math.sin(ang) * spawnOffset, vx: Math.cos(ang) * HEALNSTEIN_BULLET_SPEED, vy: Math.sin(ang) * HEALNSTEIN_BULLET_SPEED, life: 0, maxLife: Math.max(.05, flightDistance / HEALNSTEIN_BULLET_SPEED), damage: 0, pierce: false, pierceWalls: true, ownerId: fromEntity.id, hitIds: {}, hitboxMod: 1.2, hyperVisual: hyper });
+      explosions.push({ x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 10), y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 10), radius: 10, life: 0, maxLife: 0.18, color: hyper ? 'rgba(134,239,172,.9)' : 'rgba(74,222,128,.9)', isParticle: true });
+  }
+
+  function healnsteinRemedyExplode(owner, x, y, bullet) {
+      const level = owner ? (owner.id === player.id ? getSelectedBrawlerLevel() : (owner.level || 11)) : 11;
+      const stats = getScaledStats('healnstein', level);
+      const bounceIndex = bullet.healnsteinBounceIndex || 0;
+      const radius = getHealnsteinBounceRadius(owner, bounceIndex);
+      const healAmt = getHealnsteinHealPerHit(owner);
+      explosions.push({ x, y, radius, life: 0, maxLife: 0.3, color: 'rgba(74,222,128,.85)', fxKind: 'healnsteinRemedy' });
+      const all = [player, ...bots];
+      for (const target of all) {
+          if (!target || target.hp <= 0) continue;
+          if (Math.hypot(target.x - x, target.y - y) > radius + (target.radius || 14)) continue;
+          if (areAlliedEntities(owner, target)) {
+              // The caster never heals himself from his own remedy (his
+              // sustain comes from the hyper Super's self-application).
+              if (target.id !== owner.id) { doHeal(target, healAmt); spawnFloatingText(target.x, target.y - 25, `+${healAmt}`, '#4ade80'); }
+          } else {
+              if (target.isArenaForgeTower || target.isArenaForgeCore) continue;
+              checkHit(target, { ownerBrawler: 'healnstein', ownerId: owner.id, damage: stats.dmg, pierce: true, hitIds: {}, isHealnsteinRemedy: true }, -1);
+          }
+      }
+      const hyper = !!bullet.healnsteinHyper;
+      // Hyper split (once per throw, at the first impact): the remedy forks
+      // into a twin orb that mirrors the continuation at +0.45 rad.
+      if (hyper && bounceIndex === 0 && !bullet._healnsteinSplitDone) {
+          bullet._healnsteinSplitDone = true;
+          spawnHealnsteinRemedyOrb(owner, x, y, (bullet.healnsteinAng || 0) + 0.45, HEALNSTEIN_BOUNCE_HOP, Math.max(0, (bullet.healnsteinBouncesLeft || 0) - 1), bounceIndex + 1, true, true);
+      }
+      // Forward bounce: keep going while bounces remain, in the (possibly
+      // wall-reflected) direction the orb arrived with.
+      if ((bullet.healnsteinBouncesLeft || 0) > 0) {
+          spawnHealnsteinRemedyOrb(owner, x, y, bullet.healnsteinAng || 0, HEALNSTEIN_BOUNCE_HOP, bullet.healnsteinBouncesLeft - 1, bounceIndex + 1, hyper, true);
+      }
+  }
+
+  function healnsteinPickNeedleTarget(entity, aimX, aimY) {
+      // Player skillshot lock: the ally nearest the aim point, within the
+      // aim radius. No ally near the aim = the needle flies and whiffs.
+      let best = null, bestD = Infinity;
+      for (const ally of [player, ...bots]) {
+          if (!ally || ally.hp <= 0 || ally.id === entity.id || !areAlliedEntities(entity, ally)) continue;
+          const d = Math.hypot(ally.x - aimX, ally.y - aimY);
+          if (d <= HEALNSTEIN_NEEDLE_AIM_RADIUS && d < bestD) { best = ally; bestD = d; }
+      }
+      return best;
+  }
+  function healnsteinPickBotNeedleTarget(entity) {
+      // Bots aim the needle at their lowest-HP% ally in range.
+      let best = null, bestPct = Infinity;
+      for (const ally of [player, ...bots]) {
+          if (!ally || ally.hp <= 0 || ally.id === entity.id || !areAlliedEntities(entity, ally)) continue;
+          if (Math.hypot(ally.x - entity.x, ally.y - entity.y) > HEALNSTEIN_NEEDLE_RANGE) continue;
+          const pct = ally.hp / Math.max(1, ally.maxHp || 1);
+          if (pct < bestPct) { best = ally; bestPct = pct; }
+      }
+      return best;
+  }
+
+  function fireHealnsteinNeedle(entity, target, aimX, aimY) {
+      const tx = target ? target.x : (typeof aimX === 'number' ? aimX : entity.x + 100);
+      const ty = target ? target.y : (typeof aimY === 'number' ? aimY : entity.y);
+      const ang = Math.atan2(ty - entity.y, tx - entity.x);
+      const dist = target ? Math.hypot(tx - entity.x, ty - entity.y) : HEALNSTEIN_NEEDLE_RANGE;
+      // G2 Antidote Shield rides on the next needle only (first dart when hyper).
+      const shielded = !!entity.healnsteinAntidoteShieldNext;
+      if (shielded) entity.healnsteinAntidoteShieldNext = false;
+      bullets.push({ ownerBrawler: 'healnstein', isHealnsteinNeedle: true, healnsteinNeedleTargetId: target ? target.id : null, healnsteinAntidoteShield: shielded, x: entity.x + Math.cos(ang) * (entity.radius + 7), y: entity.y + Math.sin(ang) * (entity.radius + 7), vx: Math.cos(ang) * HEALNSTEIN_NEEDLE_SPEED, vy: Math.sin(ang) * HEALNSTEIN_NEEDLE_SPEED, life: 0, maxLife: Math.max(.1, dist / HEALNSTEIN_NEEDLE_SPEED) + 0.15, damage: 0, super: true, pierce: false, pierceWalls: false, ownerId: entity.id, hitIds: {}, hitboxMod: 1.2, hyperVisual: false });
+  }
+
+  function applyHealnsteinNeedleEffect(owner, target, bullet) {
+      if (!owner || !target || target.hp <= 0) return false;
+      const now = performance.now();
+      doHeal(target, HEALNSTEIN_NEEDLE_HEAL);
+      spawnFloatingText(target.x, target.y - 25, `+${HEALNSTEIN_NEEDLE_HEAL}`, '#4ade80');
+      target.healnsteinPoisonUntil = now + getHealnsteinPoisonBuffMs(owner);
+      target.healnsteinPoisonOwnerId = owner.id;
+      if (bullet && bullet.healnsteinAntidoteShield) {
+          grantShield(target, HEALNSTEIN_G2_SHIELD, Math.max(HEALNSTEIN_G2_SHIELD, target.shieldMax || 0));
+          target.healnsteinAntidoteShieldGranted = HEALNSTEIN_G2_SHIELD;
+          target.healnsteinAntidoteShieldExpiresAt = now + HEALNSTEIN_G2_SHIELD_MS;
+          spawnFloatingText(target.x, target.y - 45, `+${HEALNSTEIN_G2_SHIELD} SHIELD`, '#a7f3d0');
+      }
+      explosions.push({ x: target.x, y: target.y, radius: 40, life: 0, maxLife: 0.25, color: 'rgba(74,222,128,.8)', fxKind: 'healnsteinRemedy' });
+      spawnFloatingText(target.x, target.y - 60, 'HEALING POISON!', '#4ade80');
+      // Family Circuit (shared): the next needle also calls a 500-dmg sky
+      // strike on the enemy nearest the healed teammate.
+      if (owner.healnsteinFamilyCircuitArmed) {
+          owner.healnsteinFamilyCircuitArmed = false;
+          let best = null, bestD = Infinity;
+          for (const e of [player, ...bots]) {
+              if (!e || e.hp <= 0 || areAlliedEntities(owner, e)) continue;
+              if (e.isArenaForgeTower || e.isArenaForgeCore) continue;
+              const d = Math.hypot(e.x - target.x, e.y - target.y);
+              if (d < bestD) { best = e; bestD = d; }
+          }
+          if (best) {
+              explosions.push({ x: best.x, y: best.y, radius: 46, life: 0, maxLife: 0.3, color: 'rgba(255,211,79,.55)', fxKind: 'electrostienFamilyStrike' });
+              checkHit(best, { ownerBrawler: 'healnstein', ownerId: owner.id, damage: HEALNSTEIN_FAMILY_STRIKE_DMG, pierce: true, hitIds: {}, isHealnsteinFamilyStrike: true }, -1);
+          }
+      }
+      return true;
+  }
+
+  function healnsteinIsFighterTarget(target) {
+      // Brawlers only: no structures, pets, Forge minions/camps/colossi.
+      // Mirrors the Aegis shred guard. Healnstein poison never damages
+      // structures (Nightshade keeps the sole poison-vs-structures exception).
+      return !!target && !target.isStructure && (!target.isPet || target.isTowerDefenseMinion) && !target.isArenaForgeMinion && !target.isArenaForgeCamp && !target.isArenaForgeColossus;
+  }
+  function applyHealnsteinPoisonHit(target, owner, b) {
+      if (!owner || !target || target.hp <= 0) return false;
+      if (b && b.healnsteinPoisonTick) return false;
+      if (!healnsteinIsFighterTarget(target)) return false;
+      const now = performance.now();
+      if (now >= (owner.healnsteinPoisonUntil || 0)) return false;
+      // The buffed teammate's attacks apply 2 fresh stacks of 300 poison
+      // (each stack deals its 300 over 4s). Re-applying refreshes the stacks.
+      const stacks = [];
+      for (let k = 0; k < HEALNSTEIN_POISON_STACKS; k++) {
+          stacks.push({ ownerId: owner.healnsteinPoisonOwnerId || owner.id, nextTickAt: now + HEALNSTEIN_POISON_TICK_MS, ticksLeft: HEALNSTEIN_POISON_DMG_MS / HEALNSTEIN_POISON_TICK_MS, dealt: 0 });
+      }
+      target.healnsteinPoisonStacks = stacks;
+      return true;
+  }
+
+  function updateHealnsteinSystems(now) {
+      const all = [player, ...bots];
+      // G2 Antidote Shield expiry (Charmer G2 pattern): the granted shield
+      // comes off when its 5s window ends.
+      for (const e of all) {
+          if (!e) continue;
+          if ((e.healnsteinAntidoteShieldGranted || 0) > 0 && now >= (e.healnsteinAntidoteShieldExpiresAt || 0)) {
+              e.shield = Math.max(0, (e.shield || 0) - e.healnsteinAntidoteShieldGranted);
+              e.healnsteinAntidoteShieldGranted = 0;
+          }
+      }
+      // Healing Poison ticks: each stack deals its 300 over 4s (8 ticks).
+      for (const target of all) {
+          if (!target || target.hp <= 0) { if (target) target.healnsteinPoisonStacks = []; continue; }
+          if (!Array.isArray(target.healnsteinPoisonStacks) || target.healnsteinPoisonStacks.length === 0) continue;
+          const stacks = target.healnsteinPoisonStacks;
+          for (let si = stacks.length - 1; si >= 0; si--) {
+              const st = stacks[si];
+              if (now < st.nextTickAt) continue;
+              st.nextTickAt += HEALNSTEIN_POISON_TICK_MS;
+              const ticksPerStack = HEALNSTEIN_POISON_DMG_MS / HEALNSTEIN_POISON_TICK_MS;
+              let tickDmg;
+              if (st.ticksLeft <= 1) tickDmg = Math.max(0, HEALNSTEIN_POISON_PER_STACK - (st.dealt || 0));
+              else tickDmg = Math.round(HEALNSTEIN_POISON_PER_STACK / ticksPerStack);
+              st.dealt = (st.dealt || 0) + tickDmg;
+              st.ticksLeft -= 1;
+              if (tickDmg > 0) checkHit(target, { ownerBrawler: 'healnstein', ownerId: st.ownerId, damage: tickDmg, pierce: true, super: true, hitIds: {}, healnsteinPoisonTick: true }, -1);
+              if (st.ticksLeft <= 0) stacks.splice(si, 1);
+              if (target.hp <= 0) break;
+          }
+      }
+  }
+
+  function castHealnsteinSuper(entity, hyper, targetX, targetY) {
+      if (!entity || entity.hp <= 0) return false;
+      const isBot = entity.id !== player.id;
+      if (hyper) {
+          // Hypercharge: 3 darts at up to 3 different teammates + the effect
+          // on Healnstein himself (so the Super is never dead in solo play
+          // while hypercharged).
+          const allies = [player, ...bots].filter(a => a && a.hp > 0 && a.id !== entity.id && areAlliedEntities(entity, a));
+          allies.sort((a, b) => (a.hp / Math.max(1, a.maxHp || 1)) - (b.hp / Math.max(1, b.maxHp || 1)));
+          const dartTargets = allies.slice(0, HEALNSTEIN_HYPER_DARTS);
+          for (const ally of dartTargets) fireHealnsteinNeedle(entity, ally);
+          applyHealnsteinNeedleEffect(entity, entity, null);
+          spawnFloatingText(entity.x, entity.y - 40, '💚 HEALING POISON x3!', '#4ade80');
+          return true;
+      }
+      const target = isBot ? healnsteinPickBotNeedleTarget(entity) : healnsteinPickNeedleTarget(entity, targetX, targetY);
+      if (!target) {
+          // No teammate near the aim: the needle still flies (skillshot whiff).
+          fireHealnsteinNeedle(entity, null, targetX, targetY);
+          spawnFloatingText(entity.x, entity.y - 40, 'NO TEAMMATE IN AIM!', '#4ade80');
+          return true;
+      }
+      fireHealnsteinNeedle(entity, target);
+      return true;
+  }
+
+  function executeHealnsteinG1(entity) {
+      if (!entity || entity.hp <= 0) return;
+      entity.healnsteinExtraBounceNext = true;
+      spawnFloatingText(entity.x, entity.y - 40, 'EXTRA BOUNCE READY', '#4ade80');
+  }
+  function executeHealnsteinG2(entity) {
+      if (!entity || entity.hp <= 0) return;
+      entity.healnsteinAntidoteShieldNext = true;
+      spawnFloatingText(entity.x, entity.y - 40, 'ANTIDOTE SHIELD READY', '#a7f3d0');
+  }
+
 
 
   // ---- Staticstein: the Stein kid (Mythic Damage Dealer) ----
@@ -54437,6 +54835,7 @@ function checkHit(target, b, i){
     if(!b.super && !b.isSuperDash && !b.isMinigunninMutationFire && (!target.isPet || target.isTowerDefenseMinion) && areAlliedEntities(owner, target) && isFriendlyFirePlusActive()) grantMainAttackCharge(owner, b);
     if (b.isMallow && owner && target) applyMallowSlowHit(target, owner, b);
     if (b.isNightshadeDagger && owner && target) applyNightshadePoisonHit(target, owner, b);
+    if (owner && target) applyHealnsteinPoisonHit(target, owner, b);
     if (b.isAegisShield && owner && target) applyAegisMaxHpShred(target, owner, b);
     if (b.isRunnerShoe && owner && target) {
         if (b.runnerFear && owner.runnerFearArmed) { applyRunnerFear(target, owner); owner.runnerFearArmed = false; }
@@ -58549,6 +58948,7 @@ function checkHit(target, b, i){
         updateDecayerAura(now);
         updateAuraCharmerAura(now);
         updateVoltasteinSystems(now);
+        updateHealnsteinSystems(now);
         updateKingSystems(now, dt);
         updateAntiRoyalSystems(now, dt);
         updateJackTradeSystems(now, dt);
@@ -59667,6 +60067,15 @@ function checkHit(target, b, i){
           const voltOwner = b.ownerId === player.id ? player : bots.find(bt => bt && bt.id === b.ownerId);
           if (voltOwner) voltasteinVoltExplode(voltOwner, b.voltasteinLob ? (b.voltasteinLandX ?? b.x) : b.x, b.voltasteinLob ? (b.voltasteinLandY ?? b.y) : b.y, b, null);
       }
+      // Healnstein remedy: detonate on range expiry (same pattern as the
+      // Voltastein volt above — resolve before generic expiry cleanup).
+      // Remedy orbs snap to their precomputed landing point (the flight
+      // track ends there; dt overshoot would otherwise shift the blast).
+      if (b.isHealnsteinRemedy && b.life >= b.maxLife && !b._healnsteinExploded) {
+          b._healnsteinExploded = true;
+          const remedyOwner = b.ownerId === player.id ? player : bots.find(bt => bt && bt.id === b.ownerId);
+          if (remedyOwner) healnsteinRemedyExplode(remedyOwner, b.healnsteinLob ? (b.healnsteinLandX ?? b.x) : b.x, b.healnsteinLob ? (b.healnsteinLandY ?? b.y) : b.y, b);
+      }
       // Jetpack donor bomb: detonate at its landing point on range expiry.
       if (b.isJetpackBomb && b.jetpackBombLob && b.life >= b.maxLife && !b._jetpackBombExploded) {
           b._jetpackBombExploded = true;
@@ -59701,6 +60110,16 @@ function checkHit(target, b, i){
               explosions.push({ x: b.x + (Math.random() - 0.5) * 10, y: b.y - vLift + (Math.random() - 0.5) * 10, vx: (Math.random() - 0.5) * 30, vy: (Math.random() - 0.5) * 30, radius: 3 + Math.random() * 3, life: 0, maxLife: 0.4, color: Math.random() < 0.5 ? '#c084fc' : '#fde047', isParticle: true });
           }
       }
+      // Healnstein remedy: soft green motes trailing the orb at its visual height.
+      if (b.isHealnsteinRemedy) {
+          const nowMs = performance.now();
+          if (!b.lastTrailAt || nowMs >= b.lastTrailAt + 16) {
+              b.lastTrailAt = nowMs;
+              const rProgress = clamp(b.life / Math.max(.001, b.maxLife || 1), 0, 1);
+              const rLift = Math.sin(rProgress * Math.PI) * 56;
+              explosions.push({ x: b.x + (Math.random() - 0.5) * 10, y: b.y - rLift + (Math.random() - 0.5) * 10, vx: (Math.random() - 0.5) * 30, vy: (Math.random() - 0.5) * 30, radius: 3 + Math.random() * 3, life: 0, maxLife: 0.4, color: Math.random() < 0.5 ? '#4ade80' : '#bbf7d0', isParticle: true });
+          }
+      }
       if (b.isCopyphaseOrb || b.isElectrostienShock) {
           const nowMs = performance.now();
           if (!b.lastTrailAt || nowMs >= b.lastTrailAt + 40) {
@@ -59730,6 +60149,26 @@ function checkHit(target, b, i){
               grantShield(allyTarget, b.decayerAllyShieldAmt || 2500, 2500);
               spawnFloatingText(allyTarget.x, allyTarget.y - 25, `+${b.decayerAllyShieldAmt || 2500}`, '#9dff57');
               bullets.splice(i, 1); i--; continue;
+          }
+      }
+      // Healnstein needle: steers to its locked teammate (aim-chosen for the
+      // player, lowest-HP ally for bots) and applies Healing Poison on
+      // contact. An unlocked needle (no teammate near the aim) flies straight
+      // and fizzles at max range. (Player id is 0, so "no target" is null,
+      // never 0.)
+      if (b.isHealnsteinNeedle) {
+          const hasNeedleTarget = b.healnsteinNeedleTargetId !== null && b.healnsteinNeedleTargetId !== undefined;
+          const needleTarget = hasNeedleTarget ? getEntityById(b.healnsteinNeedleTargetId) : null;
+          if (hasNeedleTarget && (!needleTarget || needleTarget.hp <= 0)) { bullets.splice(i, 1); i--; continue; }
+          if (needleTarget) {
+              const nSpd = Math.hypot(b.vx, b.vy) || HEALNSTEIN_NEEDLE_SPEED;
+              const nTa = Math.atan2(needleTarget.y - b.y, needleTarget.x - b.x);
+              b.vx = Math.cos(nTa) * nSpd;
+              b.vy = Math.sin(nTa) * nSpd;
+              if (Math.hypot(needleTarget.x - b.x, needleTarget.y - b.y) <= (needleTarget.radius || 14) + 10) {
+                  applyHealnsteinNeedleEffect(getEntityById(b.ownerId), needleTarget, b);
+                  bullets.splice(i, 1); i--; continue;
+              }
           }
       }
       // Fuser SP2: bullets grant nearby allies a 120 shield (once per bullet per ally).
@@ -60448,7 +60887,7 @@ function checkHit(target, b, i){
       // hooks above). Same airborne treatment as the Cinderion scatter
       // core — no wall damage, no unit hits, no trampoline/barrier
       // interaction while in flight.
-      if ((b.isVoltasteinVolt && b.voltasteinLob) || (b.isJetpackBomb && b.jetpackBombLob)) continue;
+      if ((b.isVoltasteinVolt && b.voltasteinLob) || (b.isJetpackBomb && b.jetpackBombLob) || (b.isHealnsteinRemedy && b.healnsteinLob)) continue;
 
       // Trampaheal's Super is a real damageable deployable.
       if ((b.damage || 0) > 0 && b.ownerId !== undefined && Array.isArray(trampolines)) {
@@ -60782,7 +61221,7 @@ function checkHit(target, b, i){
       // Voltastein volts and jetpack donor bombs are true lobs too
       // (defense in depth alongside the pre-wall skip above — a lob must
       // never hit a unit mid-flight).
-      if ((b.isVoltasteinVolt && b.voltasteinLob) || (b.isJetpackBomb && b.jetpackBombLob)) continue;
+      if ((b.isVoltasteinVolt && b.voltasteinLob) || (b.isJetpackBomb && b.jetpackBombLob) || (b.isHealnsteinRemedy && b.healnsteinLob)) continue;
       // Draflygon aerial drop is an airborne drop: it detonates upon landing to trigger AOE impact and 8 outward flames
       if (b.isSirCheeseburgerSlice) continue;
       // Dedicated cleaves skip ordinary projectile collision
@@ -63358,6 +63797,8 @@ function checkHit(target, b, i){
                  wantToShoot = distToTarget <= VOLTASTEIN_RANGE;
              } else if (t.brawler === 'staticstein') {
                  wantToShoot = distToTarget <= STATICSTEIN_RANGE;
+             } else if (t.brawler === 'healnstein') {
+                 wantToShoot = distToTarget <= HEALNSTEIN_RANGE;
              } else if (t.brawler === 'skeletrooper') {
                  wantToShoot = distToTarget <= 62;
              }
@@ -74412,6 +74853,46 @@ function checkHit(target, b, i){
           }
           ctx.restore(); continue;
       }
+      if (b.isHealnsteinRemedy) {
+          // Bouncing remedy orb: green orb riding a visible arc (lift +
+          // ground shadow), pale core in a green shell, with a faint pulsing
+          // ring telegraphing the landing point while airborne.
+          ctx.save();
+          const rProgress = Math.max(0, Math.min(1, b.life / Math.max(.001, b.maxLife || 1)));
+          const rLift = Math.sin(rProgress * Math.PI) * 56;
+          const orbR = 11;
+          ctx.fillStyle = 'rgba(0,0,0,.23)';
+          ctx.beginPath(); ctx.ellipse(b.x, b.y, orbR * (1 - rLift / 200), Math.max(3, orbR * .35 * (1 - rLift / 240)), 0, 0, Math.PI * 2); ctx.fill();
+          if (b.healnsteinLob && b.healnsteinLandX !== undefined && b.healnsteinLandY !== undefined) {
+              ctx.globalAlpha = .3 + .15 * Math.sin(performance.now() / 160);
+              ctx.strokeStyle = b.hyperVisual ? '#86efac' : '#4ade80'; ctx.lineWidth = 2;
+              ctx.beginPath(); ctx.arc(b.healnsteinLandX, b.healnsteinLandY, getHealnsteinBounceRadius(getEntityById(b.ownerId), b.healnsteinBounceIndex || 0) * .28, 0, Math.PI * 2); ctx.stroke();
+              ctx.globalAlpha = 1;
+          }
+          ctx.translate(b.x, b.y - rLift);
+          ctx.shadowColor = '#22c55e'; ctx.shadowBlur = 16;
+          const rGrad = ctx.createRadialGradient(0, 0, 1, 0, 0, orbR + 4);
+          rGrad.addColorStop(0, '#f0fdf4'); rGrad.addColorStop(.45, '#bbf7d0'); rGrad.addColorStop(.75, '#4ade80'); rGrad.addColorStop(1, 'rgba(74,222,128,0)');
+          ctx.fillStyle = rGrad; ctx.beginPath(); ctx.arc(0, 0, orbR + 4, 0, Math.PI * 2); ctx.fill();
+          ctx.shadowBlur = 0; ctx.strokeStyle = '#166534'; ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(-5, 0); ctx.lineTo(5, 0);
+          ctx.moveTo(0, -5); ctx.lineTo(0, 5);
+          ctx.stroke();
+          ctx.restore(); continue;
+      }
+      if (b.isHealnsteinNeedle) {
+          // Healing Poison needle: a slim green dart with a bright tip.
+          ctx.save();
+          const nAng = Math.atan2(b.vy, b.vx);
+          ctx.translate(b.x, b.y); ctx.rotate(nAng);
+          ctx.shadowColor = '#4ade80'; ctx.shadowBlur = 10;
+          ctx.fillStyle = '#bbf7d0';
+          ctx.beginPath(); ctx.moveTo(16, 0); ctx.lineTo(2, -3.5); ctx.lineTo(-12, -3.5); ctx.lineTo(-12, 3.5); ctx.lineTo(2, 3.5); ctx.closePath(); ctx.fill();
+          ctx.shadowBlur = 0; ctx.fillStyle = '#166534';
+          ctx.beginPath(); ctx.arc(-14, 0, 3, 0, Math.PI * 2); ctx.fill();
+          ctx.restore(); continue;
+      }
       if (b.isStaticsteinBolt) {
           // Glitchy wide shot: a flickering static shard with a torn
           // trail. The two bolts are visibly separate mid-flight (offset
@@ -79710,6 +80191,31 @@ function checkHit(target, b, i){
             ctx.restore();
             continue;
         }
+        if (ex.fxKind === 'healnsteinRemedy') {
+            // Healnstein remedy blast: soft green ring + plus-sign motes.
+            const fAlpha = Math.max(0, 1 - ex.life / ex.maxLife);
+            const fR = (ex.radius || 100) * (0.55 + 0.45 * fAlpha);
+            ctx.save();
+            ctx.globalAlpha = fAlpha;
+            ctx.fillStyle = 'rgba(74,222,128,.18)';
+            ctx.beginPath(); ctx.arc(ex.x, ex.y, fR, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = '#4ade80'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+            ctx.shadowColor = '#22c55e'; ctx.shadowBlur = 14;
+            ctx.beginPath(); ctx.arc(ex.x, ex.y, fR, 0, Math.PI * 2); ctx.stroke();
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = '#bbf7d0'; ctx.lineWidth = 3;
+            for (let k = 0; k < 4; k++) {
+                const pa = (k / 4) * Math.PI * 2 + (ex.life * 3);
+                const px = ex.x + Math.cos(pa) * fR * 0.55, py = ex.y + Math.sin(pa) * fR * 0.55;
+                const ps = 7 * fAlpha + 3;
+                ctx.beginPath();
+                ctx.moveTo(px - ps, py); ctx.lineTo(px + ps, py);
+                ctx.moveTo(px, py - ps); ctx.lineTo(px, py + ps);
+                ctx.stroke();
+            }
+            ctx.restore();
+            continue;
+        }
         if (ex.fxKind === 'voltasteinZapFlash') {
             // Power Outage cast flash: a bright white-purple ring bursting
             // out to zap range from the caster.
@@ -82039,6 +82545,7 @@ function checkHit(target, b, i){
             if (won && !isTraining && completedMatchFighter === 'electrostien') grantElectrostienSignatureWin();
             if (won && !isTraining && completedMatchFighter === 'voltastein') grantVoltasteinSignatureWin();
             if (won && !isTraining && completedMatchFighter === 'staticstein') grantStaticsteinSignatureWin();
+            if (won && !isTraining && completedMatchFighter === 'healnstein') grantHealnsteinSignatureWin();
             if (won) {
                 playerData.winStreak = (playerData.winStreak || 0) + 1;
                 playerData.bestWinStreak = Math.max(playerData.bestWinStreak || 0, playerData.winStreak);

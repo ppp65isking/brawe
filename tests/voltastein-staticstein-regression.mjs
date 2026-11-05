@@ -27,10 +27,10 @@ check('getScaledStats staticstein branch: 6200 HP / 800 dmg / 290 speed', game.i
 check('power scaling mirrors: Volta P1 3190/495, P12 6061/940; Static P1 3410/440, P12 6479/836',
   Math.round(5800 * scale(1)) === 3190 && Math.round(900 * scale(1)) === 495 && Math.round(5800 * scale(12)) === 6061 && Math.round(900 * scale(12)) === 940
   && Math.round(6200 * scale(1)) === 3410 && Math.round(800 * scale(1)) === 440 && Math.round(6200 * scale(12)) === 6479 && Math.round(800 * scale(12)) === 836);
-check('allBrawlers has both; 104 ids total', (() => { const all = allBrawlers(); return all.includes('voltastein') && all.includes('staticstein') && all.length === 104; })());
-check('selectable is 96 (104 minus the 8 disabled, neither new brawler disabled)', (() => {
+check('allBrawlers has both; 105 ids total (104 + Healnstein)', (() => { const all = allBrawlers(); return all.includes('voltastein') && all.includes('staticstein') && all.length === 105; })());
+check('selectable is 97 (105 minus the 8 disabled, neither new brawler disabled)', (() => {
   const all = allBrawlers();
-  return all.filter(id => !DISABLED.includes(id)).length === 96 && !game.match(/const disabledBrawlers = new Set\(\[([\s\S]*?)\]\)/)[1].includes('voltastein') && !game.match(/const disabledBrawlers = new Set\(\[([\s\S]*?)\]\)/)[1].includes('staticstein');
+  return all.filter(id => !DISABLED.includes(id)).length === 97 && !game.match(/const disabledBrawlers = new Set\(\[([\s\S]*?)\]\)/)[1].includes('voltastein') && !game.match(/const disabledBrawlers = new Set\(\[([\s\S]*?)\]\)/)[1].includes('staticstein');
 })());
 check('rarity maps: voltastein Anomaly (850 souls), staticstein Mythic (270 souls)', game.includes("voltastein: 'Anomaly'") && game.includes('Anomaly: 850') && game.includes("staticstein: 'Mythic'") && game.includes('Mythic: 270'));
 check('primary roles: voltastein Artillery (Thrower is not a code role), staticstein Damage Dealer', game.includes("voltastein:'Artillery'") && game.includes("staticstein:'Damage Dealer'"));
@@ -60,7 +60,7 @@ check('fire() voltastein branch: TRUE lobbed volt — land point capped at range
 check('checkHit hook: volt explodes on hit, primary excluded (no double-dip)', game.includes('if (b.isVoltasteinVolt && !b._voltExploded') && game.includes('voltasteinVoltExplode(owner, b.x, b.y, b, target.id)') && game.includes('if (excludeId && target.id === excludeId) continue;'));
 check('bullet expiry hook: lobbed volt detonates AT its landing point (snap, not current pos)', game.includes('if (b.isVoltasteinVolt && b.life >= b.maxLife && !b._voltExploded)') && game.includes('voltasteinVoltExplode(voltOwner, b.voltasteinLob ? (b.voltasteinLandX ?? b.x) : b.x, b.voltasteinLob ? (b.voltasteinLandY ?? b.y) : b.y, b, null)'));
 check('lobbed volt flies OVER walls and units: pre-wall airborne skip (Cinderion pattern) + hit-detection skip', (() => {
-  const skipLine = 'if ((b.isVoltasteinVolt && b.voltasteinLob) || (b.isJetpackBomb && b.jetpackBombLob)) continue;';
+  const skipLine = 'if ((b.isVoltasteinVolt && b.voltasteinLob) || (b.isJetpackBomb && b.jetpackBombLob) || (b.isHealnsteinRemedy && b.healnsteinLob)) continue;';
   const preWall = game.indexOf(skipLine);
   const wallCode = game.indexOf('// bullets hit cubes');
   const hitSkip = game.indexOf('// Voltastein volts and jetpack donor bombs are true lobs too');
@@ -83,7 +83,7 @@ check('proximity spread: 200px jump, one jump per frame, hyper-linked pair exclu
 check('10s cap: outageUntil = now + 10000 and update clears past it', game.includes('target.powerOutageUntil = now + VOLTASTEIN_CHAIN_MAX_MS;') && game.includes('if (now >= (caster.voltasteinOutageUntil || 0)) { clearVoltasteinOutageForOwner(caster.id, now); continue; }'));
 check('ends-on-kill: a dead victim ends the whole chain (victim-count mismatch + tick kill)', game.includes('if (victims.length !== victimIds.length) {') && game.includes('if (target.hp <= 0) killed = true;') && game.includes('if (killed) { clearVoltasteinOutageForOwner(caster.id, now); continue; }'));
 check('hyper split: two children at +/-0.45 rad, 70% dmg, 100px, 300 range, voltasteinChild', game.includes('for (const off of [-0.45, 0.45])') && game.includes('voltasteinChild: true') && game.includes('childDmg = Math.max(1, Math.round((bullet.voltDamage || dmg) * VOLTASTEIN_HYPER_SPLIT_DMG_MULT))') && game.includes('voltRadius: VOLTASTEIN_HYPER_SPLIT_RADIUS'));
-check('hyper split children lob: land point at +/-0.45 rad x 300px, flight-time maxLife, lob flag', game.includes('const childLandX = clamp(x + Math.cos(a) * VOLTASTEIN_HYPER_SPLIT_RANGE, 0, WORLD_W);') && game.includes('const childLandY = clamp(y + Math.sin(a) * VOLTASTEIN_HYPER_SPLIT_RANGE, 0, WORLD_H);') && game.includes('maxLife: VOLTASTEIN_HYPER_SPLIT_RANGE / VOLTASTEIN_BULLET_SPEED'));
+check('hyper split children lob: +/-0.45 rad x 300px leg traced for walls (one reflection), flight-time maxLife, lob flag', game.includes('const leg = traceLobLeg(x, y, a, VOLTASTEIN_HYPER_SPLIT_RANGE, (lx, ly) => isCircleBlockedByTerrain(owner, lx, ly, 12));') && game.includes('const childFlyDist = Math.hypot(childLandX - x, childLandY - y);') && game.includes('maxLife: Math.max(.05, childFlyDist / VOLTASTEIN_BULLET_SPEED)') && game.includes('voltasteinLandX: childLandX, voltasteinLandY: childLandY'));
 check('hyper chain: break past 450px, one randomly keeps the electric', game.includes('Math.hypot(a.x - b.x, a.y - b.y) > VOLTASTEIN_HYPER_CHAIN_BREAK_DIST') && game.includes('const keep = Math.random() < 0.5 ? a : b;') && game.includes('caster.voltasteinHyperChainAId = 0; caster.voltasteinHyperChainBId = 0;'));
 check('overcharge reload hooks: player x1.25 mult + bot x1.25 mult', game.includes("if(now < (player.voltasteinOverchargeUntil || 0)) currentReloadTime *= (player.voltasteinOverchargeMult || 1.25);") && game.includes("if(isBot && now < (fromEntity.voltasteinOverchargeUntil || 0)) fireDelay *= (fromEntity.voltasteinOverchargeMult || 1.25);"));
 check('SP2 Feedback Loop: /1.30 reload while an Outage is active (player + bot)', game.includes("isAnyVoltasteinOutageActive(player, now) && voltasteinHasSP2(player)) currentReloadTime /= 1.30;") && game.includes("isAnyVoltasteinOutageActive(fromEntity, now) && voltasteinHasSP2(fromEntity)) fireDelay /= 1.30;"));
