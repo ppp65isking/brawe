@@ -251,6 +251,29 @@
       return `<${p[0]==='poly'?'polygon':'polyline'} points="${p[1].map(v=>v.join(',')).join(' ')}" fill="${p[0]==='poly'?p[2]:'none'}" stroke="${p[2]}" stroke-width="${p[3]||0}"/>`;
     }).join('')+'</svg>';
   }
+  // Animated 2.5D states (Outlit-first, 2026-11-05). Every fighter resolves one
+  // state per frame from gameplay fields the engine already stamps:
+  //   idle    — alive, still, no recent combat (breathing bob + lamp glow)
+  //   walk    — moving (vx/vy): step bob, lean into motion, swinging hand
+  //   attack  — visualAttackAt <180ms: recoil + (Outlit) pump muzzle flash
+  //   super   — visualSuperAt <500ms: shock ring + (Outlit) 3 Boom Break streaks
+  //   hurt    — outlitHurtAt <260ms (stamped in checkHit): flinch shake + red flash
+  //   death   — hp<=0: falls sideways, sinks and fades (lamp goes dark)
+  //   win     — outlitWinAt set at match end: victory bounce + halo ring
+  // Dead bodies are not drawn in-match (bots filtered by hp>0, player gated
+  // on hp>0), so the death pose also ships with a visible death-burst FX
+  // spawned by game.js; the pose itself renders anywhere a dead entity is
+  // still drawn (boss draws, gallery/test harness).
+  function animationState(entity, now) {
+    if (!entity) return 'idle';
+    if ((entity.hp ?? 1) <= 0 || entity.isDead) return 'death';
+    if ((entity.outlitWinAt || 0) > 0) return 'win';
+    if (now - (entity.outlitHurtAt ?? -9999) < 260) return 'hurt';
+    if (now - (entity.visualSuperAt ?? -9999) < 500) return 'super';
+    if (now - (entity.visualAttackAt ?? -9999) < 180) return 'attack';
+    if (Math.hypot(entity.vx || 0, entity.vy || 0) > 30) return 'walk';
+    return 'idle';
+  }
   function draw(ctx,entity,y,id,skin,now,boss){
     const entry=model(id,skin);if(!entry||!Number.isFinite(entity.x)||!Number.isFinite(y))return false;
     const radius=Number.isFinite(entity.radius)?Math.max(12,entity.radius):14;
@@ -258,8 +281,30 @@
     const surge=Math.max(0,1-(now-(entity.visualSuperAt??-9999))/500);
     const angle=Number.isFinite(entity.visualAimAngle)?entity.visualAimAngle:0;
     const poseSeed=hash(id+'|'+identityFor(id)[1]),poseKind=poseSeed%5;
+    const state=animationState(entity,now);
+    const speed=Math.hypot(entity.vx||0,entity.vy||0);
+    const isOutlit=id==='outlit';
     ctx.save();ctx.translate(entity.x,y);const scale=radius*2.6/100*(boss?1.3:1);ctx.scale(scale,scale);
     if(surge){ctx.strokeStyle=entry[2];ctx.globalAlpha=surge*.65;ctx.lineWidth=3;ctx.beginPath();ctx.ellipse(0,25,38+(1-surge)*20,14+(1-surge)*8,0,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1;}
+    // Death: fall sideways, sink and fade over 450ms from the stamped death time.
+    if(state==='death'){
+      const deadAt=Number.isFinite(entity.outlitDeathAt)?entity.outlitDeathAt:now;
+      const deathT=Math.min(1,Math.max(0,(now-deadAt)/450));
+      ctx.globalAlpha=1-deathT*.75;
+      ctx.rotate(deathT*1.35*(poseSeed%2?1:-1));
+      ctx.translate(0,deathT*10);
+    } else if(state==='win'){
+      // Victory bounce + halo ring while the results overlay is up.
+      ctx.translate(0,-Math.abs(Math.sin(now/240))*5);
+      ctx.strokeStyle=entry[2];ctx.globalAlpha=.8;ctx.lineWidth=3;
+      ctx.beginPath();ctx.ellipse(0,-8,44+Math.sin(now/240)*4,12,0,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1;
+    } else {
+      // Walk step bob + lean into motion, or idle breathing.
+      if(state==='walk'){const phase=now/85*(.7+speed/500);ctx.translate(Math.max(-3,Math.min(3,(entity.vx||0)/220)),Math.sin(phase)*2.5);ctx.rotate(Math.max(-.08,Math.min(.08,(entity.vx||0)/600)));}
+      else ctx.translate(0,Math.sin(now/650)*1.5);
+      // Hurt flinch: shake backwards along the aim line.
+      if(state==='hurt'){const hurtT=Math.max(0,1-(now-(entity.outlitHurtAt??-9999))/260);ctx.translate((Math.random()-.5)*hurtT*7,-hurtT*2);}
+    }
     // Individual recoil language: lean, hop, twist, brace or lunge. This keeps
     // live fighters from sharing the same animation with a different colour.
     if(poseKind===0)ctx.rotate(-Math.sin(angle)*kick*.12);
@@ -267,12 +312,24 @@
     else if(poseKind===2)ctx.scale(1+kick*.08,1-kick*.05);
     else if(poseKind===3)ctx.rotate(Math.cos(angle)*kick*.1);
     else ctx.translate(-Math.cos(angle)*kick*4,-kick*2);
+    // Outlit's signal lamp glows while idle and flares on attack/super/win.
+    if(isOutlit&&state!=='death'){
+      const glow=state==='idle'?.22+Math.sin(now/500)*.08:state==='win'?.5:Math.max(kick,surge)*.55;
+      if(glow>.05){ctx.globalAlpha=glow;ctx.fillStyle=entry[2];ctx.beginPath();ctx.ellipse(50,30,16,12,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;}
+    }
     ctx.translate(-50,-52-kick*(2+(poseSeed%4)));paint(ctx,parts(id,skin));
     // Art-only recoil and hand pose; hitboxes and projectile origins stay untouched.
-    const reach=27+(poseSeed%8),handY=52+((poseSeed>>>5)%9);
+    const reach=27+(poseSeed%8),handY=52+((poseSeed>>>5)%9)+(state==='walk'?Math.sin(now/85*(.7+speed/500))*3:0);
     ctx.fillStyle=entry[2];ctx.beginPath();ctx.ellipse(50+Math.cos(angle)*(reach-kick*5),handY+Math.sin(angle)*(8+(poseSeed%6)),7+(poseSeed%3),5+(poseSeed%2),angle,0,Math.PI*2);ctx.fill();
-    if(kick){ctx.globalAlpha=kick*.7;ctx.strokeStyle=entry[2];ctx.lineWidth=2+(poseSeed%3);ctx.beginPath();ctx.moveTo(50+Math.cos(angle)*reach,handY+Math.sin(angle)*8);ctx.lineTo(50+Math.cos(angle)*(reach+10+(poseSeed%9)),handY+Math.sin(angle)*(11+(poseSeed%7)));ctx.stroke();}
+    if(kick){ctx.globalAlpha=kick*.7;ctx.strokeStyle=entry[2];ctx.lineWidth=2+(poseSeed%3);ctx.beginPath();ctx.moveTo(50+Math.cos(angle)*reach,handY+Math.sin(angle)*8);ctx.lineTo(50+Math.cos(angle)*(reach+10+(poseSeed%9)),handY+Math.sin(angle)*(11+(poseSeed%7)));ctx.stroke();ctx.globalAlpha=1;
+      // Outlit pump-action muzzle flash: a bright cone along the aim line.
+      if(isOutlit&&kick>.2){ctx.globalAlpha=kick*.85;ctx.fillStyle='#fff3b0';ctx.beginPath();const mx=50+Math.cos(angle)*(reach+12),my=handY+Math.sin(angle)*10;ctx.moveTo(mx,my);ctx.lineTo(mx+Math.cos(angle-.35)*20,my+Math.sin(angle-.35)*20);ctx.lineTo(mx+Math.cos(angle+.35)*20,my+Math.sin(angle+.35)*20);ctx.closePath();ctx.fill();ctx.globalAlpha=1;}
+    }
+    // Outlit Super: the 3 Boom Break shock pellets streak out along the aim.
+    if(isOutlit&&surge>.15){ctx.globalAlpha=surge*.8;ctx.strokeStyle='#ff9b42';ctx.lineWidth=4;ctx.lineCap='round';for(const off of [-.115,0,.115]){ctx.beginPath();ctx.moveTo(50+Math.cos(angle+off)*30,handY+Math.sin(angle+off)*12);ctx.lineTo(50+Math.cos(angle+off)*(30+surge*26),handY+Math.sin(angle+off)*(12+surge*10));ctx.stroke();}ctx.globalAlpha=1;}
+    // Hurt flash: translucent red wash over the model.
+    if(state==='hurt'){const hurtT=Math.max(0,1-(now-(entity.outlitHurtAt??-9999))/260);ctx.globalAlpha=hurtT*.3;ctx.fillStyle='#ff3b30';ctx.beginPath();ctx.ellipse(50,50,30,38,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;}
     ctx.restore();return true;
   }
-  root.BraweRosterVisuals=Object.freeze({looks,skins,identities,portrait,draw,has:id=>!!looks[id],identity:id=>identityFor(id).slice()});
+  root.BraweRosterVisuals=Object.freeze({looks,skins,identities,portrait,draw,animationState,has:id=>!!looks[id],identity:id=>identityFor(id).slice()});
 })(globalThis);
