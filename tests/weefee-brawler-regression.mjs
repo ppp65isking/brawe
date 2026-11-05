@@ -13,7 +13,7 @@ assert.match(game, /weefee:\s*'Controller'/, 'Wee-Fee is categorized as Controll
 // 2. Base Stats and Scaling
 assert.match(
   game,
-  /if\s*\(brawlerId === 'weefee'\)\s*\{[\s\S]{0,80}return\s*\{\s*hp:\s*Math\.round\(6800\s*\*\s*scale\),\s*dmg:\s*Math\.round\(1200\s*\*\s*scale\),\s*speed:\s*270\s*\};/,
+  /if\s*\(brawlerId === 'weefee'\)\s*\{[\s\S]{0,160}return\s*\{\s*hp:\s*Math\.round\(6800\s*\*\s*hpScale\),\s*dmg:\s*Math\.round\(1200\s*\*\s*scale\),\s*speed:\s*270\s*\};/,
   'Wee-Fee has 6800 base HP, 1200 impact damage, and 270 speed'
 );
 

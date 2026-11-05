@@ -7,7 +7,7 @@ const towerCards = fs.readFileSync(new URL('../slopsushi-cards.js', import.meta.
 
 assert.match(exotic, /'jacktrade'/, 'JackTrade is registered in the Exotic roster');
 assert.match(game, /'jacktrade':\s*\{[\s\S]*?name:'JackTrade'[\s\S]*?attack:'Double or Nothing'[\s\S]*?super:'Trade of Fate'/, 'JackTrade has complete roster and UI metadata');
-assert.match(game, /Math\.round\(7200 \* scale\)[\s\S]*?Math\.round\(750 \* scale\)[\s\S]*?speed: 260/, 'JackTrade has the requested Power 11 stats');
+assert.match(game, /Math\.round\(7200 \* hpScale\)[\s\S]*?Math\.round\(750 \* scale\)[\s\S]*?speed: 260/, 'JackTrade has the requested Power 11 stats');
 assert.match(game, /brawler === 'jacktrade'\) base = 1650/, 'JackTrade reloads in 1.65 seconds');
 assert.match(game, /entity\.jackTradeRushUntil\|\|0\) \? 217 : 644/, 'JackTrade unloads both normally and during Rush Order 30 percent faster');
 

@@ -68,7 +68,7 @@ for (const field of ['name:', 'role:', 'rarity:', 'color:', 'desc:', 'attack:', 
 check('aegis entry has no placeholder text', !/coming soon|TBD|undefined/i.test(aegisEntry));
 check('aegis rarity Mythic in brawlerData', aegisEntry.includes("rarity: 'Mythic'"));
 check('brawlerRarities.aegis is Mythic', /aegis: 'Mythic'/.test(game));
-check('getScaledStats aegis 7400/900/270', /brawlerId === 'aegis'\) \{\s*const scale = 0\.55 \+ \(level - 1\) \* 0\.045;\s*return \{ hp: Math\.round\(7400 \* scale\), dmg: Math\.round\(900 \* scale\), speed: 270 \};/.test(game));
+check('getScaledStats aegis 7400/900/270', /brawlerId === 'aegis'\) \{\s*const scale = 0\.55 \+ \(level - 1\) \* 0\.045;\s*const hpScale = getLevelHpScale\(level\);\s*return \{ hp: Math\.round\(7400 \* hpScale\), dmg: Math\.round\(900 \* scale\), speed: 270 \};/.test(game));
 check('NO stray aegis in SPECIAL_ABILITY_DEFS (PR #60 lesson)', !/SPECIAL_ABILITY_DEFS[\s\S]{0,4000}'aegis'/.test(game.slice(0, game.indexOf('function toBraweTerms'))));
 check('fire branch spawns aegis shield bullet', game.includes("isAegisShield: true") && game.includes("aegisHyperReflect: aegisHyper"));
 check('hit handler applies shred', game.includes('if (b.isAegisShield && owner && target) applyAegisMaxHpShred(target, owner, b);'));

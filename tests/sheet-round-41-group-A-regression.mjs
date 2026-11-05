@@ -27,7 +27,7 @@ check('aegis G1 dash no longer skips dummies',
   has("if (target.isStructure || (target.isPet && !target.isTowerDefenseMinion)) continue;"));
 check('aegis G1 damage still 900', has('const AEGIS_GADGET1_DAMAGE = 900;'));
 check('aegis G1 shield still 1500', has('const AEGIS_GADGET1_SHIELD = 1500;'));
-check('aegis main unchanged 900', /brawlerId === 'aegis'\)\s*\{\s*const scale = 0\.55 \+ \(level - 1\) \* 0\.045;\s*return \{ hp: Math\.round\(7400 \* scale\), dmg: Math\.round\(900 \* scale\), speed: 270 \};/.test(game));
+check('aegis main unchanged 900', /brawlerId === 'aegis'\)\s*\{\s*const scale = 0\.55 \+ \(level - 1\) \* 0\.045;\s*const hpScale = getLevelHpScale\(level\);\s*return \{ hp: Math\.round\(7400 \* hpScale\), dmg: Math\.round\(900 \* scale\), speed: 270 \};/.test(game));
 
 // ---------- AMPLIFIER (row 2: minimal main-attack visuals, FLAG treatment) ----------
 check('amplifier toolbox has a dedicated draw branch', has('else if (b.isAmplifierToolboxShot) {'));

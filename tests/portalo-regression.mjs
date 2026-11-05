@@ -7,7 +7,7 @@ const styles = fs.readFileSync(new URL('../styles.css', import.meta.url), 'utf8'
 
 assert.match(exotic, /'portalo'/, 'Portalo is registered in the Exotic roster');
 assert.match(game, /'portalo':\s*\{[\s\S]*?name:'Portalo'[\s\S]*?attack:'Portal Shot'[\s\S]*?super:'Portal Prison'/, 'Portalo has complete UI metadata');
-assert.match(game, /return \{ hp: Math\.round\(6800 \* scale\), dmg: Math\.round\(1500 \* scale\), speed: 260 \}/, 'Portalo uses the requested P11 HP, damage, and normal speed');
+assert.match(game, /return \{ hp: Math\.round\(6800 \* hpScale\), dmg: Math\.round\(1500 \* scale\), speed: 260 \}/, 'Portalo uses the requested P11 HP, damage, and normal speed');
 assert.match(game, /brawler === 'portalo'\) base = 1700/, 'Portalo reloads in 1.7 seconds');
 
 assert.match(game, /PORTALO_TELEPORT_DISTANCE = ARENA_WALL_TILE \* 4\.5/, 'Portal Shot displaces four and a half tiles');

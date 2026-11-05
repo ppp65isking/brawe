@@ -8,7 +8,7 @@ const checks = [
   // 1. Registration & Stats
   ['rager registered in brawlerData', /'rager':\s*\{\s*name:\s*'Rager',\s*role:\s*'Controller'/.test(game)],
   ['rager registered in brawlerRarities as Rare', /rager:\s*'Rare'/.test(game)],
-  ['rager registered in getScaledStats (7600 HP, 2200 DMG)', /if\s*\(brawlerId === 'rager'\)\s*\{\s*const scale = 0\.55 \+ \(level - 1\) \* 0\.045;\s*return \{ hp: Math\.round\(7600 \* scale\),\s*dmg: Math\.round\(2200 \* scale\) \};/.test(game)],
+  ['rager registered in getScaledStats (7600 HP, 2200 DMG)', /if\s*\(brawlerId === 'rager'\)\s*\{\s*const scale = 0\.55 \+ \(level - 1\) \* 0\.045;\s*const hpScale = getLevelHpScale\(level\);\s*return \{ hp: Math\.round\(7600 \* hpScale\),\s*dmg: Math\.round\(2200 \* scale\) \};/.test(game)],
   ['rager registered in reloadMsByBrawler as 1500ms', /reloadMsByBrawler:\s*\{[\s\S]*?rager:\s*1500/.test(game)],
   ['rager registered in fireDelayMsByBrawler as 220ms', /fireDelayMsByBrawler:\s*\{[\s\S]*?rager:\s*220/.test(game)],
   ['rager registered in brawlerRoles', /rager:'Controller'/.test(game)],

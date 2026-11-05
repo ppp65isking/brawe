@@ -9,7 +9,7 @@ assert.match(game, /spikey': \{ name: 'Spikey', role: 'Damage Dealer'[\s\S]*?att
 assert.match(game, /g1: 'Burst Barbs \([\s\S]*?g2: 'Quill Roll \(/, 'Spikey gadgets must be registered');
 assert.match(game, /spikey:\s*'Mythic'/, 'Spikey must be Mythic');
 assert.match(game, /spikey:6/, 'Spikey Super must charge in 6 hits');
-assert.match(game, /return \{ hp: Math\.round\(7000 \* scale\), dmg: Math\.round\(950 \* scale\), recallDmg: Math\.round\(950 \* scale\), superDmg: Math\.round\(1750 \* scale\)/, 'Spikey stats: 950 throw AND 950 return (the 1,425 recall is gone)');
+assert.match(game, /return \{ hp: Math\.round\(7000 \* hpScale\), dmg: Math\.round\(950 \* scale\), recallDmg: Math\.round\(950 \* scale\), superDmg: Math\.round\(1750 \* scale\)/, 'Spikey stats: 950 throw AND 950 return (the 1,425 recall is gone)');
 assert.doesNotMatch(game, /recallDmg: Math\.round\(1425/, 'Launch 1,425 recall damage must be gone');
 assert.doesNotMatch(game, /for 1,425 damage/, 'Kit text must not advertise the old recall damage');
 assert.match(game, /SPIKEY_TRAVELING_SUPER_ENABLED = false/, 'Traveling Mega Ball Super must be vaulted');

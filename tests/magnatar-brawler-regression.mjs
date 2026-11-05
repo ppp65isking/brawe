@@ -10,7 +10,7 @@ const checks = [
   ['magnatar role registered as Controller', /magnatar:\s*'Controller'/.test(game)],
   ['magnatar rarity registered as Epic', /magnatar:\s*'Epic'/.test(game)],
   ['magnatar registered in allBrawlers array', /'magnatar'/.test(game) && game.includes("'sir_cheeseburger', 'weefee', 'blinkeye', 'bolznstien', 'magnatar'")],
-  ['magnatar registered in getScaledStats', /brawlerId === 'magnatar'[\s\S]*?hp:\s*Math\.round\(6600 \* scale\)[\s\S]*?dmg:\s*Math\.round\(864 \* scale\)/.test(game)],
+  ['magnatar registered in getScaledStats', /brawlerId === 'magnatar'[\s\S]*?hp:\s*Math\.round\(6600 \* hpScale\)[\s\S]*?dmg:\s*Math\.round\(864 \* scale\)/.test(game)],
   ['magnatar registered in reloadMsByBrawler', /magnatar:\s*1450/.test(game)],
   ['magnatar registered in fireDelayMsByBrawler', /magnatar:\s*200/.test(game)],
   ['magnatar portrait icon is 🧲', /magnatar:\s*'🧲'/.test(game)],

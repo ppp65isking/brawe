@@ -17,7 +17,7 @@ test('Dr0ne is registered in allBrawlers, brawlerRarities, and Mythic roster', (
 });
 
 test('Dr0ne has scaling stats defined (hp: 6400, dmg: 1400, speed: 275)', () => {
-  assert.match(gameCode, /if\s*\(brawlerId === 'dr0ne'\)\s*\{\s*const scale = 0\.55 \+ \(level - 1\) \* 0\.045;\s*return \{ hp: Math\.round\(6400 \* scale\), dmg: Math\.round\(1400 \* scale\), speed: 275 \};\s*\}/);
+  assert.match(gameCode, /if\s*\(brawlerId === 'dr0ne'\)\s*\{\s*const scale = 0\.55 \+ \(level - 1\) \* 0\.045;\s*const hpScale = getLevelHpScale\(level\);\s*return \{ hp: Math\.round\(6400 \* hpScale\), dmg: Math\.round\(1400 \* scale\), speed: 275 \};\s*\}/);
 });
 
 test('Dr0ne brawlerData has complete attack, super, hyper, gadgets, and star powers defined', () => {

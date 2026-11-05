@@ -34,7 +34,7 @@ check('roster includes nightshade after mallow', game.includes("'feathers', 'spi
 check('rarity Mythic (count bumped 12 -> 13)', game.includes('// Mythic (13)') && game.includes("nightshade: 'Mythic',"));
 check('role Assassin', game.includes("nightshade:'Assassin',"));
 check('portrait icon present', game.includes("nightshade: '🗡️',"));
-check('stats branch 6400/560/300 (main dmg 640>560 Round 41)', game.includes("if (brawlerId === 'nightshade') {") && game.includes('hp: Math.round(6400 * scale), dmg: Math.round(560 * scale), speed: 300'));
+check('stats branch 6400/560/300 (main dmg 640>560 Round 41)', game.includes("if (brawlerId === 'nightshade') {") && game.includes('hp: Math.round(6400 * hpScale), dmg: Math.round(560 * scale), speed: 300'));
 check('super charge 6 hits', game.includes('nightshade: 6'));
 check('reload 1600ms', game.includes('nightshade: 1600,'));
 check('fire delay 300ms', game.includes('nightshade: 300,'));

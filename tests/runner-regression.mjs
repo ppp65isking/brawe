@@ -15,10 +15,11 @@ check('runner kit copy is real (no coming-soon placeholders)', (() => {
   const entry = game.slice(game.indexOf("'runner': {"), game.indexOf("'runner': {") + 1500);
   return entry.includes('Wall-Breaker Kick') && entry.includes('Team Soles') && entry.includes('Home Stretch') && entry.includes('Dreaded Sprint') && !entry.includes('coming soon');
 })());
-check('getScaledStats runner branch: 6600 HP / 950 dmg / 290 speed', game.includes("if (brawlerId === 'runner') {") && game.includes("hp: Math.round(6600 * scale), dmg: Math.round(950 * scale), speed: 290"));
-check('power scaling mirrors: P1 3630/523, P11 6600/950, P12 6897/993', (() => {
+check('getScaledStats runner branch: 6600 HP / 950 dmg / 290 speed', game.includes("if (brawlerId === 'runner') {") && game.includes("hp: Math.round(6600 * hpScale), dmg: Math.round(950 * scale), speed: 290"));
+check('power scaling mirrors (HP curve): P1 2640/523, P11 6600/950, P12 6996/993', (() => {
   const scale = (lv) => 0.55 + (lv - 1) * 0.045;
-  return Math.round(6600 * scale(1)) === 3630 && Math.round(950 * scale(1)) === 523 && Math.round(6600 * scale(11)) === 6600 && Math.round(950 * scale(11)) === 950 && Math.round(6600 * scale(12)) === 6897 && Math.round(950 * scale(12)) === 993;
+  const hpScale = (lv) => 0.40 + (lv - 1) * 0.06;
+  return Math.round(6600 * hpScale(1)) === 2640 && Math.round(950 * scale(1)) === 523 && Math.round(6600 * hpScale(11)) === 6600 && Math.round(950 * scale(11)) === 950 && Math.round(6600 * hpScale(12)) === 6996 && Math.round(950 * scale(12)) === 993;
 })());
 check('allBrawlers has runner; 105 ids total (102 + Voltastein + Staticstein + Healnstein)', (() => {
   const all = [...game.match(/const allBrawlers\s*=\s*\[([\s\S]*?)\];/)[1].matchAll(/'([^']+)'/g)].map(m => m[1]);
