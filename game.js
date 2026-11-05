@@ -72687,6 +72687,7 @@ function checkHit(target, b, i){
             ctx.beginPath(); ctx.arc(entity.x, entity.y, DECAYER_AURA_RADIUS * pulse, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
             ctx.globalAlpha = 0.6; ctx.lineWidth = 2; ctx.setLineDash([10, 8]);
             ctx.beginPath(); ctx.arc(entity.x, entity.y, DECAYER_AURA_RADIUS * (2 - pulse), 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); ctx.restore();
+        }
         if (entity && entity.hp > 0 && isAuraCharmerEntity(entity)) {
             const now = performance.now();
             const hyper = isEntityHyperchargedNow(entity, now);
@@ -72714,7 +72715,6 @@ function checkHit(target, b, i){
             ctx.save(); ctx.globalAlpha = 0.9 * (1 - progress * 0.5); ctx.strokeStyle = '#e9d5ff'; ctx.lineWidth = 3; ctx.shadowColor = '#c084fc'; ctx.shadowBlur = 14;
             ctx.beginPath(); ctx.moveTo(entity.x, entity.y); ctx.lineTo(entity.x + Math.cos(ang) * sweepR, entity.y + Math.sin(ang) * sweepR); ctx.stroke();
             ctx.beginPath(); ctx.arc(entity.x, entity.y, sweepR * progress, 0, Math.PI * 2); ctx.globalAlpha = 0.25; ctx.stroke(); ctx.restore();
-        }
         }
         if (entity && entity.hp > 0 && performance.now() < (entity.chickpigChickenUntil||0)) {
             const flap=Math.sin(performance.now()/75)*5;ctx.save();ctx.translate(entity.x,entity.y+entity.radius*.55);ctx.shadowColor=entity.chickpigChickenSpeedMult>=1.5?'#d66cff':'#ffd16b';ctx.shadowBlur=16;ctx.fillStyle='#fff4cf';ctx.beginPath();ctx.ellipse(0,0,entity.radius+8,11,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#ffbd32';ctx.beginPath();ctx.moveTo(entity.radius+5,-2);ctx.lineTo(entity.radius+15,2);ctx.lineTo(entity.radius+5,6);ctx.closePath();ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-5,0);ctx.lineTo(-18,-8-flap);ctx.moveTo(5,0);ctx.lineTo(18,-8+flap);ctx.stroke();ctx.restore();
