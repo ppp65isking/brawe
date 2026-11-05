@@ -33659,6 +33659,7 @@ let heistFeverActive = false;
         const lateral=options.lateral||0,forward=options.forward||0,perp=angle+Math.PI/2;
         const skinId = (owner?.id === (typeof player !== 'undefined' ? player?.id : '') ? getActiveSkinForBrawler('rocketeer')?.id : null) || owner?.skinId || (owner?.isRankedSkin ? 'ranked-rocketeer' : null);
         bullets.push({ownerBrawler:'rocketeer',isRocketeerMain:true,skinId,rocketeerBaseDamage:damage,
+            ...(options.donorShot ? {isStaticsteinDonorShot:true, staticsteinDonor:'rocketeer'} : {}),
             rocketeerMiniCount:owner.rocketeerClusterArmed?5:3,
             x:owner.x+Math.cos(angle)*(owner.radius+10+forward)+Math.cos(perp)*lateral,
             y:owner.y+Math.sin(angle)*(owner.radius+10+forward)+Math.sin(perp)*lateral,
@@ -35328,15 +35329,7 @@ let heistFeverActive = false;
         bullets.push({ownerBrawler:'witch',isWitchPotion:true,x:fromEntity.x+Math.cos(ang)*(fromEntity.radius+8),y:fromEntity.y+Math.sin(ang)*(fromEntity.radius+8),vx:Math.cos(ang)*590,vy:Math.sin(ang)*590,life:0,maxLife:.82,damage:isBot?820:1180,pierce:false,ownerId:fromEntity.id,hitIds:{},hitboxMod:(hyper||cursed)?2.1:1.75,hyperVisual:hyper,witchAllTerrain:cursed,witchPuddleMs:getEntityStarChoice(fromEntity)==='slow'?3500:2500});
         return;
     } else if (brawler === 'rocketeer') {
-        const hyperMain=(isPowerPlayModifierActive(fromEntity) && fromEntity.brawler === 'rocketeer') ? true : (isBot ? !!fromEntity.isHypercharged : !!isHypercharged);
-        launchRocketeerMain(fromEntity,ang,hyperMain,1);
-        if(hyperMain){
-            launchRocketeerMain(fromEntity,ang,true,1/3,{lateral:-24,forward:12,hitboxMod:1.015,escort:true,noSplit:true});
-            launchRocketeerMain(fromEntity,ang,true,1/3,{lateral:24,forward:-12,hitboxMod:1.015,escort:true,noSplit:true});
-        }
-        const sushiExtra=isSlopSushiMode?getEntitySlopEffectTotal(fromEntity,'rocketeerExtraMainRockets'):0;
-        if(sushiExtra>0){launchRocketeerMain(fromEntity,ang-.3,hyperMain,.62);launchRocketeerMain(fromEntity,ang+.3,hyperMain,.62);}
-        if(fromEntity.rocketeerClusterArmed){fromEntity.rocketeerClusterArmed=false;if(!isBot){gadgetArmed=false;gadgetCooldownUntil=now+GADGET_COOLDOWN_MS;updateGadgetButton();}}
+        fireRocketeerMain(fromEntity, ang, targetX, targetY, { isBot, now, damageMult: 1, hitboxMult: 1, donorMode: false });
         return;
     } else if (brawler === 'predator') {
         performPredatorLeap(fromEntity,targetX,targetY,isBot,isBot?!!fromEntity.isHypercharged:!!isHypercharged);
@@ -35525,21 +35518,7 @@ let heistFeverActive = false;
         fromEntity.chickpigSunnyArmed=false;
         bullets.push({ownerBrawler:'chickpig',isChickpigBacon:true,x:fromEntity.x-sideX,y:fromEntity.y-sideY,vx:Math.cos(ang)*speed,vy:Math.sin(ang)*speed,life:0,maxLife:rangeLife,damage:isBot?696:1000,pierce:false,ownerId:fromEntity.id,hitIds:{},hitboxMod:1.65,hyperVisual:hyper,chickpigBurn:hyper});
     } else if (brawler === 'upiedown') {
-        const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
-        const throwDistance = Math.min(610, Math.hypot(targetX-fromEntity.x,targetY-fromEntity.y));
-        const speed = 600;
-        const spawnOffset = fromEntity.radius + 8;
-        const flightDistance = Math.max(0, throwDistance - spawnOffset);
-        const landX = fromEntity.x + Math.cos(ang) * throwDistance;
-        const landY = fromEntity.y + Math.sin(ang) * throwDistance;
-        bullets.push({
-            ownerBrawler:'upiedown',isUpiedownCorePie:true,upiedownHyper:hyper,upiedownBot:isBot,
-            upiedownLandX:landX,upiedownLandY:landY,
-            x:fromEntity.x+Math.cos(ang)*spawnOffset,y:fromEntity.y+Math.sin(ang)*spawnOffset,
-            vx:Math.cos(ang)*speed,vy:Math.sin(ang)*speed,life:0,maxLife:Math.max(.05,flightDistance/speed),
-            damage:isBot?1230:1700,pierce:true,pierceWalls:true,ownerId:fromEntity.id,hitIds:{},hitboxMod:2.65,hyperVisual:hyper,upiedownFresh:!!fromEntity.upiedownFreshArmed
-        });
-        fromEntity.upiedownFreshArmed=false;
+        fireUpiedownMain(fromEntity, ang, targetX, targetY, { isBot, now, damageMult: 1, hitboxMult: 1, donorMode: false });
     } else if (brawler === 'warrior') {
         const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
         const standActive = now < (fromEntity.warriorStandUntil || 0);
@@ -35623,54 +35602,7 @@ let heistFeverActive = false;
 
         spawnFloatingText(fromEntity.x, fromEntity.y - 36, isG2 ? 'OVERCLOCK PAINT!' : 'RAINBOW PAINT!', hyper ? '#c084fc' : '#ff007f');
             } else if (brawler === 'mageny') {
-        const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
-        const now = performance.now();
-        const hasSp1 = isBot ? (fromEntity.selectedStar === 'slow' || fromEntity.selectedStar === 'fast' || fromEntity.selectedStar === 'sp1') : (selectedStar === 'slow' || selectedStar === 'fast' || selectedStar === 'sp1');
-        const hasSp2 = isBot ? (fromEntity.selectedStar === 'long' || fromEntity.selectedStar === 'sp2') : (selectedStar === 'long' || selectedStar === 'sp2');
-        ensureMagenyState(fromEntity);
-
-        const g1Armed = !isBot ? (gadgetArmed && selectedGadget === 'g1') : !!fromEntity.magenyG1Armed;
-        if (!isBot && g1Armed) {
-            gadgetArmed = false;
-            gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
-            updateGadgetButton();
-        }
-        fromEntity.magenyG1Armed = false;
-
-        // Main Attack: Charged Horseshoe Magnet
-        const targetDistance = Math.hypot(targetX - fromEntity.x, targetY - fromEntity.y);
-        const botChargeRatio = clamp((targetDistance - 260) / 520, 0, 1);
-        const chargeRatio = g1Armed ? 1.0 : (isBot ? botChargeRatio : clamp(fromEntity.magenyChargeRatio || 0, 0, 1.0));
-        const baseRange = Math.round(260 + chargeRatio * 520);
-        const damage = Math.round(1250 + chargeRatio * 1200);
-        const speed = Math.round((460 + chargeRatio * 240) * 0.60);
-        const auraRadius = Math.round((75 + chargeRatio * 35) * 1.50 * (g1Armed ? 1.15 : 1.0));
-        const slowPct = hasSp1 ? 0.50 : 0.30;
-
-        bullets.push({
-            ownerBrawler: 'mageny',
-            isMagenyMagnet: true,
-            x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 8),
-            y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 8),
-            vx: Math.cos(ang) * speed,
-            vy: Math.sin(ang) * speed,
-            range: baseRange,
-            traveled: 0,
-            life: 0,
-            maxLife: baseRange / speed,
-            damage: damage,
-            pierce: true,
-            hitIds: {},
-            ownerId: fromEntity.id,
-            team: fromEntity.team,
-            hyperVisual: hyper,
-            auraRadius: auraRadius,
-            slowPct: slowPct,
-            chargeRatio: chargeRatio,
-            spinAng: 0
-        });
-
-        spawnFloatingText(fromEntity.x, fromEntity.y - 34, g1Armed ? '🧲 MAX FLUX SURGE!' : (chargeRatio > 0.75 ? '🧲 HEAVY FLUX!' : '🧲 MAGNETIC FLUX!'), hyper ? '#00d2d3' : '#2980b9');
+        fireMagenyMain(fromEntity, ang, targetX, targetY, { isBot, now, damageMult: 1, hitboxMult: 1, donorMode: false });
     } else if (brawler === 'trampaheal') {
         const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
         const now = performance.now();
@@ -36181,66 +36113,7 @@ let heistFeverActive = false;
             }, delayMs);
         }
     } else if (brawler === 'outlit') {
-        // Hyper main mutations are Attachies. Bots do not own Attachies, so
-        // their ordinary Hypercharge may not silently gain double/piercing shots.
-        const isHyper = isHypercharged;
-        const mutationOvercharged = consumeOutlitMutationCharge(fromEntity);
-        const outlitExtraPellets = isSlopSushiMode ? Math.round(getEntitySlopEffectTotal(fromEntity,'outlitExtraPellets')) : 0;
-        const pellets = (isBot ? 6 : 8) + outlitExtraPellets;
-        const shotCount = isHyper ? 2 : 1; // Hypercharge 2.0: Double shot
-        
-        // Hypercharge gives 40% less spread and +15% speed (we'll implement speed via player movement)
-        const hcSpread = (!isBot && isHypercharged) ? 0.6 : 1.0; 
-      const sushiSpreadMult = isSlopSushiMode ? Math.max(1,getEntitySlopEffectTotal(fromEntity,'outlitSpreadMult')) : 1;
-      const sushiSpeed = isSlopSushiMode ? getEntitySlopEffectTotal(fromEntity,'outlitProjectileSpeedPct') : 0;
-      const spread = baseSpread * (isBot ? 0.8 : 0.6) * hcSpread * sushiSpreadMult;
-        const outlitDamage = isBot ? 146 : 188;
-        const outlitVelocity = (!isBot && isHypercharged) ? 1.8 : 1.0;
-        const hcRangeMult = ((!isBot && isHypercharged) ? 1.1 : 1.0) * (mutationOvercharged ? 2.0 : 1.0);
-        const outlitProjectileSpeed = 560 * 0.6 * outlitVelocity * (1+sushiSpeed);
-        const outlitBaseRange = 256.5;
-        
-        if (!isBot || mutationOvercharged) explosions.push({x: fromEntity.x + Math.cos(ang)*20, y: fromEntity.y + Math.sin(ang)*20, radius: mutationOvercharged ? 42 : 25, life: 0, maxLife: mutationOvercharged ? .22 : 0.15, color: mutationOvercharged ? 'rgba(255,55,75,.84)' : (isHypercharged ? 'rgba(238, 0, 255, 0.8)' : 'rgba(255, 200, 50, 0.6)'), fxKind: mutationOvercharged ? 'outlitMutation' : undefined});
-
-        const outlitPierce = !isBot ? (gadgetArmed && selectedGadget === 'g1') : (fromEntity.gadgetArmed && fromEntity.selectedGadget === 'g1'); // Added Chaird specific properties
-        const outlitReturn = outlitPierce && hasEntityAttachie(fromEntity, 'gadget', 'g1');
-        const outlitStarRange = ((!isBot && selectedStar === 'long') || (isBot && fromEntity.selectedStar === 'long')) && (isBot ? hasEntityAttachie(fromEntity, 'star', 'long') : hasSelectedAttachie('star', 'long', 'outlit'));
-        
-        // Fire twice when hypercharged
-        for (let shot = 0; shot < shotCount; shot++) {
-          const shotOffsetAng = isHyper ? (shot === 0 ? -0.08 : 0.08) : 0;
-          
-          for(let i=0;i<pellets;i++){
-            const r = (pellets===1) ? 0 : (i - (pellets-1)/2) / ((pellets-1)/2 || 1);
-            const a = ang + r * spread + shotOffsetAng;
-            bullets.push({ 
-              ownerBrawler: brawler,
-              x: fromEntity.x + Math.cos(a)*(fromEntity.radius+4), 
-              y: fromEntity.y + Math.sin(a)*(fromEntity.radius+4), 
-              vx: Math.cos(a)*outlitProjectileSpeed,
-              vy: Math.sin(a)*outlitProjectileSpeed,
-              life: 0, 
-              // Outlit is deliberately short-range. Faster projectile variants
-              // get proportionally less lifetime so speed cannot inflate reach.
-              maxLife: (outlitBaseRange / Math.max(1,outlitProjectileSpeed)) * hcRangeMult * (outlitStarRange ? 1.15 : 1),
-              damage: outlitDamage,
-              pierce: outlitPierce || isHyper, // Hypercharge 2.0: Pierce players when hypercharged
-              hitIds: {},
-              ownerBrawler: 'outlit',
-              hyperVisual: isHyper,
-              mutationVisual: mutationOvercharged,
-              outlitMutationPull: mutationOvercharged,
-              outlitMutationAttackId: fromEntity.currentMainAttackActivationId,
-              ownerId: fromEntity.id,
-              hitboxMod: 1,
-              outlitHyperGlow: isHyper, // New property for enhanced effects
-              outlitReturnOnExpire: outlitReturn
-            });
-          }
-        }
-        if (!mutationOvercharged) recordOutlitMutationShot(fromEntity, now);
-        
-                if(outlitPierce){ if(isBot) fromEntity.gadgetArmed = false; else { gadgetArmed = false; gadgetCooldownUntil = now + GADGET_COOLDOWN_MS; updateGadgetButton(); } }
+        fireOutlitMain(fromEntity, ang, targetX, targetY, { isBot, now, damageMult: 1, hitboxMult: 1, donorMode: false });
     } else if (brawler === 'decayer') {
         const decayerHyper = !isBot ? isHypercharged : fromEntity.isHypercharged;
         const decayerRawStar = !isBot ? selectedStar : (fromEntity.selectedStar || 'slow');
@@ -36723,30 +36596,7 @@ let heistFeverActive = false;
             }
         }
     } else if (brawler === 'evil_doctor') {
-        const isHyper = !isBot ? !!isHypercharged : !!fromEntity.isHypercharged;
-        const overdose = !isBot ? (gadgetArmed && selectedGadget === 'g2') : (fromEntity.gadgetArmed && fromEntity.selectedGadget === 'g2');
-        const poisonTicks = overdose ? 4 : 3;
-        bullets.push({
-            ownerBrawler: 'evil_doctor',
-            isEvilDoctorSyringe: true,
-            evilDoctorPoisonTicks: poisonTicks,
-            evilDoctorHyper: isHyper,
-            x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 6),
-            y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 6),
-            vx: Math.cos(ang) * 820 * 0.6,
-            vy: Math.sin(ang) * 820 * 0.6,
-            life: 0,
-            maxLife: 1.3,
-            damage: isBot ? 784 : 1300,
-            pierce: false,
-            hyperVisual: isHyper,
-            ownerId: fromEntity.id,
-            hitIds: {}
-        });
-        if (overdose) {
-            if (isBot) fromEntity.gadgetArmed = false;
-            else { gadgetArmed = false; gadgetCooldownUntil = now + GADGET_COOLDOWN_MS; updateGadgetButton(); }
-        }
+        fireEvilDoctorMain(fromEntity, ang, targetX, targetY, { isBot, now, damageMult: 1, hitboxMult: 1, donorMode: false });
     } else if (brawler === 'splitter') {
         const isHyper = !isBot ? !!isHypercharged : !!fromEntity.isHypercharged;
         const shortFuse = !isBot ? (gadgetArmed && selectedGadget === 'g1') : (fromEntity.gadgetArmed && fromEntity.selectedGadget === 'g1');
@@ -36877,126 +36727,9 @@ let heistFeverActive = false;
             });
         }
     } else if (brawler === 'bowlin_rida') {
-        const hornSpeed = 720;
-        const hornDamage = isBot ? 480 : 620;
-        const sideX = -Math.sin(ang);
-        const sideY = Math.cos(ang);
-        for (const side of [-1, 1]) {
-            bullets.push({
-                ownerBrawler: 'bowlin_rida', isRidaHorn: true, ridaHornSide: side,
-                x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 8) + sideX * side * 12,
-                y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 8) + sideY * side * 12,
-                vx: Math.cos(ang) * hornSpeed, vy: Math.sin(ang) * hornSpeed,
-                life: 0, maxLife: 0.62, damage: hornDamage, pierce: false,
-                hyperVisual: !isBot ? !!isHypercharged : !!fromEntity.isHypercharged,
-                ownerId: fromEntity.id, hitboxMod: 1.18
-            });
-        }
-        explosions.push({ x: fromEntity.x + Math.cos(ang) * 24, y: fromEntity.y + Math.sin(ang) * 24, radius: 28, life: 0, maxLife: 0.14, color: 'rgba(255, 190, 92, 0.55)', fxKind: 'ridaHornMuzzle' });
+        fireBowlinRidaMain(fromEntity, ang, targetX, targetY, { isBot, now, damageMult: 1, hitboxMult: 1, donorMode: false });
     } else if (brawler === 'scuba_diver') {
-        ensureScubaDiverState(fromEntity);
-        const isHyper = !isBot ? !!isHypercharged : !!fromEntity.isHypercharged;
-        const mode = getScubaDiverMode(fromEntity);
-        const depthCharge = !isBot ? (gadgetArmed && selectedGadget === 'g1') : (fromEntity.gadgetArmed && fromEntity.selectedGadget === 'g1');
-        const starLong = !isBot ? (selectedStar === 'long') : (fromEntity.selectedStar === 'long');
-        const rangeMult = isHyper ? 1.3 : 1.0;
-
-        if (mode === 'submarine') {
-            const volleyId = registerScubaDiverSubVolley(fromEntity.id, 4);
-            const bubbleCount = 4;
-            const coneHalfAngle = 0.2;
-            const volleyDelayMs = 29.25; // +30% longer delay between volley bubbles (rework nerf)
-            const subBubbleSpeed = 880 * 0.6 * 0.875; // +25% projectile speed vs the old 0.7 factor
-            const subBubbleHitbox = 1.2 * 1.2; // +20% bubble size
-            const closeDamage = isBot ? 477 : 800;
-            const farDamage = isBot ? 291 : 490;
-            const slowMs = depthCharge ? 1200 : 0;
-            lockMainAttackSequence(fromEntity,(bubbleCount-1)*volleyDelayMs,now);
-            for (let lane = 0; lane < bubbleCount; lane++) {
-                const laneT = bubbleCount <= 1 ? 0 : (lane / (bubbleCount - 1)) - 0.5;
-                const shotAng = ang + laneT * coneHalfAngle * 2;
-                setTimeout(() => {
-                    if (fromEntity.hp <= 0) {
-                        const state = scubaDiverSubVolleyState.get(volleyId);
-                        if (state) {
-                            state.remaining = Math.max(0, (state.remaining || 0) - 1);
-                            if (state.remaining <= 0) {
-                                scubaDiverSubVolleyState.delete(volleyId);
-                                if (!state.landedHit) triggerScubaDiverMissEffect(state.ownerId);
-                            }
-                        }
-                        return;
-                    }
-                    const sx = fromEntity.x + Math.cos(shotAng) * (fromEntity.radius + 6);
-                    const sy = fromEntity.y + Math.sin(shotAng) * (fromEntity.radius + 6);
-                    bullets.push({
-                        ownerBrawler: 'scuba_diver',
-                        isScubaSubBubble: true,
-                        scubaSubVolleyId: volleyId,
-                        scubaSubResolved: false,
-                        x: sx,
-                        y: sy,
-                        vx: Math.cos(shotAng) * subBubbleSpeed,
-                        vy: Math.sin(shotAng) * subBubbleSpeed,
-                        life: 0,
-                        maxLife: 0.78 * rangeMult,
-                        damage: closeDamage,
-                        scubaCloseDamage: closeDamage,
-                        scubaFarDamage: farDamage,
-                        scubaMinClosePct: isHyper ? 0.90 : 0.52,
-                        scubaSlowMs: slowMs,
-                        scubaOriginX: sx,
-                        scubaOriginY: sy,
-                        pierce: false,
-                        ownerId: fromEntity.id,
-                        hyperVisual: isHyper,
-                        hitIds: {},
-                        hitboxMod: subBubbleHitbox
-                    });
-                }, lane * volleyDelayMs);
-            }
-        } else {
-            const lanes = starLong ? 6 : 5;
-            const halfWidth = (starLong ? 58 : 46) * 1.08;
-            const baseDamage = isBot ? 270 : 485;
-            const slowMs = starLong ? 420 : 0;
-            const perp = ang + Math.PI / 2;
-            for (let iLane = 0; iLane < lanes; iLane++) {
-                const lane = lanes <= 1 ? 0 : (iLane / (lanes - 1)) - 0.5;
-                const laneOffset = lane * halfWidth * 2;
-                const shotAng = ang + lane * 0.03;
-                const sx = fromEntity.x + Math.cos(perp) * laneOffset;
-                const sy = fromEntity.y + Math.sin(perp) * laneOffset;
-                bullets.push({
-                    ownerBrawler: 'scuba_diver',
-                    isScubaRectBubble: true,
-                    x: sx + Math.cos(shotAng) * (fromEntity.radius + 8),
-                    y: sy + Math.sin(shotAng) * (fromEntity.radius + 8),
-                    vx: Math.cos(shotAng) * 830 * 0.6,
-                    vy: Math.sin(shotAng) * 830 * 0.6,
-                    life: 0,
-                    maxLife: 0.68 * rangeMult,
-                    damage: baseDamage,
-                    scubaSlowMs: slowMs,
-                    pierce: false,
-                    ownerId: fromEntity.id,
-                    hyperVisual: isHyper,
-                    hitIds: {},
-                    hitboxMod: 1.15
-                });
-            }
-        }
-
-        if (depthCharge) {
-            if (isBot) {
-                fromEntity.gadgetArmed = false;
-                fromEntity.gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
-            } else {
-                gadgetArmed = false;
-                gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
-                updateGadgetButton();
-            }
-        }
+        fireScubaDiverMain(fromEntity, ang, targetX, targetY, { isBot, now, damageMult: 1, hitboxMult: 1, donorMode: false });
     } else if (brawler === 'unstable') {
         const hyperMain = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
         const slots=Math.max(0,3-getUnstableMainContainerCount(fromEntity)),count=Math.min(hyperMain?2:1,slots),dist=Math.min(620,Math.hypot(dx,dy));
@@ -37018,31 +36751,7 @@ let heistFeverActive = false;
         setTimeout(()=>{if(!pickle.peterPickleHit&&fromEntity.peterPickleShotSerial===serial)fromEntity.peterPickleStreak=Math.max(0,(fromEntity.peterPickleStreak||0)-2);},1000);
         if(brineBoost){if(isBot)fromEntity.gadgetArmed=false;else{gadgetArmed=false;gadgetCooldownUntil=performance.now()+GADGET_COOLDOWN_MS;updateGadgetButton();}}
     } else if (brawler === 'fuser') {
-        const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
-        const wallPierce = !!fromEntity.fuserWallPierceArmed;
-        fromEntity.fuserWallPierceArmed = false;
-        const delay = hyper ? 41 : 96; // +50% faster unload (was 62 / 144)
-        const fuserStar = isBot ? (fromEntity.selectedStar || 'slow') : selectedStar;
-        const fuserSp1 = fuserStar === 'slow' || fuserStar === 'sp1' || fuserStar === 'fast';
-        fromEntity.fuserAttackCount = (fromEntity.fuserAttackCount || 0) + 1;
-        if (fuserSp1 && fromEntity.fuserAttackCount % 4 === 0) {
-            for (const off of [-6, 6]) {
-                bullets.push({ ownerBrawler: 'fuser', isFuserBullet: true, fuserHealBullet: true, x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 5) - Math.sin(ang) * off, y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 5) + Math.cos(ang) * off, vx: Math.cos(ang) * 1710, vy: Math.sin(ang) * 1710, life: 0, maxLife: .92, damage: isBot ? 242 : 360, pierce: false, ownerId: fromEntity.id, hitIds: {}, hitboxMod: 1.18, hyperVisual: hyper });
-            }
-        }
-        lockMainAttackSequence(fromEntity, 5 * delay, now);
-        for (let shot = 0; shot < 6; shot++) setTimeout(() => {
-            if (fromEntity.hp <= 0) return;
-            const side = (shot % 2 === 0) ? -1 : 1;
-            const lateral = side * (hyper ? 5 : 16);
-            const sx = fromEntity.x + Math.cos(ang) * (fromEntity.radius + 5) - Math.sin(ang) * lateral;
-            const sy = fromEntity.y + Math.sin(ang) * (fromEntity.radius + 5) + Math.cos(ang) * lateral;
-            const fuserSpd = isPowerPlayShowdownMode ? 180 : 1140;
-            const fuserLife = isPowerPlayShowdownMode ? 4.5 : .92;
-            const fuserHitbox = isPowerPlayShowdownMode ? 3.0 : 1.18;
-            const fuserPierce = isPowerPlayShowdownMode ? true : false;
-            bullets.push({ ownerBrawler: 'fuser', isFuserBullet: true, x: sx, y: sy, vx: Math.cos(ang) * fuserSpd, vy: Math.sin(ang) * fuserSpd, life: 0, maxLife: fuserLife, damage: isBot ? 242 : 360, pierce: fuserPierce, pierceWalls: fuserPierce || wallPierce, breakWallsInstantly: false, ownerId: fromEntity.id, hitIds: {}, hitboxMod: fuserHitbox, hyperVisual: hyper, fuserShotIndex: shot });
-        }, shot * delay);
+        fireFuserMain(fromEntity, ang, targetX, targetY, { isBot, now, damageMult: 1, hitboxMult: 1, donorMode: false });
     } else if (brawler === 'robber') {
         const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
         const perfectCrime = isSlopSushiMode && getEntitySlopEffectTotal(fromEntity,'robberPerfectCrime') > 0;
@@ -37790,32 +37499,10 @@ let heistFeverActive = false;
             ownerId: fromEntity.id
         });
     } else if (brawler === 'mallow') {
-        if (!MALLOW_ENABLED) return;
-        const mallowHyper = isEntityHyperchargedNow(fromEntity, now);
-        const mallowLevel = fromEntity.id === player.id ? getSelectedBrawlerLevel() : (fromEntity.level || 11);
-        const mallowStats = getScaledStats('mallow', mallowLevel);
-        const mallowGadgetBoost = !isBot ? (gadgetArmed && selectedGadget === 'g1') : (fromEntity.gadgetArmed && fromEntity.selectedGadget === 'g1');
-        const mallowSlowPerHit = mallowGadgetBoost ? MALLOW_SLOW_GADGET_PER_HIT : MALLOW_SLOW_PER_HIT;
-        if (mallowGadgetBoost) {
-            if (!isBot) { gadgetArmed = false; updateGadgetButton(); }
-            else { fromEntity.gadgetArmed = false; }
-        }
-        lockMainAttackSequence(fromEntity, MALLOW_CHANNEL_MS, now);
-        mallowTelegraphs.push({ x: fromEntity.x, y: fromEntity.y, ang: ang, until: now + 180 });
-        for (let mi = 0; mi < MALLOW_VOLLEY_COUNT; mi++) {
-            const mallowAng = ang + (mi - (MALLOW_VOLLEY_COUNT - 1) / 2) * (MALLOW_VOLLEY_FAN_ARC / (MALLOW_VOLLEY_COUNT - 1));
-            bullets.push({ ownerBrawler: 'mallow', isMallow: true, isPrimaryChargeProjectile: true, mallowSlowPerHit: mallowSlowPerHit, mallowHyper: mallowHyper, x: fromEntity.x + Math.cos(mallowAng) * (fromEntity.radius + 7), y: fromEntity.y + Math.sin(mallowAng) * (fromEntity.radius + 7), vx: Math.cos(mallowAng) * MALLOW_VOLLEY_SPEED, vy: Math.sin(mallowAng) * MALLOW_VOLLEY_SPEED, life: 0, maxLife: MALLOW_VOLLEY_RANGE / MALLOW_VOLLEY_SPEED, damage: mallowStats.dmg, pierce: false, ownerId: fromEntity.id, hitIds: {}, hitboxMod: 1.3, hyperVisual: mallowHyper });
-        }
+        fireMallowMain(fromEntity, ang, targetX, targetY, { isBot, now, damageMult: 1, hitboxMult: 1, donorMode: false });
         return;
     } else if (brawler === 'nightshade') {
-        if (!NIGHTSHADE_ENABLED) return;
-        const nightshadeHyper = isEntityHyperchargedNow(fromEntity, now);
-        const nightshadeLevel = fromEntity.id === player.id ? getSelectedBrawlerLevel() : (fromEntity.level || 11);
-        const nightshadeStats = getScaledStats('nightshade', nightshadeLevel);
-        for (let di = 0; di < NIGHTSHADE_DAGGER_COUNT; di++) {
-            const daggerAng = ang + (di - (NIGHTSHADE_DAGGER_COUNT - 1) / 2) * (NIGHTSHADE_DAGGER_FAN_ARC / (NIGHTSHADE_DAGGER_COUNT - 1));
-            bullets.push({ ownerBrawler: 'nightshade', isNightshadeDagger: true, x: fromEntity.x + Math.cos(daggerAng) * (fromEntity.radius + 7), y: fromEntity.y + Math.sin(daggerAng) * (fromEntity.radius + 7), vx: Math.cos(daggerAng) * NIGHTSHADE_DAGGER_SPEED, vy: Math.sin(daggerAng) * NIGHTSHADE_DAGGER_SPEED, life: 0, maxLife: NIGHTSHADE_DAGGER_RANGE / NIGHTSHADE_DAGGER_SPEED, damage: nightshadeStats.dmg, pierce: false, ownerId: fromEntity.id, hitIds: {}, hitboxMod: 1.2, hyperVisual: nightshadeHyper });
-        }
+        fireNightshadeMain(fromEntity, ang, targetX, targetY, { isBot, now, damageMult: 1, hitboxMult: 1, donorMode: false });
         return;
     } else if (brawler === 'aegis') {
         if (!AEGIS_ENABLED) return;
@@ -37828,18 +37515,7 @@ let heistFeverActive = false;
         bullets.push({ ownerBrawler: 'aegis', isAegisShield: true, aegisEmpowered: empowered, aegisHyperReflect: aegisHyper, aegisReflectRadius: 30, x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 7), y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 7), vx: Math.cos(ang) * AEGIS_SHIELD_SPEED, vy: Math.sin(ang) * AEGIS_SHIELD_SPEED, life: 0, maxLife: AEGIS_SHIELD_RANGE / AEGIS_SHIELD_SPEED, damage: dmg, pierce: false, ownerId: fromEntity.id, team: fromEntity.team || 'player', hitIds: {}, hitboxMod: AEGIS_SHIELD_HITBOX_MOD, hyperVisual: aegisHyper });
         return;
     } else if (brawler === 'runner') {
-        const runnerHyper = isEntityHyperchargedNow(fromEntity, now);
-        const runnerLevel = fromEntity.id === player.id ? getSelectedBrawlerLevel() : (fromEntity.level || 11);
-        const runnerStats = getScaledStats('runner', runnerLevel);
-        const wallBreak = !!fromEntity.runnerWallBreakNext;
-        if (wallBreak) fromEntity.runnerWallBreakNext = false;
-        const fearCarried = !!fromEntity.runnerFearArmed && runnerHasSP2(fromEntity);
-        const dmg = wallBreak ? RUNNER_G1_DAMAGE : runnerStats.dmg;
-        bullets.push({ ownerBrawler: 'runner', isRunnerShoe: true, runnerWallBreak: wallBreak, runnerFear: fearCarried,
-            x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 7), y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 7),
-            vx: Math.cos(ang) * RUNNER_SHOE_SPEED, vy: Math.sin(ang) * RUNNER_SHOE_SPEED, life: 0, maxLife: RUNNER_SHOE_RANGE / RUNNER_SHOE_SPEED,
-            damage: dmg, pierce: wallBreak, pierceWalls: wallBreak, breakWallsInstantly: wallBreak,
-            ownerId: fromEntity.id, hitIds: {}, hitboxMod: 1.3, hyperVisual: runnerHyper });
+        fireRunnerMain(fromEntity, ang, targetX, targetY, { isBot, now, damageMult: 1, hitboxMult: 1, donorMode: false });
         return;
     } else if (brawler === 'aura_charmer') {
         const auraCharmerHyper = isEntityHyperchargedNow(fromEntity, now);
@@ -37854,7 +37530,17 @@ let heistFeverActive = false;
         const stats = getScaledStats('voltastein', level);
         const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
         const ang = Math.atan2(targetY - fromEntity.y, targetX - fromEntity.x);
-        bullets.push({ ownerBrawler: 'voltastein', isVoltasteinVolt: true, voltasteinHyper: hyper, x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 7), y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 7), vx: Math.cos(ang) * VOLTASTEIN_BULLET_SPEED, vy: Math.sin(ang) * VOLTASTEIN_BULLET_SPEED, life: 0, maxLife: VOLTASTEIN_RANGE / VOLTASTEIN_BULLET_SPEED, damage: stats.dmg, voltDamage: stats.dmg, voltRadius: VOLTASTEIN_EXPLOSION_RADIUS, pierce: false, pierceWalls: true, ownerId: fromEntity.id, hitIds: {}, hitboxMod: 1.2, hyperVisual: hyper });
+        // True lobbed throw (upiedown pie pattern): the volt arcs over walls
+        // and units and detonates where it lands — the aimed point, capped
+        // at her range. The flight is a straight ground track; the arc is
+        // visual (render lift + ground shadow), and the bullet loop skips
+        // wall/unit collision while the volt is airborne.
+        const voltSpawnOffset = fromEntity.radius + 7;
+        const voltThrowDistance = Math.min(VOLTASTEIN_RANGE, Math.hypot(targetX - fromEntity.x, targetY - fromEntity.y));
+        const voltFlightDistance = Math.max(0, voltThrowDistance - voltSpawnOffset);
+        const voltLandX = clamp(fromEntity.x + Math.cos(ang) * voltThrowDistance, 0, WORLD_W);
+        const voltLandY = clamp(fromEntity.y + Math.sin(ang) * voltThrowDistance, 0, WORLD_H);
+        bullets.push({ ownerBrawler: 'voltastein', isVoltasteinVolt: true, voltasteinHyper: hyper, voltasteinLob: true, voltasteinLandX: voltLandX, voltasteinLandY: voltLandY, x: fromEntity.x + Math.cos(ang) * voltSpawnOffset, y: fromEntity.y + Math.sin(ang) * voltSpawnOffset, vx: Math.cos(ang) * VOLTASTEIN_BULLET_SPEED, vy: Math.sin(ang) * VOLTASTEIN_BULLET_SPEED, life: 0, maxLife: Math.max(.05, voltFlightDistance / VOLTASTEIN_BULLET_SPEED), damage: stats.dmg, voltDamage: stats.dmg, voltRadius: VOLTASTEIN_EXPLOSION_RADIUS, pierce: false, pierceWalls: true, ownerId: fromEntity.id, hitIds: {}, hitboxMod: 1.2, hyperVisual: hyper });
         explosions.push({ x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 10), y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 10), radius: 10, life: 0, maxLife: 0.18, color: hyper ? 'rgba(216,108,255,.9)' : 'rgba(168,85,247,.9)', isParticle: true });
         return;
     } else if (brawler === 'staticstein') {
@@ -38078,10 +37764,10 @@ let heistFeverActive = false;
         explosions.push({x:projectile.x,y:projectile.y,radius:82,life:0,maxLife:.28,color:'rgba(247,218,91,.55)'});
     }
 
-    function explodeJetpackBomb(x, y, owner, damage, hyperSplit=false) {
+    function explodeJetpackBomb(x, y, owner, damage, hyperSplit=false, radius=66) {
         const ownerId = owner?.id ?? player.id;
-        explosions.push({x,y,radius:66,life:0,maxLife:.28,color:hyperSplit?'rgba(211,91,255,.9)':'rgba(255,157,55,.88)',legendary:true,fxKind:'jetpackBomb',hyperVisual:hyperSplit});
-        AOEDamage(x,y,66,damage,ownerId,false);
+        explosions.push({x,y,radius,life:0,maxLife:.28,color:hyperSplit?'rgba(211,91,255,.9)':'rgba(255,157,55,.88)',legendary:true,fxKind:'jetpackBomb',hyperVisual:hyperSplit});
+        AOEDamage(x,y,radius,damage,ownerId,false);
         if (hyperSplit) {
             for (let i=0;i<3;i++) {
                 const a=-Math.PI/2+i*Math.PI*2/3;
@@ -45344,6 +45030,35 @@ let heistFeverActive = false;
   const VOLTASTEIN_G2_FIELD_MS = 4000;
   const VOLTASTEIN_FAMILY_STRIKE_DMG = 500;
 
+  // Deterministic flicker random: stable per (seed, step) so lightning
+  // crackles at ~11fps instead of re-rolling every frame (which would
+  // strobe). seedBase should include a time step (floor(now/90)).
+  function voltasteinFlickerRand(seed) { const x = Math.sin(seed * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
+  // Jagged lightning polyline between two points. Midpoint offsets are
+  // seeded and tapered at both ends, so the bolt stays anchored while it
+  // crackles. Used by the Power Outage chain render and the jump arc fx.
+  function drawVoltasteinLightning(ctx, x1, y1, x2, y2, segments, jitter, seedBase, color, width) {
+      const dx = x2 - x1, dy = y2 - y1;
+      const len = Math.hypot(dx, dy) || 1;
+      const px = -dy / len, py = dx / len;
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.lineCap = 'round';
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      for (let s = 1; s < segments; s++) {
+          const t = s / segments;
+          const off = (voltasteinFlickerRand(seedBase + s * 7.3) - 0.5) * 2 * jitter * Math.sin(t * Math.PI);
+          ctx.lineTo(x1 + dx * t + px * off, y1 + dy * t + py * off);
+      }
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+      ctx.restore();
+  }
+
   function isVoltasteinEntity(entity) { return !!entity && getEntityBrawlerId(entity) === 'voltastein'; }
   function voltasteinHasSP1(entity) { return !!entity && getEntityStarChoice(entity) === 'slow'; }
   function voltasteinHasSP2(entity) { return !!entity && getEntityStarChoice(entity) === 'long'; }
@@ -45397,7 +45112,12 @@ let heistFeverActive = false;
           if (excludeId && target.id === excludeId) continue;
           checkHit(target, { ownerBrawler: 'voltastein', ownerId: owner.id, damage: dmg, pierce: true, hitIds: {}, isVoltasteinExplosion: true }, -1);
       }
-      // Arc Leap (G1): the next volt arcs to one extra nearby enemy.
+      // Arc Leap (G1): the next volt arcs to one extra nearby enemy — a real
+      // lobbed child volt, not an instant hit. It flies (~0.38s max) to the
+      // best target and detonates there; the landing explosion overcharges
+      // and damages everyone in its radius, exactly as a normal volt does.
+      // (Behavior change vs the shipped instant mini-explosion, flagged in
+      // the PR body: instant -> short lobbed flight.)
       if (owner.voltasteinArcLeapNext) {
           owner.voltasteinArcLeapNext = false;
           let best = null, bestD = Infinity;
@@ -45409,9 +45129,9 @@ let heistFeverActive = false;
           }
           if (best) {
               const miniDmg = Math.max(1, Math.round(dmg * VOLTASTEIN_G1_MINI_DMG_MULT));
-              explosions.push({ x: best.x, y: best.y, radius: VOLTASTEIN_G1_MINI_RADIUS, life: 0, maxLife: 0.25, color: 'rgba(255,228,94,.8)', fxKind: 'voltasteinExplosion' });
-              applyVoltasteinOvercharge(best, owner, now);
-              checkHit(best, { ownerBrawler: 'voltastein', ownerId: owner.id, damage: miniDmg, pierce: true, hitIds: {}, isVoltasteinExplosion: true }, -1);
+              const leapAng = Math.atan2(best.y - y, best.x - x);
+              const leapDist = Math.hypot(best.x - x, best.y - y);
+              bullets.push({ ownerBrawler: 'voltastein', isVoltasteinVolt: true, voltasteinHyper: false, voltasteinChild: true, voltasteinLob: true, voltasteinLandX: clamp(best.x, 0, WORLD_W), voltasteinLandY: clamp(best.y, 0, WORLD_H), x, y, vx: Math.cos(leapAng) * VOLTASTEIN_BULLET_SPEED, vy: Math.sin(leapAng) * VOLTASTEIN_BULLET_SPEED, life: 0, maxLife: Math.max(.05, leapDist / VOLTASTEIN_BULLET_SPEED), damage: miniDmg, voltDamage: miniDmg, voltRadius: VOLTASTEIN_G1_MINI_RADIUS, pierce: false, pierceWalls: true, ownerId: owner.id, hitIds: {}, hitboxMod: 1.1, hyperVisual: false });
           }
       }
       // Hyper split: the volt forks into two smaller volts on impact.
@@ -45421,7 +45141,9 @@ let heistFeverActive = false;
           const childDmg = Math.max(1, Math.round((bullet.voltDamage || dmg) * VOLTASTEIN_HYPER_SPLIT_DMG_MULT));
           for (const off of [-0.45, 0.45]) {
               const a = baseAng + off;
-              bullets.push({ ownerBrawler: 'voltastein', isVoltasteinVolt: true, voltasteinHyper: false, voltasteinChild: true, x, y, vx: Math.cos(a) * VOLTASTEIN_BULLET_SPEED, vy: Math.sin(a) * VOLTASTEIN_BULLET_SPEED, life: 0, maxLife: VOLTASTEIN_HYPER_SPLIT_RANGE / VOLTASTEIN_BULLET_SPEED, damage: childDmg, voltDamage: childDmg, voltRadius: VOLTASTEIN_HYPER_SPLIT_RADIUS, pierce: false, pierceWalls: true, ownerId: owner.id, hitIds: {}, hitboxMod: 1.1, hyperVisual: true });
+              const childLandX = clamp(x + Math.cos(a) * VOLTASTEIN_HYPER_SPLIT_RANGE, 0, WORLD_W);
+              const childLandY = clamp(y + Math.sin(a) * VOLTASTEIN_HYPER_SPLIT_RANGE, 0, WORLD_H);
+              bullets.push({ ownerBrawler: 'voltastein', isVoltasteinVolt: true, voltasteinHyper: false, voltasteinChild: true, voltasteinLob: true, voltasteinLandX: childLandX, voltasteinLandY: childLandY, x, y, vx: Math.cos(a) * VOLTASTEIN_BULLET_SPEED, vy: Math.sin(a) * VOLTASTEIN_BULLET_SPEED, life: 0, maxLife: VOLTASTEIN_HYPER_SPLIT_RANGE / VOLTASTEIN_BULLET_SPEED, damage: childDmg, voltDamage: childDmg, voltRadius: VOLTASTEIN_HYPER_SPLIT_RADIUS, pierce: false, pierceWalls: true, ownerId: owner.id, hitIds: {}, hitboxMod: 1.1, hyperVisual: true });
           }
       }
   }
@@ -45451,6 +45173,8 @@ let heistFeverActive = false;
           entity.voltasteinHyperChainAId = 0; entity.voltasteinHyperChainBId = 0; entity.voltasteinHyperChainUntil = 0;
       }
       explosions.push({ x: entity.x, y: entity.y, radius: VOLTASTEIN_ZAP_RADIUS, life: 0, maxLife: 0.35, color: 'rgba(168,85,247,.9)', fxKind: 'voltasteinExplosion' });
+      // Zap flash: a bright white-purple ring bursting out to zap range.
+      explosions.push({ x: entity.x, y: entity.y, radius: VOLTASTEIN_ZAP_RADIUS, life: 0, maxLife: 0.22, color: 'rgba(255,255,255,.95)', fxKind: 'voltasteinZapFlash' });
       spawnFloatingText(entity.x, entity.y - 44, 'POWER OUTAGE!', '#a855f7');
       // Family Circuit (signature): the next Power Outage calls a sky strike.
       if (entity.voltasteinFamilyCircuitArmed) {
@@ -45540,6 +45264,9 @@ let heistFeverActive = false;
                   applyVoltasteinOutage(best, caster, now);
                   caster.voltasteinOutageVictimIds = (caster.voltasteinOutageVictimIds || []).filter(id => id !== target.id);
                   caster.voltasteinOutageVictimIds.push(best.id);
+                  // Visible jump arc: lightning from the victim the chain
+                  // leaves to the victim it jumps to.
+                  explosions.push({ x: best.x, y: best.y, radius: VOLTASTEIN_CHAIN_JUMP_RADIUS, life: 0, maxLife: 0.35, color: 'rgba(168,85,247,.9)', fxKind: 'voltasteinChainJump', chainFromX: target.x, chainFromY: target.y, chainToX: best.x, chainToY: best.y });
                   break; // one jump per frame per caster
               }
           }
@@ -45576,41 +45303,490 @@ let heistFeverActive = false;
   const STATICSTEIN_GLITCH_BURST_DMG = 150;
   const STATICSTEIN_GLITCH_BURST_RADIUS = 80;
   const STATICSTEIN_FAMILY_STRIKE_DMG = 500;
+  // ---- Staticstein donor mains: each donor's REAL fire() code path ----
+  // Every helper below is the donor's own fire() branch, extracted
+  // verbatim. Called two ways:
+  //   donorMode=false — the donor firing its own main (the fire() branch
+  //     is a thin call into the helper; behavior is unchanged).
+  //   donorMode=true  — Staticstein borrowing the donor's main: the
+  //     shooter's star powers / gadgets / hyper mechanics are forced
+  //     OFF (Staticstein's own kit governs), damage is the donor's P11
+  //     stats, and the Staticstein hyper window (damageMult/hitboxMult)
+  //     applies instead of the donor's own hyper behavior.
+  // opts: { isBot, now, damageMult, hitboxMult, donorMode }.
+  function staticsteinDonorTag(donorId, donorMode) { return donorMode ? { isStaticsteinDonorShot: true, staticsteinDonor: donorId } : {}; }
+
+  function fireFuserMain(fromEntity, ang, targetX, targetY, opts) {
+      const isBot = !!opts.isBot, now = opts.now;
+      const donorMode = !!opts.donorMode;
+      const damageMult = opts.damageMult || 1, hitboxMult = opts.hitboxMult || 1;
+      const hyper = donorMode ? false : (isBot ? !!fromEntity.isHypercharged : !!isHypercharged);
+      const wallPierce = donorMode ? false : !!fromEntity.fuserWallPierceArmed;
+      fromEntity.fuserWallPierceArmed = false;
+      const delay = hyper ? 41 : 96; // +50% faster unload (was 62 / 144)
+      const fuserStar = isBot ? (fromEntity.selectedStar || 'slow') : selectedStar;
+      const fuserSp1 = !donorMode && (fuserStar === 'slow' || fuserStar === 'sp1' || fuserStar === 'fast');
+      fromEntity.fuserAttackCount = (fromEntity.fuserAttackCount || 0) + 1;
+      if (fuserSp1 && fromEntity.fuserAttackCount % 4 === 0) {
+          for (const off of [-6, 6]) {
+              bullets.push({ ownerBrawler: 'fuser', isFuserBullet: true, fuserHealBullet: true, ...staticsteinDonorTag('fuser', donorMode), x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 5) - Math.sin(ang) * off, y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 5) + Math.cos(ang) * off, vx: Math.cos(ang) * 1710, vy: Math.sin(ang) * 1710, life: 0, maxLife: .92, damage: Math.round((isBot ? 242 : 360) * damageMult), pierce: false, ownerId: fromEntity.id, hitIds: {}, hitboxMod: 1.18 * hitboxMult, hyperVisual: hyper });
+          }
+      }
+      lockMainAttackSequence(fromEntity, 5 * delay, now);
+      for (let shot = 0; shot < 6; shot++) setTimeout(() => {
+          if (fromEntity.hp <= 0) return;
+          const side = (shot % 2 === 0) ? -1 : 1;
+          const lateral = side * (hyper ? 5 : 16);
+          const sx = fromEntity.x + Math.cos(ang) * (fromEntity.radius + 5) - Math.sin(ang) * lateral;
+          const sy = fromEntity.y + Math.sin(ang) * (fromEntity.radius + 5) + Math.cos(ang) * lateral;
+          const fuserSpd = isPowerPlayShowdownMode ? 180 : 1140;
+          const fuserLife = isPowerPlayShowdownMode ? 4.5 : .92;
+          const fuserHitbox = isPowerPlayShowdownMode ? 3.0 : 1.18;
+          const fuserPierce = isPowerPlayShowdownMode ? true : false;
+          bullets.push({ ownerBrawler: 'fuser', isFuserBullet: true, ...staticsteinDonorTag('fuser', donorMode), x: sx, y: sy, vx: Math.cos(ang) * fuserSpd, vy: Math.sin(ang) * fuserSpd, life: 0, maxLife: fuserLife, damage: Math.round((isBot ? 242 : 360) * damageMult), pierce: fuserPierce, pierceWalls: fuserPierce || wallPierce, breakWallsInstantly: false, ownerId: fromEntity.id, hitIds: {}, hitboxMod: fuserHitbox * hitboxMult, hyperVisual: hyper, fuserShotIndex: shot });
+      }, shot * delay);
+  }
+
+  function fireRunnerMain(fromEntity, ang, targetX, targetY, opts) {
+      const now = opts.now;
+      const donorMode = !!opts.donorMode;
+      const damageMult = opts.damageMult || 1, hitboxMult = opts.hitboxMult || 1;
+      const runnerHyper = donorMode ? false : isEntityHyperchargedNow(fromEntity, now);
+      const runnerLevel = donorMode ? 11 : (fromEntity.id === player.id ? getSelectedBrawlerLevel() : (fromEntity.level || 11));
+      const runnerStats = getScaledStats('runner', runnerLevel);
+      const wallBreak = donorMode ? false : !!fromEntity.runnerWallBreakNext;
+      if (wallBreak) fromEntity.runnerWallBreakNext = false;
+      const fearCarried = donorMode ? false : (!!fromEntity.runnerFearArmed && runnerHasSP2(fromEntity));
+      const dmg = Math.round((wallBreak ? RUNNER_G1_DAMAGE : runnerStats.dmg) * damageMult);
+      bullets.push({ ownerBrawler: 'runner', isRunnerShoe: true, runnerWallBreak: wallBreak, runnerFear: fearCarried, ...staticsteinDonorTag('runner', donorMode),
+          x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 7), y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 7),
+          vx: Math.cos(ang) * RUNNER_SHOE_SPEED, vy: Math.sin(ang) * RUNNER_SHOE_SPEED, life: 0, maxLife: RUNNER_SHOE_RANGE / RUNNER_SHOE_SPEED,
+          damage: dmg, pierce: wallBreak, pierceWalls: wallBreak, breakWallsInstantly: wallBreak,
+          ownerId: fromEntity.id, hitIds: {}, hitboxMod: 1.3 * hitboxMult, hyperVisual: runnerHyper });
+  }
+
+  function fireNightshadeMain(fromEntity, ang, targetX, targetY, opts) {
+      if (!NIGHTSHADE_ENABLED) return;
+      const now = opts.now;
+      const donorMode = !!opts.donorMode;
+      const damageMult = opts.damageMult || 1, hitboxMult = opts.hitboxMult || 1;
+      const nightshadeHyper = donorMode ? false : isEntityHyperchargedNow(fromEntity, now);
+      const nightshadeLevel = donorMode ? 11 : (fromEntity.id === player.id ? getSelectedBrawlerLevel() : (fromEntity.level || 11));
+      const nightshadeStats = getScaledStats('nightshade', nightshadeLevel);
+      for (let di = 0; di < NIGHTSHADE_DAGGER_COUNT; di++) {
+          const daggerAng = ang + (di - (NIGHTSHADE_DAGGER_COUNT - 1) / 2) * (NIGHTSHADE_DAGGER_FAN_ARC / (NIGHTSHADE_DAGGER_COUNT - 1));
+          bullets.push({ ownerBrawler: 'nightshade', isNightshadeDagger: true, ...staticsteinDonorTag('nightshade', donorMode), x: fromEntity.x + Math.cos(daggerAng) * (fromEntity.radius + 7), y: fromEntity.y + Math.sin(daggerAng) * (fromEntity.radius + 7), vx: Math.cos(daggerAng) * NIGHTSHADE_DAGGER_SPEED, vy: Math.sin(daggerAng) * NIGHTSHADE_DAGGER_SPEED, life: 0, maxLife: NIGHTSHADE_DAGGER_RANGE / NIGHTSHADE_DAGGER_SPEED, damage: Math.round(nightshadeStats.dmg * damageMult), pierce: false, ownerId: fromEntity.id, hitIds: {}, hitboxMod: 1.2 * hitboxMult, hyperVisual: nightshadeHyper });
+      }
+  }
+
+  function fireMallowMain(fromEntity, ang, targetX, targetY, opts) {
+      if (!MALLOW_ENABLED) return;
+      const isBot = !!opts.isBot, now = opts.now;
+      const donorMode = !!opts.donorMode;
+      const damageMult = opts.damageMult || 1, hitboxMult = opts.hitboxMult || 1;
+      const mallowHyper = donorMode ? false : isEntityHyperchargedNow(fromEntity, now);
+      const mallowLevel = donorMode ? 11 : (fromEntity.id === player.id ? getSelectedBrawlerLevel() : (fromEntity.level || 11));
+      const mallowStats = getScaledStats('mallow', mallowLevel);
+      const mallowGadgetBoost = donorMode ? false : (!isBot ? (gadgetArmed && selectedGadget === 'g1') : (fromEntity.gadgetArmed && fromEntity.selectedGadget === 'g1'));
+      const mallowSlowPerHit = mallowGadgetBoost ? MALLOW_SLOW_GADGET_PER_HIT : MALLOW_SLOW_PER_HIT;
+      if (mallowGadgetBoost) {
+          if (!isBot) { gadgetArmed = false; updateGadgetButton(); }
+          else { fromEntity.gadgetArmed = false; }
+      }
+      lockMainAttackSequence(fromEntity, MALLOW_CHANNEL_MS, now);
+      mallowTelegraphs.push({ x: fromEntity.x, y: fromEntity.y, ang: ang, until: now + 180 });
+      for (let mi = 0; mi < MALLOW_VOLLEY_COUNT; mi++) {
+          const mallowAng = ang + (mi - (MALLOW_VOLLEY_COUNT - 1) / 2) * (MALLOW_VOLLEY_FAN_ARC / (MALLOW_VOLLEY_COUNT - 1));
+          bullets.push({ ownerBrawler: 'mallow', isMallow: true, isPrimaryChargeProjectile: true, mallowSlowPerHit: mallowSlowPerHit, mallowHyper: mallowHyper, ...staticsteinDonorTag('mallow', donorMode), x: fromEntity.x + Math.cos(mallowAng) * (fromEntity.radius + 7), y: fromEntity.y + Math.sin(mallowAng) * (fromEntity.radius + 7), vx: Math.cos(mallowAng) * MALLOW_VOLLEY_SPEED, vy: Math.sin(mallowAng) * MALLOW_VOLLEY_SPEED, life: 0, maxLife: MALLOW_VOLLEY_RANGE / MALLOW_VOLLEY_SPEED, damage: Math.round(mallowStats.dmg * damageMult), pierce: false, ownerId: fromEntity.id, hitIds: {}, hitboxMod: 1.3 * hitboxMult, hyperVisual: mallowHyper });
+      }
+  }
+
+  function fireEvilDoctorMain(fromEntity, ang, targetX, targetY, opts) {
+      const isBot = !!opts.isBot, now = opts.now;
+      const donorMode = !!opts.donorMode;
+      const damageMult = opts.damageMult || 1, hitboxMult = opts.hitboxMult || 1;
+      const isHyper = donorMode ? false : (!isBot ? !!isHypercharged : !!fromEntity.isHypercharged);
+      const overdose = donorMode ? false : (!isBot ? (gadgetArmed && selectedGadget === 'g2') : (fromEntity.gadgetArmed && fromEntity.selectedGadget === 'g2'));
+      const poisonTicks = overdose ? 4 : 3;
+      bullets.push({
+          ownerBrawler: 'evil_doctor',
+          isEvilDoctorSyringe: true,
+          evilDoctorPoisonTicks: poisonTicks,
+          evilDoctorHyper: isHyper,
+          ...staticsteinDonorTag('evil_doctor', donorMode),
+          x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 6),
+          y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 6),
+          vx: Math.cos(ang) * 820 * 0.6,
+          vy: Math.sin(ang) * 820 * 0.6,
+          life: 0,
+          maxLife: 1.3,
+          damage: Math.round((isBot ? 784 : 1300) * damageMult),
+          pierce: false,
+          hyperVisual: isHyper,
+          ownerId: fromEntity.id,
+          hitIds: {},
+          hitboxMod: hitboxMult
+      });
+      if (overdose) {
+          if (isBot) fromEntity.gadgetArmed = false;
+          else { gadgetArmed = false; gadgetCooldownUntil = now + GADGET_COOLDOWN_MS; updateGadgetButton(); }
+      }
+  }
+
+  function fireBowlinRidaMain(fromEntity, ang, targetX, targetY, opts) {
+      const isBot = !!opts.isBot;
+      const donorMode = !!opts.donorMode;
+      const damageMult = opts.damageMult || 1, hitboxMult = opts.hitboxMult || 1;
+      const hornSpeed = 720;
+      const hornDamage = Math.round((isBot ? 480 : 620) * damageMult);
+      const sideX = -Math.sin(ang);
+      const sideY = Math.cos(ang);
+      for (const side of [-1, 1]) {
+          bullets.push({
+              ownerBrawler: 'bowlin_rida', isRidaHorn: true, ridaHornSide: side,
+              ...staticsteinDonorTag('bowlin_rida', donorMode),
+              x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 8) + sideX * side * 12,
+              y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 8) + sideY * side * 12,
+              vx: Math.cos(ang) * hornSpeed, vy: Math.sin(ang) * hornSpeed,
+              life: 0, maxLife: 0.62, damage: hornDamage, pierce: false,
+              hyperVisual: donorMode ? false : (!isBot ? !!isHypercharged : !!fromEntity.isHypercharged),
+              ownerId: fromEntity.id, hitboxMod: 1.18 * hitboxMult
+          });
+      }
+      explosions.push({ x: fromEntity.x + Math.cos(ang) * 24, y: fromEntity.y + Math.sin(ang) * 24, radius: 28, life: 0, maxLife: 0.14, color: 'rgba(255, 190, 92, 0.55)', fxKind: 'ridaHornMuzzle' });
+  }
+
+  function fireRocketeerMain(fromEntity, ang, targetX, targetY, opts) {
+      const isBot = !!opts.isBot, now = opts.now;
+      const donorMode = !!opts.donorMode;
+      const damageMult = opts.damageMult || 1, hitboxMult = opts.hitboxMult || 1;
+      const hyperMain = donorMode ? false : ((isPowerPlayModifierActive(fromEntity) && fromEntity.brawler === 'rocketeer') ? true : (isBot ? !!fromEntity.isHypercharged : !!isHypercharged));
+      launchRocketeerMain(fromEntity, ang, hyperMain, damageMult, { hitboxMod: (hyperMain ? 2.03 : 1.45) * hitboxMult, ...(donorMode ? { donorShot: true } : {}) });
+      if (hyperMain) {
+          launchRocketeerMain(fromEntity, ang, true, (1 / 3) * damageMult, { lateral: -24, forward: 12, hitboxMod: 1.015, escort: true, noSplit: true });
+          launchRocketeerMain(fromEntity, ang, true, (1 / 3) * damageMult, { lateral: 24, forward: -12, hitboxMod: 1.015, escort: true, noSplit: true });
+      }
+      const sushiExtra = isSlopSushiMode ? getEntitySlopEffectTotal(fromEntity, 'rocketeerExtraMainRockets') : 0;
+      if (sushiExtra > 0) { launchRocketeerMain(fromEntity, ang - .3, hyperMain, .62 * damageMult, { hitboxMod: (hyperMain ? 2.03 : 1.45) * hitboxMult }); launchRocketeerMain(fromEntity, ang + .3, hyperMain, .62 * damageMult, { hitboxMod: (hyperMain ? 2.03 : 1.45) * hitboxMult }); }
+      if (fromEntity.rocketeerClusterArmed) { fromEntity.rocketeerClusterArmed = false; if (!isBot) { gadgetArmed = false; gadgetCooldownUntil = now + GADGET_COOLDOWN_MS; updateGadgetButton(); } }
+  }
+
+  function fireScubaDiverMain(fromEntity, ang, targetX, targetY, opts) {
+      const isBot = !!opts.isBot, now = opts.now;
+      const donorMode = !!opts.donorMode;
+      const damageMult = opts.damageMult || 1, hitboxMult = opts.hitboxMult || 1;
+      ensureScubaDiverState(fromEntity);
+      const isHyper = donorMode ? false : (!isBot ? !!isHypercharged : !!fromEntity.isHypercharged);
+      const mode = getScubaDiverMode(fromEntity);
+      const depthCharge = donorMode ? false : (!isBot ? (gadgetArmed && selectedGadget === 'g1') : (fromEntity.gadgetArmed && fromEntity.selectedGadget === 'g1'));
+      const starLong = donorMode ? false : (!isBot ? (selectedStar === 'long') : (fromEntity.selectedStar === 'long'));
+      const rangeMult = isHyper ? 1.3 : 1.0;
+
+      if (mode === 'submarine') {
+          const volleyId = registerScubaDiverSubVolley(fromEntity.id, 4);
+          const bubbleCount = 4;
+          const coneHalfAngle = 0.2;
+          const volleyDelayMs = 29.25; // +30% longer delay between volley bubbles (rework nerf)
+          const subBubbleSpeed = 880 * 0.6 * 0.875; // +25% projectile speed vs the old 0.7 factor
+          const subBubbleHitbox = 1.2 * 1.2; // +20% bubble size
+          const closeDamage = Math.round((isBot ? 477 : 800) * damageMult);
+          const farDamage = Math.round((isBot ? 291 : 490) * damageMult);
+          const slowMs = depthCharge ? 1200 : 0;
+          lockMainAttackSequence(fromEntity, (bubbleCount - 1) * volleyDelayMs, now);
+          for (let lane = 0; lane < bubbleCount; lane++) {
+              const laneT = bubbleCount <= 1 ? 0 : (lane / (bubbleCount - 1)) - 0.5;
+              const shotAng = ang + laneT * coneHalfAngle * 2;
+              setTimeout(() => {
+                  if (fromEntity.hp <= 0) {
+                      const state = scubaDiverSubVolleyState.get(volleyId);
+                      if (state) {
+                          state.remaining = Math.max(0, (state.remaining || 0) - 1);
+                          if (state.remaining <= 0) {
+                              scubaDiverSubVolleyState.delete(volleyId);
+                              if (!state.landedHit) triggerScubaDiverMissEffect(state.ownerId);
+                          }
+                      }
+                      return;
+                  }
+                  const sx = fromEntity.x + Math.cos(shotAng) * (fromEntity.radius + 6);
+                  const sy = fromEntity.y + Math.sin(shotAng) * (fromEntity.radius + 6);
+                  bullets.push({
+                      ownerBrawler: 'scuba_diver',
+                      isScubaSubBubble: true,
+                      scubaSubVolleyId: volleyId,
+                      scubaSubResolved: false,
+                      ...staticsteinDonorTag('scuba_diver', donorMode),
+                      x: sx,
+                      y: sy,
+                      vx: Math.cos(shotAng) * subBubbleSpeed,
+                      vy: Math.sin(shotAng) * subBubbleSpeed,
+                      life: 0,
+                      maxLife: 0.78 * rangeMult,
+                      damage: closeDamage,
+                      scubaCloseDamage: closeDamage,
+                      scubaFarDamage: farDamage,
+                      scubaMinClosePct: isHyper ? 0.90 : 0.52,
+                      scubaSlowMs: slowMs,
+                      scubaOriginX: sx,
+                      scubaOriginY: sy,
+                      pierce: false,
+                      ownerId: fromEntity.id,
+                      hyperVisual: isHyper,
+                      hitIds: {},
+                      hitboxMod: subBubbleHitbox * hitboxMult
+                  });
+              }, lane * volleyDelayMs);
+          }
+      } else {
+          const lanes = starLong ? 6 : 5;
+          const halfWidth = (starLong ? 58 : 46) * 1.08;
+          const baseDamage = Math.round((isBot ? 270 : 485) * damageMult);
+          const slowMs = starLong ? 420 : 0;
+          const perp = ang + Math.PI / 2;
+          for (let iLane = 0; iLane < lanes; iLane++) {
+              const lane = lanes <= 1 ? 0 : (iLane / (lanes - 1)) - 0.5;
+              const laneOffset = lane * halfWidth * 2;
+              const shotAng = ang + lane * 0.03;
+              const sx = fromEntity.x + Math.cos(perp) * laneOffset;
+              const sy = fromEntity.y + Math.sin(perp) * laneOffset;
+              bullets.push({
+                  ownerBrawler: 'scuba_diver',
+                  isScubaRectBubble: true,
+                  ...staticsteinDonorTag('scuba_diver', donorMode),
+                  x: sx + Math.cos(shotAng) * (fromEntity.radius + 8),
+                  y: sy + Math.sin(shotAng) * (fromEntity.radius + 8),
+                  vx: Math.cos(shotAng) * 830 * 0.6,
+                  vy: Math.sin(shotAng) * 830 * 0.6,
+                  life: 0,
+                  maxLife: 0.68 * rangeMult,
+                  damage: baseDamage,
+                  scubaSlowMs: slowMs,
+                  pierce: false,
+                  ownerId: fromEntity.id,
+                  hyperVisual: isHyper,
+                  hitIds: {},
+                  hitboxMod: 1.15 * hitboxMult
+              });
+          }
+      }
+
+      if (depthCharge) {
+          if (isBot) {
+              fromEntity.gadgetArmed = false;
+              fromEntity.gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
+          } else {
+              gadgetArmed = false;
+              gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
+              updateGadgetButton();
+          }
+      }
+  }
+
+  function fireMagenyMain(fromEntity, ang, targetX, targetY, opts) {
+      const isBot = !!opts.isBot, now = opts.now;
+      const donorMode = !!opts.donorMode;
+      const damageMult = opts.damageMult || 1, hitboxMult = opts.hitboxMult || 1;
+      const hyper = donorMode ? false : (isBot ? !!fromEntity.isHypercharged : !!isHypercharged);
+      const hasSp1 = donorMode ? false : (isBot ? (fromEntity.selectedStar === 'slow' || fromEntity.selectedStar === 'fast' || fromEntity.selectedStar === 'sp1') : (selectedStar === 'slow' || selectedStar === 'fast' || selectedStar === 'sp1'));
+      ensureMagenyState(fromEntity);
+
+      const g1Armed = donorMode ? false : (!isBot ? (gadgetArmed && selectedGadget === 'g1') : !!fromEntity.magenyG1Armed);
+      if (!isBot && g1Armed) {
+          gadgetArmed = false;
+          gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
+          updateGadgetButton();
+      }
+      fromEntity.magenyG1Armed = false;
+
+      // Main Attack: Charged Horseshoe Magnet
+      const targetDistance = Math.hypot(targetX - fromEntity.x, targetY - fromEntity.y);
+      const botChargeRatio = clamp((targetDistance - 260) / 520, 0, 1);
+      // Donor mode: no charge input exists, so the aim-distance formula
+      // (the bot formula) sets the charge for player and bot alike.
+      const chargeRatio = g1Armed ? 1.0 : (donorMode ? botChargeRatio : (isBot ? botChargeRatio : clamp(fromEntity.magenyChargeRatio || 0, 0, 1.0)));
+      const baseRange = Math.round(260 + chargeRatio * 520);
+      const damage = Math.round((1250 + chargeRatio * 1200) * damageMult);
+      const speed = Math.round((460 + chargeRatio * 240) * 0.60);
+      const auraRadius = Math.round((75 + chargeRatio * 35) * 1.50 * (g1Armed ? 1.15 : 1.0) * hitboxMult);
+      const slowPct = hasSp1 ? 0.50 : 0.30;
+
+      bullets.push({
+          ownerBrawler: 'mageny',
+          isMagenyMagnet: true,
+          ...staticsteinDonorTag('mageny', donorMode),
+          x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 8),
+          y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 8),
+          vx: Math.cos(ang) * speed,
+          vy: Math.sin(ang) * speed,
+          range: baseRange,
+          traveled: 0,
+          life: 0,
+          maxLife: baseRange / speed,
+          damage: damage,
+          pierce: true,
+          hitIds: {},
+          ownerId: fromEntity.id,
+          team: fromEntity.team,
+          hyperVisual: hyper,
+          auraRadius: auraRadius,
+          slowPct: slowPct,
+          chargeRatio: chargeRatio,
+          spinAng: 0
+      });
+
+      spawnFloatingText(fromEntity.x, fromEntity.y - 34, g1Armed ? '🧲 MAX FLUX SURGE!' : (chargeRatio > 0.75 ? '🧲 HEAVY FLUX!' : '🧲 MAGNETIC FLUX!'), hyper ? '#00d2d3' : '#2980b9');
+  }
+
+  function fireOutlitMain(fromEntity, ang, targetX, targetY, opts) {
+      const isBot = !!opts.isBot, now = opts.now;
+      const donorMode = !!opts.donorMode;
+      const damageMult = opts.damageMult || 1, hitboxMult = opts.hitboxMult || 1;
+      // NOTE (pre-existing quirk, reproduced as-is): the donor's own
+      // double-shot keys off the PLAYER's hyper flag (bare `isHypercharged`
+      // global), so a bot Outlit double-shots while the player is
+      // hypercharged. Donor shots force it off.
+      const isHyper = donorMode ? false : isHypercharged;
+      const mutationOvercharged = donorMode ? false : consumeOutlitMutationCharge(fromEntity);
+      const outlitExtraPellets = donorMode ? 0 : (isSlopSushiMode ? Math.round(getEntitySlopEffectTotal(fromEntity, 'outlitExtraPellets')) : 0);
+      const pellets = (isBot ? 6 : 8) + outlitExtraPellets;
+      const shotCount = isHyper ? 2 : 1; // Hypercharge 2.0: Double shot
+
+      // Hypercharge gives 40% less spread and +15% speed (we'll implement speed via player movement)
+      const hcSpread = (!donorMode && !isBot && isHypercharged) ? 0.6 : 1.0;
+      const sushiSpreadMult = isSlopSushiMode ? Math.max(1, getEntitySlopEffectTotal(fromEntity, 'outlitSpreadMult')) : 1;
+      const sushiSpeed = isSlopSushiMode ? getEntitySlopEffectTotal(fromEntity, 'outlitProjectileSpeedPct') : 0;
+      const spread = baseSpread * (isBot ? 0.8 : 0.6) * hcSpread * sushiSpreadMult;
+      const outlitDamage = Math.round((isBot ? 146 : 188) * damageMult);
+      const outlitVelocity = (!donorMode && !isBot && isHypercharged) ? 1.8 : 1.0;
+      const hcRangeMult = ((!donorMode && !isBot && isHypercharged) ? 1.1 : 1.0) * (mutationOvercharged ? 2.0 : 1.0);
+      const outlitProjectileSpeed = 560 * 0.6 * outlitVelocity * (1 + sushiSpeed);
+      const outlitBaseRange = 256.5;
+
+      if (!isBot || mutationOvercharged) explosions.push({ x: fromEntity.x + Math.cos(ang) * 20, y: fromEntity.y + Math.sin(ang) * 20, radius: mutationOvercharged ? 42 : 25, life: 0, maxLife: mutationOvercharged ? .22 : 0.15, color: mutationOvercharged ? 'rgba(255,55,75,.84)' : (isHypercharged ? 'rgba(238, 0, 255, 0.8)' : 'rgba(255, 200, 50, 0.6)'), fxKind: mutationOvercharged ? 'outlitMutation' : undefined });
+
+      const outlitPierce = donorMode ? false : (!isBot ? (gadgetArmed && selectedGadget === 'g1') : (fromEntity.gadgetArmed && fromEntity.selectedGadget === 'g1')); // Added Chaird specific properties
+      const outlitReturn = outlitPierce && hasEntityAttachie(fromEntity, 'gadget', 'g1');
+      const outlitStarRange = donorMode ? false : (((!isBot && selectedStar === 'long') || (isBot && fromEntity.selectedStar === 'long')) && (isBot ? hasEntityAttachie(fromEntity, 'star', 'long') : hasSelectedAttachie('star', 'long', 'outlit')));
+
+      // Fire twice when hypercharged
+      for (let shot = 0; shot < shotCount; shot++) {
+          const shotOffsetAng = isHyper ? (shot === 0 ? -0.08 : 0.08) : 0;
+
+          for (let i = 0; i < pellets; i++) {
+              const r = (pellets === 1) ? 0 : (i - (pellets - 1) / 2) / ((pellets - 1) / 2 || 1);
+              const a = ang + r * spread + shotOffsetAng;
+              bullets.push({
+                  x: fromEntity.x + Math.cos(a) * (fromEntity.radius + 4),
+                  y: fromEntity.y + Math.sin(a) * (fromEntity.radius + 4),
+                  vx: Math.cos(a) * outlitProjectileSpeed,
+                  vy: Math.sin(a) * outlitProjectileSpeed,
+                  life: 0,
+                  // Outlit is deliberately short-range. Faster projectile variants
+                  // get proportionally less lifetime so speed cannot inflate reach.
+                  maxLife: (outlitBaseRange / Math.max(1, outlitProjectileSpeed)) * hcRangeMult * (outlitStarRange ? 1.15 : 1),
+                  damage: outlitDamage,
+                  pierce: outlitPierce || isHyper, // Hypercharge 2.0: Pierce players when hypercharged
+                  hitIds: {},
+                  ownerBrawler: 'outlit',
+                  ...staticsteinDonorTag('outlit', donorMode),
+                  hyperVisual: isHyper,
+                  mutationVisual: mutationOvercharged,
+                  outlitMutationPull: mutationOvercharged,
+                  outlitMutationAttackId: fromEntity.currentMainAttackActivationId,
+                  ownerId: fromEntity.id,
+                  hitboxMod: 1 * hitboxMult,
+                  outlitHyperGlow: isHyper, // New property for enhanced effects
+                  outlitReturnOnExpire: outlitReturn
+              });
+          }
+      }
+      if (!donorMode && !mutationOvercharged) recordOutlitMutationShot(fromEntity, now);
+
+      if (outlitPierce) { if (isBot) fromEntity.gadgetArmed = false; else { gadgetArmed = false; gadgetCooldownUntil = now + GADGET_COOLDOWN_MS; updateGadgetButton(); } }
+  }
+
+  function fireUpiedownMain(fromEntity, ang, targetX, targetY, opts) {
+      const isBot = !!opts.isBot;
+      const donorMode = !!opts.donorMode;
+      const damageMult = opts.damageMult || 1, hitboxMult = opts.hitboxMult || 1;
+      const hyper = donorMode ? false : (isBot ? !!fromEntity.isHypercharged : !!isHypercharged);
+      const throwDistance = Math.min(610, Math.hypot(targetX - fromEntity.x, targetY - fromEntity.y));
+      const speed = 600;
+      const spawnOffset = fromEntity.radius + 8;
+      const flightDistance = Math.max(0, throwDistance - spawnOffset);
+      const landX = fromEntity.x + Math.cos(ang) * throwDistance;
+      const landY = fromEntity.y + Math.sin(ang) * throwDistance;
+      bullets.push({
+          ownerBrawler: 'upiedown', isUpiedownCorePie: true, upiedownHyper: hyper, upiedownBot: isBot,
+          ...staticsteinDonorTag('upiedown', donorMode),
+          upiedownLandX: landX, upiedownLandY: landY,
+          x: fromEntity.x + Math.cos(ang) * spawnOffset, y: fromEntity.y + Math.sin(ang) * spawnOffset,
+          vx: Math.cos(ang) * speed, vy: Math.sin(ang) * speed, life: 0, maxLife: Math.max(.05, flightDistance / speed),
+          damage: Math.round((isBot ? 1230 : 1700) * damageMult), pierce: true, pierceWalls: true, ownerId: fromEntity.id, hitIds: {}, hitboxMod: 2.65 * hitboxMult, hyperVisual: hyper, upiedownFresh: donorMode ? false : !!fromEntity.upiedownFreshArmed
+      });
+      fromEntity.upiedownFreshArmed = false;
+  }
+
+  // Jetpack has no traveling main projectile — its main IS the flight.
+  // The donor version throws a real jetpack bomb instead: it lobs to the
+  // aim point (capped at the 700px full-charge flight range) and
+  // detonates with the real flight-bomb blast (950 dmg, 66px radius,
+  // fxKind jetpackBomb). It never fires the flight itself.
+  const JETPACK_DONOR_BOMB_SPEED = 700; // full-charge flight: 700px in ~1000ms
+  const JETPACK_DONOR_BOMB_RANGE = 700; // 220 + 480 * full charge
+  const JETPACK_DONOR_BOMB_DAMAGE = 950; // flight-bomb damage
+  const JETPACK_DONOR_BOMB_RADIUS = 66; // flight-bomb blast radius
+  function fireJetpackDonorBomb(fromEntity, ang, targetX, targetY, opts) {
+      const donorMode = !!opts.donorMode;
+      const damageMult = opts.damageMult || 1, hitboxMult = opts.hitboxMult || 1;
+      const throwDistance = Math.min(JETPACK_DONOR_BOMB_RANGE, Math.hypot(targetX - fromEntity.x, targetY - fromEntity.y));
+      const spawnOffset = fromEntity.radius + 7;
+      const flightDistance = Math.max(0, throwDistance - spawnOffset);
+      const landX = clamp(fromEntity.x + Math.cos(ang) * throwDistance, 0, WORLD_W);
+      const landY = clamp(fromEntity.y + Math.sin(ang) * throwDistance, 0, WORLD_H);
+      bullets.push({
+          ownerBrawler: 'jetpack', isJetpackBomb: true, jetpackBombLob: true,
+          jetpackBombLandX: landX, jetpackBombLandY: landY,
+          jetpackBombDamage: Math.round(JETPACK_DONOR_BOMB_DAMAGE * damageMult),
+          jetpackBombRadius: Math.round(JETPACK_DONOR_BOMB_RADIUS * hitboxMult),
+          ...staticsteinDonorTag('jetpack', donorMode),
+          x: fromEntity.x + Math.cos(ang) * spawnOffset, y: fromEntity.y + Math.sin(ang) * spawnOffset,
+          vx: Math.cos(ang) * JETPACK_DONOR_BOMB_SPEED, vy: Math.sin(ang) * JETPACK_DONOR_BOMB_SPEED,
+          life: 0, maxLife: Math.max(.05, flightDistance / JETPACK_DONOR_BOMB_SPEED),
+          damage: Math.round(JETPACK_DONOR_BOMB_DAMAGE * damageMult), pierce: true, pierceWalls: true,
+          ownerId: fromEntity.id, hitIds: {}, hitboxMod: 1.2 * hitboxMult, hyperVisual: false
+      });
+  }
+
   // Static Interference donor pool: projectile mains only. No melee, no aura,
-  // no beam/continuous, no deploy/turret brawlers. Speed/range are the donor's
-  // own projectile values where verified (fuser 1710, runner 900/700,
-  // nightshade 700/560, mallow 900, evil_doctor 492/640); the rest are
-  // sensible table values. Damage always comes from the donor's P11 stats.
-  const STATICSTEIN_DONOR_POOL = [
-      { id: 'fuser', speed: 1710, range: 1400, hitboxMod: 1.0 },
-      { id: 'runner', speed: 900, range: 700, hitboxMod: 1.3 },
-      { id: 'nightshade', speed: 700, range: 560, hitboxMod: 1.0 },
-      { id: 'mallow', speed: 900, range: 600, hitboxMod: 1.0 },
-      { id: 'evil_doctor', speed: 492, range: 640, hitboxMod: 1.0 },
-      { id: 'mageny', speed: 760, range: 600, hitboxMod: 1.0 },
-      { id: 'upiedown', speed: 700, range: 650, hitboxMod: 1.0, lobbed: true },
-      { id: 'bowlin_rida', speed: 800, range: 500, hitboxMod: 1.0 },
-      { id: 'rocketeer', speed: 750, range: 700, hitboxMod: 1.0 },
-      { id: 'scuba_diver', speed: 650, range: 550, hitboxMod: 1.0 },
-      { id: 'jetpack', speed: 800, range: 650, hitboxMod: 1.0 },
-      { id: 'outlit', speed: 900, range: 300, hitboxMod: 1.0 }
-  ];
+  // no beam/continuous, no deploy/turret brawlers, no movement mains
+  // (jetpack's flight is movement — its donor shot is a thrown bomb).
+  // The old hardcoded table of invented speeds/ranges/hitboxMods is
+  // DELETED. Donor projectiles are the donor's own bullets, fired by
+  // the donor's own fire() code path (helpers above), with Staticstein
+  // as the shooter and the donor's P11 damage. Adding a donor = extract
+  // its fire() branch into a helper and add it here.
+  const STATICSTEIN_DONOR_POOL = ['fuser', 'runner', 'nightshade', 'mallow', 'evil_doctor', 'mageny', 'upiedown', 'bowlin_rida', 'rocketeer', 'scuba_diver', 'jetpack', 'outlit'];
+  const STATICSTEIN_DONOR_SHOTS = { fuser: fireFuserMain, runner: fireRunnerMain, nightshade: fireNightshadeMain, mallow: fireMallowMain, evil_doctor: fireEvilDoctorMain, mageny: fireMagenyMain, upiedown: fireUpiedownMain, bowlin_rida: fireBowlinRidaMain, rocketeer: fireRocketeerMain, scuba_diver: fireScubaDiverMain, jetpack: fireJetpackDonorBomb, outlit: fireOutlitMain };
 
   function isStaticsteinEntity(entity) { return !!entity && getEntityBrawlerId(entity) === 'staticstein'; }
   function staticsteinHasSP1(entity) { return !!entity && getEntityStarChoice(entity) === 'slow'; }
   function staticsteinHasSP2(entity) { return !!entity && getEntityStarChoice(entity) === 'long'; }
   function fireStaticsteinDonorShot(fromEntity, targetX, targetY, level, hyper, isInterference) {
-      const donor = STATICSTEIN_DONOR_POOL[Math.floor(Math.random() * STATICSTEIN_DONOR_POOL.length)];
-      const donorData = brawlerData[donor.id] || {};
-      const donorStats = getScaledStats(donor.id, level);
+      const donorId = STATICSTEIN_DONOR_POOL[Math.floor(Math.random() * STATICSTEIN_DONOR_POOL.length)];
+      const donorData = brawlerData[donorId] || {};
       const ang = Math.atan2(targetY - fromEntity.y, targetX - fromEntity.x);
       // Hyper Super: donor shots carry hypercharged effects for 3s even if
       // the Core Surge bar runs out (uniform window effect, not per-donor
       // hyper mechanics — builder simplification, flagged in the PR body).
       const hyperWindow = hyper || performance.now() < (fromEntity.staticsteinHyperShotsUntil || 0);
-      const dmg = Math.max(1, Math.round(donorStats.dmg * (hyperWindow ? STATICSTEIN_HYPER_DMG_MULT : 1)));
-      bullets.push({ ownerBrawler: donor.id, isStaticsteinDonorShot: true, staticsteinDonor: donor.id, x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 7), y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 7), vx: Math.cos(ang) * donor.speed, vy: Math.sin(ang) * donor.speed, life: 0, maxLife: donor.range / donor.speed, damage: dmg, pierce: false, pierceWalls: !!donor.lobbed, ownerId: fromEntity.id, hitIds: {}, hitboxMod: (hyperWindow ? STATICSTEIN_HYPER_HITBOX_MULT : 1) * (donor.hitboxMod || 1), hyperVisual: hyperWindow });
-      spawnFloatingText(fromEntity.x, fromEntity.y - 34, (donorData.name || donor.id).toUpperCase() + '!', donorData.color || '#d1d5db');
+      // The donor's REAL projectile: the donor's own fire() code path
+      // (extracted helper), shooter = Staticstein, donor P11 damage.
+      // `level` is kept for signature compatibility — donor damage is
+      // always the donor's P11 stats (helpers force level 11).
+      const donorShot = STATICSTEIN_DONOR_SHOTS[donorId];
+      if (donorShot) donorShot(fromEntity, ang, targetX, targetY, { isBot: fromEntity.id !== player.id, now: performance.now(), damageMult: hyperWindow ? STATICSTEIN_HYPER_DMG_MULT : 1, hitboxMult: hyperWindow ? STATICSTEIN_HYPER_HITBOX_MULT : 1, donorMode: true });
+      spawnFloatingText(fromEntity.x, fromEntity.y - 34, (donorData.name || donorId).toUpperCase() + '!', donorData.color || '#d1d5db');
       // Family Circuit (signature): the next Interference shot calls a sky strike.
       if (isInterference && fromEntity.staticsteinFamilyCircuitArmed) {
           fromEntity.staticsteinFamilyCircuitArmed = false;
@@ -45683,8 +45859,12 @@ let heistFeverActive = false;
           dist -= 40;
       }
       if (dist < 80) return;
+      // Glitch effect at BOTH ends: a static burst + distortion where he
+      // leaves and where he lands (was a plain explosion at the
+      // destination only).
+      explosions.push({ x: entity.x, y: entity.y, radius: STATICSTEIN_GLITCH_BURST_RADIUS, life: 0, maxLife: 0.25, color: 'rgba(209,213,219,.85)', fxKind: 'staticsteinGlitch' });
       entity.x = nx; entity.y = ny;
-      explosions.push({ x: nx, y: ny, radius: STATICSTEIN_GLITCH_BURST_RADIUS, life: 0, maxLife: 0.25, color: 'rgba(209,213,219,.85)', fxKind: 'voltasteinExplosion' });
+      explosions.push({ x: nx, y: ny, radius: STATICSTEIN_GLITCH_BURST_RADIUS, life: 0, maxLife: 0.25, color: 'rgba(209,213,219,.85)', fxKind: 'staticsteinGlitch' });
       AOEDamage(nx, ny, STATICSTEIN_GLITCH_BURST_RADIUS, STATICSTEIN_GLITCH_BURST_DMG, entity.id, false);
       spawnFloatingText(nx, ny - 34, 'GLITCH STEP!', '#d1d5db');
   }
@@ -59480,10 +59660,18 @@ function checkHit(target, b, i){
       }
       // Voltastein volt: detonate on range expiry (same pattern as the
       // Cinderion scatter core above — resolve before generic expiry cleanup).
+      // Lobbed volts snap to their precomputed landing point (the flight
+      // track ends there; dt overshoot would otherwise shift the blast).
       if (b.isVoltasteinVolt && b.life >= b.maxLife && !b._voltExploded) {
           b._voltExploded = true;
           const voltOwner = b.ownerId === player.id ? player : bots.find(bt => bt && bt.id === b.ownerId);
-          if (voltOwner) voltasteinVoltExplode(voltOwner, b.x, b.y, b, null);
+          if (voltOwner) voltasteinVoltExplode(voltOwner, b.voltasteinLob ? (b.voltasteinLandX ?? b.x) : b.x, b.voltasteinLob ? (b.voltasteinLandY ?? b.y) : b.y, b, null);
+      }
+      // Jetpack donor bomb: detonate at its landing point on range expiry.
+      if (b.isJetpackBomb && b.jetpackBombLob && b.life >= b.maxLife && !b._jetpackBombExploded) {
+          b._jetpackBombExploded = true;
+          const bombOwner = b.ownerId === player.id ? player : bots.find(bt => bt && bt.id === b.ownerId);
+          if (bombOwner) explodeJetpackBomb(b.jetpackBombLandX ?? b.x, b.jetpackBombLandY ?? b.y, bombOwner, b.jetpackBombDamage || JETPACK_DONOR_BOMB_DAMAGE, false, b.jetpackBombRadius || JETPACK_DONOR_BOMB_RADIUS);
       }
       if (b.isOilMakerCrude) {
           // Crude bullet does not drop mid-flight trails anymore: forms one puddle at the end
@@ -59500,6 +59688,17 @@ function checkHit(target, b, i){
               b.lastTrailAt = nowMs;
               explosions.push({ x: b.x + (Math.random() - 0.5) * 8, y: b.y + (Math.random() - 0.5) * 8, vx: (Math.random() - 0.5) * 40, vy: (Math.random() - 0.5) * 40, radius: 4 + Math.random() * 3, life: 0, maxLife: 0.6, color: '#5df29d', isParticle: true });
               explosions.push({ x: b.x, y: b.y, vx: 0, vy: 0, radius: 8 + Math.random() * 3, life: 0, maxLife: 0.3, color: 'rgba(93, 242, 157, 0.25)', isParticle: true });
+          }
+      }
+      // Voltastein volt: crackling glow trail at the orb's visual height
+      // (the orb rides lift px above its ground track while lobbed).
+      if (b.isVoltasteinVolt) {
+          const nowMs = performance.now();
+          if (!b.lastTrailAt || nowMs >= b.lastTrailAt + 16) {
+              b.lastTrailAt = nowMs;
+              const vProgress = clamp(b.life / Math.max(.001, b.maxLife || 1), 0, 1);
+              const vLift = Math.sin(vProgress * Math.PI) * (b.voltasteinChild ? 52 : 70);
+              explosions.push({ x: b.x + (Math.random() - 0.5) * 10, y: b.y - vLift + (Math.random() - 0.5) * 10, vx: (Math.random() - 0.5) * 30, vy: (Math.random() - 0.5) * 30, radius: 3 + Math.random() * 3, life: 0, maxLife: 0.4, color: Math.random() < 0.5 ? '#c084fc' : '#fde047', isParticle: true });
           }
       }
       if (b.isCopyphaseOrb || b.isElectrostienShock) {
@@ -60244,6 +60443,13 @@ function checkHit(target, b, i){
           continue;
       }
 
+      // Voltastein volts and jetpack donor bombs are true lobs: they arc
+      // over walls and units and only detonate where they land (expiry
+      // hooks above). Same airborne treatment as the Cinderion scatter
+      // core — no wall damage, no unit hits, no trampoline/barrier
+      // interaction while in flight.
+      if ((b.isVoltasteinVolt && b.voltasteinLob) || (b.isJetpackBomb && b.jetpackBombLob)) continue;
+
       // Trampaheal's Super is a real damageable deployable.
       if ((b.damage || 0) > 0 && b.ownerId !== undefined && Array.isArray(trampolines)) {
           let consumedByTrampoline = false;
@@ -60573,6 +60779,10 @@ function checkHit(target, b, i){
       // Upiedown's large pie is also a true lob. It cannot collide with a unit
       // while airborne; its endpoint explosion handles the impact damage.
       if (b.isUpiedownCorePie) continue;
+      // Voltastein volts and jetpack donor bombs are true lobs too
+      // (defense in depth alongside the pre-wall skip above — a lob must
+      // never hit a unit mid-flight).
+      if ((b.isVoltasteinVolt && b.voltasteinLob) || (b.isJetpackBomb && b.jetpackBombLob)) continue;
       // Draflygon aerial drop is an airborne drop: it detonates upon landing to trigger AOE impact and 8 outward flames
       if (b.isSirCheeseburgerSlice) continue;
       // Dedicated cleaves skip ordinary projectile collision
@@ -74163,6 +74373,107 @@ function checkHit(target, b, i){
           ctx.beginPath();ctx.moveTo(18,0);ctx.lineTo(5,-5);ctx.lineTo(7,-2);ctx.lineTo(-15,-2);ctx.lineTo(-15,2);ctx.lineTo(7,2);ctx.lineTo(5,5);ctx.closePath();ctx.fill();
           ctx.strokeStyle='#5b3510';ctx.lineWidth=1.5;ctx.stroke();ctx.restore();continue;
       }
+      if (b.isVoltasteinVolt) {
+          // Crackling overcharged orb: rides a visible arc (lift + ground
+          // shadow, pie pattern), gold core in a purple shell, flickering
+          // electric arcs, glow trail streak, and a faint pulsing ring
+          // telegraphing the landing point while airborne.
+          ctx.save();
+          const vProgress = Math.max(0, Math.min(1, b.life / Math.max(.001, b.maxLife || 1)));
+          const vLift = Math.sin(vProgress * Math.PI) * (b.voltasteinChild ? 52 : 70);
+          const orbR = b.voltasteinChild ? 9 : 12;
+          ctx.fillStyle = 'rgba(0,0,0,.23)';
+          ctx.beginPath(); ctx.ellipse(b.x, b.y, orbR * (1 - vLift / 200), Math.max(3, orbR * .35 * (1 - vLift / 240)), 0, 0, Math.PI * 2); ctx.fill();
+          if (b.voltasteinLob && b.voltasteinLandX !== undefined && b.voltasteinLandY !== undefined) {
+              ctx.globalAlpha = .3 + .15 * Math.sin(performance.now() / 160);
+              ctx.strokeStyle = b.hyperVisual ? '#e879f9' : '#c084fc'; ctx.lineWidth = 2;
+              ctx.beginPath(); ctx.arc(b.voltasteinLandX, b.voltasteinLandY, (b.voltRadius || 120) * .28, 0, Math.PI * 2); ctx.stroke();
+              ctx.globalAlpha = 1;
+          }
+          ctx.translate(b.x, b.y - vLift);
+          const vAng = Math.atan2(b.vy, b.vx);
+          ctx.save(); ctx.rotate(vAng); ctx.globalAlpha = .5; ctx.strokeStyle = b.hyperVisual ? '#e879f9' : '#a855f7'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+          ctx.beginPath(); ctx.moveTo(-26, 0); ctx.lineTo(-8, 0); ctx.stroke(); ctx.restore();
+          ctx.shadowColor = b.hyperVisual ? '#e879f9' : '#a855f7'; ctx.shadowBlur = 18;
+          const vGrad = ctx.createRadialGradient(0, 0, 1, 0, 0, orbR + 4);
+          vGrad.addColorStop(0, '#fef9c3'); vGrad.addColorStop(.45, '#fde047'); vGrad.addColorStop(.75, '#a855f7'); vGrad.addColorStop(1, 'rgba(168,85,247,0)');
+          ctx.fillStyle = vGrad; ctx.beginPath(); ctx.arc(0, 0, orbR + 4, 0, Math.PI * 2); ctx.fill();
+          ctx.shadowBlur = 0; ctx.strokeStyle = '#fef08a'; ctx.lineWidth = 1.5;
+          const vArcSeed = Math.floor(performance.now() / 90) * 13 + (b.ownerId || 0);
+          for (let k = 0; k < 3; k++) {
+              const a0 = voltasteinFlickerRand(vArcSeed + k * 31) * Math.PI * 2;
+              const a1 = a0 + 1.1 + voltasteinFlickerRand(vArcSeed + k * 47) * 1.2;
+              const midA = (a0 + a1) / 2, midR = orbR + 8 + voltasteinFlickerRand(vArcSeed + k * 61) * 5;
+              ctx.beginPath();
+              ctx.moveTo(Math.cos(a0) * (orbR + 2), Math.sin(a0) * (orbR + 2));
+              ctx.lineTo(Math.cos(midA) * midR, Math.sin(midA) * midR);
+              ctx.lineTo(Math.cos(a1) * (orbR + 2), Math.sin(a1) * (orbR + 2));
+              ctx.stroke();
+          }
+          ctx.restore(); continue;
+      }
+      if (b.isStaticsteinBolt) {
+          // Glitchy wide shot: a flickering static shard with a torn
+          // trail. The two bolts are visibly separate mid-flight (offset
+          // +/-60px, angled inward) and their glows merge as they
+          // reconverge at range end; a brightening pulse marks the
+          // convergence point.
+          ctx.save();
+          const sProgress = Math.max(0, Math.min(1, b.life / Math.max(.001, b.maxLife || 1)));
+          const sAng = Math.atan2(b.vy, b.vx);
+          const sStep = Math.floor(performance.now() / 70);
+          ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(sAng); ctx.lineCap = 'round';
+          for (let k = 0; k < 3; k++) {
+              const tOff = (voltasteinFlickerRand(sStep * 7 + k * 19 + (b.ownerId || 0)) - 0.5) * 12;
+              const tLen = 22 + voltasteinFlickerRand(sStep * 11 + k * 23) * 18;
+              ctx.globalAlpha = .28 + voltasteinFlickerRand(sStep * 13 + k * 29) * .3;
+              ctx.strokeStyle = k === 1 ? '#a855f7' : '#e5e7eb';
+              ctx.lineWidth = k === 1 ? 2.5 : 1.5;
+              ctx.beginPath(); ctx.moveTo(-8, tOff * 0.4); ctx.lineTo(-8 - tLen, tOff); ctx.stroke();
+          }
+          ctx.restore();
+          ctx.translate(b.x, b.y);
+          const sJx = (voltasteinFlickerRand(sStep * 17 + (b.ownerId || 0)) - 0.5) * 4;
+          const sJy = (voltasteinFlickerRand(sStep * 19 + (b.ownerId || 0)) - 0.5) * 4;
+          ctx.translate(sJx, sJy); ctx.rotate(sAng + Math.sin(performance.now() / 90) * 0.12);
+          ctx.shadowColor = b.hyperVisual ? '#e879f9' : '#d1d5db'; ctx.shadowBlur = 14;
+          ctx.fillStyle = '#f3f4f6';
+          ctx.beginPath(); ctx.moveTo(12, 0); ctx.lineTo(0, -6); ctx.lineTo(-12, 0); ctx.lineTo(0, 6); ctx.closePath(); ctx.fill();
+          ctx.fillStyle = b.hyperVisual ? '#e879f9' : '#a855f7';
+          ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.fill();
+          ctx.shadowBlur = 0; ctx.fillStyle = 'rgba(229,231,235,.8)';
+          for (let k = 0; k < 3; k++) {
+              const sNx = (voltasteinFlickerRand(sStep * 23 + k * 31) - 0.5) * 26;
+              const sNy = (voltasteinFlickerRand(sStep * 27 + k * 37) - 0.5) * 18;
+              ctx.fillRect(sNx, sNy, 2, 2);
+          }
+          if (sProgress > 0.8) {
+              const cPulse = (sProgress - 0.8) / 0.2;
+              ctx.globalAlpha = cPulse * 0.7;
+              ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 2;
+              ctx.beginPath(); ctx.arc(0, 0, 10 + cPulse * 10, 0, Math.PI * 2); ctx.stroke();
+              ctx.globalAlpha = 1;
+          }
+          ctx.restore(); continue;
+      }
+      if (b.isJetpackBomb && b.jetpackBombLob) {
+          // Lobbed jetpack bomb: dark sphere with a sparking fuse, riding
+          // a visible arc (lift + ground shadow, pie pattern).
+          ctx.save();
+          const jProgress = Math.max(0, Math.min(1, b.life / Math.max(.001, b.maxLife || 1)));
+          const jLift = Math.sin(jProgress * Math.PI) * 60;
+          ctx.fillStyle = 'rgba(0,0,0,.23)';
+          ctx.beginPath(); ctx.ellipse(b.x, b.y, 11 * (1 - jLift / 200), Math.max(3, 4 * (1 - jLift / 240)), 0, 0, Math.PI * 2); ctx.fill();
+          ctx.translate(b.x, b.y - jLift);
+          ctx.shadowColor = '#ff9d2e'; ctx.shadowBlur = 14;
+          ctx.fillStyle = '#3a3a3a';
+          ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = '#ff9d2e'; ctx.lineWidth = 2; ctx.stroke();
+          const jSpark = voltasteinFlickerRand(Math.floor(performance.now() / 60) * 3 + (b.ownerId || 0));
+          ctx.fillStyle = jSpark < 0.5 ? '#ffe45e' : '#ff9d2e';
+          ctx.beginPath(); ctx.arc(7, -8, 2.5 + jSpark * 2, 0, Math.PI * 2); ctx.fill();
+          ctx.restore(); continue;
+      }
       if (b.isRelayOrb) {
           ctx.save();
           const angle=Math.atan2(b.vy,b.vx), pulse=.88+Math.sin(performance.now()/70)*.12;
@@ -77777,6 +78088,47 @@ function checkHit(target, b, i){
       ctx.fill(); 
     }
 
+    // Voltastein Power Outage chains: a visible arcing lightning link
+    // between the caster and each chained victim, updating as they move
+    // (re-drawn every frame from live positions), a crackling effect on
+    // each chained victim, and the hyper link between the two
+    // hyper-chained enemies. No stored render state — the chain state
+    // already lives on the caster (voltasteinOutageVictimIds) and the
+    // victims (powerOutageOwnerId).
+    {
+        const chainNow = performance.now();
+        const chainStep = Math.floor(chainNow / 90);
+        for (const caster of [player, ...bots]) {
+            if (!caster || caster.hp <= 0 || !isVoltasteinEntity(caster)) continue;
+            const victimIds = caster.voltasteinOutageVictimIds || [];
+            if (!victimIds.length || chainNow >= (caster.voltasteinOutageUntil || 0)) continue;
+            for (const vid of victimIds) {
+                const v = getEntityById(vid);
+                if (!v || v.hp <= 0 || v.powerOutageOwnerId !== caster.id) continue;
+                if (!isWorldVisualVisible(v.x, v.y, 120) && !isWorldVisualVisible(caster.x, caster.y, 120)) continue;
+                drawVoltasteinLightning(ctx, caster.x, caster.y - 10, v.x, v.y - 10, 6, 14, vid * 7 + chainStep, '#c084fc', 2.5);
+                drawVoltasteinLightning(ctx, caster.x, caster.y - 10, v.x, v.y - 10, 6, 14, vid * 13 + chainStep + 50, '#fef9c3', 1);
+                // Crackling on the chained victim: two short jagged arcs
+                // sparking around its rim.
+                const vR = (v.radius || 14) + 4;
+                for (let k = 0; k < 2; k++) {
+                    const cSeed = vid * 31 + chainStep + k * 17;
+                    const a0 = voltasteinFlickerRand(cSeed) * Math.PI * 2;
+                    const a1 = a0 + 0.9 + voltasteinFlickerRand(cSeed + 29) * 0.8;
+                    drawVoltasteinLightning(ctx, v.x + Math.cos(a0) * vR, v.y + Math.sin(a0) * vR, v.x + Math.cos(a1) * vR, v.y + Math.sin(a1) * vR, 3, 5, cSeed + 41, '#fef08a', 1.5);
+                }
+            }
+            // Hyper link: the two hyper-chained enemies stay visibly tied.
+            const hAId = caster.voltasteinHyperChainAId || 0, hBId = caster.voltasteinHyperChainBId || 0;
+            if (hAId && hBId && chainNow < (caster.voltasteinHyperChainUntil || 0)) {
+                const ha = getEntityById(hAId), hb = getEntityById(hBId);
+                if (ha && hb && ha.hp > 0 && hb.hp > 0 && ha.powerOutageOwnerId === caster.id && hb.powerOutageOwnerId === caster.id) {
+                    drawVoltasteinLightning(ctx, ha.x, ha.y - 10, hb.x, hb.y - 10, 5, 12, hAId * 3 + hBId + chainStep, '#e879f9', 2.5);
+                }
+            }
+        }
+    }
+
         // Render Rager War Totems & Raged Areas
     for (const totem of ragerWarTotems) {
         ctx.save();
@@ -79337,6 +79689,84 @@ function checkHit(target, b, i){
             ctx.beginPath(); ctx.arc(ex.x, ex.y, fR, 0, Math.PI * 2); ctx.stroke();
             ctx.fillStyle = 'rgba(255,228,94,.85)';
             ctx.beginPath(); ctx.arc(ex.x, ex.y, 10 * fAlpha + 4, 0, Math.PI * 2); ctx.fill();
+            // Lingering electric crackle: jagged mini-arcs inside the blast
+            // that flicker (90ms steps) as the explosion fades.
+            const exCrackleStep = Math.floor(ex.life / 0.09);
+            ctx.strokeStyle = '#fef08a'; ctx.lineWidth = 2; ctx.shadowColor = '#a855f7'; ctx.shadowBlur = 10;
+            for (let k = 0; k < 4; k++) {
+                const ca0 = voltasteinFlickerRand(exCrackleStep * 7 + (ex.x | 0) + k * 13) * Math.PI * 2;
+                const cr0 = fR * (0.15 + voltasteinFlickerRand(exCrackleStep * 7 + (ex.y | 0) + k * 23) * 0.5);
+                const ca1 = ca0 + 0.7 + voltasteinFlickerRand(exCrackleStep * 7 + k * 37) * 0.9;
+                const cr1 = Math.min(fR * 0.95, cr0 + 14 + voltasteinFlickerRand(exCrackleStep * 7 + k * 53) * 18);
+                const cMidA = (ca0 + ca1) / 2, cMidR = (cr0 + cr1) / 2 + 6;
+                ctx.globalAlpha = fAlpha * (0.5 + voltasteinFlickerRand(exCrackleStep * 7 + k * 71) * 0.5);
+                ctx.beginPath();
+                ctx.moveTo(ex.x + Math.cos(ca0) * cr0, ex.y + Math.sin(ca0) * cr0);
+                ctx.lineTo(ex.x + Math.cos(cMidA) * cMidR, ex.y + Math.sin(cMidA) * cMidR);
+                ctx.lineTo(ex.x + Math.cos(ca1) * cr1, ex.y + Math.sin(ca1) * cr1);
+                ctx.stroke();
+            }
+            ctx.globalAlpha = fAlpha;
+            ctx.restore();
+            continue;
+        }
+        if (ex.fxKind === 'voltasteinZapFlash') {
+            // Power Outage cast flash: a bright white-purple ring bursting
+            // out to zap range from the caster.
+            const fAlpha = Math.max(0, 1 - ex.life / ex.maxLife);
+            const fR = (ex.radius || 300) * (0.35 + 0.65 * fAlpha);
+            ctx.save();
+            ctx.globalAlpha = fAlpha;
+            ctx.shadowColor = '#e9d5ff'; ctx.shadowBlur = 24;
+            ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 5;
+            ctx.beginPath(); ctx.arc(ex.x, ex.y, fR, 0, Math.PI * 2); ctx.stroke();
+            ctx.strokeStyle = '#c084fc'; ctx.lineWidth = 2.5;
+            ctx.beginPath(); ctx.arc(ex.x, ex.y, fR * 0.72, 0, Math.PI * 2); ctx.stroke();
+            ctx.fillStyle = 'rgba(255,255,255,.9)';
+            ctx.beginPath(); ctx.arc(ex.x, ex.y, 16 * fAlpha + 6, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+            continue;
+        }
+        if (ex.fxKind === 'voltasteinChainJump') {
+            // Power Outage spread: a visible lightning arc from the victim
+            // the chain leaves to the victim it jumps to, plus a flash on
+            // the new victim.
+            const fAlpha = Math.max(0, 1 - ex.life / ex.maxLife);
+            const jx1 = ex.chainFromX ?? ex.x, jy1 = ex.chainFromY ?? ex.y;
+            const jx2 = ex.chainToX ?? ex.x, jy2 = ex.chainToY ?? ex.y;
+            const jStep = Math.floor(ex.life / 0.09);
+            ctx.save();
+            ctx.globalAlpha = fAlpha;
+            drawVoltasteinLightning(ctx, jx1, jy1, jx2, jy2, 6, 12, jStep * 11 + (jx1 | 0), '#c084fc', 2.5);
+            drawVoltasteinLightning(ctx, jx1, jy1, jx2, jy2, 6, 12, jStep * 23 + (jy1 | 0), '#fef9c3', 1.2);
+            ctx.fillStyle = 'rgba(254,249,195,.9)';
+            ctx.beginPath(); ctx.arc(jx2, jy2, 8 * fAlpha + 3, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+            continue;
+        }
+        if (ex.fxKind === 'staticsteinGlitch') {
+            // Glitch Step burst: static noise — offset slice rects,
+            // scanlines, and a white flash that tears and settles.
+            const fAlpha = Math.max(0, 1 - ex.life / ex.maxLife);
+            const gStep = Math.floor(ex.life / 0.07);
+            const gR = ex.radius || 80;
+            ctx.save();
+            ctx.globalAlpha = fAlpha;
+            for (let k = 0; k < 4; k++) {
+                const gSy = ex.y - gR * 0.6 + k * gR * 0.4;
+                const gOff = (voltasteinFlickerRand(gStep * 5 + k * 11 + (ex.x | 0)) - 0.5) * 26;
+                ctx.fillStyle = k % 2 ? 'rgba(168,85,247,.5)' : 'rgba(229,231,235,.55)';
+                ctx.fillRect(ex.x - gR * 0.7 + gOff, gSy, gR * 1.4, 5);
+            }
+            ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = 1;
+            for (let k = 0; k < 3; k++) {
+                const gLy = ex.y - gR * 0.5 + k * gR * 0.5 + (voltasteinFlickerRand(gStep * 7 + k * 17) - 0.5) * 8;
+                ctx.beginPath(); ctx.moveTo(ex.x - gR * 0.8, gLy); ctx.lineTo(ex.x + gR * 0.8, gLy); ctx.stroke();
+            }
+            ctx.fillStyle = 'rgba(255,255,255,.85)';
+            ctx.beginPath(); ctx.arc(ex.x, ex.y, 10 * fAlpha + 4, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = '#d1d5db'; ctx.lineWidth = 2.5;
+            ctx.beginPath(); ctx.arc(ex.x, ex.y, gR * (0.5 + 0.5 * fAlpha), 0, Math.PI * 2); ctx.stroke();
             ctx.restore();
             continue;
         }
