@@ -75,6 +75,9 @@ check('super marks hidden-only when not hyper; hyper marks anyone', game.include
 check('super fallback sets next-slam boost when nothing marked', game.includes('if (marked === 0) {') && game.includes('entity.auraCharmerNextAttackBoost = true;'));
 check('max-HP bonus resets on death; G2 shield expires', game.includes('(e.auraCharmerBonusMaxHp || 0) > 0 && (e.hp <= 0 || e.isDead)') && game.includes('e.auraCharmerShieldExpiresAt'));
 check('aura render is a STEADY ring (explicitly not pulsing)', game.includes('Steady ring on purpose') && game.includes('isAuraCharmerEntity(entity)'));
+check('visuals fix: Decayer aura block closes BEFORE the Charmer ring opens (not nested)', game.includes("ctx.setLineDash([]); ctx.restore();\n        }\n        if (entity && entity.hp > 0 && isAuraCharmerEntity(entity)) {"));
+check('visuals fix: old nested adjacency is gone', !game.includes("ctx.setLineDash([]); ctx.restore();\n        if (entity && entity.hp > 0 && isAuraCharmerEntity(entity)) {"));
+check('visuals fix: sweep block flows straight into chickpig block (no stray brace)', game.includes("ctx.globalAlpha = 0.25; ctx.stroke(); ctx.restore();\n        }\n        if (entity && entity.hp > 0 && performance.now() < (entity.chickpigChickenUntil||0)) {"));
 check('marked enemies get a gold ring; sweep hand visual exists', game.includes('entity.auraCharmerMarkUntil') && game.includes('entity.auraCharmerSweepUntil'));
 
 // --- Decayer untouched ---
