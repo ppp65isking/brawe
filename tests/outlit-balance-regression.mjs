@@ -16,7 +16,7 @@ assert.match(game, /Every 8 main attacks, the next 4 Scatter Pumps get \+100% ra
 assert.match(game, /const pellets = \(isBot \? 6 : 8\) \+ outlitExtraPellets;/, 'Outlit fires 8 pellets for player (6 for bot)');
 
 // 4. Damage nerfed by 12% (265 -> 233 for player, 208 -> 183 for bot)
-assert.match(game, /const outlitDamage = isBot \? 146 : 188;/, 'Outlit damage is 188 for player (146 for bot)');
+assert.match(game, /const outlitDamage = Math\.round\(\(isBot \? 146 : 188\) \* damageMult\);/, 'Outlit damage is 188 for player (146 for bot)');
 
 // 5. Range nerfed by 10% (285 -> 256.5)
 assert.match(game, /const outlitBaseRange = 256\.5;/, 'Outlit base range is 256.5');

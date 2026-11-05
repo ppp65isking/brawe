@@ -62,7 +62,7 @@ check('jetpack super min dash raised to 600px',
 check('no 240px jetpack super min dash remains',
   !game.includes('if(jd<240)'));
 check('jetpack super bomb blast radius still 66px (the math the 600px pick is based on)',
-  has("AOEDamage(x,y,66,damage,ownerId,false);"));
+  has("function explodeJetpackBomb(x, y, owner, damage, hyperSplit=false, radius=66) {") && has("AOEDamage(x,y,radius,damage,ownerId,false);"));
 
 // ---------- JETPACK SUPER BOMB PATTERN (true zero-overlap: old 1/7..6/7 fractions + narrow lanes stacked) ----------
 check('jetpack super bombs drop across the full path (fractions i/5, not (i+1)/7)',
