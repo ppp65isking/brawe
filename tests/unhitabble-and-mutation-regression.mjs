@@ -18,7 +18,7 @@ test('Unhitabble is registered in allBrawlers, brawlerRarities, CUSTOM_BRAWLER_P
 });
 
 test('Unhitabble has scaling stats defined (hp: 6000, dmg: 1400, speed: 280)', () => {
-  assert.match(gameCode, /if\s*\(brawlerId === 'unhitabble'\)\s*\{\s*const scale = 0\.55 \+ \(level - 1\) \* 0\.045;\s*return \{ hp: Math\.round\(6000 \* scale\), dmg: Math\.round\(1400 \* scale\), speed: 280 \};\s*\}/);
+  assert.match(gameCode, /if\s*\(brawlerId === 'unhitabble'\)\s*\{\s*const scale = 0\.55 \+ \(level - 1\) \* 0\.045;\s*const hpScale = getLevelHpScale\(level\);\s*return \{ hp: Math\.round\(6000 \* hpScale\), dmg: Math\.round\(1400 \* scale\), speed: 280 \};\s*\}/);
 });
 
 test('Unhitabble brawlerData has complete attack, super, hyper, gadgets, and star powers defined', () => {

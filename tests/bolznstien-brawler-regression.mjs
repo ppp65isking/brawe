@@ -7,7 +7,7 @@ const checks = [
   // 1. Registration & Stats
   ['bolznstien registered in brawlerData', /'bolznstien':\s*\{\s*name:\s*'Bolznstien',\s*role:\s*'Damage Dealer'/.test(game)],
   ['bolznstien registered in brawlerRarities as Rare', /bolznstien:\s*'Rare'/.test(game)],
-  ['bolznstien registered in getScaledStats', /if\s*\(brawlerId === 'bolznstien'\)\s*\{\s*const scale = 0\.55 \+ \(level - 1\) \* 0\.045;\s*return \{ hp: Math\.round\(7200 \* scale\)/.test(game)],
+  ['bolznstien registered in getScaledStats', /if\s*\(brawlerId === 'bolznstien'\)\s*\{\s*const scale = 0\.55 \+ \(level - 1\) \* 0\.045;\s*const hpScale = getLevelHpScale\(level\);\s*return \{ hp: Math\.round\(7200 \* hpScale\)/.test(game)],
   ['bolznstien registered in reloadMsByBrawler', /reloadMsByBrawler:\s*\{[\s\S]*?bolznstien:\s*1400/.test(game)],
   ['bolznstien registered in brawlerRoles', /bolznstien:'Damage Dealer'/.test(game)],
   ['bolznstien registered in brawlerPortraitIcons', /bolznstien:\s*'⚡🧟'/.test(game)],

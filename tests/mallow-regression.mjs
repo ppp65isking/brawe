@@ -28,7 +28,7 @@ check('roster includes mallow', game.includes("'feathers', 'spikey', 'electrosti
 check('rarity Epic (count bumped 31 -> 32)', game.includes('// Epic (32)') && game.includes("mallow: 'Epic',"));
 check('role Controller', game.includes("mallow:'Controller',"));
 check('portrait icon present', game.includes("mallow: '🍡',"));
-check('stats branch 6800/320/270', game.includes("if (brawlerId === 'mallow') {") && game.includes('hp: Math.round(6800 * scale), dmg: Math.round(320 * scale), speed: 270'));
+check('stats branch 6800/320/270', game.includes("if (brawlerId === 'mallow') {") && game.includes('hp: Math.round(6800 * hpScale), dmg: Math.round(320 * scale), speed: 270'));
 check('super charge 12 hits', game.includes('mallow:12'));
 check('reload 1500ms', game.includes('mallow: 1500,'));
 check('fire delay 550ms', game.includes('mallow: 550,'));

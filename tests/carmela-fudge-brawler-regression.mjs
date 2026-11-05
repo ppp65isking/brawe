@@ -10,7 +10,7 @@ const checks = [
   ['carmela_fudge registered in brawlerData', /'carmela_fudge':\s*\{\s*name:\s*'Carmela & Fudge',\s*role:\s*'Damage Dealer'/.test(game)],
   ['carmela_fudge registered in brawlerRarities as Anomaly', /carmela_fudge:\s*'Anomaly'/.test(game)],
   ['carmela_fudge registered in modular Anomaly roster', /registerBrawlerGroup\('Anomaly',[\s\S]*?'carmela_fudge'/.test(anomalyRoster)],
-  ['carmela_fudge registered in getScaledStats (6400 HP, 1800 DMG)', /if\s*\(brawlerId === 'carmela_fudge'\)\s*\{\s*const scale = 0\.55 \+ \(level - 1\) \* 0\.045;\s*return \{ hp: Math\.round\(6400 \* scale\),\s*dmg: Math\.round\(1800 \* scale\)/.test(game)],
+  ['carmela_fudge registered in getScaledStats (6400 HP, 1800 DMG)', /if\s*\(brawlerId === 'carmela_fudge'\)\s*\{\s*const scale = 0\.55 \+ \(level - 1\) \* 0\.045;\s*const hpScale = getLevelHpScale\(level\);\s*return \{ hp: Math\.round\(6400 \* hpScale\),\s*dmg: Math\.round\(1800 \* scale\)/.test(game)],
   ['carmela_fudge registered in reloadMsByBrawler as 1400ms', /reloadMsByBrawler:\s*\{[\s\S]*?carmela_fudge:\s*1400/.test(game)],
   ['carmela_fudge registered in fireDelayMsByBrawler as 180ms', /fireDelayMsByBrawler:\s*\{[\s\S]*?carmela_fudge:\s*180/.test(game)],
   ['carmela_fudge registered in brawlerRoles', /carmela_fudge:'Damage Dealer'/.test(game)],

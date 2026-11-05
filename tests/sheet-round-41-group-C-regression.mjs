@@ -26,14 +26,14 @@ check('copyphase main damage untouched (820/520)', game.includes('damage: isBot 
 check('crystila glass still 4000/5000', game.includes('baseCap = hc ? 5000 : 4000') || game.includes('baseCap = bot.isHypercharged ? 5000 : 4000'));
 
 // ---------- Cursed ----------
-check('cursed scaled dmg 1500>1350', /brawlerId === 'cursed'\) \{\s*const scale = 0\.55 \+ \(level - 1\) \* 0\.045;\s*return \{ hp: Math\.round\(6800 \* scale\), dmg: Math\.round\(1350 \* scale\), speed: 260 \};/.test(game));
+check('cursed scaled dmg 1500>1350', /brawlerId === 'cursed'\) \{\s*const scale = 0\.55 \+ \(level - 1\) \* 0\.045;\s*const hpScale = getLevelHpScale\(level\);\s*return \{ hp: Math\.round\(6800 \* hpScale\), dmg: Math\.round\(1350 \* scale\), speed: 260 \};/.test(game));
 check('cursed HUD shows 1350', game.includes("Math.round(1350*mult*levelScale)} DMG"));
 check('cursed SP1 gate normalizes legacy sp1/fast to slow', game.includes("if (raw === 'sp1' || raw === 'fast') return 'slow'") && game.includes("if (raw === 'sp2') return 'long'"));
 check('cursed SP1 bonus 25%>15%', game.includes('(1 + progress * .15)') && !game.includes('(1 + progress * .25)'));
 check('cursed sp1 text 15%', game.includes('Growing Hex gains up to 15% damage'));
 
 // ---------- Darkener ----------
-check('darkener scaled dmg 800>600', /brawlerId === 'darkener'\) \{\s*const scale = 0\.55 \+ \(level - 1\) \* 0\.045;\s*return \{ hp: Math\.round\(7000 \* scale\), dmg: Math\.round\(600 \* scale\), speed: 255 \};/.test(game));
+check('darkener scaled dmg 800>600', /brawlerId === 'darkener'\) \{\s*const scale = 0\.55 \+ \(level - 1\) \* 0\.045;\s*const hpScale = getLevelHpScale\(level\);\s*return \{ hp: Math\.round\(7000 \* hpScale\), dmg: Math\.round\(600 \* scale\), speed: 255 \};/.test(game));
 check('darkener max ticks 5>4 (was uncapped 999)', game.includes('const maxTicks=4+Math.max(0,Math.round(isSlopSushiMode?getEntitySlopEffectTotal(owner,\'darkenerExtraTicks\'):0));'));
 check('darkener SP1 tick mult 25%>20% both paths', (game.match(/\(1\+state\.ticks\*\.20\)/g) || []).length === 2);
 check('darkener cloud stops at walls', game.includes('hitsWall=destructibleWalls.some(w=>!w.isPlatform&&rectCircleCollides(w.x,w.y,w.w,w.h,nextX,nextY,12))') && game.includes('if(hitsWall){cloud.traveled=cloud.range;}'));
@@ -88,7 +88,7 @@ check('fightnfire SP1 9% freeze 0.6s per shard', game.includes('Math.random() < 
 check('fightnfire SP2 armed on super, side shards 200 dmg', game.includes('entity.fightnfireSideShardsArmed = true;') && game.includes('fightnFireSideShards: fightnfireSideArmed') && game.includes('damage: 200,') && game.includes('fightnFireSideShard: true'));
 
 // ---------- Fuser ----------
-check('fuser scaled dmg 350>360', /brawlerId === 'fuser'\) \{\s*const scale = 0\.55 \+ \(level - 1\) \* 0\.045;\s*return \{ hp:Math\.round\(7000\*scale\), dmg:Math\.round\(360\*scale\), speed:260 \};/.test(game));
+check('fuser scaled dmg 350>360', /brawlerId === 'fuser'\) \{\s*const scale = 0\.55 \+ \(level - 1\) \* 0\.045;\s*const hpScale = getLevelHpScale\(level\);\s*return \{ hp:Math\.round\(7000\*hpScale\), dmg:Math\.round\(360\*scale\), speed:260 \};/.test(game));
 check('fuser main 6 bullets x 360', game.includes('for (let shot = 0; shot < 6; shot++)') && game.includes('damage: isBot ? 242 : 360,'));
 check('fuser main 20% bigger (0.983>1.18)', game.includes('const fuserHitbox = isPowerPlayShowdownMode ? 3.0 : 1.18;') && Math.abs(0.983 * 1.2 - 1.18) < 0.01);
 check('fuser old 18-bullet salvo gone', !game.includes('for (let shot = 0; shot < 18; shot++)') && !game.includes('fuserReverseArmed'));
@@ -100,7 +100,7 @@ check('fuser SP1 heal bullets are fast (1710 vs 1140)', game.includes('vx: Math.
 check('fuser SP2 bullets grant allies 120 shield', game.includes('grantShield(ally, 120, 120);') && game.includes('b.fuserShieldGranted'));
 
 // ---------- Homer ----------
-check('homer scaled dmg 1800>1450', /brawlerId === 'homer'\) \{\s*const scale = 0\.55 \+ \(level - 1\) \* 0\.045;\s*return \{ hp:Math\.round\(5800\*scale\), dmg:Math\.round\(1450\*scale\), speed:250 \};/.test(game));
+check('homer scaled dmg 1800>1450', /brawlerId === 'homer'\) \{\s*const scale = 0\.55 \+ \(level - 1\) \* 0\.045;\s*const hpScale = getLevelHpScale\(level\);\s*return \{ hp:Math\.round\(5800\*hpScale\), dmg:Math\.round\(1450\*scale\), speed:250 \};/.test(game));
 check('homer main 1800>1450 (bot 1260>1015 ratio)', game.includes('(isBot?1015:1450)') && Math.round(1260 * 1450 / 1800) === 1015);
 check('homer SP1 10% at homing>=50% (legacy gate)', game.includes("homerSp1=(star==='slow'||star==='sp1'||star==='fast')") && game.includes('homerSp1&&homing>=.50?1.10:1'));
 check('homer super 1250>990 (bot 875>693)', game.includes('damage:owner.id===player.id?990:693,') && Math.round(875 * 990 / 1250) === 693);

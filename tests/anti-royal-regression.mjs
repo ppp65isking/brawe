@@ -5,7 +5,7 @@ const game=fs.readFileSync(new URL('../game.js',import.meta.url),'utf8');
 
 assert.match(game,/anti_royal:\s*'Exotic'/,'Anti-Royal is registered as Exotic');
 assert.match(game,/'anti_royal':\s*\{[\s\S]*?name:\s*'Anti-Royal'/,'Anti-Royal has roster metadata');
-assert.match(game,/if \(brawlerId === 'anti_royal'\)[\s\S]*?Math\.round\(7600 \* scale\)[\s\S]*?Math\.round\(1550 \* scale\)[\s\S]*?speed:\s*255/,'P11 stats are wired');
+assert.match(game,/if \(brawlerId === 'anti_royal'\)[\s\S]*?Math\.round\(7600 \* hpScale\)[\s\S]*?Math\.round\(1550 \* scale\)[\s\S]*?speed:\s*255/,'P11 stats are wired');
 assert.match(game,/ANTI_ROYAL_MORTAR_ROUND_CAP\s*=\s*6/,'separate mortar bank caps at six');
 assert.match(game,/ANTI_ROYAL_BLOCK_COOLDOWN_MS\s*=\s*4500/,'personal blocker has a 4.5 second cooldown');
 assert.match(game,/ANTI_ROYAL_MORTAR_FIRE_MS\s*=\s*1820/,'mortar fires every 1.3 seconds');

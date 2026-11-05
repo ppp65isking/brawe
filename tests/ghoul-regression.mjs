@@ -6,7 +6,7 @@ const exotic = fs.readFileSync(new URL('../modules/brawlers/exotic/roster.js', i
 
 assert.match(exotic, /'ghoul'/, 'Ghoul is registered in the Exotic roster');
 assert.match(game, /'ghoul':\s*\{[\s\S]*?name:'Ghoul'[\s\S]*?attack:'Haunt'[\s\S]*?super:'Invisible Party'/, 'Ghoul has complete UI metadata');
-assert.match(game, /return \{ hp: Math\.round\(6500 \* scale\), dmg: Math\.round\(1050 \* scale\), speed: 300 \}/, 'Ghoul has the requested Power 11 stats and fast movement');
+assert.match(game, /return \{ hp: Math\.round\(6500 \* hpScale\), dmg: Math\.round\(1050 \* scale\), speed: 300 \}/, 'Ghoul has the requested Power 11 stats and fast movement');
 assert.match(game, /brawler === 'ghoul'\) base = 1700/, 'Ghoul reloads in 1.7 seconds');
 
 assert.match(game, /GHOUL_BASE_INVIS_MS = 1800/, 'Haunt invisibility lasts at most 1.8 seconds');

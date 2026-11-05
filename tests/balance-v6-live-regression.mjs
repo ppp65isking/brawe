@@ -4,7 +4,7 @@ import fs from 'node:fs';
 const game = fs.readFileSync(new URL('../game.js', import.meta.url), 'utf8');
 
 const checks = [
-  [/brawlerId === 'kage'[\s\S]{0,120}8500\*scale/, 'Kage HP nerf'],
+  [/brawlerId === 'kage'[\s\S]{0,200}8500\*hpScale/, 'Kage HP nerf'],
   [/PORTALO_TELEPORT_DISTANCE = ARENA_WALL_TILE \* 4\.5/, 'Portalo displacement nerf'],
   [/Math\.min\(3200, remaining \+ 800\)/, 'Ghoul Darkness cap'],
   [/Math\.random\(\) < \.4/, 'Cursed Mini Curse chance'],

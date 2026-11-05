@@ -142,7 +142,7 @@ if (nightWin) {
 }
 
 // ---------------------------------------------------------- 3. nerf values
-check('main dmg 640 -> 560 in getScaledStats (Round 41)', game.includes('hp: Math.round(6400 * scale), dmg: Math.round(560 * scale), speed: 300'));
+check('main dmg 640 -> 560 in getScaledStats (Round 41)', game.includes('hp: Math.round(6400 * hpScale), dmg: Math.round(560 * scale), speed: 300'));
 check('main dagger speed 1000 -> 700 (-30%)', game.includes('const NIGHTSHADE_DAGGER_SPEED = 700;') && !game.includes('NIGHTSHADE_DAGGER_SPEED = 1000'));
 check('super blade speed 900 -> 630 (-30%)', game.includes('const NIGHTSHADE_BLADE_SPEED = 630;') && !game.includes('NIGHTSHADE_BLADE_SPEED = 900'));
 check('blade damage/count/range 800/12/640 (Round 41)', game.includes('const NIGHTSHADE_BLADE_DAMAGE = 800;') && game.includes('const NIGHTSHADE_BLADE_COUNT = 12;') && game.includes('const NIGHTSHADE_BLADE_RANGE = 640;'));
@@ -162,7 +162,7 @@ check('shield visual drawn (purple zone circle)', game.includes('ctx.arc(entity.
 
 // ---------------------------------------------------------- 5. vm: scaled damage
 try {
-  const sb = { Math, MAX_POWER_LEVEL: 12, getSelectedBrawlerLevel: () => 11 };
+  const sb = { Math, MAX_POWER_LEVEL: 12, getSelectedBrawlerLevel: () => 11, getLevelDamageScale: (level) => 0.55 + (level - 1) * 0.045, getLevelHpScale: (level) => 0.40 + (level - 1) * 0.06 };
   vm.createContext(sb);
   vm.runInContext(extractFn(game, 'getScaledStats'), sb);
   const l11 = sb.getScaledStats('nightshade', 11);

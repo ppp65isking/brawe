@@ -14,10 +14,11 @@ check('kit copy is real (no coming-soon placeholders)', (() => {
   const entry = game.slice(game.indexOf("'aura_charmer': {"), game.indexOf("'aura_charmer': {") + 2200);
   return entry.includes('Charm Slam') && entry.includes('Aura Charma') && entry.includes('Irresistible Pull') && entry.includes('Guardian Glow') && entry.includes('Growing Charm') && entry.includes('Stinging Aura') && !entry.includes('coming soon');
 })());
-check('getScaledStats aura_charmer branch: 6400 HP / 1050 dmg / 280 speed', game.includes("if (brawlerId === 'aura_charmer') {") && game.includes("hp: Math.round(6400 * scale), dmg: Math.round(1050 * scale), speed: 280"));
-check('power scaling mirrors: P1 3520/578, P11 6400/1050, P12 6688/1097', (() => {
+check('getScaledStats aura_charmer branch: 6400 HP / 1050 dmg / 280 speed', game.includes("if (brawlerId === 'aura_charmer') {") && game.includes("hp: Math.round(6400 * hpScale), dmg: Math.round(1050 * scale), speed: 280"));
+check('power scaling mirrors (HP curve): P1 2560/578, P11 6400/1050, P12 6784/1097', (() => {
   const scale = (lv) => 0.55 + (lv - 1) * 0.045;
-  return Math.round(6400 * scale(1)) === 3520 && Math.round(1050 * scale(1)) === 578 && Math.round(6400 * scale(11)) === 6400 && Math.round(1050 * scale(11)) === 1050 && Math.round(6400 * scale(12)) === 6688 && Math.round(1050 * scale(12)) === 1097;
+  const hpScale = (lv) => 0.40 + (lv - 1) * 0.06;
+  return Math.round(6400 * hpScale(1)) === 2560 && Math.round(1050 * scale(1)) === 578 && Math.round(6400 * hpScale(11)) === 6400 && Math.round(1050 * scale(11)) === 1050 && Math.round(6400 * hpScale(12)) === 6784 && Math.round(1050 * scale(12)) === 1097;
 })());
 check('allBrawlers has aura_charmer; 105 ids total (102 + Voltastein + Staticstein + Healnstein)', (() => {
   const all = [...game.match(/const allBrawlers\s*=\s*\[([\s\S]*?)\];/)[1].matchAll(/'([^']+)'/g)].map(m => m[1]);
