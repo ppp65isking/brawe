@@ -20,14 +20,14 @@ check('power scaling mirrors: P1 3630/523, P11 6600/950, P12 6897/993', (() => {
   const scale = (lv) => 0.55 + (lv - 1) * 0.045;
   return Math.round(6600 * scale(1)) === 3630 && Math.round(950 * scale(1)) === 523 && Math.round(6600 * scale(11)) === 6600 && Math.round(950 * scale(11)) === 950 && Math.round(6600 * scale(12)) === 6897 && Math.round(950 * scale(12)) === 993;
 })());
-check('allBrawlers has runner; 104 ids total (102 + Voltastein + Staticstein)', (() => {
+check('allBrawlers has runner; 105 ids total (102 + Voltastein + Staticstein + Healnstein)', (() => {
   const all = [...game.match(/const allBrawlers\s*=\s*\[([\s\S]*?)\];/)[1].matchAll(/'([^']+)'/g)].map(m => m[1]);
-  return all.includes('runner') && all.length === 104;
+  return all.includes('runner') && all.length === 105;
 })());
-check('selectable is 96 (104 minus the 8 disabled, runner not disabled)', (() => {
+check('selectable is 97 (105 minus the 8 disabled, runner not disabled)', (() => {
   const all = [...game.match(/const allBrawlers\s*=\s*\[([\s\S]*?)\];/)[1].matchAll(/'([^']+)'/g)].map(m => m[1]);
   const disabled = ['robber', 'boomer', 'daggershard', 'cluster', 'witch', 'adlof', 'swimmer', 'blade_vane'];
-  return all.filter(id => !disabled.includes(id)).length === 96 && !game.match(/const disabledBrawlers = new Set\(\[([\s\S]*?)\]\)/)[1].includes('runner');
+  return all.filter(id => !disabled.includes(id)).length === 97 && !game.match(/const disabledBrawlers = new Set\(\[([\s\S]*?)\]\)/)[1].includes('runner');
 })());
 check('rarity map runner Mythic (270 souls via SOUL_UNLOCK_COST_BY_RARITY)', game.includes("runner: 'Mythic'") && game.includes('Mythic: 270'));
 check('primary role runner Controller', game.includes("runner:'Controller'"));
