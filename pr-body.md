@@ -45,3 +45,8 @@ only, damage untouched everywhere.** The old branch is abandoned.
   HP-curve violations: 0.**
 - New suite `tests/hp-curve-only-regression.mjs`: **35/35 passing**.
 - Full sweep vs pristine baseline: zero new failures (see delivery report).
+
+---
+
+## Merge note (2026-11-05)
+Branch merged with main @ 5d36fd9 (PR #89: Outlit animation + voice lines, Megastein boss) to resolve the conflict after #89 merged. `game.js` auto-merged with no conflicts — both #89's features and this PR's Family Circuit removal + HP-only curve are present and verified (see below). The only conflicted file was `pr-body.md` (add/add); this file is kept as PR #90's body.
