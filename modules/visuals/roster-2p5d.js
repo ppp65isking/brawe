@@ -41,7 +41,9 @@
     nightshade:['hood','#9b5cff','#b6ff5e'],
     aegis:['helmet','#f0b429','#fff3b0'],
     runner:['visor','#b06bff','#ffffff'],
-    aura_charmer:['hood','#c084fc','#ffd76b']
+    aura_charmer:['hood','#c084fc','#ffd76b'],
+    voltastein:['robot','#a855f7','#ffe45e'],
+    staticstein:['robot','#e5e7eb','#a855f7']
   };
   const skins = {
     'fightn-spice':['firekeeper','#b63753','#ffbd79'],
@@ -111,7 +113,9 @@
     nightshade:'night_veil|viper_daggers|venom_mark|robe',
     aegis:'bulwark_helm|bulwark_shield|bubble_mark|wide',
     runner:'sprint_cap|runner_shoe|speed_streak|lean',
-    aura_charmer:'charm_hood|aura_orb|charm_sigil|robe'
+    aura_charmer:'charm_hood|aura_orb|charm_sigil|robe',
+    voltastein:'volt_tiara|volt_coils|overcharge_mark|lean',
+    staticstein:'static_antennae|static_orbs|glitch_mark|float'
   });
   function hash(text){let value=2166136261;for(const ch of String(text)){value^=ch.charCodeAt(0);value=Math.imul(value,16777619);}return value>>>0;}
   function model(id, skin) { return skins[skin] || looks[id]; }
