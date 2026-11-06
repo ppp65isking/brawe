@@ -98,7 +98,7 @@ check('B: match-start hyper block covers LTM', game.includes("activeRankedModifi
 check('B: per-frame enforcement outer covers LTM', game.includes("if ((isRankedMatch || isCustomMutatorMatch || isHyperForgeLTM) && playing && !gameOver) {"));
 check('B: player hyper expiry suppressed in LTM', game.includes("&& !isHyperForgeLTM){\n        isHypercharged = false;"));
 check('B: bot hyper expiry suppressed in LTM', game.includes("&& !isHyperForgeLTM) {\n          t.isHypercharged = false; t.hyperChargeCharge = 0;"));
-check('B: flag cleared at all 4 teardown sites', (game.match(/isArenaForgeMode = false;\n\s*isHyperForgeLTM = false;/g) || []).length === 4);
+check('B: flag cleared at all 5 teardown sites', (game.match(/isArenaForgeMode = false;\n\s*isHyperForgeLTM = false;/g) || []).length === 5); // 5th site is beginFusedMatch (2026-11-06)
 check('B: reload divided by 3 inside LTM only', game.includes('if (isHyperForgeLTM) base /= 3;'));
 check('B: no placeholder text in new strings', !game.includes('Hyper Forge') || (!game.slice(game.indexOf("['arena_forge_hyper'"), game.indexOf("['arena_forge_hyper'") + 400).match(/TODO|TBD|coming soon/i)));
 

@@ -120,7 +120,7 @@ check('Outlit portrait + identity untouched (robot look, signal_lamp identity)',
 check('bootstrap loads the voice module after the roster visuals',
   fs.readFileSync(new URL('../bootstrap.js', import.meta.url), 'utf8').includes("'./modules/audio/outlit-voicelines.js'"));
 check('attack voice hook in fire() (player Outlit only)',
-  game.includes("if (!isBot && fromEntity === player && selectedBrawler === 'outlit') { try { window.BraweOutlitVoice?.play('attack'); } catch (e) {} }"));
+  game.includes("if (!isBot && fromEntity === player && (fromEntity.fusedPartCall || selectedBrawler) === 'outlit') { try { window.BraweOutlitVoice?.play('attack'); } catch (e) {} }")); // fused-part override added 2026-11-06 (Fused mode)
 check('super voice hook in fireSuper()', game.includes("if (selectedBrawler === 'outlit') { try { window.BraweOutlitVoice?.play('super'); } catch (e) {} }"));
 check('kill voice hook in handleTrinketDamageDealt',
   game.includes("if (selectedBrawler === 'outlit') { try { window.BraweOutlitVoice?.play('kill'); } catch (e) {} }"));

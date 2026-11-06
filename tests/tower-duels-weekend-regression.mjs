@@ -18,7 +18,7 @@ assert.match(source, /towerDuelPreset\.map\(id => deck\.find/);
 assert.match(source, /const duelPlayerLevel = 11;/);
 assert.match(source, /const botLevel = isTowerDuelEvent \? 11/);
 assert.match(source, /function getNativeAmmoCapacity\(brawlerId\)[\s\S]{0,260}minigunnin[\s\S]{0,120}return 100/);
-assert.match(source, /function startDuelsRound\([\s\S]{0,3100}resetPlayerAmmoForBrawler\(selectedBrawler, true\)/);
+assert.match(source, /function startDuelsRound\([\s\S]{0,4000}resetPlayerAmmoForBrawler\(selectedBrawler, true\)/); // window widened 2026-11-06: the Fused-mode round branch sits above the reset
 assert.match(source, /event\.matchesCompleted = Math\.min\(5/);
 assert.match(source, /bon\.unlockedTitles\.push\('tower_duelar'\)/);
 
