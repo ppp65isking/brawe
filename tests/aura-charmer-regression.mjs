@@ -65,7 +65,15 @@ check('slow hook: auraCharmerSlowUntil x0.70', game.includes('entity.auraCharmer
 check('player + bot speed lines multiply chase speed', game.includes('getRunnerTrailSpeedMult(player, now) * getAuraCharmerChaseSpeedMult(player, now)') && game.includes('getRunnerTrailSpeedMult(t, now) * getAuraCharmerChaseSpeedMult(t, now)'));
 
 // --- Slam / super / aura rules ---
-check('slam heals allies 450 and skips towers/Core', game.includes('doHeal(target, AURA_CHARMER_HEAL)') && game.includes('if (target.isArenaForgeTower || target.isArenaForgeCore) continue;'));
+check('slam heals allies 450, damages enemy structures, skips allied structures', (() => {
+  const slam = game.slice(game.indexOf('function auraCharmerSlam'), game.indexOf('function auraCharmerSlam') + 4600);
+  return slam.includes('doHeal(target, AURA_CHARMER_HEAL)') && slam.includes("if ((target.isArenaForgeTower || target.isArenaForgeCore) && areAlliedEntities(owner, target)) continue;") && slam.includes('if (pull && !target.isArenaForgeTower && !target.isArenaForgeCore && !isEntityCcImmune(target, now)) {');
+})());
+check('SP2 tick damages enemy structures (no tower/Core skip left in the aura tick)', (() => {
+  const aura = game.slice(game.indexOf('function updateAuraCharmerAura'), game.indexOf('function updateAuraCharmerAura') + 4200);
+  return !aura.includes('if (target.isArenaForgeTower || target.isArenaForgeCore) continue;');
+})());
+check('max-HP ally loop skips structures (towers never gain HP, PR #42)', game.includes("if (ally.isArenaForgeTower || ally.isArenaForgeCore) continue;"));
 check('slam breaks power boxes in aura via the standard box-damage path', (() => {
   const slam = game.slice(game.indexOf('function auraCharmerSlam'), game.indexOf('function auraCharmerSlam') + 4600);
   return slam.includes('destructibleWalls') && slam.includes('isHeaterLockableBox(wall)') && slam.includes('rectCircleCollides(wall.x, wall.y, wall.w, wall.h, owner.x, owner.y, radius)') && slam.includes('applyHeaterBoxDamage(owner, wall, dmg)');
