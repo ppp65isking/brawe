@@ -892,6 +892,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             ensureProfileProgressionState().profile.careerStats.eliminations += 1;
             // Outlit voice: player kill line.
             if (selectedBrawler === 'outlit') { try { window.BraweOutlitVoice?.play('kill'); } catch (e) {} }
+            // Fuser voice: player kill line.
+            if (selectedBrawler === 'fuser') { try { window.BraweFuserVoice?.play('kill'); } catch (e) {} }
         }
         if (target && target.hp <= 0 && hasTrinket(owner, 'fresh_magazine')) {
             if (now - (target.trinketFreshMagazineKillAt || 0) > 1000) {
@@ -29493,6 +29495,9 @@ let heistFeverActive = false;
           entity.outlitMutationReadyAt = now;
           explosions.push({ x: entity.x, y: entity.y, radius: 52, life: 0, maxLife: .3, color: 'rgba(255,55,75,.76)', fxKind: 'outlitMutationReady' });
           if (entity.id === player.id) spawnFloatingText(entity.x, entity.y - 36, 'OVERPRESSURE READY', '#ff6571');
+          // Outlit mutation voice + SFX: the line and its whoosh/boom bed are
+          // baked into one clip (assets/voice/outlit/mutation-*.mp3).
+          if (entity.id === player.id) { try { window.BraweOutlitVoice?.play('mutation'); } catch (e) {} }
       }
   }
   function consumeOutlitMutationCharge(entity) {
@@ -33082,6 +33087,8 @@ let heistFeverActive = false;
     if(hyperChargeCharge < 100 || player.hp <= 0 || !hcAvailable) return;
     hyperChargeCharge = 0;
     isHypercharged = true;
+    // Hypercharge SFX: unique activation sting per brawler (player only).
+    try { window.BraweHyperchargeSfx?.playActivation(selectedBrawler); } catch (e) {}
     addEventQuestProgress('activate_hypers');
     recordOverdriveActivation();
     const extraHyperMs = (isSplitterPoweredMode && selectedBrawler === 'splitter') ? 2000 : 0;
@@ -35018,6 +35025,8 @@ let heistFeverActive = false;
     fromEntity.visualAttackAt = now;
     // Outlit voice: player attack line (throttled inside the voice module).
     if (!isBot && fromEntity === player && selectedBrawler === 'outlit') { try { window.BraweOutlitVoice?.play('attack'); } catch (e) {} }
+    // Fuser voice: player attack line (throttled inside the voice module).
+    if (!isBot && fromEntity === player && selectedBrawler === 'fuser') { try { window.BraweFuserVoice?.play('attack'); } catch (e) {} }
 
     fireArenaForgeCapturedHyperAttacks(fromEntity, ang, now);
 
@@ -40103,6 +40112,8 @@ let heistFeverActive = false;
     player.visualSuperAt = now;
     // Outlit voice: player Super line.
     if (selectedBrawler === 'outlit') { try { window.BraweOutlitVoice?.play('super'); } catch (e) {} }
+    // Fuser voice: player Super line.
+    if (selectedBrawler === 'fuser') { try { window.BraweFuserVoice?.play('super'); } catch (e) {} }
     const wm = getMouseWorld();
     if (isBraweBallMode && braweBallState && braweBallState.ball && braweBallState.ball.carrier === player.id) {
         kickBraweBall(player, wm.x, wm.y, true);
@@ -83267,12 +83278,64 @@ function checkHit(target, b, i){
   // this watcher only owns the transitions with no single call site (match
   // start/end, idling, HP drops). Runs in loop() after update() because
   // update() returns early once gameOver is set. Never throws.
+  let fuserVoicePrevPlaying = false;
+  let fuserVoicePrevGameOver = false;
+  let fuserVoiceMatchEndPlayed = false;
+  let fuserVoiceLastHp = null;
+  let fuserVoiceLastActionAt = 0;
+  let fuserVoiceLastIdleAt = 0;
   let outlitVoicePrevPlaying = false;
   let outlitVoicePrevGameOver = false;
   let outlitVoiceMatchEndPlayed = false;
   let outlitVoiceLastHp = null;
   let outlitVoiceLastActionAt = 0;
   let outlitVoiceLastIdleAt = 0;
+  function updateFuserVoiceState() {
+    try {
+      if (typeof selectedBrawler === 'undefined' || !player) return;
+      const now = performance.now();
+      const isFuser = selectedBrawler === 'fuser';
+      // Match start: playing flips false -> true.
+      if (playing && !fuserVoicePrevPlaying) {
+        fuserVoiceMatchEndPlayed = false;
+        fuserVoiceLastHp = player.hp;
+        fuserVoiceLastActionAt = now;
+        fuserVoiceLastIdleAt = 0;
+        if (isFuser) window.BraweFuserVoice?.play('spawn');
+      }
+      // Match end: gameOver flips false -> true.
+      if (gameOver && !fuserVoicePrevGameOver && !fuserVoiceMatchEndPlayed) {
+        fuserVoiceMatchEndPlayed = true;
+        if (isFuser) {
+          if (player.hp > 0) {
+            window.BraweFuserVoice?.play('win');
+          } else {
+            window.BraweFuserVoice?.play('death');
+          }
+        }
+      }
+      // Hurt voice: player HP dropped since last frame.
+      if (playing && !gameOver && isFuser && player.hp > 0 && fuserVoiceLastHp !== null && player.hp < fuserVoiceLastHp) {
+        fuserVoiceLastActionAt = now;
+        window.BraweFuserVoice?.play('hurt');
+      }
+      if (player) fuserVoiceLastHp = player.hp;
+      // Idle voice: alive, unmoving, no attack and no damage for 20s.
+      if (playing && !gameOver && isFuser && player.hp > 0) {
+        const moved = Math.hypot((player.x || 0) - (player.fuserVoicePrevX ?? player.x ?? 0), (player.y || 0) - (player.fuserVoicePrevY ?? player.y ?? 0)) > 4;
+        if (moved || (player.lastAttackAt || 0) > fuserVoiceLastActionAt) fuserVoiceLastActionAt = now;
+        player.fuserVoicePrevX = player.x;
+        player.fuserVoicePrevY = player.y;
+        if (now - fuserVoiceLastActionAt > 20000 && now - fuserVoiceLastIdleAt > 25000) {
+          fuserVoiceLastIdleAt = now;
+          window.BraweFuserVoice?.play('idle');
+        }
+      }
+      fuserVoicePrevPlaying = !!playing;
+      fuserVoicePrevGameOver = !!gameOver;
+    } catch (e) { /* voice must never break the loop */ }
+  }
+
   function updateOutlitVoiceState() {
     try {
       if (typeof selectedBrawler === 'undefined' || !player) return;
@@ -83349,6 +83412,7 @@ function checkHit(target, b, i){
         updateMobileControlsVisibility();
         update(dt);
         updateOutlitVoiceState();
+        updateFuserVoiceState();
         const homeVisible = homeScreen && homeScreen.style.display !== 'none';
         if (playing || !homeVisible) render();
     } catch (err) {
