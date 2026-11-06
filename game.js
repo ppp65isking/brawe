@@ -45054,8 +45054,12 @@ let heistFeverActive = false;
 
   // Charm Slam: instant aura burst. Enemies in the aura take damage, allies
   // in the aura are healed, and power boxes in the aura break (Anthony's
-  // ruling: the Charmer needs to break boxes). Towers, Core, and metal
-  // walls are still untouched.
+  // ruling: the Charmer needs to break boxes). Enemy towers and the enemy
+  // Core take damage like any other attack (2026-11-06: the slam used to
+  // skip structures entirely, so she could never hurt the objective).
+  // Allied structures are skipped outright: towers can never gain HP
+  // (PR #42) and the Core must not be healed by the slam. Metal walls
+  // stay untouched.
   function auraCharmerSlam(owner) {
       if (!owner || owner.hp <= 0) return 0;
       const now = performance.now();
@@ -45072,7 +45076,9 @@ let heistFeverActive = false;
       let hits = 0;
       for (const target of [player, ...bots]) {
           if (!target || target.hp <= 0 || target.id === owner.id) continue;
-          if (target.isArenaForgeTower || target.isArenaForgeCore) continue;
+          // 2026-11-06: enemy towers/Core take slam damage (they are the
+          // objective). Allied structures are skipped, never healed.
+          if ((target.isArenaForgeTower || target.isArenaForgeCore) && areAlliedEntities(owner, target)) continue;
           const dist = Math.hypot(target.x - owner.x, target.y - owner.y);
           if (dist > radius + (target.radius || 14)) continue;
           if (areAlliedEntities(owner, target)) {
@@ -45082,7 +45088,7 @@ let heistFeverActive = false;
           checkHit(target, { ownerBrawler: 'aura_charmer', ownerId: owner.id, damage: dmg, pierce: true, hitIds: {}, isAuraCharmerSlam: true }, -1);
           if (!target.isPet) grantMainAttackCharge(owner, { ownerBrawler: owner.currentMainAttackBrawler, mainAttackActivationId: owner.currentMainAttackActivationId });
           hits++;
-          if (pull && !isEntityCcImmune(target, now)) {
+          if (pull && !target.isArenaForgeTower && !target.isArenaForgeCore && !isEntityCcImmune(target, now)) {
               const dx = owner.x - target.x, dy = owner.y - target.y;
               const len = Math.hypot(dx, dy) || 1;
               const step = Math.min(AURA_CHARMER_G1_PULL_PX, Math.max(0, len - 40));
@@ -45228,6 +45234,9 @@ let heistFeverActive = false;
           for (const ally of [player, ...bots]) {
               if (!ally || ally.hp <= 0 || ally.id === caster.id) continue;
               if (!areAlliedEntities(caster, ally)) continue;
+              // 2026-11-06: structures never gain HP (PR #42) — an allied
+              // tower/Core standing in the aura must not soak max-HP bonus.
+              if (ally.isArenaForgeTower || ally.isArenaForgeCore) continue;
               if (Math.hypot(ally.x - caster.x, ally.y - caster.y) > radius + (ally.radius || 14)) continue;
               teammatesInside++;
               const bonus = ally.auraCharmerBonusMaxHp || 0;
@@ -45244,11 +45253,11 @@ let heistFeverActive = false;
               if (teammatesInside > 0) caster.auraCharmerGrowth = Math.min(AURA_CHARMER_SP1_GROWTH_CAP, (caster.auraCharmerGrowth || 0) + step * teammatesInside);
               else caster.auraCharmerGrowth = Math.max(0, (caster.auraCharmerGrowth || 0) - step);
           }
-          // SP2: the aura passively damages enemies inside it (brawlers only).
+          // SP2: the aura passively damages enemies inside it, including
+          // enemy towers and the enemy Core (2026-11-06 fix).
           if (hasSP2) {
               for (const target of [player, ...bots]) {
                   if (!target || target.hp <= 0 || target.id === caster.id) continue;
-                  if (target.isArenaForgeTower || target.isArenaForgeCore) continue;
                   if (areAlliedEntities(caster, target)) continue;
                   if (Math.hypot(target.x - caster.x, target.y - caster.y) > radius + (target.radius || 14)) continue;
                   checkHit(target, { ownerBrawler: 'aura_charmer', ownerId: caster.id, damage: AURA_CHARMER_SP2_TICK_DMG, pierce: true, hitIds: {}, isAuraCharmerAuraTick: true }, -1);
