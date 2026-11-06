@@ -17,7 +17,7 @@ function check(name, cond) {
 }
 
 // ---------------------------------------------------------- 1. source pins
-check('Pam fan arc is 1.20 rad', game.includes('const MALLOW_VOLLEY_FAN_ARC = 1.20;'));
+check('Pam fan arc is 0.80 rad (compact, Nov 6 balance)', game.includes('const MALLOW_VOLLEY_FAN_ARC = 0.80;'));
 check('narrow cone constant is gone', !game.includes('MALLOW_VOLLEY_CONE'));
 check('volley loop uses the fan arc', game.includes('MALLOW_VOLLEY_FAN_ARC / (MALLOW_VOLLEY_COUNT - 1)'));
 check('volley telegraph arc uses the fan arc', game.includes('t.ang - MALLOW_VOLLEY_FAN_ARC / 2'));
@@ -58,18 +58,18 @@ check('def: hyper text names +shape minis', game.includes('mini-mallows in a + s
 check('def: hyper text no longer names slow zones', !game.includes('every 3rd trail puff creates a slow zone'));
 check('def: super text names 2 charges', game.includes('Holds 2 charges'));
 check('def: super text names 1.32s fuse', game.includes('explodes 1.32s after placement'));
-check('def: attack text names Pam fan', game.includes('wide Pam-style fan'));
+check('def: attack text names compact Pam fan', game.includes('compact Pam-style fan'));
 
-// fan geometry: 8 pellets over 1.20 rad => step 1.20/7, endpoints ±0.60
+// fan geometry: 8 pellets over 0.80 rad => step 0.80/7, endpoints ±0.40
 {
-  const step = 1.20 / 7;
+  const step = 0.80 / 7;
   const angles = [];
   for (let mi = 0; mi < 8; mi++) angles.push((mi - 3.5) * step);
   check('fan: 8 pellets', angles.length === 8);
-  check('fan: first pellet at -0.60 rad', Math.abs(angles[0] + 0.60) < 0.01);
-  check('fan: last pellet at +0.60 rad', Math.abs(angles[7] - 0.60) < 0.01);
-  check('fan: step is 1.20/7', Math.abs(step - 0.1714) < 0.001);
-  check('fan: wider than the old 0.56 cone', 1.20 > 0.56);
+  check('fan: first pellet at -0.40 rad', Math.abs(angles[0] + 0.40) < 0.01);
+  check('fan: last pellet at +0.40 rad', Math.abs(angles[7] - 0.40) < 0.01);
+  check('fan: step is 0.80/7', Math.abs(step - 0.1143) < 0.001);
+  check('fan: still wider than the old 0.56 cone', 0.80 > 0.56);
 }
 
 function extractFn(src, name) {
@@ -246,6 +246,22 @@ try {
   check('aim: hyper path ends at 640px dash distance', lineTo2(740, 100));
   check('aim: hyper preview dots are wider radius 36', arcR2(36));
 } catch (e) { failures.push('aim/aura vm block threw: ' + e.message); }
+
+// --- Nov 6 balance: hyper bursts on hit + Charred Volley instinct ---
+check('instinct def: mallow Charred Volley, type instinct, green, CV icon',
+  game.includes("mallow: {") && game.includes("name: 'Charred Volley'") && game.includes("type: 'instinct'") && game.includes("icon: 'CV'") && game.includes("pieceName: 'Mallow Instinct Piece'"));
+check('instinct constants: 3400ms cooldown, 30 burn over 3x10 @200ms',
+  game.includes('const MALLOW_INSTINCT_COOLDOWN_MS = 3400;') && game.includes('const MALLOW_INSTINCT_BURN_TOTAL = 30;') && game.includes('const MALLOW_INSTINCT_BURN_TICKS = 3;') && game.includes('const MALLOW_INSTINCT_BURN_TICK_MS = 200;'));
+check('hyper bursts on enemy hit (not only at end of flight)',
+  game.includes('if (b.isMallow && b.mallowHyper && owner && target) mallowHyperEndBurst(b);'));
+check('burnt wave: full volley, burn-only, no super charge',
+  game.includes('isMallowBurnt: true') && game.includes('function fireMallowInstinctWave(owner, now)') && game.includes('!b.isMallowBurnt') && game.includes('function applyMallowBurntHit(target, owner, b)'));
+check('instinct timer hooked into per-frame mallow systems',
+  game.includes('updateMallowInstinct(entity, now)') && game.includes('function updateMallowInstinct(entity, now)'));
+check('burnt projectiles render charred (ember palette)',
+  game.includes("const burnt = !!b.isMallowBurnt;") && game.includes("burnt ? '#ff7a1a'") && game.includes("burnt ? '#2a1a0e'"));
+check('def: hyper text names explosion on enemy hit',
+  game.includes('explode at the end of flight or on enemy hit for burn damage'));
 
 console.log(`mallow-balance-regression: ${passed} passed, ${failures.length} failed`);
 if (failures.length) { console.log('FAILURES:'); for (const f of failures) console.log(' - ' + f); }
