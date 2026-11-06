@@ -10378,9 +10378,9 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
       'mallow': {
           name: 'Mallow', role: 'Controller', rarity: 'Epic', color: '#ffdfb0',
           desc: 'A puffy marshmallow Controller who sprays sticky-slow fans and dashes through Overheated marshmallow trails that burn and burst.',
-          attack: 'Marshmallow Spray', attackDesc: 'Fires 8 marshmallows in a wide Pam-style fan (320 damage each). Each hit slows by 4% for 1s, stacking to 32%. Cannot attack again until the volley finishes.',
+          attack: 'Marshmallow Spray', attackDesc: 'Fires 8 marshmallows in a compact Pam-style fan (320 damage each). Each hit slows by 4% for 1s, stacking to 32%. Cannot attack again until the volley finishes.',
           super: 'Overheated', superDesc: 'Aim and dash smoothly forward, leaving 6 marshmallow trail puffs. Enemies on the trail burn, and each puff explodes 1.32s after placement for 400 damage. Holds 2 charges — aim each dash separately.',
-          hyper: 'Hyper Marshmallows: visuals turn purple; main attack marshmallows explode at the end of flight for burn damage. Overheated dashes faster and further, dashes twice, leaves a wider trail, and hyper trail explosions release 4 mini-mallows in a + shape that explode again for 150 damage each.',
+          hyper: 'Hyper Marshmallows: visuals turn purple; main attack marshmallows explode at the end of flight or on enemy hit for burn damage. Overheated dashes faster and further, dashes twice, leaves a wider trail, and hyper trail explosions release 4 mini-mallows in a + shape that explode again for 150 damage each.',
           g1: 'Sticky Volley (Next volley applies 6% slow per hit instead of 4%)',
           g2: 'Second Tool coming soon.',
           sp1: 'Toasted Haste (Move 5% faster while an enemy is slowed by your marshmallows)',
@@ -18950,6 +18950,14 @@ let heistFeverActive = false;
           pieceName: 'Splitter Instinct Piece',
           shortDesc: 'Every 4 seconds, each of Fivecracker’s 5 fragments divides into a clean two-shot forward cone.'
       },
+      mallow: {
+          type: 'instinct',
+          name: 'Charred Volley',
+          icon: 'CV',
+          color: '#62ef88',
+          pieceName: 'Mallow Instinct Piece',
+          shortDesc: 'Every 3.4 seconds, Mallow automatically fires a wave of burnt marshmallows that burn enemies for 30 damage over time.'
+      },
       homer: {
           type: 'mutation',
           name: 'Wormhole Rounds',
@@ -22206,7 +22214,7 @@ let heistFeverActive = false;
     const MALLOW_VOLLEY_COUNT = 8;
     const MALLOW_VOLLEY_RANGE = 600;
     const MALLOW_VOLLEY_SPEED = 900;
-    const MALLOW_VOLLEY_FAN_ARC = 1.20;
+    const MALLOW_VOLLEY_FAN_ARC = 0.80;
     const MALLOW_CHANNEL_MS = 500;
     const MALLOW_SLOW_PER_HIT = 0.04;
     const MALLOW_SLOW_GADGET_PER_HIT = 0.06;
@@ -22230,6 +22238,11 @@ let heistFeverActive = false;
     const MALLOW_HYPER_BURN_TOTAL = 150;
     const MALLOW_HYPER_BURN_TICKS = 5;
     const MALLOW_HYPER_BURN_TICK_MS = 200;
+    // Charred Volley instinct (2026-11-06): auto-fires a burnt wave every 3.4s.
+    const MALLOW_INSTINCT_COOLDOWN_MS = 3400;
+    const MALLOW_INSTINCT_BURN_TOTAL = 30;
+    const MALLOW_INSTINCT_BURN_TICKS = 3;
+    const MALLOW_INSTINCT_BURN_TICK_MS = 200;
     let mallowTrailPuffs = [];
     let mallowMinis = [];
     let mallowBurns = [];
@@ -22308,6 +22321,44 @@ let heistFeverActive = false;
         }
         mallowExplosions.push({ x: b.x, y: b.y, startedAt: now, durationMs: 450, hyper: true });
     }
+    // Charred Volley instinct: a burnt marshmallow applies a 30-damage burn
+    // over time (3 ticks of 10, 200ms apart — same cadence as the hyper burn).
+    function applyMallowBurntHit(target, owner, b) {
+        if (!MALLOW_ENABLED || !target || target.hp <= 0) return;
+        const now = performance.now();
+        mallowBurns.push({ targetId: target.id, ownerId: owner.id, endsAt: now + MALLOW_INSTINCT_BURN_TICKS * MALLOW_INSTINCT_BURN_TICK_MS, nextTickAt: now + MALLOW_INSTINCT_BURN_TICK_MS, tickDmg: MALLOW_INSTINCT_BURN_TOTAL / MALLOW_INSTINCT_BURN_TICKS, ticksLeft: MALLOW_INSTINCT_BURN_TICKS });
+    }
+    // Instinct wave: a full volley of burnt marshmallows in the compact fan.
+    // Burn-only (no slow, no impact damage, no super charge).
+    function fireMallowInstinctWave(owner, now) {
+        if (!MALLOW_ENABLED || !owner || owner.hp <= 0) return;
+        let ang = owner.mallowLastAimAngle;
+        if (!Number.isFinite(ang)) {
+            let best = null, bestD = Infinity;
+            for (const t of [player, ...bots]) {
+                if (!t || t.hp <= 0 || t.id === owner.id || areAlliedEntities(owner, t)) continue;
+                const d = Math.hypot(t.x - owner.x, t.y - owner.y);
+                if (d < bestD) { bestD = d; best = t; }
+            }
+            ang = best ? Math.atan2(best.y - owner.y, best.x - owner.x) : 0;
+        }
+        for (let mi = 0; mi < MALLOW_VOLLEY_COUNT; mi++) {
+            const mallowAng = ang + (mi - (MALLOW_VOLLEY_COUNT - 1) / 2) * (MALLOW_VOLLEY_FAN_ARC / (MALLOW_VOLLEY_COUNT - 1));
+            bullets.push({ ownerBrawler: 'mallow', isMallow: true, isMallowBurnt: true, mallowHyper: false, x: owner.x + Math.cos(mallowAng) * (owner.radius + 7), y: owner.y + Math.sin(mallowAng) * (owner.radius + 7), vx: Math.cos(mallowAng) * MALLOW_VOLLEY_SPEED, vy: Math.sin(mallowAng) * MALLOW_VOLLEY_SPEED, life: 0, maxLife: MALLOW_VOLLEY_RANGE / MALLOW_VOLLEY_SPEED, damage: 0, pierce: false, ownerId: owner.id, hitIds: {}, hitboxMod: 1.3, hyperVisual: false });
+        }
+    }
+    // Auto-fires every 3.4s while owned (player-only in real matches — bots
+    // cannot own instincts; Training always grants them, like other instincts).
+    // First wave comes 3.4s after the match starts, then every 3.4s.
+    function updateMallowInstinct(entity, now) {
+        if (!MALLOW_ENABLED || !entity || entity.hp <= 0) return;
+        if (!isMallowEntity(entity)) return;
+        if (!isSpecialAbilityAvailableForEntity(entity, 'mallow')) return;
+        if (!Number.isFinite(entity.mallowInstinctReadyAt)) entity.mallowInstinctReadyAt = now + MALLOW_INSTINCT_COOLDOWN_MS;
+        if (now < entity.mallowInstinctReadyAt) return;
+        entity.mallowInstinctReadyAt = now + MALLOW_INSTINCT_COOLDOWN_MS;
+        fireMallowInstinctWave(entity, now);
+    }
     function updateMallowDash(entity, now) {
         const dash = entity.mallowDash;
         if (!dash) return;
@@ -22333,7 +22384,7 @@ let heistFeverActive = false;
         if (!MALLOW_ENABLED) return;
         const now = performance.now();
         for (const entity of [player, ...bots]) {
-            if (entity && entity.hp > 0) updateMallowDash(entity, now);
+            if (entity && entity.hp > 0) { updateMallowDash(entity, now); updateMallowInstinct(entity, now); }
         }
         for (let i = mallowTrailPuffs.length - 1; i >= 0; i--) {
             const puff = mallowTrailPuffs[i];
@@ -22393,25 +22444,26 @@ let heistFeverActive = false;
     function drawMallowProjectile(ctx, b) {
         const angle = Math.atan2(b.vy, b.vx);
         const hyper = !!b.hyperVisual;
+        const burnt = !!b.isMallowBurnt;
         ctx.save();
         ctx.translate(b.x, b.y);
         ctx.rotate(angle);
-        ctx.shadowColor = hyper ? '#a855f7' : '#d9b06a';
-        ctx.shadowBlur = hyper ? 14 : 8;
+        ctx.shadowColor = burnt ? '#ff7a1a' : (hyper ? '#a855f7' : '#d9b06a');
+        ctx.shadowBlur = burnt ? 10 : (hyper ? 14 : 8);
         ctx.globalAlpha = 0.35;
         ctx.fillStyle = '#fff3d6';
         ctx.beginPath();
         ctx.ellipse(-16, 0, 8, 5, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.globalAlpha = 1;
-        ctx.fillStyle = hyper ? '#f5e9ff' : '#fff8ec';
-        ctx.strokeStyle = hyper ? '#a855f7' : '#e8d3a8';
+        ctx.fillStyle = burnt ? '#2a1a0e' : (hyper ? '#f5e9ff' : '#fff8ec');
+        ctx.strokeStyle = burnt ? '#ff7a1a' : (hyper ? '#a855f7' : '#e8d3a8');
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.roundRect(-11, -7, 22, 14, 7);
         ctx.fill();
         ctx.stroke();
-        ctx.fillStyle = hyper ? '#9333ea' : '#d99a4e';
+        ctx.fillStyle = burnt ? '#ff7a1a' : (hyper ? '#9333ea' : '#d99a4e');
         ctx.beginPath();
         ctx.arc(-11, 0, 4.5, 0, Math.PI * 2);
         ctx.arc(11, 0, 4.5, 0, Math.PI * 2);
@@ -22420,7 +22472,7 @@ let heistFeverActive = false;
         ctx.beginPath();
         ctx.ellipse(-2, -3, 5, 2.5, 0, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = hyper ? 'rgba(147,51,234,0.55)' : 'rgba(217,154,78,0.55)';
+        ctx.fillStyle = burnt ? 'rgba(255,122,26,0.55)' : (hyper ? 'rgba(147,51,234,0.55)' : 'rgba(217,154,78,0.55)');
         ctx.beginPath();
         ctx.arc(4, 3, 3, 0, Math.PI * 2);
         ctx.fill();
@@ -45925,6 +45977,7 @@ let heistFeverActive = false;
       const donorMode = !!opts.donorMode;
       const damageMult = opts.damageMult || 1, hitboxMult = opts.hitboxMult || 1;
       const mallowHyper = donorMode ? false : isEntityHyperchargedNow(fromEntity, now);
+      fromEntity.mallowLastAimAngle = ang;
       const mallowLevel = donorMode ? 11 : (fromEntity.id === player.id ? getSelectedBrawlerLevel() : (fromEntity.level || 11));
       const mallowStats = getScaledStats('mallow', mallowLevel);
       const mallowGadgetBoost = donorMode ? false : (!isBot ? (gadgetArmed && selectedGadget === 'g1') : (fromEntity.gadgetArmed && fromEntity.selectedGadget === 'g1'));
@@ -54981,9 +55034,11 @@ function checkHit(target, b, i){
     }
     // One connected main-attack activation grants one charge step, regardless
     // of pellet count, fragments, repeated damage, or raw damage dealt.
-    if(!b.super && !b.isSuperDash && !b.isMinigunninMutationFire && (!target.isPet || target.isTowerDefenseMinion) && !(areAlliedEntities(owner, target) && isFriendlyFireActive())) grantMainAttackCharge(owner, b);
+    if(!b.super && !b.isSuperDash && !b.isMinigunninMutationFire && !b.isMallowBurnt && (!target.isPet || target.isTowerDefenseMinion) && !(areAlliedEntities(owner, target) && isFriendlyFireActive())) grantMainAttackCharge(owner, b);
     if(!b.super && !b.isSuperDash && !b.isMinigunninMutationFire && (!target.isPet || target.isTowerDefenseMinion) && areAlliedEntities(owner, target) && isFriendlyFirePlusActive()) grantMainAttackCharge(owner, b);
-    if (b.isMallow && owner && target) applyMallowSlowHit(target, owner, b);
+    if (b.isMallow && owner && target && !b.isMallowBurnt) applyMallowSlowHit(target, owner, b);
+    if (b.isMallow && b.isMallowBurnt && owner && target) applyMallowBurntHit(target, owner, b);
+    if (b.isMallow && b.mallowHyper && owner && target) mallowHyperEndBurst(b);
     if (b.isNightshadeDagger && owner && target) applyNightshadePoisonHit(target, owner, b);
     if (owner && target) applyHealnsteinPoisonHit(target, owner, b);
     if (b.isAegisShield && owner && target) applyAegisMaxHpShred(target, owner, b);

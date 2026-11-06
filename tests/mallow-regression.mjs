@@ -47,8 +47,8 @@ check('bullet branch draws dedicated art then continues',
   game.includes('drawMallowProjectile(ctx, b);'));
 check('expiry hook bursts hyper bullets at end of flight',
   game.includes('if (b.isMallow) {') && game.includes('if (b.mallowHyper) mallowHyperEndBurst(b);'));
-check('checkHit slow hook on landed hits',
-  game.includes('if (b.isMallow && owner && target) applyMallowSlowHit(target, owner, b);'));
+check('checkHit slow hook on landed hits (burnt wave excluded — burn-only)',
+  game.includes('if (b.isMallow && owner && target && !b.isMallowBurnt) applyMallowSlowHit(target, owner, b);'));
 check('slow multiplier hooked into movement slow',
   game.includes('getMallowSlowMultiplier(entity, now)'));
 check('slow constants 4%/1s/stack-8', game.includes('const MALLOW_SLOW_PER_HIT = 0.04;') && game.includes('const MALLOW_SLOW_DURATION_MS = 1000;') && game.includes('const MALLOW_SLOW_MAX_STACKS = 8;'));
@@ -228,7 +228,7 @@ try {
     MALLOW_VISUALS_ENABLED: true,
     MALLOW_TRAIL_FUSE_MS: 1320,
     MALLOW_TRAIL_EXPLOSION_RADIUS: 90,
-    MALLOW_VOLLEY_FAN_ARC: 1.20,
+    MALLOW_VOLLEY_FAN_ARC: 0.80,
     mallowMinis: [],
     mallowTelegraphs: [{ x: 50, y: 50, ang: 0, until: 100100 }],
     mallowTrailPuffs: [
