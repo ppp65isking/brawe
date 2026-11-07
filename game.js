@@ -10380,9 +10380,9 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
       'mallow': {
           name: 'Mallow', role: 'Controller', rarity: 'Epic', color: '#ffdfb0',
           desc: 'A puffy marshmallow Controller who sprays sticky-slow fans and dashes through Overheated marshmallow trails that burn and burst.',
-          attack: 'Marshmallow Spray', attackDesc: 'Fires 8 marshmallows in a wide Pam-style fan (320 damage each). Each hit slows by 4% for 1s, stacking to 32%. Cannot attack again until the volley finishes.',
+          attack: 'Marshmallow Spray', attackDesc: 'Fires 8 marshmallows in a compact Pam-style fan (320 damage each). Each hit slows by 4% for 1s, stacking to 32%. Cannot attack again until the volley finishes.',
           super: 'Overheated', superDesc: 'Aim and dash smoothly forward, leaving 6 marshmallow trail puffs. Enemies on the trail burn, and each puff explodes 1.32s after placement for 400 damage. Holds 2 charges — aim each dash separately.',
-          hyper: 'Hyper Marshmallows: visuals turn purple; main attack marshmallows explode at the end of flight for burn damage. Overheated dashes faster and further, dashes twice, leaves a wider trail, and hyper trail explosions release 4 mini-mallows in a + shape that explode again for 150 damage each.',
+          hyper: 'Hyper Marshmallows: visuals turn purple; main attack marshmallows explode at the end of flight or on enemy hit for burn damage. Overheated dashes faster and further, dashes twice, leaves a wider trail, and hyper trail explosions release 4 mini-mallows in a + shape that explode again for 150 damage each.',
           g1: 'Sticky Volley (Next volley applies 6% slow per hit instead of 4%)',
           g2: 'Second Tool coming soon.',
           sp1: 'Toasted Haste (Move 5% faster while an enemy is slowed by your marshmallows)',
@@ -11901,6 +11901,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
 
   // Duels Mode State
   let isDuels = false;
+  let isFusedMode = false;
   const DUELS_MAX_FIGHTERS = 4;
   const DUELS_ROUND_OPTIONS = Object.freeze([7, 9, 15]);
   const DUELS_ACTIVE_TOWER_POWERS = 5;
@@ -18952,6 +18953,14 @@ let heistFeverActive = false;
           pieceName: 'Splitter Instinct Piece',
           shortDesc: 'Every 4 seconds, each of Fivecracker’s 5 fragments divides into a clean two-shot forward cone.'
       },
+      mallow: {
+          type: 'instinct',
+          name: 'Charred Volley',
+          icon: 'CV',
+          color: '#62ef88',
+          pieceName: 'Mallow Instinct Piece',
+          shortDesc: 'Every 3.4 seconds, Mallow automatically fires a wave of burnt marshmallows that burn enemies for 30 damage over time.'
+      },
       homer: {
           type: 'mutation',
           name: 'Wormhole Rounds',
@@ -22208,7 +22217,7 @@ let heistFeverActive = false;
     const MALLOW_VOLLEY_COUNT = 8;
     const MALLOW_VOLLEY_RANGE = 600;
     const MALLOW_VOLLEY_SPEED = 900;
-    const MALLOW_VOLLEY_FAN_ARC = 1.20;
+    const MALLOW_VOLLEY_FAN_ARC = 0.80;
     const MALLOW_CHANNEL_MS = 500;
     const MALLOW_SLOW_PER_HIT = 0.04;
     const MALLOW_SLOW_GADGET_PER_HIT = 0.06;
@@ -22232,6 +22241,11 @@ let heistFeverActive = false;
     const MALLOW_HYPER_BURN_TOTAL = 150;
     const MALLOW_HYPER_BURN_TICKS = 5;
     const MALLOW_HYPER_BURN_TICK_MS = 200;
+    // Charred Volley instinct (2026-11-06): auto-fires a burnt wave every 3.4s.
+    const MALLOW_INSTINCT_COOLDOWN_MS = 3400;
+    const MALLOW_INSTINCT_BURN_TOTAL = 30;
+    const MALLOW_INSTINCT_BURN_TICKS = 3;
+    const MALLOW_INSTINCT_BURN_TICK_MS = 200;
     let mallowTrailPuffs = [];
     let mallowMinis = [];
     let mallowBurns = [];
@@ -22310,6 +22324,44 @@ let heistFeverActive = false;
         }
         mallowExplosions.push({ x: b.x, y: b.y, startedAt: now, durationMs: 450, hyper: true });
     }
+    // Charred Volley instinct: a burnt marshmallow applies a 30-damage burn
+    // over time (3 ticks of 10, 200ms apart — same cadence as the hyper burn).
+    function applyMallowBurntHit(target, owner, b) {
+        if (!MALLOW_ENABLED || !target || target.hp <= 0) return;
+        const now = performance.now();
+        mallowBurns.push({ targetId: target.id, ownerId: owner.id, endsAt: now + MALLOW_INSTINCT_BURN_TICKS * MALLOW_INSTINCT_BURN_TICK_MS, nextTickAt: now + MALLOW_INSTINCT_BURN_TICK_MS, tickDmg: MALLOW_INSTINCT_BURN_TOTAL / MALLOW_INSTINCT_BURN_TICKS, ticksLeft: MALLOW_INSTINCT_BURN_TICKS });
+    }
+    // Instinct wave: a full volley of burnt marshmallows in the compact fan.
+    // Burn-only (no slow, no impact damage, no super charge).
+    function fireMallowInstinctWave(owner, now) {
+        if (!MALLOW_ENABLED || !owner || owner.hp <= 0) return;
+        let ang = owner.mallowLastAimAngle;
+        if (!Number.isFinite(ang)) {
+            let best = null, bestD = Infinity;
+            for (const t of [player, ...bots]) {
+                if (!t || t.hp <= 0 || t.id === owner.id || areAlliedEntities(owner, t)) continue;
+                const d = Math.hypot(t.x - owner.x, t.y - owner.y);
+                if (d < bestD) { bestD = d; best = t; }
+            }
+            ang = best ? Math.atan2(best.y - owner.y, best.x - owner.x) : 0;
+        }
+        for (let mi = 0; mi < MALLOW_VOLLEY_COUNT; mi++) {
+            const mallowAng = ang + (mi - (MALLOW_VOLLEY_COUNT - 1) / 2) * (MALLOW_VOLLEY_FAN_ARC / (MALLOW_VOLLEY_COUNT - 1));
+            bullets.push({ ownerBrawler: 'mallow', isMallow: true, isMallowBurnt: true, mallowHyper: false, x: owner.x + Math.cos(mallowAng) * (owner.radius + 7), y: owner.y + Math.sin(mallowAng) * (owner.radius + 7), vx: Math.cos(mallowAng) * MALLOW_VOLLEY_SPEED, vy: Math.sin(mallowAng) * MALLOW_VOLLEY_SPEED, life: 0, maxLife: MALLOW_VOLLEY_RANGE / MALLOW_VOLLEY_SPEED, damage: 0, pierce: false, ownerId: owner.id, hitIds: {}, hitboxMod: 1.3, hyperVisual: false });
+        }
+    }
+    // Auto-fires every 3.4s while owned (player-only in real matches — bots
+    // cannot own instincts; Training always grants them, like other instincts).
+    // First wave comes 3.4s after the match starts, then every 3.4s.
+    function updateMallowInstinct(entity, now) {
+        if (!MALLOW_ENABLED || !entity || entity.hp <= 0) return;
+        if (!isMallowEntity(entity)) return;
+        if (!isSpecialAbilityAvailableForEntity(entity, 'mallow')) return;
+        if (!Number.isFinite(entity.mallowInstinctReadyAt)) entity.mallowInstinctReadyAt = now + MALLOW_INSTINCT_COOLDOWN_MS;
+        if (now < entity.mallowInstinctReadyAt) return;
+        entity.mallowInstinctReadyAt = now + MALLOW_INSTINCT_COOLDOWN_MS;
+        fireMallowInstinctWave(entity, now);
+    }
     function updateMallowDash(entity, now) {
         const dash = entity.mallowDash;
         if (!dash) return;
@@ -22335,7 +22387,7 @@ let heistFeverActive = false;
         if (!MALLOW_ENABLED) return;
         const now = performance.now();
         for (const entity of [player, ...bots]) {
-            if (entity && entity.hp > 0) updateMallowDash(entity, now);
+            if (entity && entity.hp > 0) { updateMallowDash(entity, now); updateMallowInstinct(entity, now); }
         }
         for (let i = mallowTrailPuffs.length - 1; i >= 0; i--) {
             const puff = mallowTrailPuffs[i];
@@ -22395,25 +22447,26 @@ let heistFeverActive = false;
     function drawMallowProjectile(ctx, b) {
         const angle = Math.atan2(b.vy, b.vx);
         const hyper = !!b.hyperVisual;
+        const burnt = !!b.isMallowBurnt;
         ctx.save();
         ctx.translate(b.x, b.y);
         ctx.rotate(angle);
-        ctx.shadowColor = hyper ? '#a855f7' : '#d9b06a';
-        ctx.shadowBlur = hyper ? 14 : 8;
+        ctx.shadowColor = burnt ? '#ff7a1a' : (hyper ? '#a855f7' : '#d9b06a');
+        ctx.shadowBlur = burnt ? 10 : (hyper ? 14 : 8);
         ctx.globalAlpha = 0.35;
         ctx.fillStyle = '#fff3d6';
         ctx.beginPath();
         ctx.ellipse(-16, 0, 8, 5, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.globalAlpha = 1;
-        ctx.fillStyle = hyper ? '#f5e9ff' : '#fff8ec';
-        ctx.strokeStyle = hyper ? '#a855f7' : '#e8d3a8';
+        ctx.fillStyle = burnt ? '#2a1a0e' : (hyper ? '#f5e9ff' : '#fff8ec');
+        ctx.strokeStyle = burnt ? '#ff7a1a' : (hyper ? '#a855f7' : '#e8d3a8');
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.roundRect(-11, -7, 22, 14, 7);
         ctx.fill();
         ctx.stroke();
-        ctx.fillStyle = hyper ? '#9333ea' : '#d99a4e';
+        ctx.fillStyle = burnt ? '#ff7a1a' : (hyper ? '#9333ea' : '#d99a4e');
         ctx.beginPath();
         ctx.arc(-11, 0, 4.5, 0, Math.PI * 2);
         ctx.arc(11, 0, 4.5, 0, Math.PI * 2);
@@ -22422,7 +22475,7 @@ let heistFeverActive = false;
         ctx.beginPath();
         ctx.ellipse(-2, -3, 5, 2.5, 0, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = hyper ? 'rgba(147,51,234,0.55)' : 'rgba(217,154,78,0.55)';
+        ctx.fillStyle = burnt ? 'rgba(255,122,26,0.55)' : (hyper ? 'rgba(147,51,234,0.55)' : 'rgba(217,154,78,0.55)');
         ctx.beginPath();
         ctx.arc(4, 3, 3, 0, Math.PI * 2);
         ctx.fill();
@@ -29741,6 +29794,62 @@ let heistFeverActive = false;
     return entity && entity.shieldMax ? entity.shieldMax : 0;
   }
 
+  // ---- Fused mode (random duels) ----
+  // A fusion is two distinct brawlers on one entity. The main attack fires
+  // both components' mains and the Super fires both components' Supers
+  // (see fire(), fireSuper(), fireSuperBot()).
+  function isFusedEntity(entity) {
+      return !!entity && Array.isArray(entity.fusedParts) && entity.fusedParts.length === 2;
+  }
+  function rollFusedParts() {
+      const pool = allBrawlers.filter((id) => !disabledBrawlers.has(id));
+      const first = pool[Math.floor(Math.random() * pool.length)];
+      let second = pool[Math.floor(Math.random() * pool.length)];
+      while (second === first && pool.length > 1) second = pool[Math.floor(Math.random() * pool.length)];
+      return [first, second];
+  }
+  function getFusedTier(parts, level) {
+      const a = getHPTier(parts[0], level);
+      const b = getHPTier(parts[1], level);
+      return {
+          hp: Math.round(((a.hp || 0) + (b.hp || 0)) / 2),
+          speed: Math.round(((a.speed || 110) + (b.speed || 110)) / 2)
+      };
+  }
+  function getFusedDisplayName(parts) {
+      const nameA = (typeof brawlerData !== 'undefined' && brawlerData[parts[0]] && brawlerData[parts[0]].name) || parts[0];
+      const nameB = (typeof brawlerData !== 'undefined' && brawlerData[parts[1]] && brawlerData[parts[1]].name) || parts[1];
+      return nameA + ' + ' + nameB;
+  }
+  function fireFusionSupersPlayer() {
+      const parts = player.fusedParts;
+      const savedBrawler = selectedBrawler;
+      try {
+          for (const part of parts) {
+              player.fusedSuperPart = part;
+              selectedBrawler = part;
+              fireSuper();
+          }
+      } finally {
+          selectedBrawler = savedBrawler;
+          player.fusedSuperPart = null;
+      }
+  }
+  function fireFusionSupersBot(bot, targetX, targetY) {
+      const parts = bot.fusedParts;
+      const savedBrawler = bot.brawler;
+      try {
+          for (const part of parts) {
+              bot.fusedSuperPart = part;
+              bot.brawler = part;
+              fireSuperBot(bot, targetX, targetY);
+          }
+      } finally {
+          bot.brawler = savedBrawler;
+          bot.fusedSuperPart = null;
+      }
+  }
+
   function startDuelsRound() {
     outlitWallChains.length = 0;
     bullets.length = 0; ragerWarTotems.length = 0;
@@ -29759,27 +29868,42 @@ let heistFeverActive = false;
     destructibleWalls.push({x: 250, y: 400, w: 40, h: 200, hp: 4000, maxHp: 4000, ownerId: null});
     destructibleWalls.push({x: 710, y: 400, w: 40, h: 200, hp: 4000, maxHp: 4000, ownerId: null});
 
-    selectedBrawler = playerTeam[Math.floor(Math.random() * playerTeam.length)];
-    // Duels' weekly ruleset always rolls five Tower Transformations for the
-    // fighter selected for this round. They are rerolled when the fighter does.
-    isSlopSushiMode = true;
-    sushiMatchArmed = true;
-    isTowerTroubleMode = false;
-    const duelTowerDeck = [...getActiveSlopSushiDeck(selectedBrawler)].sort(() => Math.random() - .5);
-    const towerDuelPreset = isTowerDuelEvent ? towerDuelPowerLoadouts[selectedBrawler] : null;
-    slopSushiActiveCards = Array.isArray(towerDuelPreset) && towerDuelPreset.length
-        ? [...towerDuelPreset]
-        : duelTowerDeck.slice(0, DUELS_ACTIVE_TOWER_POWERS).map(card => card.id);
-    resetPlayerAmmoForBrawler(selectedBrawler, true);
+    if (isFusedMode) {
+        // Fused mode: a fresh random fusion every round, no draft, no Tower
+        // Transformations — the fusion IS the gimmick.
+        const fusedParts = rollFusedParts();
+        selectedBrawler = fusedParts[0];
+        player.fusedParts = fusedParts;
+        isSlopSushiMode = false;
+        sushiMatchArmed = false;
+        isTowerTroubleMode = false;
+        slopSushiActiveCards = [];
+    } else {
+        // A previous Fused match must not leak its fusion into normal Duels.
+        player.fusedParts = null;
+        selectedBrawler = playerTeam[Math.floor(Math.random() * playerTeam.length)];
+        // Duels' weekly ruleset always rolls five Tower Transformations for the
+        // fighter selected for this round. They are rerolled when the fighter does.
+        isSlopSushiMode = true;
+        sushiMatchArmed = true;
+        isTowerTroubleMode = false;
+        const duelTowerDeck = [...getActiveSlopSushiDeck(selectedBrawler)].sort(() => Math.random() - .5);
+        const towerDuelPreset = isTowerDuelEvent ? towerDuelPowerLoadouts[selectedBrawler] : null;
+        slopSushiActiveCards = Array.isArray(towerDuelPreset) && towerDuelPreset.length
+            ? [...towerDuelPreset]
+            : duelTowerDeck.slice(0, DUELS_ACTIVE_TOWER_POWERS).map(card => card.id);
+    }
     const duelPlayerLevel = 11;
-    const ptier = getHPTier(selectedBrawler, duelPlayerLevel);
+    const ptier = isFusedMode ? getFusedTier(player.fusedParts, duelPlayerLevel) : getHPTier(selectedBrawler, duelPlayerLevel);
+    resetPlayerAmmoForBrawler(selectedBrawler, true);
+    if (isFusedMode) player.speed = ptier.speed || 220;
     if (isTowerDuelEvent) {
         selectedStar = Math.random() > 0.5 ? 'slow' : 'long';
         selectedGadget = Math.random() > 0.5 ? 'g1' : 'g2';
     }
     player.hyperHpBoost = 0;
     player.maxHp = ptier.hp;
-    player.maxHp = Math.round(player.maxHp * (1 + getSlopEffectTotal('hpPct')));
+    if (!isFusedMode) player.maxHp = Math.round(player.maxHp * (1 + getSlopEffectTotal('hpPct')));
     player.hp = player.maxHp;
     player.powerCubes = 0; player.isDead = false;
     player.x = 200; player.y = 500;
@@ -29798,14 +29922,15 @@ let heistFeverActive = false;
     }
     
     bots.length = 0;
-    const bBrawler = botTeam[Math.floor(Math.random() * botTeam.length)];
+    const fusedBotParts = isFusedMode ? rollFusedParts() : null;
+    const bBrawler = isFusedMode ? fusedBotParts[0] : botTeam[Math.floor(Math.random() * botTeam.length)];
     const botLevel = isTowerDuelEvent ? 11 : getBotLevelNearPlayer();
-    const btier = getHPTier(bBrawler, botLevel);
+    const btier = isFusedMode ? getFusedTier(fusedBotParts, botLevel) : getHPTier(bBrawler, botLevel);
     const unlocks = getUnlocksForLevel(botLevel);
     bots.push({
         id: nextId++, x: 800, y: 500, z: 0, vx:0, vy:0,
         hp: btier.hp, maxHp: btier.hp, powerCubes: 0, isDead: false, shield:0, shieldMax:0, shieldDecayTimer:0, reloadBuffUntil:0,
-        radius:14, speed: btier.speed || 110, slowUntil:0, brawler: bBrawler,
+        radius:14, speed: btier.speed || 110, slowUntil:0, brawler: bBrawler, fusedParts: fusedBotParts || undefined,
         level: botLevel,
         gadgetUnlocked: unlocks.gadgetUnlocked,
         starPowerUnlocked: unlocks.starPowerUnlocked,
@@ -29825,11 +29950,16 @@ let heistFeverActive = false;
         const deck = getActiveSlopSushiDeck(duelBot.brawler);
         const towerDuelPreset = towerDuelBotPowerLoadouts[duelBot.brawler] || [];
         duelBot.slopSushiCards = towerDuelPreset.map(id => deck.find(card => card.id === id)).filter(Boolean);
-    } else {
+    } else if (!isFusedMode) {
         assignSlopSushiBotPowers();
     }
     const duelOpeningShield = getSlopEffectTotal('startShield');
     if (duelOpeningShield > 0) grantShield(player, duelOpeningShield, Math.max(duelOpeningShield, getSlopEffectTotal('shieldCap')));
+    if (isFusedMode) {
+        spawnFloatingText(player.x, player.y - 52, 'FUSED: ' + getFusedDisplayName(player.fusedParts) + '!', '#b78cff');
+        const fusedBot = bots[0];
+        if (fusedBot) spawnFloatingText(fusedBot.x, fusedBot.y - 52, 'FUSED: ' + getFusedDisplayName(fusedBot.fusedParts) + '!', '#b78cff');
+    }
     renderSlopSushiCardHud();
     duelRoundState = 'playing'; playing = true; gameOver = false;
   }
@@ -34804,9 +34934,13 @@ let heistFeverActive = false;
         const aliveBots = (typeof bots !== 'undefined' && Array.isArray(bots)) ? bots.filter(b => b && b.hp > 0) : [];
         normalizeSelectedBrawler();
     const now = performance.now();
-        const brawler = getCombatBrawler(fromEntity, isBot);
+        const brawler = fromEntity.fusedPartCall || getCombatBrawler(fromEntity, isBot);
+        // Fused mode: one press fires both components. The outer call runs the
+        // per-press gates once; the two inner calls (fusedPartCall set) skip
+        // them and run only the per-component gates/branch.
+        const fusedOuter = !fromEntity.fusedPartCall && isFusedEntity(fromEntity);
         const cursedForcedAttack = !!fromEntity.cursedForcedAttack;
-        if ((fromEntity.awakenatorCorruptAttacks || 0) > 0) {
+        if (!fromEntity.fusedPartCall && (fromEntity.awakenatorCorruptAttacks || 0) > 0) {
             const teammate = [player, ...bots].filter(candidate => candidate && candidate.hp > 0 && candidate.id !== fromEntity.id && getEntityTeam(candidate) === getEntityTeam(fromEntity))
                 .sort((a,b) => Math.hypot(a.x-fromEntity.x,a.y-fromEntity.y)-Math.hypot(b.x-fromEntity.x,b.y-fromEntity.y))[0];
             if (teammate) {
@@ -34821,7 +34955,7 @@ let heistFeverActive = false;
         // Core Surge now includes each fighter's Hyper main-attack behavior.
         // The retired Attachie collection no longer gates combat mechanics.
         const isHypercharged = isBot ? false : getPlayerHyperMainActive(brawler);
-        if (brawler === 'demon') {
+        if (brawler === 'demon' && !fusedOuter) {
             const grounded = bullets.find(p => p.ownerId === fromEntity.id && p.isDemonBlade && p.demonGrounded && !p.demonReturning);
             if (grounded) {
                 grounded.demonGrounded = false;
@@ -34837,7 +34971,7 @@ let heistFeverActive = false;
             }
             if (bullets.some(p => p.ownerId === fromEntity.id && p.isDemonBlade && !p.isDemonSpectral)) return;
         }
-        if (brawler === 'spikey') {
+        if (brawler === 'spikey' && !fusedOuter) {
             // Spikey rework 2026-10-23: her balls ARE her ammo (magazine
             // cycle). Attacking with all 3 parked is the RETURN — the balls
             // fly home for throw-level damage, then are instantly ready to
@@ -34850,7 +34984,7 @@ let heistFeverActive = false;
             }
             if (fromEntity.spikeyBallsReady <= 0) return;
         }
-        if (brawler === 'boom_arang') {
+        if (brawler === 'boom_arang' && !fusedOuter) {
             const hasActive = bullets.some(b => b.ownerId === fromEntity.id && b.isBoomArang && !b.super);
             if (hasActive) return;
             // Boom-Arang only reloads by catching his weapon. If another system
@@ -34885,29 +35019,34 @@ let heistFeverActive = false;
         else if (fromEntity.bossStage === 2) fireDelay *= 0.6;
         else fireDelay *= 0.8;
     }
-    if(!cursedForcedAttack && now < (fromEntity.mainAttackSequenceUntil||0))return;
-    if(!cursedForcedAttack && now - (isBot ? fromEntity.lastShot : lastShot) < fireDelay) return;
-    if (brawler === 'beast' && isBeastyBeastActive(fromEntity, now)) return;
+    // Fused mode: the fusion fires at the slower component's rate.
+    if (fusedOuter && !isBot) {
+        const fusedParts = fromEntity.fusedParts;
+        fireDelay = Math.max(getFireDelay(fusedParts[0], null), getFireDelay(fusedParts[1], null));
+    }
+    if(!cursedForcedAttack && !fromEntity.fusedPartCall && now < (fromEntity.mainAttackSequenceUntil||0))return;
+    if(!cursedForcedAttack && !fromEntity.fusedPartCall && now - (isBot ? fromEntity.lastShot : lastShot) < fireDelay) return;
+    if (brawler === 'beast' && !fusedOuter && isBeastyBeastActive(fromEntity, now)) return;
 
     const crystalModeActive = !isBot && (player.bouncyBallsCrystalActive || player.bouncyBallsCrystalUntil > now);
 
     const ammoSaverFree = !isBot && willAmmoSaverTrigger(fromEntity);
     if(!isBot) {
-        if (brawler === 'beam') return; // Beam uses its own continuous system, skip fire()
-        if (isDraflygonFlight) {
+        if (brawler === 'beam' && !fusedOuter) return; // Beam uses its own continuous system, skip fire()
+        if (isDraflygonFlight && !fusedOuter) {
             // While flying, Draflygon uses dedicated flight ammo, NOT ground ammo
             if ((fromEntity.draflygonFlightAmmo || 0) <= 0) return;
         } else {
             const steamerCost = brawler === 'steamer' ? 5 : (brawler === 'oil_maker' ? 3 : 2);
             const duckCost = null;
             const cost = crystalModeActive ? 1 : (duckCost ?? ((brawler === 'minigunnin' || brawler === 'steamer' || brawler === 'oil_maker') ? steamerCost : 1));
-            if (brawler !== 'spikey' && ammo < cost && !ammoSaverFree) return; // Spikey's throws are gated by her ball cycle, not the generic ammo pool
+            if (!fromEntity.fusedPartCall && brawler !== 'spikey' && ammo < cost && !ammoSaverFree) return; // Spikey's throws are gated by her ball cycle, not the generic ammo pool
         }
-    } else if (isDraflygonFlight) {
+    } else if (isDraflygonFlight && !fusedOuter) {
         if ((fromEntity.draflygonFlightAmmo || 0) <= 0) return;
-    } else if (brawler === 'minigunnin' ) {
+    } else if (brawler === 'minigunnin' && !fusedOuter) {
         if ((fromEntity.minigunAmmo || 0) < 2) return;
-    } else if (brawler === 'beam') {
+    } else if (brawler === 'beam' && !fusedOuter) {
         return; // Bot beams also handled separately
     }
 
@@ -34916,7 +35055,7 @@ let heistFeverActive = false;
 
       const hunterFullTime = isBot ? Math.max(0, now - (fromEntity.lastShot || 0) - 1300) : ((ammo >= maxAmmo && player.hunterFullAmmoSince) ? now - player.hunterFullAmmoSince : 0);
 
-    if(isBot){
+    if(isBot && !fromEntity.fusedPartCall){
       const dist = Math.hypot(targetX - fromEntity.x, targetY - fromEntity.y);
       const closeLead = fromEntity.isImpossibleAI ? 0.24 : ((brawler === 'hunter' || brawler === 'overlord') ? 0.2 : 0.16);
       const farLead = fromEntity.isImpossibleAI ? 0.38 : ((brawler === 'hunter' || brawler === 'overlord') ? 0.3 : 0.22);
@@ -34939,17 +35078,17 @@ let heistFeverActive = false;
       targetY = fromEntity.y + Math.sin(aimAng) * aimDist;
     }
 
-    if(brawler==='unstable'&&getUnstableMainContainerCount(fromEntity)>=3)return;
-    if (brawler === 'axeywaxy') {
+    if(brawler==='unstable'&&!fusedOuter&&getUnstableMainContainerCount(fromEntity)>=3)return;
+    if (brawler === 'axeywaxy' && !fusedOuter) {
         if ((fromEntity.axeyWaxySuperUntil || 0) > now) return; // Cannot attack while in Super
         if (bullets.some(b => b.isAxeyWaxyCleave && b.ownerId === fromEntity.id && b.life < b.maxLife)) return; // Wait for current swing
     }
 
-    if(isBot) {
+    if(isBot && !fromEntity.fusedPartCall) {
         fromEntity.lastShot = now;
         if (brawler === 'minigunnin' ) fromEntity.minigunAmmo -= 2;
         fromEntity.lastAttackAt = now;
-    } else {
+    } else if (!fromEntity.fusedPartCall) {
         lastShot = now;
         commitTrinketAttack(fromEntity);
         if (!isDraflygonFlight) {
@@ -34964,6 +35103,21 @@ let heistFeverActive = false;
         player.lastAttackAt = now;
         applySlopSushiOnAttack();
     }
+    // Fused mode: one press fires both components' mains (one ammo, one
+    // throttle — both already paid above). The inner calls skip the
+    // per-press gates via fusedPartCall.
+    if (fusedOuter) {
+        const fusedParts = fromEntity.fusedParts;
+        try {
+            fromEntity.fusedPartCall = fusedParts[0];
+            fire(fromEntity, targetX, targetY, isBot, isMoving);
+            fromEntity.fusedPartCall = fusedParts[1];
+            fire(fromEntity, targetX, targetY, isBot, isMoving);
+        } finally {
+            fromEntity.fusedPartCall = null;
+        }
+        return;
+    }
     beginMainAttackActivation(fromEntity, brawler, now);
     if(!isBot){const packetAim=handlePacketMainAttack(fromEntity,targetX,targetY);targetX=packetAim.targetX;targetY=packetAim.targetY;}
     const dx = targetX - fromEntity.x;
@@ -34972,9 +35126,9 @@ let heistFeverActive = false;
     fromEntity.visualAimAngle = ang;
     fromEntity.visualAttackAt = now;
     // Outlit voice: player attack line (throttled inside the voice module).
-    if (!isBot && fromEntity === player && selectedBrawler === 'outlit') { try { window.BraweOutlitVoice?.play('attack'); } catch (e) {} }
+    if (!isBot && fromEntity === player && (fromEntity.fusedPartCall || selectedBrawler) === 'outlit') { try { window.BraweOutlitVoice?.play('attack'); } catch (e) {} }
     // Fuser voice: player attack line (throttled inside the voice module).
-    if (!isBot && fromEntity === player && selectedBrawler === 'fuser') { try { window.BraweFuserVoice?.play('attack'); } catch (e) {} }
+    if (!isBot && fromEntity === player && (fromEntity.fusedPartCall || selectedBrawler) === 'fuser') { try { window.BraweFuserVoice?.play('attack'); } catch (e) {} }
 
     fireArenaForgeCapturedHyperAttacks(fromEntity, ang, now);
 
@@ -40013,7 +40167,16 @@ let heistFeverActive = false;
 
     function fireSuper(isAimDrag = false){
         normalizeSelectedBrawler();
-    if(superCharge < 100 || player.hp <= 0) return;
+    if(!player.fusedSuperPart && (superCharge < 100 || player.hp <= 0)) return;
+        // Fused mode: one press fires both components' Supers; the meter is
+        // consumed once here, and the inner calls skip it.
+        if (!player.fusedSuperPart && isFusedEntity(player)) {
+            superCharge = 0;
+            player.lastAttackAt = performance.now();
+            fireFusionSupersPlayer();
+            updateSuperButton();
+            return;
+        }
         if (isPropHuntMode && player.propHuntMorphed) breakPropHuntMorph(player); // Super breaks the morph instantly
         if (isBrawlerLabMode) maybeStartBrawlerLabRangeCapture('super', player);
         if (selectedBrawler === 'beast' && isBeastyBeastActive(player)) {
@@ -40043,14 +40206,16 @@ let heistFeverActive = false;
                     return;
                 }
             }
-    if (!hasMultiSuper(selectedBrawler)) {
+    if (!player.fusedSuperPart && !hasMultiSuper(selectedBrawler)) {
         superCharge = 0;
     }
-    if (hasTrinket(player, 'super_guard')) grantShield(player, 1000, Math.max(5000, player.shieldMax || 0));
-    applySlopSushiOnSuper();
+    if (!player.fusedSuperPart) {
+        if (hasTrinket(player, 'super_guard')) grantShield(player, 1000, Math.max(5000, player.shieldMax || 0));
+        applySlopSushiOnSuper();
+        addEventQuestProgress('perform_supers');
+        progressSeasonPassQuest('perform_supers');
+    }
     player.lastAttackAt = performance.now();
-    addEventQuestProgress('perform_supers');
-    progressSeasonPassQuest('perform_supers');
     const now = performance.now();
     if (isArenaForgeMode && player.arenaForgePhaseStride) {
         player.invisibleUntil = Math.max(player.invisibleUntil || 0, now + 2000);
@@ -41896,6 +42061,14 @@ let heistFeverActive = false;
           bot.superCharge = 0;
           return;
       }
+        // Fused mode: one press fires both components' Supers; the meter is
+        // consumed once here, and the inner calls skip it.
+        if (!bot.fusedSuperPart && isFusedEntity(bot)) {
+            bot.superCharge = 0;
+            bot.lastAttackAt = performance.now();
+            fireFusionSupersBot(bot, targetX, targetY);
+            return;
+        }
         if (!bot.starPowerUnlocked) bot.selectedStar = 'none';
         if (!bot.hyperchargeUnlocked) bot.isHypercharged = false;
         if (bot.brawler === 'hyperorigin' && getHyperoriginEnergy(bot) < 1) return;
@@ -41908,7 +42081,7 @@ let heistFeverActive = false;
             ensureCinderionState(bot);
             if (bot.cinderionOrbitFlames.filter(flame => flame.expiresAt > performance.now() && !flame.spent).length < 3) return;
         }
-    if (bot.brawler !== 'steamer' && bot.brawler !== 'oil_maker' && bot.brawler !== 'dashaholic' && bot.brawler !== 'mallow') {
+    if (!bot.fusedSuperPart && bot.brawler !== 'steamer' && bot.brawler !== 'oil_maker' && bot.brawler !== 'dashaholic' && bot.brawler !== 'mallow') {
         bot.superCharge = 0;
     }
     bot.lastAttackAt = performance.now();
@@ -43695,6 +43868,7 @@ let heistFeverActive = false;
       ['brawe_ball', '⚽', 'Brawe Ball 3v3', '3v3 Soccer clash'],
       ['knockout_3v3', '🥊', 'Knockout 3v3', 'Best of 3 Rounds'],
       ['duels', '⚔️', 'Duels (First to 9)', 'Draft 1 to 4 brawlers'],
+      ['fused', '🧬', 'Fused Duels', 'Two random brawlers fused — both attacks, both Supers'],
       ['brick_vault', '🔒', 'Vault Siege 3v3', 'Break the enemy core vault'],
       ['marked_mayhem', 'TR', 'Target Rush', 'Hunt marked targets for bonus points'],
       ['arena_forge', 'AF2', 'Arena Forge 2.0', '3v3 • three weapon towers • new map • expanded Blueprint deck'],
@@ -43709,7 +43883,7 @@ let heistFeverActive = false;
   ];
   const HOME_MODE_DATA = Object.fromEntries(HOME_MODE_CARDS.map((entry) => [entry[0], entry]));
   const POWER_PLAY_BRAWLERS = new Set(['blinkeye', 'fuser', 'rocketeer', 'bouncin_balls', 'echo', 'orbo', 'decayer', 'money_and_tax', 'ramage']);
-  const HOME_PERMANENT_MODE_IDS = ['blink_eye_dodge', 'headless_boss_s4', 'tombstone_boss', 'orbo_boss', 'ramage_boss', 'weefee_boss', 'demon_villains_boss', 'custom_clash', 'brawe_ball', 'knockout_3v3', 'duels', 'power_play_showdown', 'corrupted_showdown', 'slop_sushi', 'slop_sushi_gauntlet', 'chaos_crown', 'arena_forge', 'arena_forge_overclocked', 'tug_zone', 'construction', 'knock_donate', 'damage_filler', 'capture_turkey', 'prop_hunt'];
+  const HOME_PERMANENT_MODE_IDS = ['blink_eye_dodge', 'headless_boss_s4', 'tombstone_boss', 'orbo_boss', 'ramage_boss', 'weefee_boss', 'demon_villains_boss', 'custom_clash', 'brawe_ball', 'knockout_3v3', 'duels', 'fused', 'power_play_showdown', 'corrupted_showdown', 'slop_sushi', 'slop_sushi_gauntlet', 'chaos_crown', 'arena_forge', 'arena_forge_overclocked', 'tug_zone', 'construction', 'knock_donate', 'damage_filler', 'capture_turkey', 'prop_hunt'];
   HOME_PERMANENT_MODE_IDS.push('arena_forge_minion_surge');
   HOME_PERMANENT_MODE_IDS.push('arena_forge_hyper');
   // BUILDER PICK (flagged): Super Showdown is always available during the
@@ -43719,7 +43893,7 @@ let heistFeverActive = false;
   const HOME_ROTATING_MODE_IDS = ['marked_mayhem', 'objective', 'brick_vault', 'mirror', 'power_gods', 'solo_td', 'impossible'];
   const HOME_POPULAR_MODE_IDS = ['solo', 'super_showdown', 'duo', 'trio',
     'arena_forge', 'arena_forge_overclocked', 'arena_forge_minion_surge', 'arena_forge_hyper',
-    'brawe_ball', 'knockout_3v3', 'duels',
+    'brawe_ball', 'knockout_3v3', 'duels', 'fused',
     'tug_zone', 'construction', 'knock_donate', 'damage_filler',
     'capture_turkey', 'tower_defense', 'custom_clash'];
   const HOME_DAILY_ROTATION_POOL = ['blink_eye_dodge', 'orbo_boss', 'ramage_boss',
@@ -45065,8 +45239,12 @@ let heistFeverActive = false;
 
   // Charm Slam: instant aura burst. Enemies in the aura take damage, allies
   // in the aura are healed, and power boxes in the aura break (Anthony's
-  // ruling: the Charmer needs to break boxes). Towers, Core, and metal
-  // walls are still untouched.
+  // ruling: the Charmer needs to break boxes). Enemy towers and the enemy
+  // Core take damage like any other attack (2026-11-06: the slam used to
+  // skip structures entirely, so she could never hurt the objective).
+  // Allied structures are skipped outright: towers can never gain HP
+  // (PR #42) and the Core must not be healed by the slam. Metal walls
+  // stay untouched.
   function auraCharmerSlam(owner) {
       if (!owner || owner.hp <= 0) return 0;
       const now = performance.now();
@@ -45083,7 +45261,9 @@ let heistFeverActive = false;
       let hits = 0;
       for (const target of [player, ...bots]) {
           if (!target || target.hp <= 0 || target.id === owner.id) continue;
-          if (target.isArenaForgeTower || target.isArenaForgeCore) continue;
+          // 2026-11-06: enemy towers/Core take slam damage (they are the
+          // objective). Allied structures are skipped, never healed.
+          if ((target.isArenaForgeTower || target.isArenaForgeCore) && areAlliedEntities(owner, target)) continue;
           const dist = Math.hypot(target.x - owner.x, target.y - owner.y);
           if (dist > radius + (target.radius || 14)) continue;
           if (areAlliedEntities(owner, target)) {
@@ -45093,7 +45273,7 @@ let heistFeverActive = false;
           checkHit(target, { ownerBrawler: 'aura_charmer', ownerId: owner.id, damage: dmg, pierce: true, hitIds: {}, isAuraCharmerSlam: true }, -1);
           if (!target.isPet) grantMainAttackCharge(owner, { ownerBrawler: owner.currentMainAttackBrawler, mainAttackActivationId: owner.currentMainAttackActivationId });
           hits++;
-          if (pull && !isEntityCcImmune(target, now)) {
+          if (pull && !target.isArenaForgeTower && !target.isArenaForgeCore && !isEntityCcImmune(target, now)) {
               const dx = owner.x - target.x, dy = owner.y - target.y;
               const len = Math.hypot(dx, dy) || 1;
               const step = Math.min(AURA_CHARMER_G1_PULL_PX, Math.max(0, len - 40));
@@ -45239,6 +45419,9 @@ let heistFeverActive = false;
           for (const ally of [player, ...bots]) {
               if (!ally || ally.hp <= 0 || ally.id === caster.id) continue;
               if (!areAlliedEntities(caster, ally)) continue;
+              // 2026-11-06: structures never gain HP (PR #42) — an allied
+              // tower/Core standing in the aura must not soak max-HP bonus.
+              if (ally.isArenaForgeTower || ally.isArenaForgeCore) continue;
               if (Math.hypot(ally.x - caster.x, ally.y - caster.y) > radius + (ally.radius || 14)) continue;
               teammatesInside++;
               const bonus = ally.auraCharmerBonusMaxHp || 0;
@@ -45255,11 +45438,11 @@ let heistFeverActive = false;
               if (teammatesInside > 0) caster.auraCharmerGrowth = Math.min(AURA_CHARMER_SP1_GROWTH_CAP, (caster.auraCharmerGrowth || 0) + step * teammatesInside);
               else caster.auraCharmerGrowth = Math.max(0, (caster.auraCharmerGrowth || 0) - step);
           }
-          // SP2: the aura passively damages enemies inside it (brawlers only).
+          // SP2: the aura passively damages enemies inside it, including
+          // enemy towers and the enemy Core (2026-11-06 fix).
           if (hasSP2) {
               for (const target of [player, ...bots]) {
                   if (!target || target.hp <= 0 || target.id === caster.id) continue;
-                  if (target.isArenaForgeTower || target.isArenaForgeCore) continue;
                   if (areAlliedEntities(caster, target)) continue;
                   if (Math.hypot(target.x - caster.x, target.y - caster.y) > radius + (target.radius || 14)) continue;
                   checkHit(target, { ownerBrawler: 'aura_charmer', ownerId: caster.id, damage: AURA_CHARMER_SP2_TICK_DMG, pierce: true, hitIds: {}, isAuraCharmerAuraTick: true }, -1);
@@ -45927,6 +46110,7 @@ let heistFeverActive = false;
       const donorMode = !!opts.donorMode;
       const damageMult = opts.damageMult || 1, hitboxMult = opts.hitboxMult || 1;
       const mallowHyper = donorMode ? false : isEntityHyperchargedNow(fromEntity, now);
+      fromEntity.mallowLastAimAngle = ang;
       const mallowLevel = donorMode ? 11 : (fromEntity.id === player.id ? getSelectedBrawlerLevel() : (fromEntity.level || 11));
       const mallowStats = getScaledStats('mallow', mallowLevel);
       const mallowGadgetBoost = donorMode ? false : (!isBot ? (gadgetArmed && selectedGadget === 'g1') : (fromEntity.gadgetArmed && fromEntity.selectedGadget === 'g1'));
@@ -49265,6 +49449,8 @@ let heistFeverActive = false;
       isTraining = false;
     isTutorialMode = false;
       isDuels = false;
+      isFusedMode = false;
+      player.fusedParts = null;
       isTowerDuelEvent = false;
       isWarperEvent = false;
       isTowerPowerVaultWeekendMatch = TOWER_POWER_SYSTEM_ENABLED && showdownMode === 'brick_vault' && isTowerPowerVaultWeekendActive();
@@ -49273,6 +49459,10 @@ let heistFeverActive = false;
       }
       isSlopSushiMode = sushiMatchArmed || isTowerPowerVaultWeekendMatch;
       isTowerTroubleMode = sushiMatchArmed && (showdownMode === 'slop_sushi' || towerTroubleVariant === 'gauntlet' || towerTroubleVariant === 'chaos');
+      if (showdownMode === 'fused') {
+          beginFusedMatch();
+          return;
+      }
       closeKnockDonateDonationUI();
       closeArenaForgeUI();
       isSplitterPoweredMode = showdownMode === 'splitter_powered';
@@ -49704,6 +49894,50 @@ let heistFeverActive = false;
       skeleParachutes.length = 0;
       skelePortals.length = 0;
       if (document.getElementById('topbar')) document.getElementById('topbar').textContent = `Tower Duels Weekend - Floor ${event.floor}/5 - Tower Power`;
+      startDuelsRound();
+      if (brawlerSelect) brawlerSelect.disabled = true;
+      if (homeScreen) homeScreen.style.display = 'none';
+  }
+
+  function beginFusedMatch() {
+      isDuoShowdown = false;
+      isConstructionMode = false;
+      isDamageFillerMode = false;
+      isKnockDonateMode = false;
+      isBrickVaultMode = false;
+      isArenaForgeMode = false;
+      isHyperForgeLTM = false;
+      isMarkedMayhemMode = false;
+      isTugZoneMode = false;
+      isTrioShowdownMode = false;
+      isSplitterPoweredMode = false;
+      isPowerGodsMode = false;
+      isMirrorMode = false;
+      isImpossibleMode = false;
+      isObjectiveMode = false;
+      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; isPropHuntMode = false; propHuntState = null;
+      isTraining = false;
+      isDuels = true;
+      isFusedMode = true;
+      isTowerDuelEvent = false;
+      isSlopSushiMode = false;
+      sushiMatchArmed = false;
+      clearShowdownModifier();
+      playerScore = 0;
+      botScore = 0;
+      savedPlayerSuper = 0;
+      savedPlayerHyper = 0;
+      savedBotSuper = 0;
+      savedBotHyper = 0;
+      WORLD_W = 1000;
+      WORLD_H = 1000;
+      cubes.length = 0;
+      powerups.length = 0;
+      amplifierToolboxes.length = 0;
+      amplifierScrewZones.length = 0;
+      skeleParachutes.length = 0;
+      skelePortals.length = 0;
+      duelsTargetWins = 9;
       startDuelsRound();
       if (brawlerSelect) brawlerSelect.disabled = true;
       if (homeScreen) homeScreen.style.display = 'none';
@@ -50929,6 +51163,8 @@ isBrawlerLabMode = false;
       isHyperEvent = false;
       isBossFight = false;
       isDuels = false;
+      isFusedMode = false;
+      player.fusedParts = null;
       isTowerDuelEvent = false;
       isWarperEvent = false;
       isObjectiveMode = false;
@@ -51074,6 +51310,8 @@ isBrawlerLabMode = false;
       isHyperEvent = false;
       isBossFight = false;
       isDuels = false;
+      isFusedMode = false;
+      player.fusedParts = null;
       isWarperEvent = false;
       isObjectiveMode = false;
       isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; isPropHuntMode = false; propHuntState = null;
@@ -54983,9 +55221,11 @@ function checkHit(target, b, i){
     }
     // One connected main-attack activation grants one charge step, regardless
     // of pellet count, fragments, repeated damage, or raw damage dealt.
-    if(!b.super && !b.isSuperDash && !b.isMinigunninMutationFire && (!target.isPet || target.isTowerDefenseMinion) && !(areAlliedEntities(owner, target) && isFriendlyFireActive())) grantMainAttackCharge(owner, b);
+    if(!b.super && !b.isSuperDash && !b.isMinigunninMutationFire && !b.isMallowBurnt && (!target.isPet || target.isTowerDefenseMinion) && !(areAlliedEntities(owner, target) && isFriendlyFireActive())) grantMainAttackCharge(owner, b);
     if(!b.super && !b.isSuperDash && !b.isMinigunninMutationFire && (!target.isPet || target.isTowerDefenseMinion) && areAlliedEntities(owner, target) && isFriendlyFirePlusActive()) grantMainAttackCharge(owner, b);
-    if (b.isMallow && owner && target) applyMallowSlowHit(target, owner, b);
+    if (b.isMallow && owner && target && !b.isMallowBurnt) applyMallowSlowHit(target, owner, b);
+    if (b.isMallow && b.isMallowBurnt && owner && target) applyMallowBurntHit(target, owner, b);
+    if (b.isMallow && b.mallowHyper && owner && target) mallowHyperEndBurst(b);
     if (b.isNightshadeDagger && owner && target) applyNightshadePoisonHit(target, owner, b);
     if (owner && target) applyHealnsteinPoisonHit(target, owner, b);
     if (b.isAegisShield && owner && target) applyAegisMaxHpShred(target, owner, b);
