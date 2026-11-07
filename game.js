@@ -29415,6 +29415,12 @@ let heistFeverActive = false;
       entity.currentMainAttackStartedAt = now;
       if (entity.id === player.id && brawler === 'outlit') addSpecialQuestProgress('outlit','main_attack',1);
       if (entity.id === player.id && brawler === 'crystila') addSpecialQuestProgress('crystila','main_attack',1);
+      // Fuser voice: player attack line (throttled inside the voice module).
+      // Lives here, not beside the Outlit hook in fire(): fire()'s voice
+      // area is also touched by main (Fused), so an adjacent Fuser line
+      // there conflicts on merge. beginMainAttackActivation runs once per
+      // component attack (incl. each Fused part) and is untouched by main.
+      if (entity.id === player.id && brawler === 'fuser') { try { window.BraweFuserVoice?.play('attack'); } catch (e) {} }
       return id;
   }
   function hasOutlitMutation(entity) { return isSpecialAbilityAvailableForEntity(entity, 'outlit'); }
@@ -35127,8 +35133,6 @@ let heistFeverActive = false;
     fromEntity.visualAttackAt = now;
     // Outlit voice: player attack line (throttled inside the voice module).
     if (!isBot && fromEntity === player && (fromEntity.fusedPartCall || selectedBrawler) === 'outlit') { try { window.BraweOutlitVoice?.play('attack'); } catch (e) {} }
-    // Fuser voice: player attack line (throttled inside the voice module).
-    if (!isBot && fromEntity === player && (fromEntity.fusedPartCall || selectedBrawler) === 'fuser') { try { window.BraweFuserVoice?.play('attack'); } catch (e) {} }
 
     fireArenaForgeCapturedHyperAttacks(fromEntity, ang, now);
 
