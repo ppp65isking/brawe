@@ -137,7 +137,7 @@ check('bootstrap loads fuser-voicelines.js + hypercharge-sfx.js after outlit-voi
 
 // --- game.js hooks: every trigger is actually wired ---
 check('Fuser attack voice hook in fire() (player Fuser only)',
-  game.includes("if (!isBot && fromEntity === player && selectedBrawler === 'fuser') { try { window.BraweFuserVoice?.play('attack'); } catch (e) {} }"));
+  game.includes("if (!isBot && fromEntity === player && (fromEntity.fusedPartCall || selectedBrawler) === 'fuser') { try { window.BraweFuserVoice?.play('attack'); } catch (e) {} }"));
 check('Fuser super voice hook in fireSuper()',
   game.includes("if (selectedBrawler === 'fuser') { try { window.BraweFuserVoice?.play('super'); } catch (e) {} }"));
 check('Fuser kill voice hook in handleTrinketDamageDealt',
