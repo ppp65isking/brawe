@@ -109,6 +109,7 @@ async function startLegacyRuntime() {
   const moduleFiles = [
     './modules/visuals/roster-2p5d.js',
     './modules/audio/outlit-voicelines.js',
+    './modules/audio/voodoyou-voicelines.js',
     './modules/core/registry.js',
     './modules/brawlers/common/roster.js',
     './modules/brawlers/common/outlit.js',
