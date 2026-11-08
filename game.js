@@ -314,6 +314,11 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             const hpScale = getLevelHpScale(level);
             return { hp: Math.round(6200 * hpScale), dmg: Math.round(750 * scale), speed: 280 };
         }
+        if (brawlerId === 'voodoyou') {
+            const scale = 0.55 + (level - 1) * 0.045;
+            const hpScale = getLevelHpScale(level);
+            return { hp: Math.round(6600 * hpScale), dmg: Math.round(700 * scale), speed: 280 };
+        }
         if (brawlerId === 'looma') {
             const scale = 0.55 + (level - 1) * 0.045;
             const hpScale = getLevelHpScale(level);
@@ -892,6 +897,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             ensureProfileProgressionState().profile.careerStats.eliminations += 1;
             // Outlit voice: player kill line.
             if (selectedBrawler === 'outlit') { try { window.BraweOutlitVoice?.play('kill'); } catch (e) {} }
+            // Voodoyou voice: player kill line.
+            if (selectedBrawler === 'voodoyou') { try { window.BraweVoodoyouVoice?.play('kill'); } catch (e) {} }
         }
         if (target && target.hp <= 0 && hasTrinket(owner, 'fresh_magazine')) {
             if (now - (target.trinketFreshMagazineKillAt || 0) > 1000) {
@@ -5105,6 +5112,7 @@ const bolznstienPendingStrikes = [];
             voltastein: 1600,
             staticstein: 1500,
             healnstein: 1600,
+            voodoyou: 1400,
             carmela_fudge: 1400,
             oil_maker: 90,
             magnatar: 1450,
@@ -5172,6 +5180,7 @@ const bolznstienPendingStrikes = [];
             voltastein: 300,
             staticstein: 300,
             healnstein: 300,
+            voodoyou: 300,
             carmela_fudge: 180,
             oil_maker: 112,
             magnatar: 200,
@@ -5262,6 +5271,7 @@ const bolznstienPendingStrikes = [];
         if (now < (entity.electrostienChainedSlowUntil || 0)) baseSlow = Math.min(baseSlow, 0.80);
         if (now < (entity.electrostienRealmSlowUntil || 0)) baseSlow = Math.min(baseSlow, 0.70);
         if (now < (entity.mallowSlowUntil || 0)) baseSlow = Math.min(baseSlow, getMallowSlowMultiplier(entity, now));
+        if (now < (entity.voodoyouPatchSlowUntil || 0)) baseSlow = Math.min(baseSlow, VOODOOYOU_PATCH_SLOW_MULT);
         if (now < (entity.runnerSlowUntil || 0)) baseSlow = Math.min(baseSlow, RUNNER_TRAIL_SLOW_MULT);
         if (now < (entity.auraCharmerSlowUntil || 0)) baseSlow = Math.min(baseSlow, AURA_CHARMER_G1_SLOW_MULT);
         if (entity.powerOutageUntil && now < entity.powerOutageUntil) baseSlow = Math.min(baseSlow, getPowerOutageSlowMult(entity, now));
@@ -5468,7 +5478,7 @@ const bolznstienPendingStrikes = [];
         'boom_arang', 'teether', 'fuel', 'xray', 'angel', 'demon', 'warrior', 'relay',
         'upiedown', 'chickpig', 'jetpack', 'snapper', 'robber', 'rocketeer',
         'carmela_fudge', 'peter_pickle', 'unstable', 'homer', 'orbo', 'predator', 'fastpass', 'freestyle', 'portalo', 'ghoul', 'jacktrade', 'darkener', 'awakenator', 'adlof', 'cluster', 'witch', 'boomer', 'blade_vane', 'daggershard', 'ice_cream', 'swimmer', 'kage', 'drainbow', 'draflygon', 'axeywaxy', 'trampaheal', 'mageny', 'ramage', 'upgradart', 'cinderion', 'cursed', 'king', 'anti_royal', 'sir_cheeseburger', 'weefee', 'blinkeye', 'bolznstien', 'magnatar', 'oil_maker', 'rager', 'badbat', 'looma',
-        'feathers', 'spikey', 'electrostien', 'mallow', 'nightshade', 'aegis', 'runner', 'aura_charmer', 'voltastein', 'staticstein', 'healnstein'
+        'feathers', 'spikey', 'electrostien', 'mallow', 'nightshade', 'aegis', 'runner', 'aura_charmer', 'voltastein', 'staticstein', 'healnstein', 'voodoyou'
     ];
     const registeredBrawlerModules = window.ArenaForgeModules?.brawlers || Object.create(null);
     for (const moduleId of Object.keys(registeredBrawlerModules)) {
@@ -5579,6 +5589,7 @@ const bolznstienPendingStrikes = [];
             runner: 'Mythic',
             aura_charmer: 'Mythic',
             staticstein: 'Mythic',
+            voodoyou: 'Mythic',
 
             // Exotic (10)
             the_deleter: 'Exotic',
@@ -10462,6 +10473,17 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           g2: 'Antidote Shield (Your next needle also grants the target a 1,000 HP shield for 5 seconds)',
           sp1: 'Bigger Bounces (Bounce radius +20% and healing +200 per bounce)',
           sp2: 'Lingering Toxin (The poison effect lasts 8 seconds instead of 6)'
+      },
+      'voodoyou': {
+          name: 'Voodoyou', role: 'Controller', rarity: 'Mythic', color: '#8b5cf6',
+          desc: 'A shadowy voodoo doll who puppets the arena. Its yarn ball explodes on impact, and its cursed needle possesses the enemy it hits — turning them against their own team while it collects their voodoo.',
+          attack: 'Yarn Bomb', attackDesc: 'Lobs an exploding yarn ball (700 damage on a direct hit; the blast deals 350 damage in a small radius, even on a wall hit).',
+          super: 'Voodoo You', superDesc: 'Fires a cursed needle: on hitting an enemy brawler, possess them for 3 seconds — their AI attacks the nearest brawler, friend or foe. Each possession collects 1 voodoo (max 3). While controlling, Voodoyou stands still and cannot move or attack; taking any damage breaks the control early.',
+          hyper: 'Shadow Helpers: summons shadow helpers — one per stored voodoo (at least 1, up to 3) — that follow Voodoyou for 8 seconds and throw yarn balls dealing 50% damage.',
+          g1: 'Big Yarn (Your next yarn ball has 2x explosion radius and +50% damage)',
+          g2: 'Doll Snatch (Instantly steal 1 voodoo from the nearest enemy within range)',
+          sp1: 'Hexed Yarn (Yarn-ball explosions leave a yarn patch that slows enemies 25% for 2 seconds)',
+          sp2: 'Puppet Master (Voodoo cap 3 to 4, control lasts 4.5 seconds, +1 max helper)'
       }
   };
 
@@ -10487,7 +10509,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
 
     // V4 standardized primary-role organization: exactly one gameplay role per brawler.
     const PRIMARY_ROLE_BY_BRAWLER = {
-        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank', rager:'Controller', looma:'Controller', feathers:'Controller', spikey:'Damage Dealer', electrostien:'Assassin', mallow:'Controller', nightshade:'Assassin', runner:'Controller', aura_charmer:'Support', voltastein:'Artillery', staticstein:'Damage Dealer', healnstein:'Support',
+        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank', rager:'Controller', looma:'Controller', feathers:'Controller', spikey:'Damage Dealer', electrostien:'Assassin', mallow:'Controller', nightshade:'Assassin', runner:'Controller', aura_charmer:'Support', voltastein:'Artillery', staticstein:'Damage Dealer', healnstein:'Support', voodoyou:'Controller',
     carmela_fudge:'Damage Dealer', bolznstien:'Damage Dealer', badbat:'Damage Dealer', magnatar:'Controller', oil_maker:'Controller', sir_cheeseburger:'Tank',
         blade_vane:'Assassin', kage:'Assassin', drainbow:'Controller', bowlin_rida:'Assassin', dashaholic:'Assassin', demon:'Assassin', jetpack:'Assassin', malakor:'Assassin', predator:'Assassin', swimmer:'Assassin', teether:'Assassin',
         boom_arang:'Marksman', cheseypuff:'Marksman', crystila:'Marksman', homer:'Marksman', hunter:'Marksman', orbo:'Marksman', snapper:'Marksman', xray:'Marksman',
@@ -10516,6 +10538,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
             voltastein: '⚡🔮',
             staticstein: '⚡📺',
             healnstein: '💚🩹',
+            voodoyou: '🧶',
     looma: '🪡🧵',
         sir_cheeseburger: '🛡️',
         anti_royal: '🏴‍☠️',
@@ -11671,6 +11694,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
       voltastein: { g1: 15000, g2: 15000 },
       staticstein: { g1: 15000, g2: 15000 },
       healnstein: { g1: 15000, g2: 15000 },
+      voodoyou: { g1: 14000, g2: 16000 },
       carmela_fudge: { g1: 8000, g2: 8000 },
       bolznstien: { g1: 14000, g2: 15000 },
       sir_cheeseburger: { g1: 13000, g2: 14000 },
@@ -23584,6 +23608,374 @@ let heistFeverActive = false;
         }
     }
 
+    // ===== Voodoyou systems (Yarn Bomb + Voodoo You + Shadow Helpers) =====
+    // Anthony design (2026-11-08, builder picks — flagged for his correction):
+    // a shadowy voodoo-doll Controller. Main attack lobs an exploding yarn
+    // ball; Super Voodoo You fires a cursed needle that POSSESSES an enemy
+    // brawler (their AI retargets to the nearest brawler, any side) and
+    // collects a voodoo (max 3, +10% main damage each); Hypercharge spawns
+    // shadow helpers that throw yarn balls. Kill switches are `let` so
+    // regression tests can flip them. Dedicated art lives in its OWN
+    // branches below: Voodoyou projectiles are drawn before the universal
+    // skin renderer call, never through it (PR #48 lesson).
+    let VOODOOYOU_ENABLED = true;
+    let VOODOOYOU_VISUALS_ENABLED = true;
+    const VOODOOYOU_YARN_SPEED = 950;
+    const VOODOOYOU_YARN_RANGE = 700;
+    const VOODOOYOU_YARN_EXPLOSION_DAMAGE_RATIO = 0.5; // explosion = half the ball's direct damage
+    const VOODOOYOU_YARN_EXPLOSION_RADIUS = 130;
+    const VOODOOYOU_YARN_RADIUS_MULT_GADGET = 2;
+    const VOODOOYOU_YARN_DAMAGE_MULT_GADGET = 1.5;
+    const VOODOOYOU_VOODOO_DAMAGE_PER = 0.10;
+    const VOODOOYOU_VOODOO_CAP = 3;
+    const VOODOOYOU_VOODOO_CAP_SP2 = 4;
+    const VOODOOYOU_CONTROL_DURATION_MS = 3000;
+    const VOODOOYOU_CONTROL_DURATION_SP2_MS = 4500;
+    const VOODOOYOU_NEEDLE_SPEED = 1100;
+    const VOODOOYOU_NEEDLE_RANGE = 800;
+    const VOODOOYOU_HELPER_DURATION_MS = 8000;
+    const VOODOOYOU_HELPER_MAX = 3;
+    const VOODOOYOU_HELPER_MAX_SP2 = 4;
+    const VOODOOYOU_HELPER_SHOT_INTERVAL_MS = 900;
+    const VOODOOYOU_HELPER_SHOT_RANGE = 700;
+    const VOODOOYOU_HELPER_DAMAGE_MULT = 0.5;
+    const VOODOOYOU_GADGET2_RANGE = 600;
+    const VOODOOYOU_PATCH_RADIUS = 150;
+    const VOODOOYOU_PATCH_DURATION_MS = 2000;
+    const VOODOOYOU_PATCH_SLOW_MULT = 0.75; // 25% slow
+    let voodoyouHelpers = [];
+    let voodoyouYarnPatches = [];
+    function isVoodoyouEntity(entity) {
+        return !!entity && (entity.brawler === 'voodoyou' || (!!player && entity.id === player.id && selectedBrawler === 'voodoyou'));
+    }
+    function voodoyouStarChoice(entity) { try { return getEntityStarChoice(entity); } catch (_) { return entity ? entity.selectedStar : null; } }
+    function voodoyouHasSP1(entity) { const c = voodoyouStarChoice(entity); return c === 'slow' || c === 'sp1'; }
+    function voodoyouHasSP2(entity) { const c = voodoyouStarChoice(entity); return c === 'long' || c === 'sp2'; }
+    function voodoyouVoodooCap(entity) { return voodoyouHasSP2(entity) ? VOODOOYOU_VOODOO_CAP_SP2 : VOODOOYOU_VOODOO_CAP; }
+    function voodoyouControlDurationMs(entity) { return voodoyouHasSP2(entity) ? VOODOOYOU_CONTROL_DURATION_SP2_MS : VOODOOYOU_CONTROL_DURATION_MS; }
+    function voodoyouMaxHelpers(entity) { return voodoyouHasSP2(entity) ? VOODOOYOU_HELPER_MAX_SP2 : VOODOOYOU_HELPER_MAX; }
+    function voodoyouDamageMult(entity) { return 1 + VOODOOYOU_VOODOO_DAMAGE_PER * (entity.voodoyouCount || 0); }
+    function isVoodoyouControlling(entity, now) {
+        return !!entity && (entity.voodoyouControllingUntil || 0) > (now || performance.now());
+    }
+    function isVoodoyouPossessed(entity, now) {
+        return !!entity && (entity.voodoyouPossessedUntil || 0) > (now || performance.now());
+    }
+    function findVoodoyouEntityById(id) { if (player && player.id === id) return player; return bots.find((b) => b && b.id === id) || null; }
+    function voodoyouLevelFor(entity) { return entity && entity.id === player.id ? getSelectedBrawlerLevel() : (entity.level || 11); }
+    function findNearestVoodoyouPossessTarget(entity) {
+        let best = null, bestD = Infinity;
+        for (const c of [player, ...bots]) {
+            if (!c || c.hp <= 0 || c.id === entity.id) continue;
+            if (c.isDummy || c.isStructure || c.isPet || c.isCore) continue;
+            const d = Math.hypot(c.x - entity.x, c.y - entity.y);
+            if (d < bestD) { bestD = d; best = c; }
+        }
+        return best;
+    }
+    function triggerVoodoyouYarnExplosion(b, directTarget) {
+        if (!VOODOOYOU_ENABLED || !b || b._voodoyouExploded) return;
+        b._voodoyouExploded = true;
+        const now = performance.now();
+        const owner = findVoodoyouEntityById(b.ownerId);
+        const radius = VOODOOYOU_YARN_EXPLOSION_RADIUS * (b.voodoyouBigYarn ? VOODOOYOU_YARN_RADIUS_MULT_GADGET : 1);
+        const dmg = Math.round((b.damage || 0) * VOODOOYOU_YARN_EXPLOSION_DAMAGE_RATIO);
+        explosions.push({ x: b.x, y: b.y, radius: radius, life: 0, maxLife: 0.28, color: b.hyperVisual ? 'rgba(192,132,252,0.9)' : 'rgba(139,92,246,0.85)', fxKind: 'voodoyouYarn' });
+        for (const target of [player, ...bots]) {
+            if (!target || target.hp <= 0 || target.id === b.ownerId) continue;
+            if (directTarget && target.id === directTarget.id) continue;
+            if (!owner || areAlliedEntities(owner, target)) continue;
+            if (target.isStructure || target.isCore) continue;
+            if (Math.hypot(target.x - b.x, target.y - b.y) > radius + (target.radius || 14)) continue;
+            checkHit(target, { ownerBrawler: 'voodoyou', ownerId: b.ownerId, damage: dmg, pierce: true, super: true, hitIds: {}, voodoyouYarnExplosion: true, hyperVisual: !!b.hyperVisual }, -1);
+        }
+        // SP1 Hexed Yarn: the blast leaves a slowing yarn patch.
+        if (owner && voodoyouHasSP1(owner)) {
+            voodoyouYarnPatches.push({ x: b.x, y: b.y, radius: VOODOOYOU_PATCH_RADIUS, until: now + VOODOOYOU_PATCH_DURATION_MS, ownerId: owner.id });
+            explosions.push({ x: b.x, y: b.y, radius: VOODOOYOU_PATCH_RADIUS, life: 0, maxLife: 0.3, color: 'rgba(139,92,246,0.35)', fxKind: 'voodoyouPatch' });
+        }
+    }
+    function castVoodoyouSuper(entity, isHyper, targetX, targetY) {
+        if (!VOODOOYOU_ENABLED || !entity || entity.hp <= 0) return false;
+        const angle = Math.atan2(targetY - entity.y, targetX - entity.x);
+        const hyper = !!isHyper;
+        // 1 damage is a tag so the needle registers as a hit in every
+        // checkHit path (several gates skip 0-damage bullets); the
+        // possession hook is what matters, not the 1 HP.
+        bullets.push({ ownerBrawler: 'voodoyou', isVoodoyouNeedle: true, voodoyouSuperHyper: hyper, x: entity.x + Math.cos(angle) * (entity.radius + 7), y: entity.y + Math.sin(angle) * (entity.radius + 7), vx: Math.cos(angle) * VOODOOYOU_NEEDLE_SPEED, vy: Math.sin(angle) * VOODOOYOU_NEEDLE_SPEED, life: 0, maxLife: VOODOOYOU_NEEDLE_RANGE / VOODOOYOU_NEEDLE_SPEED, damage: 1, pierce: false, super: true, ownerId: entity.id, hitIds: {}, hitboxMod: 1.2, hyperVisual: hyper });
+        spawnFloatingText(entity.x, entity.y - 40, '🪡 VOODOO YOU!', hyper ? '#e056fd' : '#c084fc');
+        if (entity.id === player.id) { try { window.BraweVoodoyouVoice?.play('super'); } catch (e) {} }
+        return true;
+    }
+    function applyVoodoyouPossession(target, owner, b) {
+        if (!VOODOOYOU_ENABLED || !target || !owner || target.hp <= 0) return;
+        if (target.isDummy || target.isStructure || target.isPet || target.isCore) return;
+        if (areAlliedEntities(owner, target)) return;
+        const now = performance.now();
+        if ((target.voodoyouPossessedUntil || 0) > now) return;
+        const dur = voodoyouControlDurationMs(owner);
+        target.voodoyouPossessedUntil = now + dur;
+        target.voodoyouPossessedBy = owner.id;
+        owner.voodoyouControllingId = target.id;
+        owner.voodoyouControllingUntil = now + dur;
+        owner.voodoyouLastHp = owner.hp;
+        const cap = voodoyouVoodooCap(owner);
+        if ((owner.voodoyouCount || 0) < cap) {
+            owner.voodoyouCount = (owner.voodoyouCount || 0) + 1;
+            spawnFloatingText(owner.x, owner.y - 40, `🧶 VOODOO ${owner.voodoyouCount}/${cap}`, '#c084fc');
+        } else {
+            spawnFloatingText(owner.x, owner.y - 40, '🧶 VOODOO FULL', '#c084fc');
+        }
+        spawnFloatingText(target.x, target.y - 40, 'POSSESSED!', '#c084fc');
+    }
+    function releaseVoodoyouControl(owner, reason) {
+        if (!owner || !owner.voodoyouControllingId) return;
+        const victim = findVoodoyouEntityById(owner.voodoyouControllingId);
+        if (victim && victim.voodoyouPossessedBy === owner.id) {
+            victim.voodoyouPossessedUntil = 0;
+            victim.voodoyouPossessedBy = null;
+        }
+        owner.voodoyouControllingId = null;
+        owner.voodoyouControllingUntil = 0;
+        if (reason === 'damaged' && owner.hp > 0) spawnFloatingText(owner.x, owner.y - 40, 'CONTROL BROKEN!', '#c084fc');
+    }
+    function executeVoodoyouG1(entity) {
+        if (!VOODOOYOU_ENABLED || !entity || entity.hp <= 0) return;
+        entity.voodoyouBigYarnNext = true;
+        spawnFloatingText(entity.x, entity.y - 36, 'BIG YARN ARMED', '#c084fc');
+    }
+    function executeVoodoyouG2(entity) {
+        if (!VOODOOYOU_ENABLED || !entity || entity.hp <= 0) return;
+        let best = null, bestD = VOODOOYOU_GADGET2_RANGE;
+        for (const target of [player, ...bots]) {
+            if (!target || target.hp <= 0 || target.id === entity.id) continue;
+            if (target.isDummy || target.isStructure || target.isPet || target.isCore) continue;
+            if (areAlliedEntities(entity, target)) continue;
+            const d = Math.hypot(target.x - entity.x, target.y - entity.y);
+            if (d <= bestD) { bestD = d; best = target; }
+        }
+        if (!best) { spawnFloatingText(entity.x, entity.y - 36, 'NO VOODOO IN RANGE', '#c084fc'); return; }
+        const cap = voodoyouVoodooCap(entity);
+        if ((entity.voodoyouCount || 0) >= cap) { spawnFloatingText(entity.x, entity.y - 36, 'VOODOO FULL', '#c084fc'); return; }
+        entity.voodoyouCount = (entity.voodoyouCount || 0) + 1;
+        spawnFloatingText(entity.x, entity.y - 36, `🧶 DOLL SNATCH ${entity.voodoyouCount}/${cap}`, '#c084fc');
+        explosions.push({ x: best.x, y: best.y, radius: 40, life: 0, maxLife: 0.25, color: 'rgba(192,132,252,0.85)', fxKind: 'voodoyouSnatch' });
+    }
+    function spawnVoodoyouHelpers(entity, now) {
+        if (!VOODOOYOU_ENABLED || !entity || entity.hp <= 0) return;
+        const count = Math.max(1, Math.min(voodoyouMaxHelpers(entity), Math.max(1, entity.voodoyouCount || 0)));
+        for (let k = 0; k < count; k++) {
+            const a = (k / Math.max(1, count)) * Math.PI * 2 + 0.6;
+            voodoyouHelpers.push({ ownerId: entity.id, x: entity.x + Math.cos(a) * 70, y: entity.y + Math.sin(a) * 70, until: (now || performance.now()) + VOODOOYOU_HELPER_DURATION_MS, lastShotAt: 0, seed: Math.random() * Math.PI * 2 });
+        }
+        spawnFloatingText(entity.x, entity.y - 40, `👻 SHADOW HELPERS x${count}`, '#e056fd');
+    }
+    function updateVoodoyouSystems(dt) {
+        if (!VOODOOYOU_ENABLED) return;
+        const now = performance.now();
+        for (const entity of [player, ...bots]) {
+            if (!entity) continue;
+            const isVood = entity.brawler === 'voodoyou' || (entity.id === player.id && selectedBrawler === 'voodoyou');
+            // Voodoo resets on death.
+            if (isVood && entity.hp <= 0 && (entity.voodoyouCount || 0) > 0) entity.voodoyouCount = 0;
+            // Control ends when the controller dies, the victim dies, or time runs out.
+            if (entity.voodoyouControllingId) {
+                const victim = findVoodoyouEntityById(entity.voodoyouControllingId);
+                if (entity.hp <= 0 || !victim || victim.hp <= 0 || now >= (entity.voodoyouControllingUntil || 0)) {
+                    releaseVoodoyouControl(entity, entity.hp <= 0 ? 'dead' : (victim && victim.hp <= 0 ? 'victim-dead' : 'expired'));
+                } else if (entity.hp < (entity.voodoyouLastHp ?? entity.hp)) {
+                    // Any damage to Voodoyou's body breaks control early.
+                    releaseVoodoyouControl(entity, 'damaged');
+                }
+            }
+            if (entity.hp > 0) entity.voodoyouLastHp = entity.hp;
+            // Possession expiry cleanup on the victim side (in case the
+            // controller was removed without a release pass).
+            if (entity.voodoyouPossessedUntil && now >= entity.voodoyouPossessedUntil) {
+                entity.voodoyouPossessedUntil = 0;
+                entity.voodoyouPossessedBy = null;
+            }
+        }
+        // Helpers: follow the owner (orbit), shoot the nearest enemy.
+        for (let hi = voodoyouHelpers.length - 1; hi >= 0; hi--) {
+            const h = voodoyouHelpers[hi];
+            const owner = findVoodoyouEntityById(h.ownerId);
+            if (!h || !owner || owner.hp <= 0 || now >= h.until) { voodoyouHelpers.splice(hi, 1); continue; }
+            const orbit = h.seed + now / 900;
+            const tx = owner.x + Math.cos(orbit) * 80;
+            const ty = owner.y + Math.sin(orbit) * 80;
+            const dx = tx - h.x, dy = ty - h.y, d = Math.hypot(dx, dy) || 1;
+            const step = Math.min(d, 420 * (dt || 0.016));
+            h.x += (dx / d) * step; h.y += (dy / d) * step;
+            if (now - (h.lastShotAt || 0) >= VOODOOYOU_HELPER_SHOT_INTERVAL_MS) {
+                let best = null, bestD = VOODOOYOU_HELPER_SHOT_RANGE;
+                for (const target of [player, ...bots]) {
+                    if (!target || target.hp <= 0 || target.id === owner.id) continue;
+                    if (target.isDummy || target.isStructure || target.isPet || target.isCore) continue;
+                    if (areAlliedEntities(owner, target)) continue;
+                    const d2 = Math.hypot(target.x - h.x, target.y - h.y);
+                    if (d2 <= bestD) { bestD = d2; best = target; }
+                }
+                if (best) {
+                    h.lastShotAt = now;
+                    const ang = Math.atan2(best.y - h.y, best.x - h.x);
+                    const stats = getScaledStats('voodoyou', voodoyouLevelFor(owner));
+                    // super: true so helper yarns never grant main-attack
+                    // super charge (they are not the player's main attack).
+                    bullets.push({ ownerBrawler: 'voodoyou', isVoodoyouYarn: true, isVoodoyouHelperYarn: true, voodoyouHelper: true, voodoyouBigYarn: false, ...staticsteinDonorTag('voodoyou', false), x: h.x + Math.cos(ang) * 10, y: h.y + Math.sin(ang) * 10, vx: Math.cos(ang) * VOODOOYOU_YARN_SPEED, vy: Math.sin(ang) * VOODOOYOU_YARN_SPEED, life: 0, maxLife: VOODOOYOU_YARN_RANGE / VOODOOYOU_YARN_SPEED, damage: Math.round(stats.dmg * VOODOOYOU_HELPER_DAMAGE_MULT), pierce: false, super: true, ownerId: owner.id, hitIds: {}, hitboxMod: 1.1, hyperVisual: true });
+                }
+            }
+        }
+        // SP1 yarn patches: slow enemies standing in them, then fade.
+        for (let pi = voodoyouYarnPatches.length - 1; pi >= 0; pi--) {
+            const p = voodoyouYarnPatches[pi];
+            if (!p || now >= p.until) { voodoyouYarnPatches.splice(pi, 1); continue; }
+            const owner = findVoodoyouEntityById(p.ownerId);
+            if (!owner) { voodoyouYarnPatches.splice(pi, 1); continue; }
+            for (const target of [player, ...bots]) {
+                if (!target || target.hp <= 0 || target.id === owner.id) continue;
+                if (areAlliedEntities(owner, target)) continue;
+                if (Math.hypot(target.x - p.x, target.y - p.y) > p.radius + (target.radius || 14)) continue;
+                target.voodoyouPatchSlowUntil = Math.max(target.voodoyouPatchSlowUntil || 0, now + 250);
+            }
+        }
+    }
+    function drawVoodoyouYarn(ctx, b) {
+        const angle = Math.atan2(b.vy, b.vx);
+        const hyper = !!b.hyperVisual;
+        const helper = !!b.isVoodoyouHelperYarn;
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        ctx.rotate(angle);
+        ctx.shadowColor = hyper ? '#c084fc' : '#8b5cf6';
+        ctx.shadowBlur = hyper ? 14 : 10;
+        ctx.fillStyle = helper ? '#2e1065' : (hyper ? '#e9d5ff' : '#a78bfa');
+        ctx.strokeStyle = hyper ? '#7c3aed' : '#6d28d9';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, 9, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        // yarn cross-stitch lines
+        ctx.strokeStyle = hyper ? '#4c1d95' : '#ddd6fe';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(-6, -6); ctx.lineTo(6, 6);
+        ctx.moveTo(-6, 6); ctx.lineTo(6, -6);
+        ctx.moveTo(-8, 0); ctx.lineTo(8, 0);
+        ctx.stroke();
+        // loose thread tail
+        ctx.strokeStyle = hyper ? '#c084fc' : '#8b5cf6';
+        ctx.beginPath();
+        ctx.moveTo(-9, 0);
+        ctx.quadraticCurveTo(-16, -6, -20, 2);
+        ctx.stroke();
+        ctx.restore();
+    }
+    function drawVoodoyouNeedle(ctx, b) {
+        const angle = Math.atan2(b.vy, b.vx);
+        const hyper = !!b.hyperVisual;
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        ctx.rotate(angle);
+        ctx.shadowColor = hyper ? '#e056fd' : '#c084fc';
+        ctx.shadowBlur = 12;
+        ctx.strokeStyle = hyper ? '#f0abfc' : '#e9d5ff';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(-14, 0); ctx.lineTo(12, 0);
+        ctx.stroke();
+        ctx.fillStyle = hyper ? '#e056fd' : '#a855f7';
+        ctx.beginPath();
+        ctx.moveTo(18, 0); ctx.lineTo(10, -4); ctx.lineTo(10, 4);
+        ctx.closePath();
+        ctx.fill();
+        // thread trailing behind the needle
+        ctx.strokeStyle = hyper ? '#e056fd' : '#8b5cf6';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(-14, 0);
+        ctx.quadraticCurveTo(-20, -8, -26, 0);
+        ctx.stroke();
+        ctx.restore();
+    }
+    function renderVoodoyouEffects() {
+        if (!VOODOOYOU_VISUALS_ENABLED) return;
+        const now = performance.now();
+        // SP1 yarn patches on the ground.
+        for (const p of voodoyouYarnPatches) {
+            if (!p || now >= p.until) continue;
+            const fade = clamp((p.until - now) / VOODOOYOU_PATCH_DURATION_MS, 0, 1);
+            ctx.save();
+            ctx.globalAlpha = 0.25 + 0.25 * fade;
+            ctx.fillStyle = '#8b5cf6';
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 0.5 * fade;
+            ctx.strokeStyle = '#c084fc';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+        }
+        // Shadow helpers.
+        for (const h of voodoyouHelpers) {
+            if (!h || now >= h.until) continue;
+            const fade = clamp((h.until - now) / 1000, 0, 1);
+            ctx.save();
+            ctx.globalAlpha = Math.min(1, 0.55 + 0.45 * fade);
+            ctx.shadowColor = '#a855f7';
+            ctx.shadowBlur = 14;
+            ctx.fillStyle = '#2e1065';
+            ctx.strokeStyle = '#c084fc';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(h.x, h.y, 11, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = '#ddd6fe';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(h.x - 6, h.y - 6); ctx.lineTo(h.x + 6, h.y + 6);
+            ctx.moveTo(h.x - 6, h.y + 6); ctx.lineTo(h.x + 6, h.y - 6);
+            ctx.stroke();
+            ctx.restore();
+        }
+        // Possessed marker: purple ring + yarn tag over the victim.
+        for (const e of [player, ...bots]) {
+            if (!e || e.hp <= 0 || !isVoodoyouPossessed(e, now)) continue;
+            const pulse = 0.5 + 0.3 * Math.sin(now / 160);
+            ctx.save();
+            ctx.globalAlpha = pulse;
+            ctx.strokeStyle = '#c084fc';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.arc(e.x, e.y, (e.radius || 14) + 8, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+            ctx.save();
+            ctx.font = 'bold 13px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#e9d5ff';
+            ctx.fillText('🧶', e.x, e.y - (e.radius || 14) - 14);
+            ctx.restore();
+        }
+        // Voodoo count pips over Voodoyou while holding voodoo.
+        for (const e of [player, ...bots]) {
+            if (!e || e.hp <= 0 || !(e.voodoyouCount > 0)) continue;
+            if (!(e.brawler === 'voodoyou' || (e.id === player.id && selectedBrawler === 'voodoyou'))) continue;
+            ctx.save();
+            ctx.font = 'bold 12px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#e9d5ff';
+            ctx.fillText('🧶'.repeat(Math.min(4, e.voodoyouCount)), e.x, e.y - (e.radius || 14) - 14);
+            ctx.restore();
+        }
+    }
+
     // ===== Christmas Showdown buffs (Season 6: Xplodemis) =====
     let christmasBuffTimer = 0;
     function isChristmasShowdownMatch() { return showdownMode === 'christmas_showdown' && !isTraining; }
@@ -27068,6 +27460,7 @@ let heistFeverActive = false;
 
     function shouldBotUseGadget(bot, target, context) {
         if (!bot.gadgetUnlocked || (bot.botNextGadgetDecisionAt || 0) > context.now) return false;
+        if (isVoodoyouControlling(bot, context.now)) return false;
         bot.botNextGadgetDecisionAt = context.now + 420 + (context.slot % 7) * 45;
         const distance = target ? Math.hypot(target.x - bot.x, target.y - bot.y) : Infinity;
         const combatTarget = target && !target.isPowerup && !target.isBox && !['center', 'cart'].includes(target.id);
@@ -27100,6 +27493,7 @@ let heistFeverActive = false;
         const distance = Math.hypot(target.x - bot.x, target.y - bot.y);
         if (bot.brawler === 'electrostien') return distance < ELECTROSTIEN_SUPER_THROW_RANGE - 40; // realm throw range
         if (bot.brawler === 'voltastein') return distance < VOLTASTEIN_ZAP_RADIUS; // Power Outage zap range
+        if (bot.brawler === 'voodoyou') return distance < VOODOOYOU_NEEDLE_RANGE; // needle throw range
         const targetHpPct = target.hp ? target.hp / Math.max(1, target.maxHp || target.hp) : 1;
         const clustered = getBotLivingEnemies(bot).filter((enemy) => Math.hypot(enemy.x - target.x, enemy.y - target.y) < 190).length;
         const objectiveFight = (isObjectiveMode || isTugZoneMode) && Math.hypot(target.x - (objectiveZone?.x || WORLD_W*0.5), target.y - (objectiveZone?.y || WORLD_H*0.5)) < (objectiveZone?.r || 240) + 80;
@@ -29399,7 +29793,7 @@ let heistFeverActive = false;
       beam:8, fuser:24, heater_miser:20, minigunnin:72, money_and_tax:24, outlit:30, steamer:8,
       bouncin_balls:6, chickpig:12, classy:6, copyphase:6, goonbob:6, hoop:5, hyperorigin:5, robber:42,
       portalo:7, ghoul:6, jacktrade:18, darkener:6, awakenator:8, trampaheal:6, axeywaxy:6, mageny:6, draflygon:6, ramage:6, upgradart:10, cinderion:10, cursed:7, king:6, anti_royal:6, weefee:6, rager:4,
-    carmela_fudge:5, bolznstien:5, sir_cheeseburger:4, blinkeye:4, magnatar:6, oil_maker:16, badbat:5, looma:7, feathers:5, spikey:6, electrostien:14, mallow:12, nightshade: 6, runner: 6, aura_charmer: 6, voltastein: 6, staticstein: 6, healnstein: 6
+    carmela_fudge:5, bolznstien:5, sir_cheeseburger:4, blinkeye:4, magnatar:6, oil_maker:16, badbat:5, looma:7, feathers:5, spikey:6, electrostien:14, mallow:12, nightshade: 6, runner: 6, aura_charmer: 6, voltastein: 6, staticstein: 6, healnstein: 6, voodoyou: 6
   });
   let nextMainAttackActivationId = 1;
   function getSuperChargeHitsForBrawler(brawler) {
@@ -30435,6 +30829,10 @@ let heistFeverActive = false;
       const now = performance.now();
       if ((a.awakenatorCorruptFriendlyUntil || 0) > now && a.awakenatorCorruptTargetId === b.id) return false;
       if ((b.awakenatorCorruptFriendlyUntil || 0) > now && b.awakenatorCorruptTargetId === a.id) return false;
+      // Voodoyou possession: a possessed brawler is no one's ally, so the
+      // victim's bullets can hit former teammates (and vice versa).
+      if ((a.voodoyouPossessedUntil || 0) > now) return false;
+      if ((b.voodoyouPossessedUntil || 0) > now) return false;
       const ta = getEntityTeam(a);
       const tb = getEntityTeam(b);
       return !!(ta && tb && ta === tb);
@@ -33169,6 +33567,7 @@ let heistFeverActive = false;
         superCharge = 100;
         updateSuperButton();
     }
+    if (selectedBrawler === 'voodoyou') spawnVoodoyouHelpers(player, performance.now());
     if (hasTrinket(player, 'hyper_reload')) {
         ammo = Math.min(maxAmmo, ammo + 1);
         ammoReloadTimer = 0;
@@ -34928,6 +35327,10 @@ let heistFeverActive = false;
         normalizeSelectedBrawler();
     const now = performance.now();
         const brawler = fromEntity.fusedPartCall || getCombatBrawler(fromEntity, isBot);
+        // Voodoyou: while controlling a victim, the body stands still and
+        // cannot attack (per-frame hp-watch in updateVoodoyouSystems breaks
+        // the control the moment the body takes damage).
+        if (brawler === 'voodoyou' && isVoodoyouControlling(fromEntity, now)) return;
         // Fused mode: one press fires both components. The outer call runs the
         // per-press gates once; the two inner calls (fusedPartCall set) skip
         // them and run only the per-component gates/branch.
@@ -35120,6 +35523,8 @@ let heistFeverActive = false;
     fromEntity.visualAttackAt = now;
     // Outlit voice: player attack line (throttled inside the voice module).
     if (!isBot && fromEntity === player && (fromEntity.fusedPartCall || selectedBrawler) === 'outlit') { try { window.BraweOutlitVoice?.play('attack'); } catch (e) {} }
+    // Voodoyou voice: player attack line (throttled inside the voice module).
+    if (!isBot && fromEntity === player && (fromEntity.fusedPartCall || selectedBrawler) === 'voodoyou') { try { window.BraweVoodoyouVoice?.play('attack'); } catch (e) {} }
 
     fireArenaForgeCapturedHyperAttacks(fromEntity, ang, now);
 
@@ -37878,6 +38283,9 @@ let heistFeverActive = false;
     } else if (brawler === 'mallow') {
         fireMallowMain(fromEntity, ang, targetX, targetY, { isBot, now, damageMult: 1, hitboxMult: 1, donorMode: false });
         return;
+    } else if (brawler === 'voodoyou') {
+        fireVoodoyouMain(fromEntity, ang, targetX, targetY, { isBot, now, damageMult: 1, hitboxMult: 1, donorMode: false });
+        return;
     } else if (brawler === 'nightshade') {
         fireNightshadeMain(fromEntity, ang, targetX, targetY, { isBot, now, damageMult: 1, hitboxMult: 1, donorMode: false });
         return;
@@ -40159,6 +40567,11 @@ let heistFeverActive = false;
     function fireSuper(isAimDrag = false){
         normalizeSelectedBrawler();
     if(!player.fusedSuperPart && (superCharge < 100 || player.hp <= 0)) return;
+    // Voodoyou: the body cannot attack while controlling a victim.
+    if (isVoodoyouControlling(player, performance.now())) {
+        spawnFloatingText(player.x, player.y - 34, 'CONTROLLED!', '#c084fc');
+        return;
+    }
         // Fused mode: one press fires both components' Supers; the meter is
         // consumed once here, and the inner calls skip it.
         if (!player.fusedSuperPart && isFusedEntity(player)) {
@@ -40235,6 +40648,7 @@ let heistFeverActive = false;
     if (combatBrawler === 'spikey') { castSpikeySuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'electrostien') { castElectrostienSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'mallow') { castMallowSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
+    if (combatBrawler === 'voodoyou') { castVoodoyouSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'nightshade') { castNightshadeSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'aegis') { castAegisSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'runner') { castRunnerSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
@@ -41549,6 +41963,10 @@ let heistFeverActive = false;
       executeElectrostienG2(bot);
     } else if (bot.brawler === 'mallow' && g === 'g1') {
       executeMallowG1(bot);
+    } else if (bot.brawler === 'voodoyou' && g === 'g1') {
+      executeVoodoyouG1(bot);
+    } else if (bot.brawler === 'voodoyou' && g === 'g2') {
+      executeVoodoyouG2(bot);
     } else if (bot.brawler === 'nightshade' && g === 'g1') {
       executeNightshadeG1(bot, target?.x ?? (bot.x + Math.cos(ang) * 200), target?.y ?? (bot.y + Math.sin(ang) * 200));
     } else if (bot.brawler === 'nightshade' && g === 'g2') {
@@ -42070,6 +42488,8 @@ let heistFeverActive = false;
             ensureCinderionState(bot);
             if (bot.cinderionOrbitFlames.filter(flame => flame.expiresAt > performance.now() && !flame.spent).length < 3) return;
         }
+    // Voodoyou: the body cannot attack while controlling a victim.
+    if (isVoodoyouControlling(bot, performance.now())) return;
     if (!bot.fusedSuperPart && bot.brawler !== 'steamer' && bot.brawler !== 'oil_maker' && bot.brawler !== 'dashaholic' && bot.brawler !== 'mallow') {
         bot.superCharge = 0;
     }
@@ -42106,6 +42526,7 @@ let heistFeverActive = false;
     if (botCombatBrawler === 'spikey') { castSpikeySuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'electrostien') { castElectrostienSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'mallow') { castMallowSuper(bot, isHyper, targetX, targetY); return; }
+    if (botCombatBrawler === 'voodoyou') { castVoodoyouSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'nightshade') { castNightshadeSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'aegis') { castAegisSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'runner') { castRunnerSuper(bot, isHyper, targetX, targetY); return; }
@@ -42766,6 +43187,11 @@ let heistFeverActive = false;
     const now = performance.now();
     const curBrawler = selectedBrawler;
     const curGadget = selectedGadget;
+    // Voodoyou: the body cannot attack while controlling a victim.
+    if (isVoodoyouControlling(player, now)) {
+        spawnFloatingText(player.x, player.y - 34, 'CONTROLLED!', '#c084fc');
+        return;
+    }
 
     // Instant Kage G1 Swap (Priority check before any cooldown block)
     if (curBrawler === 'kage' && curGadget === 'g1' && player.kageHologram && now < player.kageHologram.until) {
@@ -43668,6 +44094,18 @@ let heistFeverActive = false;
     } else if (curBrawler === 'mallow' && curGadget === 'g1') {
         executeMallowG1(player);
         gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
+        updateGadgetButton();
+        return;
+    } else if (curBrawler === 'voodoyou' && curGadget === 'g1') {
+        executeVoodoyouG1(player);
+        gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
+        setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
+        updateGadgetButton();
+        return;
+    } else if (curBrawler === 'voodoyou' && curGadget === 'g2') {
+        executeVoodoyouG2(player);
+        gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
+        setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
         updateGadgetButton();
         return;
     } else if (curBrawler === 'nightshade' && curGadget === 'g1') {
@@ -46114,6 +46552,20 @@ let heistFeverActive = false;
           const mallowAng = ang + (mi - (MALLOW_VOLLEY_COUNT - 1) / 2) * (MALLOW_VOLLEY_FAN_ARC / (MALLOW_VOLLEY_COUNT - 1));
           bullets.push({ ownerBrawler: 'mallow', isMallow: true, isPrimaryChargeProjectile: true, mallowSlowPerHit: mallowSlowPerHit, mallowHyper: mallowHyper, ...staticsteinDonorTag('mallow', donorMode), x: fromEntity.x + Math.cos(mallowAng) * (fromEntity.radius + 7), y: fromEntity.y + Math.sin(mallowAng) * (fromEntity.radius + 7), vx: Math.cos(mallowAng) * MALLOW_VOLLEY_SPEED, vy: Math.sin(mallowAng) * MALLOW_VOLLEY_SPEED, life: 0, maxLife: MALLOW_VOLLEY_RANGE / MALLOW_VOLLEY_SPEED, damage: Math.round(mallowStats.dmg * damageMult), pierce: false, ownerId: fromEntity.id, hitIds: {}, hitboxMod: 1.3 * hitboxMult, hyperVisual: mallowHyper });
       }
+  }
+
+  function fireVoodoyouMain(fromEntity, ang, targetX, targetY, opts) {
+      if (!VOODOOYOU_ENABLED) return;
+      const isBot = !!opts.isBot, now = opts.now;
+      const donorMode = !!opts.donorMode;
+      const damageMult = opts.damageMult || 1, hitboxMult = opts.hitboxMult || 1;
+      const voodoyouHyper = donorMode ? false : isEntityHyperchargedNow(fromEntity, now);
+      const voodoyouLevel = donorMode ? 11 : voodoyouLevelFor(fromEntity);
+      const voodoyouStats = getScaledStats('voodoyou', voodoyouLevel);
+      const bigYarn = donorMode ? false : !!fromEntity.voodoyouBigYarnNext;
+      if (bigYarn) fromEntity.voodoyouBigYarnNext = false;
+      const dmgMult = voodoyouDamageMult(fromEntity) * (bigYarn ? VOODOOYOU_YARN_DAMAGE_MULT_GADGET : 1) * damageMult;
+      bullets.push({ ownerBrawler: 'voodoyou', isVoodoyouYarn: true, isPrimaryChargeProjectile: true, voodoyouBigYarn: bigYarn, voodoyouHyper: voodoyouHyper, ...staticsteinDonorTag('voodoyou', donorMode), x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 7), y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 7), vx: Math.cos(ang) * VOODOOYOU_YARN_SPEED, vy: Math.sin(ang) * VOODOOYOU_YARN_SPEED, life: 0, maxLife: VOODOOYOU_YARN_RANGE / VOODOOYOU_YARN_SPEED, damage: Math.round(voodoyouStats.dmg * dmgMult), pierce: false, ownerId: fromEntity.id, hitIds: {}, hitboxMod: 1.3 * hitboxMult, hyperVisual: voodoyouHyper });
   }
 
   function fireEvilDoctorMain(fromEntity, ang, targetX, targetY, opts) {
@@ -55215,6 +55667,8 @@ function checkHit(target, b, i){
     if (b.isMallow && owner && target && !b.isMallowBurnt) applyMallowSlowHit(target, owner, b);
     if (b.isMallow && b.isMallowBurnt && owner && target) applyMallowBurntHit(target, owner, b);
     if (b.isMallow && b.mallowHyper && owner && target) mallowHyperEndBurst(b);
+    if (b.isVoodoyouYarn && owner && target) triggerVoodoyouYarnExplosion(b, target);
+    if (b.isVoodoyouNeedle && owner && target) applyVoodoyouPossession(target, owner, b);
     if (b.isNightshadeDagger && owner && target) applyNightshadePoisonHit(target, owner, b);
     if (owner && target) applyHealnsteinPoisonHit(target, owner, b);
     if (b.isAegisShield && owner && target) applyAegisMaxHpShred(target, owner, b);
@@ -57027,6 +57481,7 @@ function checkHit(target, b, i){
     if (playing && !gameOver) updateNightshadeSystems(dt);
     if (playing && !gameOver) updateAegisSystems(dt);
     if (playing && !gameOver) updateRunnerSystems(dt);
+    if (playing && !gameOver) updateVoodoyouSystems(dt);
     if (playing && !gameOver) updatePropPads();
     if (playing && !gameOver) updateChristmasShowdown(dt);
     if (playing && !gameOver) updatePropHuntMode(dt, now);
@@ -58845,7 +59300,7 @@ function checkHit(target, b, i){
         const flen = Math.hypot(fdx, fdy) || 1;
         vx = fdx / flen; vy = fdy / flen;
     }
-    if (playerIsStunned || isEntityRooted(player, now) || player.blinkeyeSteering || (isPropHuntMode && propHuntState && propHuntState.phase === 'hide' && player.propHuntRole === 'seeker')) { vx = 0; vy = 0; }
+    if (playerIsStunned || isEntityRooted(player, now) || player.blinkeyeSteering || isVoodoyouControlling(player, now) || (isPropHuntMode && propHuntState && propHuntState.phase === 'hide' && player.propHuntRole === 'seeker')) { vx = 0; vy = 0; }
       const len = Math.hypot(vx,vy) || 1;
       const isMoving = Math.hypot(vx, vy) > 0;
       player.isMovingNow = isMoving;
@@ -60444,6 +60899,12 @@ function checkHit(target, b, i){
       // Cinderion scatter core above — resolve before generic expiry cleanup).
       // Lobbed volts snap to their precomputed landing point (the flight
       // track ends there; dt overshoot would otherwise shift the blast).
+      // Voodoyou yarn ball: detonate on range expiry (same pattern as the
+      // Voltastein volt below — resolve before generic expiry cleanup).
+      if (b.isVoodoyouYarn && b.life >= b.maxLife && !b._voodoyouExploded) {
+          b._voodoyouExploded = true;
+          triggerVoodoyouYarnExplosion(b, null);
+      }
       if (b.isVoltasteinVolt && b.life >= b.maxLife && !b._voltExploded) {
           b._voltExploded = true;
           const voltOwner = b.ownerId === player.id ? player : bots.find(bt => bt && bt.id === b.ownerId);
@@ -61480,7 +61941,12 @@ function checkHit(target, b, i){
           b.lastCleanBounceAt = now;
           hitCube = false; // Resolved bounce, don't destroy
       } else if(hitCube && !canPierceWall){ 
-           if (b.isOilMakerCrude) {
+           if (b.isOilMakerCrude) {           if (b.isVoodoyouYarn) {
+               triggerVoodoyouYarnExplosion(b, null);
+               bullets.splice(i, 1);
+               continue;
+           }
+
                oilMakerPendingPuddles.push({
                    x: b.x,
                    y: b.y,
@@ -63852,6 +64318,13 @@ function checkHit(target, b, i){
           }
       }
 
+      // Voodoyou possession: a possessed bot attacks the nearest brawler,
+      // friend or foe — the team filter in the normal scan is bypassed.
+      if (isVoodoyouPossessed(t, nowTarget)) {
+          const possessTarget = findNearestVoodoyouPossessTarget(t);
+          if (possessTarget) { target = possessTarget; bestScore = -999999; }
+      }
+
       if(target){
           t.lastTargetId = target.id;
           t.targetLockUntil = nowTarget + 900;
@@ -64002,7 +64475,7 @@ function checkHit(target, b, i){
               const flen = Math.hypot(fdx, fdy) || 1;
               tacticalMove = { dx: fdx / flen, dy: fdy / flen, shouldMove: true, speedMult: tacticalMove.speedMult || 1 };
           }
-          if(!isStunned && !isEntityRooted(t, nowTarget) && t.brawler !== 'egg' && !t.isJumping && !t.isDashing && !t.isTrainingBot && tacticalMove.shouldMove){
+          if(!isStunned && !isEntityRooted(t, nowTarget) && !isVoodoyouControlling(t, nowTarget) && t.brawler !== 'egg' && !t.isJumping && !t.isDashing && !t.isTrainingBot && tacticalMove.shouldMove){
             const moveSpeed = activeBotSpeed * slow * tacticalMove.speedMult;
             const steered = getBotSteeredStep(t, tacticalMove.dx, tacticalMove.dy, moveSpeed, dt);
             if (steered.moved) {
@@ -64072,6 +64545,7 @@ function checkHit(target, b, i){
               const extraHyperMs = (isSplitterPoweredMode && t.brawler === 'splitter') ? 2000 : 0;
               setEntityHypercharged(t, nowTarget + 5000 + extraHyperMs, nowTarget);
           }
+          if (t.brawler === 'voodoyou') spawnVoodoyouHelpers(t, nowTarget);
 
           if (!t.isArenaForgeMinion && t.gadgetUnlocked) {
               absorbLegacyEntityGadgetCooldownWrite(t, t.selectedGadget || 'g1', nowTarget);
@@ -67035,6 +67509,28 @@ function checkHit(target, b, i){
                 ctx.fill();
                 ctx.restore();
             }
+            if (brawlerId === 'voodoyou') {
+                ctx.save();
+                ctx.shadowColor = '#8b5cf6';
+                ctx.shadowBlur = 8;
+                ctx.fillStyle = '#a78bfa';
+                ctx.strokeStyle = '#6d28d9';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(entity.x, drawY - size * 0.1, size * 0.3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+                ctx.strokeStyle = '#ddd6fe';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(entity.x - size * 0.18, drawY - size * 0.28);
+                ctx.lineTo(entity.x + size * 0.18, drawY + size * 0.08);
+                ctx.moveTo(entity.x - size * 0.18, drawY + size * 0.08);
+                ctx.lineTo(entity.x + size * 0.18, drawY - size * 0.28);
+                ctx.stroke();
+                ctx.restore();
+            }
             ctx.textAlign = 'left';
             ctx.textBaseline = 'alphabetic';
     }
@@ -67553,6 +68049,7 @@ function checkHit(target, b, i){
     renderSpikeyEffects();
     renderElectrostienEffects();
     renderMallowEffects();
+    renderVoodoyouEffects();
     renderNightshadeEffects();
     renderRunnerEffects(ctx);
     if (typeof renderBouncinBossEvent === 'function') renderBouncinBossEvent('ground');
@@ -74828,6 +75325,14 @@ function checkHit(target, b, i){
       }
       if (b.isRunnerShoe || b.isRunnerSuperShoe) {
         drawRunnerShoe(ctx, b);
+        continue;
+      }
+      if (b.isVoodoyouYarn) {
+        drawVoodoyouYarn(ctx, b);
+        continue;
+      }
+      if (b.isVoodoyouNeedle) {
+        drawVoodoyouNeedle(ctx, b);
         continue;
       }
       const earlyProjectileBrawler = b.ownerBrawler || (b.ownerId === player.id ? selectedBrawler : '');
@@ -83503,6 +84008,70 @@ function checkHit(target, b, i){
     } catch (e) { /* voice must never break the loop */ }
   }
 
+  // Voodoyou voice-line state watcher (2026-11-08): spawn / win / death / idle
+  // and the hurt voice. Attack, Super and kill fire from their own hooks;
+  // this watcher only owns the transitions with no single call site (match
+  // start/end, idling, HP drops). Mirrors updateOutlitVoiceState. Runs in
+  // loop() after update() because update() returns early once gameOver is
+  // set. Never throws.
+  let voodoyouVoicePrevPlaying = false;
+  let voodoyouVoicePrevGameOver = false;
+  let voodoyouVoiceMatchEndPlayed = false;
+  let voodoyouVoiceLastHp = null;
+  let voodoyouVoiceLastActionAt = 0;
+  let voodoyouVoiceLastIdleAt = 0;
+  function updateVoodoyouVoiceState() {
+    try {
+      if (typeof selectedBrawler === 'undefined' || !player) return;
+      const now = performance.now();
+      const isVoodoyou = selectedBrawler === 'voodoyou';
+      // Match start: playing flips false -> true.
+      if (playing && !voodoyouVoicePrevPlaying) {
+        voodoyouVoiceMatchEndPlayed = false;
+        voodoyouVoiceLastHp = player.hp;
+        voodoyouVoiceLastActionAt = now;
+        voodoyouVoiceLastIdleAt = 0;
+        player.voodoyouWinAt = 0;
+        player.voodoyouDeathAt = 0;
+        if (isVoodoyou) window.BraweVoodoyouVoice?.play('spawn');
+      }
+      // Match end: gameOver flips false -> true.
+      if (gameOver && !voodoyouVoicePrevGameOver && !voodoyouVoiceMatchEndPlayed) {
+        voodoyouVoiceMatchEndPlayed = true;
+        if (isVoodoyou) {
+          if (player.hp > 0) {
+            player.voodoyouWinAt = now;
+            window.BraweVoodoyouVoice?.play('win');
+          } else {
+            player.voodoyouDeathAt = now;
+            window.BraweVoodoyouVoice?.play('death');
+            explosions.push({ x: player.x, y: player.y, radius: 60, life: 0, maxLife: .8, color: 'rgba(139,92,246,.55)', fxKind: 'voodoyouDeathBurst' });
+            spawnFloatingText(player.x, player.y - 46, '🧶 STRINGS CUT!', '#c084fc');
+          }
+        }
+      }
+      // Hurt voice: player HP dropped since last frame.
+      if (playing && !gameOver && isVoodoyou && player.hp > 0 && voodoyouVoiceLastHp !== null && player.hp < voodoyouVoiceLastHp) {
+        voodoyouVoiceLastActionAt = now;
+        window.BraweVoodoyouVoice?.play('hurt');
+      }
+      if (player) voodoyouVoiceLastHp = player.hp;
+      // Idle voice: alive, unmoving, no attack and no damage for 20s.
+      if (playing && !gameOver && isVoodoyou && player.hp > 0) {
+        const moved = Math.hypot((player.x || 0) - (player.voodoyouVoicePrevX ?? player.x ?? 0), (player.y || 0) - (player.voodoyouVoicePrevY ?? player.y ?? 0)) > 4;
+        if (moved || (player.lastAttackAt || 0) > voodoyouVoiceLastActionAt) voodoyouVoiceLastActionAt = now;
+        player.voodoyouVoicePrevX = player.x;
+        player.voodoyouVoicePrevY = player.y;
+        if (now - voodoyouVoiceLastActionAt > 20000 && now - voodoyouVoiceLastIdleAt > 25000) {
+          voodoyouVoiceLastIdleAt = now;
+          window.BraweVoodoyouVoice?.play('idle');
+        }
+      }
+      voodoyouVoicePrevPlaying = !!playing;
+      voodoyouVoicePrevGameOver = !!gameOver;
+    } catch (e) { /* voice must never break the loop */ }
+  }
+
   function loop(){
     if (runtimeLoopCrashed) return;
     try {
@@ -83525,6 +84094,7 @@ function checkHit(target, b, i){
         updateMobileControlsVisibility();
         update(dt);
         updateOutlitVoiceState();
+        updateVoodoyouVoiceState();
         const homeVisible = homeScreen && homeScreen.style.display !== 'none';
         if (playing || !homeVisible) render();
     } catch (err) {
