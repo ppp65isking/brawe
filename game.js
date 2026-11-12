@@ -4470,7 +4470,9 @@ function startBlinkEyeSuper(entity, targetX, targetY, isHyper = false) {
   let WORLD_W = 4000;
   let WORLD_H = 4000;
   let camX = 0, camY = 0;
-  const CAMERA_ZOOM = 0.90;
+  const CAMERA_ZOOM_BASE = 0.90;
+  let CAMERA_ZOOM = CAMERA_ZOOM_BASE;
+  let lastCameraZoomAt = 0;
   function getMouseWorld(){
     return { x: mouse.screenX / CAMERA_ZOOM + camX, y: mouse.screenY / CAMERA_ZOOM + camY };
   }
@@ -24008,14 +24010,18 @@ let heistFeverActive = false;
     // with Focus — a meter that builds while she stands still (Mandy) and
     // decays when she moves; Focus also adds range. Super Candy Cannon is a
     // giant piercing shell whose damage also scales with distance. Hyper
-    // Sugar Surge makes shots pierce and Focus build twice as fast. Kill
+    // Sugar Surge makes shots pierce, LOCKS Focus at 100, fires the Super as
+    // 6 radial shells, adds +12% main range, purple visuals, and zooms the
+    // camera out (balance 2026-11-12). Kill
     // switches are `let` so regression tests can flip them. Dedicated art
     // lives in its OWN branches below: Pandy projectiles are drawn before
     // the universal skin renderer call, never through it (PR #48 lesson).
     let PANDY_ENABLED = true;
     let PANDY_VISUALS_ENABLED = true;
     const PANDY_SUGARSHOT_SPEED = 1400;
-    const PANDY_SUGARSHOT_BASE_RANGE = 950;
+    // Balance 2026-11-12 (Anthony): max range -23.2% (950 -> 729.6 = 950 x 0.768).
+    // Focus (+15% max) and SP2 (+20%) still multiply on top exactly as before.
+    const PANDY_SUGARSHOT_BASE_RANGE = 729.6;
     const PANDY_DISTANCE_DAMAGE_MAX_MULT = 1.8; // damage at max range vs point blank
     const PANDY_FOCUS_MAX = 100;
     const PANDY_FOCUS_BUILD_PER_S = 40; // ~2.5s standing still to full Focus
@@ -24026,6 +24032,15 @@ let heistFeverActive = false;
     const PANDY_SP1_BUILD_MULT = 1.5; // SP1 Steady Aim: Focus builds 50% faster
     const PANDY_SP2_RANGE_MULT = 1.2; // SP2 Long Game: +20% range
     const PANDY_HYPER_FOCUS_BUILD_MULT = 2; // Hyper Sugar Surge: Focus builds twice as fast
+    // Balance 2026-11-12 (Anthony): Hyper now LOCKS Focus at 100 for the whole
+    // Hyper, so the 2x build rate above is retired (kept for compat) — the lock
+    // in updatePandySystems supersedes it.
+    const PANDY_SUPER_SIZE_MULT = 1.25; // Balance 2026-11-12: Candy Cannon shell +25% size
+    const PANDY_HYPER_SUPER_COUNT = 6; // Balance 2026-11-12: Hyper Super fires 6 radial shells
+    const PANDY_HYPER_SUPER_SIZE_MULT = 1.3; // Balance 2026-11-12: each radial shell +30% over the new size (1.25 x 1.3 = 1.625x the original shell)
+    const PANDY_HYPER_SUPER_MAX_LIFE = 120; // Balance 2026-11-12: radial shells fly until they leave the map (maxLife in seconds; off-map kill in the bullet loop)
+    const PANDY_HYPER_RANGE_MULT = 1.12; // Balance 2026-11-12: main range +12% while Hyper
+    const PANDY_HYPER_CAMERA_ZOOM = 0.72; // Balance 2026-11-12: camera zooms out (0.90 -> 0.72) while the player is Hyper Pandy; eases back when Hyper ends
     const PANDY_SUPER_SPEED = 1000;
     const PANDY_SUPER_RANGE = 1100;
     const PANDY_SUPER_DAMAGE_MULT = 1.8; // super shell base = main dmg x 1.8 (1620 at P11)
@@ -24044,7 +24059,7 @@ let heistFeverActive = false;
     function pandyFocusDamagePerPoint(entity) { return pandyHasSP2(entity) ? PANDY_FOCUS_DAMAGE_PER_POINT_SP2 : PANDY_FOCUS_DAMAGE_PER_POINT; }
     function pandyRangeMult(entity) { return pandyHasSP2(entity) ? PANDY_SP2_RANGE_MULT : 1; }
     function pandyFocusDamageMult(entity) { return 1 + (entity.pandyFocus || 0) * pandyFocusDamagePerPoint(entity); }
-    function pandyEffectiveRange(entity) { return PANDY_SUGARSHOT_BASE_RANGE * (1 + (entity.pandyFocus || 0) * PANDY_FOCUS_RANGE_PER_POINT) * pandyRangeMult(entity); }
+    function pandyEffectiveRange(entity) { return PANDY_SUGARSHOT_BASE_RANGE * (1 + (entity.pandyFocus || 0) * PANDY_FOCUS_RANGE_PER_POINT) * pandyRangeMult(entity) * (entity && isEntityHyperchargedNow(entity, performance.now()) ? PANDY_HYPER_RANGE_MULT : 1); }
     function pandyLevelFor(entity) { return entity && entity.id === player.id ? getSelectedBrawlerLevel() : (entity.level || 11); }
     function pandyDistanceDamageMult(dist, range) { const t = clamp(dist / Math.max(1, range), 0, 1); return 1 + t * (PANDY_DISTANCE_DAMAGE_MAX_MULT - 1); }
     function firePandyMain(fromEntity, ang, targetX, targetY, opts) {
@@ -24061,18 +24076,35 @@ let heistFeverActive = false;
     }
     function castPandySuper(entity, isHyper, targetX, targetY) {
         if (!PANDY_ENABLED || !entity || entity.hp <= 0) return;
-        const ang = Math.atan2(targetY - entity.y, targetX - entity.x);
         const hyper = !!isHyper || isEntityHyperchargedNow(entity, performance.now());
         const stats = getScaledStats('pandy', pandyLevelFor(entity));
         const range = PANDY_SUPER_RANGE * (1 + (entity.pandyFocus || 0) * PANDY_FOCUS_RANGE_PER_POINT) * pandyRangeMult(entity);
         const baseDamage = Math.round(stats.dmg * PANDY_SUPER_DAMAGE_MULT * pandyFocusDamageMult(entity));
-        bullets.push({ ownerBrawler: 'pandy', isPandyCandyShell: true, pandyOriginX: entity.x + Math.cos(ang) * (entity.radius + 7), pandyOriginY: entity.y + Math.sin(ang) * (entity.radius + 7), pandyBaseDamage: baseDamage, pandyRange: range, x: entity.x + Math.cos(ang) * (entity.radius + 7), y: entity.y + Math.sin(ang) * (entity.radius + 7), vx: Math.cos(ang) * PANDY_SUPER_SPEED, vy: Math.sin(ang) * PANDY_SUPER_SPEED, life: 0, maxLife: range / PANDY_SUPER_SPEED, damage: baseDamage, pierce: true, super: true, ownerId: entity.id, hitIds: {}, hitboxMod: 1.6, hyperVisual: hyper });
+        // Balance 2026-11-12: shell size +25% (hitboxMod 1.6 -> 2.0); Hyper radial
+        // shells are +30% bigger again (1.25 x 1.3 = 1.625x the original shell).
+        const shellScale = hyper ? PANDY_SUPER_SIZE_MULT * PANDY_HYPER_SUPER_SIZE_MULT : PANDY_SUPER_SIZE_MULT;
+        const fireShell = (ang) => {
+            // Hyper radial shells have UNLIMITED range: a very large maxLife plus
+            // an off-map kill in the bullet loop (see the Pandy block there).
+            // pandyRange stays the NORMAL super range so distance damage scaling
+            // (1.0x -> 1.8x over the first `range` px, then clamped at 1.8x) is
+            // identical to the single shell.
+            bullets.push({ ownerBrawler: 'pandy', isPandyCandyShell: true, pandyOriginX: entity.x + Math.cos(ang) * (entity.radius + 7), pandyOriginY: entity.y + Math.sin(ang) * (entity.radius + 7), pandyBaseDamage: baseDamage, pandyRange: range, pandyShellScale: shellScale, pandyUnlimitedRange: hyper, x: entity.x + Math.cos(ang) * (entity.radius + 7), y: entity.y + Math.sin(ang) * (entity.radius + 7), vx: Math.cos(ang) * PANDY_SUPER_SPEED, vy: Math.sin(ang) * PANDY_SUPER_SPEED, life: 0, maxLife: hyper ? PANDY_HYPER_SUPER_MAX_LIFE : range / PANDY_SUPER_SPEED, damage: baseDamage, pierce: true, super: true, ownerId: entity.id, hitIds: {}, hitboxMod: 1.6 * shellScale, hyperVisual: hyper });
+        };
+        if (hyper) {
+            // Hyper Super: 6 candy projectiles radially around Pandy (every 60°,
+            // all at once). The normal single shell does NOT also fire.
+            for (let i = 0; i < PANDY_HYPER_SUPER_COUNT; i++) fireShell((i * Math.PI * 2) / PANDY_HYPER_SUPER_COUNT);
+        } else {
+            fireShell(Math.atan2(targetY - entity.y, targetX - entity.x));
+        }
         if (entity.id === player.id) { try { window.BrawePandyVoice?.play('super'); } catch (e) {} }
-        spawnFloatingText(entity.x, entity.y - 40, '🍬 CANDY CANNON!', '#f472b6');
+        spawnFloatingText(entity.x, entity.y - 40, hyper ? '🍬 SUGAR SURGE!' : '🍬 CANDY CANNON!', '#f472b6');
     }
     function executePandyG1(entity) {
         if (!PANDY_ENABLED || !entity || entity.hp <= 0) return;
         entity.pandyFocus = PANDY_FOCUS_MAX;
+        entity.pandyFocusOn = true;
         spawnFloatingText(entity.x, entity.y - 36, '🍬 SWEET SPOT! FOCUS MAX', '#f472b6');
     }
     function executePandyG2(entity) {
@@ -24087,14 +24119,29 @@ let heistFeverActive = false;
             if (!entity) continue;
             const isPandy = entity.brawler === 'pandy' || (entity.id === player.id && selectedBrawler === 'pandy');
             if (!isPandy) continue;
-            if (entity.hp <= 0) { entity.pandyFocus = 0; entity.pandyLastX = entity.x; entity.pandyLastY = entity.y; continue; }
+            if (entity.hp <= 0) { entity.pandyFocus = 0; entity.pandyFocusOn = false; entity.pandyLastX = entity.x; entity.pandyLastY = entity.y; continue; }
             const moved = Math.hypot(entity.x - (entity.pandyLastX ?? entity.x), entity.y - (entity.pandyLastY ?? entity.y));
             entity.pandyLastX = entity.x;
             entity.pandyLastY = entity.y;
             const hyper = isEntityHyperchargedNow(entity, now);
-            const buildRate = PANDY_FOCUS_BUILD_PER_S * (pandyHasSP1(entity) ? PANDY_SP1_BUILD_MULT : 1) * (hyper ? PANDY_HYPER_FOCUS_BUILD_MULT : 1);
-            if (moved < 1.5) entity.pandyFocus = Math.min(PANDY_FOCUS_MAX, (entity.pandyFocus || 0) + buildRate * dt);
-            else entity.pandyFocus = Math.max(0, (entity.pandyFocus || 0) - PANDY_FOCUS_DECAY_PER_S * dt);
+            if (hyper) {
+                // Balance 2026-11-12: Hyper LOCKS Focus at 100 for the whole Hyper
+                // — no decay while moving, no build needed; it stays ON.
+                entity.pandyFocus = PANDY_FOCUS_MAX;
+                entity.pandyFocusOn = true;
+                // Purple trail particles while Hyper (Voltastein/Healnstein pattern).
+                if (!entity.pandyHyperTrailAt || now >= entity.pandyHyperTrailAt) {
+                    entity.pandyHyperTrailAt = now + 60;
+                    explosions.push({ x: entity.x + (Math.random() - 0.5) * 20, y: entity.y + (Math.random() - 0.5) * 20, vx: (Math.random() - 0.5) * 30, vy: (Math.random() - 0.5) * 30, radius: 3 + Math.random() * 3, life: 0, maxLife: 0.4, color: Math.random() < 0.5 ? '#c084fc' : '#a855f7', isParticle: true });
+                }
+            } else {
+                const buildRate = PANDY_FOCUS_BUILD_PER_S * (pandyHasSP1(entity) ? PANDY_SP1_BUILD_MULT : 1);
+                if (moved < 1.5) entity.pandyFocus = Math.min(PANDY_FOCUS_MAX, (entity.pandyFocus || 0) + buildRate * dt);
+                else entity.pandyFocus = Math.max(0, (entity.pandyFocus || 0) - PANDY_FOCUS_DECAY_PER_S * dt);
+                // Focus ON/OFF state: ON when it reaches 100, OFF when it drains to 0.
+                if (entity.pandyFocus >= PANDY_FOCUS_MAX) entity.pandyFocusOn = true;
+                else if (entity.pandyFocus <= 0) entity.pandyFocusOn = false;
+            }
         }
         // Candy traps: first enemy to step on one takes damage + slow, trap consumed.
         for (let ti = pandyTraps.length - 1; ti >= 0; ti--) {
@@ -24146,29 +24193,32 @@ let heistFeverActive = false;
         ctx.restore();
     }
     function drawPandyCandyShell(ctx, b) {
+        // Balance 2026-11-12: shell size +25% (x1.25); Hyper radial shells are
+        // +30% bigger again (x1.625 total). Hyper shells also read purple.
+        const s = b.pandyShellScale || PANDY_SUPER_SIZE_MULT;
         const a = Math.atan2(b.vy, b.vx);
         ctx.save();
         ctx.translate(b.x, b.y);
         ctx.rotate(a);
-        ctx.shadowColor = '#f59e0b';
+        ctx.shadowColor = b.hyperVisual ? '#a855f7' : '#f59e0b';
         ctx.shadowBlur = 22;
-        ctx.fillStyle = '#fbbf24';
-        ctx.strokeStyle = '#b45309';
+        ctx.fillStyle = b.hyperVisual ? '#c084fc' : '#fbbf24';
+        ctx.strokeStyle = b.hyperVisual ? '#7e22ce' : '#b45309';
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.arc(0, 0, 17, 0, Math.PI * 2);
+        ctx.arc(0, 0, 17 * s, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
         ctx.shadowBlur = 0;
         ctx.strokeStyle = '#ec4899';
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.arc(0, 0, 10, 0.3, Math.PI * 1.3);
+        ctx.arc(0, 0, 10 * s, 0.3, Math.PI * 1.3);
         ctx.stroke();
         ctx.fillStyle = '#fbcfe8';
         ctx.beginPath();
-        ctx.moveTo(-17, 0); ctx.lineTo(-28, -10); ctx.lineTo(-28, 10); ctx.closePath();
-        ctx.moveTo(17, 0); ctx.lineTo(28, -10); ctx.lineTo(28, 10); ctx.closePath();
+        ctx.moveTo(-17 * s, 0); ctx.lineTo(-28 * s, -10 * s); ctx.lineTo(-28 * s, 10 * s); ctx.closePath();
+        ctx.moveTo(17 * s, 0); ctx.lineTo(28 * s, -10 * s); ctx.lineTo(28 * s, 10 * s); ctx.closePath();
         ctx.fill();
         ctx.restore();
     }
@@ -24194,16 +24244,19 @@ let heistFeverActive = false;
             ctx.stroke();
             ctx.restore();
         }
-        // Focus bar over Pandy while Focus is building or full.
+        // Balance 2026-11-12: Focus bar is ALWAYS visible over a live Pandy so
+        // progress toward ON (100) and the drain toward OFF (0) can both be
+        // read. Gold while Focus is ON, pink while it is still building.
         for (const e of [player, ...bots]) {
-            if (!e || e.hp <= 0 || !(e.pandyFocus > 0)) continue;
+            if (!e || e.hp <= 0) continue;
             if (!(e.brawler === 'pandy' || (e.id === player.id && selectedBrawler === 'pandy'))) continue;
             const w = 44, pct = clamp((e.pandyFocus || 0) / PANDY_FOCUS_MAX, 0, 1);
             const bx = e.x - w / 2, by = e.y - (e.radius || 14) - 22;
+            const focusOn = pct >= 1 || !!e.pandyFocusOn;
             ctx.save();
             ctx.fillStyle = 'rgba(0,0,0,0.45)';
             ctx.fillRect(bx - 1, by - 1, w + 2, 7);
-            ctx.fillStyle = pct >= 1 ? '#fbbf24' : '#f472b6';
+            ctx.fillStyle = focusOn ? '#fbbf24' : '#f472b6';
             ctx.fillRect(bx, by, w * pct, 5);
             if (pct >= 1) {
                 ctx.font = 'bold 11px sans-serif';
@@ -24211,6 +24264,55 @@ let heistFeverActive = false;
                 ctx.fillStyle = '#fde68a';
                 ctx.fillText('✦ FOCUS MAX', e.x, by - 4);
             }
+            ctx.restore();
+        }
+        // Balance 2026-11-12: main-attack telegraph (player only) — a dashed
+        // aim line whose length is the CURRENT effective range, recomputed
+        // every frame so it changes smoothly as Focus rises/falls (and with
+        // SP2's +20% and Hyper's +12%). BadBat dashed-line pattern.
+        if (player && player.hp > 0 && selectedBrawler === 'pandy') {
+            const wm = getMouseWorld();
+            const aimAng = Math.atan2(wm.y - player.y, wm.x - player.x);
+            const teleRange = pandyEffectiveRange(player);
+            ctx.save();
+            ctx.globalAlpha = 0.55;
+            ctx.strokeStyle = '#f472b6';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([14, 10]);
+            ctx.lineDashOffset = -now * 0.05;
+            ctx.beginPath();
+            ctx.moveTo(player.x, player.y);
+            ctx.lineTo(player.x + Math.cos(aimAng) * teleRange, player.y + Math.sin(aimAng) * teleRange);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.globalAlpha = 0.7;
+            ctx.beginPath();
+            ctx.arc(player.x + Math.cos(aimAng) * teleRange, player.y + Math.sin(aimAng) * teleRange, 6, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+        }
+        // Balance 2026-11-12: Hyper purple aura — a pulsing purple glow ring
+        // around any hypercharged Pandy, distinct from the gold Focus look.
+        for (const e of [player, ...bots]) {
+            if (!e || e.hp <= 0) continue;
+            if (!(e.brawler === 'pandy' || (e.id === player.id && selectedBrawler === 'pandy'))) continue;
+            if (!isEntityHyperchargedNow(e, now)) continue;
+            const pulse = 0.75 + 0.25 * Math.sin(now / 160);
+            const ar = (e.radius || 14) + 12 + 4 * pulse;
+            ctx.save();
+            ctx.globalAlpha = 0.55 * pulse;
+            ctx.shadowColor = '#a855f7';
+            ctx.shadowBlur = 22;
+            ctx.strokeStyle = '#c084fc';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(e.x, e.y, ar, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.globalAlpha = 0.18 * pulse;
+            ctx.fillStyle = '#a855f7';
+            ctx.beginPath();
+            ctx.arc(e.x, e.y, ar, 0, Math.PI * 2);
+            ctx.fill();
             ctx.restore();
         }
     }
@@ -61202,6 +61304,10 @@ function checkHit(target, b, i){
       if (b.isPandySugarshot || b.isPandyCandyShell) {
           const dist = Math.hypot(b.x - (b.pandyOriginX ?? b.x), b.y - (b.pandyOriginY ?? b.y));
           b.damage = Math.round((b.pandyBaseDamage || b.damage || 0) * pandyDistanceDamageMult(dist, b.pandyRange || PANDY_SUGARSHOT_BASE_RANGE));
+          // Balance 2026-11-12: Hyper radial shells have unlimited range — they
+          // fly until they leave the map (no range cap). The bullet loop has no
+          // generic off-map kill, so this is the kill check for them.
+          if (b.pandyUnlimitedRange && (b.x < -60 || b.x > WORLD_W + 60 || b.y < -60 || b.y > WORLD_H + 60)) { bullets.splice(i, 1); i--; continue; }
       }
       // Sheet Round 41 Group C: minimal main/super-attack visuals (trail particles).
       if (b.isEvilDoctorSyringe) {
@@ -68284,6 +68390,16 @@ function checkHit(target, b, i){
 
   function render(){
     const now = performance.now();
+    // Balance 2026-11-12: Pandy Hyper (Sugar Surge) zooms the camera out so
+    // the player sees more of the map; it eases back to normal zoom when
+    // Hyper ends. CAMERA_ZOOM is the single zoom every camera use reads, so
+    // lerping it here keeps mouse-aim, culling, and the render transform
+    // consistent with the view on screen.
+    const pandyHyperZoomed = !!player && player.hp > 0 && selectedBrawler === 'pandy' && isEntityHyperchargedNow(player, now);
+    const targetZoom = pandyHyperZoomed ? PANDY_HYPER_CAMERA_ZOOM : CAMERA_ZOOM_BASE;
+    const zoomDt = clamp((now - (lastCameraZoomAt || now)) / 1000, 0, 0.1);
+    lastCameraZoomAt = now;
+    CAMERA_ZOOM += (targetZoom - CAMERA_ZOOM) * Math.min(1, zoomDt * 5);
     // Camera follow player or living teammate when dead in squad/team modes
     let cameraTargetX = Number.isFinite(player.x) ? player.x : WORLD_W * 0.5;
     let cameraTargetY = Number.isFinite(player.y) ? player.y : WORLD_H * 0.5;
