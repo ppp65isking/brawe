@@ -111,6 +111,7 @@ async function startLegacyRuntime() {
     './modules/audio/outlit-voicelines.js',
     './modules/audio/voodoyou-voicelines.js',
     './modules/audio/pandy-voicelines.js',
+    './modules/audio/snipa-voicelines.js',
     './modules/core/registry.js',
     './modules/brawlers/common/roster.js',
     './modules/brawlers/common/outlit.js',

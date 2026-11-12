@@ -324,6 +324,11 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             const hpScale = getLevelHpScale(level);
             return { hp: Math.round(5200 * hpScale), dmg: Math.round(900 * scale), speed: 270 };
         }
+        if (brawlerId === 'snipa') {
+            const scale = 0.55 + (level - 1) * 0.045;
+            const hpScale = getLevelHpScale(level);
+            return { hp: Math.round(5200 * hpScale), dmg: Math.round(900 * scale), speed: 260 };
+        }
         if (brawlerId === 'looma') {
             const scale = 0.55 + (level - 1) * 0.045;
             const hpScale = getLevelHpScale(level);
@@ -906,6 +911,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             if (selectedBrawler === 'voodoyou') { try { window.BraweVoodoyouVoice?.play('kill'); } catch (e) {} }
             // Pandy voice: player kill line.
             if (selectedBrawler === 'pandy') { try { window.BrawePandyVoice?.play('kill'); } catch (e) {} }
+            // Snipa voice: player kill line.
+            if (selectedBrawler === 'snipa') { try { window.BraweSnipaVoice?.play('kill'); } catch (e) {} }
         }
         if (target && target.hp <= 0 && hasTrinket(owner, 'fresh_magazine')) {
             if (now - (target.trinketFreshMagazineKillAt || 0) > 1000) {
@@ -5123,6 +5130,7 @@ const bolznstienPendingStrikes = [];
             healnstein: 1600,
             voodoyou: 1400,
             pandy: 1900,
+            snipa: 1600,
             carmela_fudge: 1400,
             oil_maker: 90,
             magnatar: 1450,
@@ -5192,6 +5200,7 @@ const bolznstienPendingStrikes = [];
             healnstein: 300,
             voodoyou: 300,
             pandy: 350,
+            snipa: 300,
             carmela_fudge: 180,
             oil_maker: 112,
             magnatar: 200,
@@ -5490,7 +5499,7 @@ const bolznstienPendingStrikes = [];
         'boom_arang', 'teether', 'fuel', 'xray', 'angel', 'demon', 'warrior', 'relay',
         'upiedown', 'chickpig', 'jetpack', 'snapper', 'robber', 'rocketeer',
         'carmela_fudge', 'peter_pickle', 'unstable', 'homer', 'orbo', 'predator', 'fastpass', 'freestyle', 'portalo', 'ghoul', 'jacktrade', 'darkener', 'awakenator', 'adlof', 'cluster', 'witch', 'boomer', 'blade_vane', 'daggershard', 'ice_cream', 'swimmer', 'kage', 'drainbow', 'draflygon', 'axeywaxy', 'trampaheal', 'mageny', 'ramage', 'upgradart', 'cinderion', 'cursed', 'king', 'anti_royal', 'sir_cheeseburger', 'weefee', 'blinkeye', 'bolznstien', 'magnatar', 'oil_maker', 'rager', 'badbat', 'looma',
-        'feathers', 'spikey', 'electrostien', 'mallow', 'nightshade', 'aegis', 'runner', 'aura_charmer', 'voltastein', 'staticstein', 'healnstein', 'voodoyou', 'pandy'
+        'feathers', 'spikey', 'electrostien', 'mallow', 'nightshade', 'aegis', 'runner', 'aura_charmer', 'voltastein', 'staticstein', 'healnstein', 'voodoyou', 'pandy', 'snipa'
     ];
     const registeredBrawlerModules = window.ArenaForgeModules?.brawlers || Object.create(null);
     for (const moduleId of Object.keys(registeredBrawlerModules)) {
@@ -5580,6 +5589,7 @@ const bolznstienPendingStrikes = [];
             unhitabble: 'Epic',
             mallow: 'Epic',
             pandy: 'Epic',
+            snipa: 'Epic',
 
             // Mythic (13)
             dashaholic: 'Mythic',
@@ -10503,11 +10513,22 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           desc: 'A candy-coated sharpshooter stitched together from a long-range umbrella and a candy cannon. Her Sugarshot hits harder the farther it flies — and the longer she stands still, the sweeter it gets.',
           attack: 'Sugarshot', attackDesc: 'Fires a single long-range candy shot. Damage grows with distance, and standing still builds Focus for bonus damage and range.',
           super: 'Candy Cannon', superDesc: 'Fires a giant piercing candy shell that deals more damage the farther it travels.',
-          hyper: 'Sugar Surge: while Hypercharged, Sugarshot and Candy Cannon pierce through enemies and Focus builds twice as fast.',
+          hyper: 'Sugar Surge: while Hypercharged, Focus locks at 100, shots pierce, Candy Cannon fires 6 huge shells in all directions, and main range grows.',
           g1: 'Sweet Spot (Instantly build Focus to max)',
           g2: 'Candy Trap (Drop a candy trap that slows and hurts the first enemy to step on it)',
           sp1: 'Steady Aim (Focus builds 50% faster)',
           sp2: 'Long Game (Sugarshot range +20% and max Focus grants +70% damage instead of +50%)'
+      },
+      'snipa': {
+          name: 'Snipa', role: 'Marksman', rarity: 'Epic', color: '#3b82f6',
+          desc: "Pandy's sharpshooting sister. Her wide blue bullets stretch her range with every hit, and her Headshot aura marks enemies for a deadly volley.",
+          attack: 'Longshot', attackDesc: 'Fires a wide blue bullet. Each hit stretches her range a little farther, up to a limit.',
+          super: 'Headshot', superDesc: 'Stands still and sweeps a big blue aura around her, marking enemies inside it. After a moment she fires a rapid volley at every marked enemy — fully marked enemies take more damage.',
+          hyper: 'Deadeye Surge: while Hypercharged, Headshot marks through walls and bushes, and aiming the main attack marks enemies in the reticle for bonus damage.',
+          g1: 'Deadeye (Next main attack deals +50% damage and grants double range bonus on hit)',
+          g2: 'Long Lens (Main attack range +3 tiles for 5 seconds)',
+          sp1: 'Eagle Eye (Each main-attack hit adds +0.75 tiles of range instead of +0.5)',
+          sp2: 'Hair Trigger (Headshot volley fires 4 bullets per marked enemy instead of 3)'
       }
   };
 
@@ -10536,7 +10557,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
         beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank', rager:'Controller', looma:'Controller', feathers:'Controller', spikey:'Damage Dealer', electrostien:'Assassin', mallow:'Controller', nightshade:'Assassin', runner:'Controller', aura_charmer:'Support', voltastein:'Artillery', staticstein:'Damage Dealer', healnstein:'Support', voodoyou:'Controller', pandy:'Damage Dealer',
     carmela_fudge:'Damage Dealer', bolznstien:'Damage Dealer', badbat:'Damage Dealer', magnatar:'Controller', oil_maker:'Controller', sir_cheeseburger:'Tank',
         blade_vane:'Assassin', kage:'Assassin', drainbow:'Controller', bowlin_rida:'Assassin', dashaholic:'Assassin', demon:'Assassin', jetpack:'Assassin', malakor:'Assassin', predator:'Assassin', swimmer:'Assassin', teether:'Assassin',
-        boom_arang:'Marksman', cheseypuff:'Marksman', crystila:'Marksman', homer:'Marksman', hunter:'Marksman', orbo:'Marksman', snapper:'Marksman', xray:'Marksman',
+        boom_arang:'Marksman', cheseypuff:'Marksman', crystila:'Marksman', homer:'Marksman', hunter:'Marksman', orbo:'Marksman', snapper:'Marksman', xray:'Marksman', snipa:'Marksman',
         boomer:'Artillery', cluster:'Artillery', evil_doctor:'Artillery', fightnfire:'Artillery', rocketeer:'Artillery', skeleflying:'Artillery', splitter:'Artillery', trapper:'Artillery', upiedown:'Artillery',
         amplifier:'Support', angel:'Support', echo:'Support', fastpass:'Support', freestyle:'Support', hope:'Support', relay:'Support', trampaheal:'Support', sera_eclipse:'Support',
         adlof:'Controller', awakenator:'Controller', cursed:'Controller', king:'Controller', anti_royal:'Controller', daggershard:'Controller', darkener:'Controller', decayer:'Controller', forest:'Controller', fuel:'Controller', ice_cream:'Controller', paradox:'Controller', peter_pickle:'Controller', portalo:'Controller', scuba_diver:'Controller', screener:'Controller', tempo_maker:'Controller', unstable:'Controller', witch:'Controller', mageny:'Controller',
@@ -10564,6 +10585,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
             healnstein: '💚🩹',
             voodoyou: '🧶',
             pandy: '🍬',
+            snipa: '🎯',
     looma: '🪡🧵',
         sir_cheeseburger: '🛡️',
         anti_royal: '🏴‍☠️',
@@ -11721,6 +11743,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
       healnstein: { g1: 15000, g2: 15000 },
       voodoyou: { g1: 14000, g2: 16000 },
       pandy: { g1: 14000, g2: 16000 },
+      snipa: { g1: 14000, g2: 16000 },
       carmela_fudge: { g1: 8000, g2: 8000 },
       bolznstien: { g1: 14000, g2: 15000 },
       sir_cheeseburger: { g1: 13000, g2: 14000 },
@@ -24249,6 +24272,7 @@ let heistFeverActive = false;
         // read. Gold while Focus is ON, pink while it is still building.
         for (const e of [player, ...bots]) {
             if (!e || e.hp <= 0) continue;
+            if (e.id === player.id) continue; // the player's bar lives in the HUD stack now (above ammo, below HP)
             if (!(e.brawler === 'pandy' || (e.id === player.id && selectedBrawler === 'pandy'))) continue;
             const w = 44, pct = clamp((e.pandyFocus || 0) / PANDY_FOCUS_MAX, 0, 1);
             const bx = e.x - w / 2, by = e.y - (e.radius || 14) - 22;
@@ -24315,6 +24339,399 @@ let heistFeverActive = false;
             ctx.fill();
             ctx.restore();
         }
+    }
+
+    // ===== Snipa systems (Longshot + Headshot + Deadeye Surge) =====
+    // Anthony design (2026-11-12, builder picks — flagged for his correction):
+    // Pandy's sister, an Epic Marksman. Main attack fires one wide blue
+    // bullet at Pandy's basic range (729.6px); every hit on an enemy
+    // brawler stretches her range +0.5 tiles (24px), stacking to +3 tiles
+    // (144px), reset on death. Super Headshot roots her and sweeps a big
+    // blue aura (~600px) that steadily marks enemies inside it (~2s to
+    // full) — the aura never marks through walls (line of sight per enemy)
+    // or into bushes; at ~2.5s she auto-fires a rapid volley at every
+    // marked enemy, fully marked enemies taking +50% (scaled by mark
+    // progress). The camera zooms out while the Super channels. Hyper
+    // Deadeye Surge: the Super marks through walls and bushes, and aiming
+    // the main attack marks enemies in the reticle (~1s to full) for +25%
+    // damage from Snipa. Kill switches are `let` so regression tests can
+    // flip them. Dedicated art lives in its OWN branches below: Snipa
+    // projectiles are drawn before the universal skin renderer call, never
+    // through it (PR #48 lesson).
+    let SNIPA_ENABLED = true;
+    let SNIPA_VISUALS_ENABLED = true;
+    const SNIPA_TILE_PX = 48; // one arena tile (ARENA_WALL_TILE)
+    const SNIPA_MAIN_SPEED = 1500;
+    const SNIPA_MAIN_BASE_RANGE = 729.6; // Pandy's basic range
+    const SNIPA_RANGE_BONUS_PER_HIT_TILES = 0.5; // +0.5 tile per main hit
+    const SNIPA_RANGE_BONUS_MAX_TILES = 3; // cap +3 tiles extra (6 hits)
+    const SNIPA_RANGE_BONUS_PER_HIT_PX = SNIPA_TILE_PX * SNIPA_RANGE_BONUS_PER_HIT_TILES; // 24
+    const SNIPA_RANGE_BONUS_MAX_PX = SNIPA_TILE_PX * SNIPA_RANGE_BONUS_MAX_TILES; // 144
+    const SNIPA_SUPER_AURA_RADIUS = 600; // Headshot marking aura
+    const SNIPA_MARK_TIME_MS = 2000; // ~2s to fully mark in the aura
+    const SNIPA_VOLLEY_DELAY_MS = 2500; // volley fires ~2.5s after activation
+    const SNIPA_VOLLEY_BULLETS_PER_TARGET = 3; // rapid volley per marked enemy
+    const SNIPA_VOLLEY_SPEED = 2400;
+    const SNIPA_VOLLEY_DAMAGE_RATIO = 0.6; // each volley bullet = 60% of main dmg
+    const SNIPA_VOLLEY_FULL_MARK_BONUS = 0.5; // fully marked: +50% (scaled by progress)
+    const SNIPA_SUPER_CAMERA_ZOOM = 0.72; // camera zooms out while Headshot channels (matches Pandy Hyper)
+    const SNIPA_HYPER_MARK_TIME_MS = 1000; // ~1s of aiming to fully mark in the reticle
+    const SNIPA_HYPER_MARK_DMG_MULT = 1.25; // reticle-marked enemies take +25% from Snipa
+    const SNIPA_HYPER_MARK_DURATION_MS = 4000; // reticle mark lasts 4s once built
+    const SNIPA_HYPER_MARK_DECAY_PER_S = 0.5; // reticle mark fades when not aimed
+    const SNIPA_HYPER_MARK_CONE_HALF_ANGLE = 0.21; // ~12 deg half-angle marking wedge around the aim line
+    const SNIPA_G2_RANGE_BONUS_TILES = 3; // Long Lens: +3 tiles for 5s
+    const SNIPA_G2_DURATION_MS = 5000;
+    const SNIPA_SP1_BONUS_PER_HIT_TILES = 0.75; // Eagle Eye: +0.75 tiles per hit
+    const SNIPA_SP2_VOLLEY_BONUS_BULLETS = 1; // Hair Trigger: +1 volley bullet per target
+    const SNIPA_G1_DAMAGE_MULT = 1.5; // Deadeye: next main attack +50% damage
+    function isSnipaEntity(entity) {
+        return !!entity && (entity.brawler === 'snipa' || (!!player && entity.id === player.id && selectedBrawler === 'snipa'));
+    }
+    function snipaStarChoice(entity) { try { return getEntityStarChoice(entity); } catch (_) { return entity ? entity.selectedStar : null; } }
+    function snipaHasSP1(entity) { const c = snipaStarChoice(entity); return c === 'slow' || c === 'sp1'; }
+    function snipaHasSP2(entity) { const c = snipaStarChoice(entity); return c === 'long' || c === 'sp2'; }
+    function snipaLevelFor(entity) { return entity && entity.id === player.id ? getSelectedBrawlerLevel() : (entity.level || 11); }
+    function snipaRangeBonusPerHitPx(entity) { return SNIPA_TILE_PX * (snipaHasSP1(entity) ? SNIPA_SP1_BONUS_PER_HIT_TILES : SNIPA_RANGE_BONUS_PER_HIT_TILES); }
+    function snipaApplyHitBonus(owner, bullet) {
+        // Called from checkHit when a Longshot lands on an enemy brawler:
+        // each hit stretches range +0.5 tiles (SP1: +0.75), stacking to +3.
+        // Deadeye (G1) doubles the bonus on the flagged shot.
+        if (!owner || owner.hp <= 0) return;
+        const perHit = snipaRangeBonusPerHitPx(owner) * (bullet.snipaDeadeye ? 2 : 1);
+        owner.snipaRangeBonusPx = Math.min(SNIPA_RANGE_BONUS_MAX_PX, (owner.snipaRangeBonusPx || 0) + perHit);
+    }
+    function snipaApplyHyperMarkDamage(target, b) {
+        // Called from checkHit: reticle-marked enemies take +25% damage from
+        // the Snipa who marked them.
+        if (target && (target.snipaHyperMarkUntil || 0) > performance.now() && target.snipaHyperMarkedById === b.ownerId && b && typeof b.damage === 'number') {
+            b.damage = Math.round(b.damage * SNIPA_HYPER_MARK_DMG_MULT);
+        }
+    }
+    function snipaEffectiveRange(entity) {
+        const now = performance.now();
+        let range = SNIPA_MAIN_BASE_RANGE + (entity.snipaRangeBonusPx || 0);
+        if ((entity.snipaG2Until || 0) > now) range += SNIPA_TILE_PX * SNIPA_G2_RANGE_BONUS_TILES;
+        return range;
+    }
+    function isSnipaChanneling(entity, now) {
+        return !!entity && entity.hp > 0 && (entity.snipaChannelUntil || 0) > (now || performance.now());
+    }
+    function snipaClearMarksBy(entity) {
+        if (!entity) return;
+        for (const t of [player, ...bots]) {
+            if (!t) continue;
+            if (t.snipaMarkById === entity.id) { t.snipaMarkById = null; t.snipaMarkProgress = 0; }
+        }
+    }
+    function fireSnipaMain(fromEntity, ang, targetX, targetY, opts) {
+        if (!SNIPA_ENABLED) return;
+        const isBot = !!opts.isBot, now = opts.now;
+        const donorMode = !!opts.donorMode;
+        const damageMult = opts.damageMult || 1, hitboxMult = opts.hitboxMult || 1;
+        const snipaHyper = donorMode ? false : isEntityHyperchargedNow(fromEntity, now);
+        const snipaLevel = donorMode ? 11 : snipaLevelFor(fromEntity);
+        const snipaStats = getScaledStats('snipa', snipaLevel);
+        const range = snipaEffectiveRange(fromEntity);
+        const deadeye = !!fromEntity.snipaDeadeyeArmed;
+        if (deadeye) fromEntity.snipaDeadeyeArmed = false;
+        const baseDamage = Math.round(snipaStats.dmg * (deadeye ? SNIPA_G1_DAMAGE_MULT : 1) * damageMult);
+        bullets.push({ ownerBrawler: 'snipa', isSnipaLongshot: true, isPrimaryChargeProjectile: true, snipaOriginX: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 7), snipaOriginY: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 7), snipaBaseDamage: baseDamage, snipaRange: range, snipaDeadeye: deadeye, ...staticsteinDonorTag('snipa', donorMode), x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 7), y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 7), vx: Math.cos(ang) * SNIPA_MAIN_SPEED, vy: Math.sin(ang) * SNIPA_MAIN_SPEED, life: 0, maxLife: range / SNIPA_MAIN_SPEED, damage: baseDamage, pierce: false, ownerId: fromEntity.id, hitIds: {}, hitboxMod: 1.6 * hitboxMult, hyperVisual: snipaHyper });
+        if (deadeye) spawnFloatingText(fromEntity.x, fromEntity.y - 36, '🎯 DEADEYE!', '#60a5fa');
+    }
+    function castSnipaSuper(entity, isHyper, targetX, targetY) {
+        if (!SNIPA_ENABLED || !entity || entity.hp <= 0) return;
+        if (isSnipaChanneling(entity, performance.now())) return; // already channeling
+        const hyper = !!isHyper || isEntityHyperchargedNow(entity, performance.now());
+        const now = performance.now();
+        entity.snipaChannelUntil = now + SNIPA_VOLLEY_DELAY_MS;
+        entity.snipaChannelHyper = hyper;
+        entity.snipaChannelVolleyAt = now + SNIPA_VOLLEY_DELAY_MS;
+        entity.rootUntil = Math.max(entity.rootUntil || 0, now + SNIPA_VOLLEY_DELAY_MS);
+        if (entity.id === player.id) { try { window.BraweSnipaVoice?.play('super'); } catch (e) {} }
+        spawnFloatingText(entity.x, entity.y - 40, '🎯 HEADSHOT!', '#60a5fa');
+    }
+    function fireSnipaVolley(snipa) {
+        if (!snipa || snipa.hp <= 0) return;
+        const now = performance.now();
+        const stats = getScaledStats('snipa', snipaLevelFor(snipa));
+        const perTarget = SNIPA_VOLLEY_BULLETS_PER_TARGET + (snipaHasSP2(snipa) ? SNIPA_SP2_VOLLEY_BONUS_BULLETS : 0);
+        const targets = [player, ...bots].filter((t) => t && t.hp > 0 && t.snipaMarkById === snipa.id && (t.snipaMarkProgress || 0) > 0);
+        for (const target of targets) {
+            const progress = clamp(target.snipaMarkProgress || 0, 0, 1);
+            const dmg = Math.round(stats.dmg * SNIPA_VOLLEY_DAMAGE_RATIO * (1 + SNIPA_VOLLEY_FULL_MARK_BONUS * progress));
+            for (let i = 0; i < perTarget; i++) {
+                const ang = Math.atan2(target.y - snipa.y, target.x - snipa.x) + (i - (perTarget - 1) / 2) * 0.05;
+                bullets.push({ ownerBrawler: 'snipa', isSnipaVolley: true, homing: true, homingRadius: 1400, snipaVolleyTargetId: target.id, x: snipa.x + Math.cos(ang) * (snipa.radius + 7), y: snipa.y + Math.sin(ang) * (snipa.radius + 7), vx: Math.cos(ang) * SNIPA_VOLLEY_SPEED, vy: Math.sin(ang) * SNIPA_VOLLEY_SPEED, life: 0, maxLife: 1.2, damage: dmg, pierce: false, ownerId: snipa.id, hitIds: {}, hitboxMod: 1.0, hyperVisual: isEntityHyperchargedNow(snipa, now) });
+            }
+        }
+        snipaClearMarksBy(snipa);
+    }
+    function executeSnipaG1(entity) {
+        if (!SNIPA_ENABLED || !entity || entity.hp <= 0) return;
+        entity.snipaDeadeyeArmed = true;
+        spawnFloatingText(entity.x, entity.y - 36, '🎯 DEADEYE READY', '#60a5fa');
+    }
+    function executeSnipaG2(entity) {
+        if (!SNIPA_ENABLED || !entity || entity.hp <= 0) return;
+        entity.snipaG2Until = performance.now() + SNIPA_G2_DURATION_MS;
+        spawnFloatingText(entity.x, entity.y - 36, '🎯 LONG LENS!', '#60a5fa');
+    }
+    function updateSnipaSystems(dt) {
+        if (!SNIPA_ENABLED) return;
+        const now = performance.now();
+        for (const entity of [player, ...bots]) {
+            if (!entity) continue;
+            const isSnipa = entity.brawler === 'snipa' || (entity.id === player.id && selectedBrawler === 'snipa');
+            if (!isSnipa) continue;
+            if (entity.hp <= 0) {
+                // Death resets the range bonus and fizzles the Super (marks clear).
+                entity.snipaRangeBonusPx = 0;
+                if (entity.snipaChannelUntil) snipaClearMarksBy(entity);
+                entity.snipaChannelUntil = 0;
+                entity.snipaChannelHyper = false;
+                entity.snipaChannelVolleyAt = 0;
+                continue;
+            }
+            // Headshot channel: mark enemies in the aura, volley at ~2.5s.
+            // NOTE: the volley trigger is gated on the channel PENDING
+            // (snipaChannelUntil > 0), not on isSnipaChanneling() — the
+            // channel ends at exactly the volley time, so isSnipaChanneling
+            // is already false when the volley is due.
+            if (entity.snipaChannelUntil > 0) {
+                if ((entity.snipaChannelVolleyAt || 0) > 0 && now >= entity.snipaChannelVolleyAt) {
+                    fireSnipaVolley(entity);
+                    entity.snipaChannelUntil = 0;
+                    entity.snipaChannelHyper = false;
+                    entity.snipaChannelVolleyAt = 0;
+                } else if (isSnipaChanneling(entity, now)) {
+                    const hyperChannel = !!entity.snipaChannelHyper;
+                    for (const target of [player, ...bots]) {
+                        if (!target || target.hp <= 0 || target.id === entity.id) continue;
+                        if (target.isDummy || target.isStructure || target.isPet || target.isCore) continue;
+                        if (areAlliedEntities(entity, target)) continue;
+                        if (Math.hypot(target.x - entity.x, target.y - entity.y) > SNIPA_SUPER_AURA_RADIUS) continue;
+                        // Wall occlusion (Anthony's rule): the aura never marks
+                        // through walls, and never into bushes — unless Hyper,
+                        // which marks through walls AND bushes.
+                        if (!hyperChannel) {
+                            if (isEntityInsideBush(target)) continue;
+                            if (!hasBlinkEyeSight(entity.x, entity.y, target.x, target.y)) continue;
+                        }
+                        target.snipaMarkById = entity.id;
+                        target.snipaMarkProgress = Math.min(1, (target.snipaMarkProgress || 0) + dt / (SNIPA_MARK_TIME_MS / 1000));
+                    }
+                }
+            }
+            // Hyper reticle marking: while Hypercharged, aiming the main
+            // attack at an enemy steadily marks them (~1s to full).
+            if (isEntityHyperchargedNow(entity, now) && !isSnipaChanneling(entity, now)) {
+                const aimAng = entity.id === player.id ? Math.atan2(getMouseWorld().y - entity.y, getMouseWorld().x - entity.x) : (entity.visualAimAngle || 0);
+                const range = snipaEffectiveRange(entity);
+                for (const target of [player, ...bots]) {
+                    if (!target || target.hp <= 0 || target.id === entity.id) continue;
+                    if (target.isDummy || target.isStructure || target.isPet || target.isCore) continue;
+                    if (areAlliedEntities(entity, target)) continue;
+                    const dx = target.x - entity.x, dy = target.y - entity.y;
+                    const dist = Math.hypot(dx, dy);
+                    if (dist > range) continue;
+                    let angDiff = Math.abs(Math.atan2(dy, dx) - aimAng);
+                    if (angDiff > Math.PI) angDiff = Math.PI * 2 - angDiff;
+                    const aimed = angDiff <= SNIPA_HYPER_MARK_CONE_HALF_ANGLE && hasBlinkEyeSight(entity.x, entity.y, target.x, target.y);
+                    if (aimed) {
+                        target.snipaHyperMarkedById = entity.id;
+                        target.snipaHyperMarkProgress = Math.min(1, (target.snipaHyperMarkProgress || 0) + dt / (SNIPA_HYPER_MARK_TIME_MS / 1000));
+                        target.snipaHyperMarkUntil = now + SNIPA_HYPER_MARK_DURATION_MS;
+                    } else if (target.snipaHyperMarkedById === entity.id) {
+                        target.snipaHyperMarkProgress = Math.max(0, (target.snipaHyperMarkProgress || 0) - SNIPA_HYPER_MARK_DECAY_PER_S * dt);
+                        if ((target.snipaHyperMarkProgress || 0) <= 0 || (target.snipaHyperMarkUntil || 0) <= now) {
+                            target.snipaHyperMarkedById = null;
+                            target.snipaHyperMarkProgress = 0;
+                        }
+                    }
+                }
+            }
+        }
+        // Stale marks expire: super marks die with the channel (cleared
+        // above), hyper marks expire 4s after the last aim refresh, and
+        // dead fighters never stay marked.
+        for (const t of [player, ...bots]) {
+            if (!t) continue;
+            if (t.hp <= 0) { t.snipaMarkById = null; t.snipaMarkProgress = 0; t.snipaHyperMarkedById = null; t.snipaHyperMarkProgress = 0; continue; }
+            if (t.snipaHyperMarkedById && (t.snipaHyperMarkUntil || 0) <= now) { t.snipaHyperMarkedById = null; t.snipaHyperMarkProgress = 0; }
+        }
+    }
+    function snipaPointInWall(x, y) {
+        for (const c of cubes) {
+            if (c && x >= c.x && x <= c.x + c.w && y >= c.y && y <= c.y + c.h) return true;
+        }
+        for (const dw of destructibleWalls) {
+            if (dw && dw.hp > 0 && x >= dw.x && x <= dw.x + dw.w && y >= dw.y && y <= dw.y + dw.h) return true;
+        }
+        return false;
+    }
+    function drawSnipaLongshot(ctx, b) {
+        const a = Math.atan2(b.vy, b.vx);
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        ctx.rotate(a);
+        ctx.shadowColor = '#3b82f6';
+        ctx.shadowBlur = 16;
+        ctx.fillStyle = '#60a5fa';
+        ctx.strokeStyle = '#1d4ed8';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 18, 8, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#dbeafe';
+        ctx.beginPath();
+        ctx.ellipse(-4, 0, 8, 3.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+    function drawSnipaVolleyBullet(ctx, b) {
+        const a = Math.atan2(b.vy, b.vx);
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        ctx.rotate(a);
+        ctx.shadowColor = '#93c5fd';
+        ctx.shadowBlur = 14;
+        ctx.fillStyle = '#bfdbfe';
+        ctx.strokeStyle = '#2563eb';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(10, 0); ctx.lineTo(-8, -5); ctx.lineTo(-4, 0); ctx.lineTo(-8, 5); ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+    }
+    function renderSnipaEffects() {
+        if (!SNIPA_VISUALS_ENABLED) return;
+        const now = performance.now();
+        // Headshot aura: a blue radius around a channeling Snipa. The aura
+        // is drawn as a polygon whose edge stops at walls, so it never
+        // covers an angle a wall blocks (Anthony's wall-occlusion rule).
+        for (const e of [player, ...bots]) {
+            if (!e || e.hp <= 0) continue;
+            if (!(e.brawler === 'snipa' || (e.id === player.id && selectedBrawler === 'snipa'))) continue;
+            if (!isSnipaChanneling(e, now)) continue;
+            const segs = 72;
+            const step = 48;
+            const pulse = 0.10 + 0.04 * Math.sin(now / 200);
+            ctx.save();
+            ctx.fillStyle = `rgba(59,130,246,${pulse})`;
+            ctx.strokeStyle = 'rgba(96,165,250,0.8)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            for (let s = 0; s < segs; s++) {
+                const a = (s / segs) * Math.PI * 2;
+                let r = SNIPA_SUPER_AURA_RADIUS;
+                for (let d = step; d <= SNIPA_SUPER_AURA_RADIUS; d += step) {
+                    if (snipaPointInWall(e.x + Math.cos(a) * d, e.y + Math.sin(a) * d)) { r = Math.max(0, d - step); break; }
+                }
+                const px = e.x + Math.cos(a) * r, py = e.y + Math.sin(a) * r;
+                if (s === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+        }
+        // Mark progress circles: a ring around a marked enemy fills as the
+        // mark builds; a full ring means fully marked. Same indicator for
+        // the Super mark and the Hyper reticle mark.
+        for (const t of [player, ...bots]) {
+            if (!t || t.hp <= 0) continue;
+            const progress = Math.max(t.snipaMarkProgress || 0, t.snipaHyperMarkProgress || 0);
+            if (progress <= 0) continue;
+            const r = (t.radius || 14) + 10;
+            const full = progress >= 1;
+            ctx.save();
+            ctx.strokeStyle = 'rgba(96,165,250,0.35)';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(t.x, t.y, r, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.strokeStyle = full ? '#93c5fd' : '#60a5fa';
+            ctx.lineWidth = full ? 4 : 3;
+            if (full) { ctx.shadowColor = '#3b82f6'; ctx.shadowBlur = 12; }
+            ctx.beginPath();
+            ctx.arc(t.x, t.y, r, -Math.PI / 2, -Math.PI / 2 + progress * Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+        }
+        // Main-attack telegraph (player only) — a dashed blue aim line whose
+        // length is the CURRENT effective range (Pandy pattern). While
+        // Hypercharged, cyan side segments show the reticle marking wedge:
+        // point the wedge at an enemy to start marking them.
+        if (player && player.hp > 0 && selectedBrawler === 'snipa') {
+            const wm = getMouseWorld();
+            const aimAng = Math.atan2(wm.y - player.y, wm.x - player.x);
+            const teleRange = snipaEffectiveRange(player);
+            const hyper = isEntityHyperchargedNow(player, now);
+            ctx.save();
+            ctx.globalAlpha = 0.55;
+            ctx.strokeStyle = '#60a5fa';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([14, 10]);
+            ctx.lineDashOffset = -now * 0.05;
+            ctx.beginPath();
+            ctx.moveTo(player.x, player.y);
+            ctx.lineTo(player.x + Math.cos(aimAng) * teleRange, player.y + Math.sin(aimAng) * teleRange);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.globalAlpha = 0.7;
+            ctx.beginPath();
+            ctx.arc(player.x + Math.cos(aimAng) * teleRange, player.y + Math.sin(aimAng) * teleRange, 6, 0, Math.PI * 2);
+            ctx.stroke();
+            if (hyper) {
+                // Cyan side segments: the reticle marking wedge.
+                ctx.globalAlpha = 0.75;
+                ctx.strokeStyle = '#22d3ee';
+                ctx.lineWidth = 3;
+                ctx.setLineDash([8, 8]);
+                for (const side of [-1, 1]) {
+                    const wa = aimAng + side * SNIPA_HYPER_MARK_CONE_HALF_ANGLE;
+                    ctx.beginPath();
+                    ctx.moveTo(player.x, player.y);
+                    ctx.lineTo(player.x + Math.cos(wa) * teleRange, player.y + Math.sin(wa) * teleRange);
+                    ctx.stroke();
+                }
+                ctx.setLineDash([]);
+                ctx.globalAlpha = 0.12;
+                ctx.fillStyle = '#22d3ee';
+                ctx.beginPath();
+                ctx.moveTo(player.x, player.y);
+                ctx.arc(player.x, player.y, teleRange, aimAng - SNIPA_HYPER_MARK_CONE_HALF_ANGLE, aimAng + SNIPA_HYPER_MARK_CONE_HALF_ANGLE);
+                ctx.closePath();
+                ctx.fill();
+            }
+            ctx.restore();
+        }
+    }
+
+    // Pandy Focus bar in the HUD stack (2026-11-12, Anthony): above the
+    // ammo bar and below the HP bar. Same look as the old overhead bar —
+    // pink while building, gold while ON, "✦ FOCUS MAX" kept.
+    function drawPandyFocusHudBar(ctx, entity, drawY) {
+        if (!entity || entity.hp <= 0) return;
+        const w = 48, pct = clamp((entity.pandyFocus || 0) / PANDY_FOCUS_MAX, 0, 1);
+        const bx = entity.x - w / 2, by = drawY - 27;
+        const focusOn = pct >= 1 || !!entity.pandyFocusOn;
+        ctx.save();
+        ctx.fillStyle = 'rgba(0,0,0,0.45)';
+        ctx.fillRect(bx - 1, by - 1, w + 2, 7);
+        ctx.fillStyle = focusOn ? '#fbbf24' : '#f472b6';
+        ctx.fillRect(bx, by, w * pct, 5);
+        if (pct >= 1) {
+            ctx.font = 'bold 8px sans-serif';
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#fde68a';
+            ctx.fillText('✦ FOCUS MAX', bx + w + 4, by + 5);
+        }
+        ctx.restore();
     }
 
     // ===== Christmas Showdown buffs (Season 6: Xplodemis) =====
@@ -27802,6 +28219,7 @@ let heistFeverActive = false;
     function shouldBotUseGadget(bot, target, context) {
         if (!bot.gadgetUnlocked || (bot.botNextGadgetDecisionAt || 0) > context.now) return false;
         if (isVoodoyouControlling(bot, context.now)) return false;
+        if (isSnipaChanneling(bot, context.now)) return false;
         bot.botNextGadgetDecisionAt = context.now + 420 + (context.slot % 7) * 45;
         const distance = target ? Math.hypot(target.x - bot.x, target.y - bot.y) : Infinity;
         const combatTarget = target && !target.isPowerup && !target.isBox && !['center', 'cart'].includes(target.id);
@@ -27836,6 +28254,7 @@ let heistFeverActive = false;
         if (bot.brawler === 'voltastein') return distance < VOLTASTEIN_ZAP_RADIUS; // Power Outage zap range
         if (bot.brawler === 'voodoyou') return distance < VOODOOYOU_NEEDLE_RANGE; // needle throw range
         if (bot.brawler === 'pandy') return distance < PANDY_SUPER_RANGE; // candy shell range
+        if (bot.brawler === 'snipa') return distance < SNIPA_SUPER_AURA_RADIUS; // headshot aura range
         const targetHpPct = target.hp ? target.hp / Math.max(1, target.maxHp || target.hp) : 1;
         const clustered = getBotLivingEnemies(bot).filter((enemy) => Math.hypot(enemy.x - target.x, enemy.y - target.y) < 190).length;
         const objectiveFight = (isObjectiveMode || isTugZoneMode) && Math.hypot(target.x - (objectiveZone?.x || WORLD_W*0.5), target.y - (objectiveZone?.y || WORLD_H*0.5)) < (objectiveZone?.r || 240) + 80;
@@ -30135,7 +30554,7 @@ let heistFeverActive = false;
       beam:8, fuser:24, heater_miser:20, minigunnin:72, money_and_tax:24, outlit:30, steamer:8,
       bouncin_balls:6, chickpig:12, classy:6, copyphase:6, goonbob:6, hoop:5, hyperorigin:5, robber:42,
       portalo:7, ghoul:6, jacktrade:18, darkener:6, awakenator:8, trampaheal:6, axeywaxy:6, mageny:6, draflygon:6, ramage:6, upgradart:10, cinderion:10, cursed:7, king:6, anti_royal:6, weefee:6, rager:4,
-    carmela_fudge:5, bolznstien:5, sir_cheeseburger:4, blinkeye:4, magnatar:6, oil_maker:16, badbat:5, looma:7, feathers:5, spikey:6, electrostien:14, mallow:12, nightshade: 6, runner: 6, aura_charmer: 6, voltastein: 6, staticstein: 6, healnstein: 6, voodoyou: 6, pandy: 6
+    carmela_fudge:5, bolznstien:5, sir_cheeseburger:4, blinkeye:4, magnatar:6, oil_maker:16, badbat:5, looma:7, feathers:5, spikey:6, electrostien:14, mallow:12, nightshade: 6, runner: 6, aura_charmer: 6, voltastein: 6, staticstein: 6, healnstein: 6, voodoyou: 6, pandy: 6, snipa: 6
   });
   let nextMainAttackActivationId = 1;
   function getSuperChargeHitsForBrawler(brawler) {
@@ -35673,6 +36092,8 @@ let heistFeverActive = false;
         // cannot attack (per-frame hp-watch in updateVoodoyouSystems breaks
         // the control the moment the body takes damage).
         if (brawler === 'voodoyou' && isVoodoyouControlling(fromEntity, now)) return;
+        // Snipa: while Headshot is channeling, the body stands still and cannot attack.
+        if (brawler === 'snipa' && isSnipaChanneling(fromEntity, now)) return;
         // Fused mode: one press fires both components. The outer call runs the
         // per-press gates once; the two inner calls (fusedPartCall set) skip
         // them and run only the per-component gates/branch.
@@ -35869,6 +36290,8 @@ let heistFeverActive = false;
     if (!isBot && fromEntity === player && (fromEntity.fusedPartCall || selectedBrawler) === 'voodoyou') { try { window.BraweVoodoyouVoice?.play('attack'); } catch (e) {} }
     // Pandy voice: player attack line (throttled inside the voice module).
     if (!isBot && fromEntity === player && (fromEntity.fusedPartCall || selectedBrawler) === 'pandy') { try { window.BrawePandyVoice?.play('attack'); } catch (e) {} }
+    // Snipa voice: player attack line (throttled inside the voice module).
+    if (!isBot && fromEntity === player && (fromEntity.fusedPartCall || selectedBrawler) === 'snipa') { try { window.BraweSnipaVoice?.play('attack'); } catch (e) {} }
 
     fireArenaForgeCapturedHyperAttacks(fromEntity, ang, now);
 
@@ -38633,6 +39056,9 @@ let heistFeverActive = false;
     } else if (brawler === 'pandy') {
         firePandyMain(fromEntity, ang, targetX, targetY, { isBot, now, damageMult: 1, hitboxMult: 1, donorMode: false });
         return;
+    } else if (brawler === 'snipa') {
+        fireSnipaMain(fromEntity, ang, targetX, targetY, { isBot, now, damageMult: 1, hitboxMult: 1, donorMode: false });
+        return;
     } else if (brawler === 'nightshade') {
         fireNightshadeMain(fromEntity, ang, targetX, targetY, { isBot, now, damageMult: 1, hitboxMult: 1, donorMode: false });
         return;
@@ -40919,6 +41345,11 @@ let heistFeverActive = false;
         spawnFloatingText(player.x, player.y - 34, 'CONTROLLED!', '#c084fc');
         return;
     }
+    // Snipa: cannot fire a Super while Headshot is channeling.
+    if (isSnipaChanneling(player, performance.now())) {
+        spawnFloatingText(player.x, player.y - 34, 'HEADSHOT!', '#60a5fa');
+        return;
+    }
         // Fused mode: one press fires both components' Supers; the meter is
         // consumed once here, and the inner calls skip it.
         if (!player.fusedSuperPart && isFusedEntity(player)) {
@@ -40997,6 +41428,7 @@ let heistFeverActive = false;
     if (combatBrawler === 'mallow') { castMallowSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'voodoyou') { castVoodoyouSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'pandy') { castPandySuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
+    if (combatBrawler === 'snipa') { castSnipaSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'nightshade') { castNightshadeSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'aegis') { castAegisSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'runner') { castRunnerSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
@@ -42319,6 +42751,10 @@ let heistFeverActive = false;
       executePandyG1(bot);
     } else if (bot.brawler === 'pandy' && g === 'g2') {
       executePandyG2(bot);
+    } else if (bot.brawler === 'snipa' && g === 'g1') {
+      executeSnipaG1(bot);
+    } else if (bot.brawler === 'snipa' && g === 'g2') {
+      executeSnipaG2(bot);
     } else if (bot.brawler === 'nightshade' && g === 'g1') {
       executeNightshadeG1(bot, target?.x ?? (bot.x + Math.cos(ang) * 200), target?.y ?? (bot.y + Math.sin(ang) * 200));
     } else if (bot.brawler === 'nightshade' && g === 'g2') {
@@ -42842,6 +43278,7 @@ let heistFeverActive = false;
         }
     // Voodoyou: the body cannot attack while controlling a victim.
     if (isVoodoyouControlling(bot, performance.now())) return;
+    if (isSnipaChanneling(bot, performance.now())) return;
     if (!bot.fusedSuperPart && bot.brawler !== 'steamer' && bot.brawler !== 'oil_maker' && bot.brawler !== 'dashaholic' && bot.brawler !== 'mallow') {
         bot.superCharge = 0;
     }
@@ -42880,6 +43317,7 @@ let heistFeverActive = false;
     if (botCombatBrawler === 'mallow') { castMallowSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'voodoyou') { castVoodoyouSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'pandy') { castPandySuper(bot, isHyper, targetX, targetY); return; }
+    if (botCombatBrawler === 'snipa') { castSnipaSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'nightshade') { castNightshadeSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'aegis') { castAegisSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'runner') { castRunnerSuper(bot, isHyper, targetX, targetY); return; }
@@ -43543,6 +43981,11 @@ let heistFeverActive = false;
     // Voodoyou: the body cannot attack while controlling a victim.
     if (isVoodoyouControlling(player, now)) {
         spawnFloatingText(player.x, player.y - 34, 'CONTROLLED!', '#c084fc');
+        return;
+    }
+    // Snipa: cannot use a Gadget while Headshot is channeling.
+    if (isSnipaChanneling(player, now)) {
+        spawnFloatingText(player.x, player.y - 34, 'HEADSHOT!', '#60a5fa');
         return;
     }
 
@@ -44469,6 +44912,18 @@ let heistFeverActive = false;
         return;
     } else if (curBrawler === 'pandy' && curGadget === 'g2') {
         executePandyG2(player);
+        gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
+        setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
+        updateGadgetButton();
+        return;
+    } else if (curBrawler === 'snipa' && curGadget === 'g1') {
+        executeSnipaG1(player);
+        gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
+        setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
+        updateGadgetButton();
+        return;
+    } else if (curBrawler === 'snipa' && curGadget === 'g2') {
+        executeSnipaG2(player);
         gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
         setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
         updateGadgetButton();
@@ -54726,6 +55181,17 @@ function checkHit(target, b, i){
             b.damage = Math.round(b.damage * AURA_CHARMER_MARK_DMG_MULT);
         }
 
+        // Snipa hyper reticle mark: marked enemies take +25% damage from the Snipa who marked them.
+        snipaApplyHyperMarkDamage(target, b);
+
+        // Snipa Longshot: each main-attack hit on an enemy brawler stretches
+        // her range +0.5 tiles (SP1 Eagle Eye: +0.75), stacking to +3 tiles.
+        // Deadeye (G1) doubles the bonus on the flagged shot.
+        if (b && b.isSnipaLongshot && target && !target.isDummy && !target.isStructure && !target.isPet && !target.isCore && target.hp > 0) {
+            const snipaOwner = b.ownerId === player.id ? player : (typeof bots !== 'undefined' ? bots.find((bt) => bt && bt.id === b.ownerId) : null);
+            snipaApplyHitBonus(snipaOwner, b);
+        }
+
         // Ramage Power Play 90% Damage Reduction during Super Dash
         if (target && target.ramageIsDashing && isPowerPlayModifierActive(target) && (target.brawler === 'ramage' || target.id === player.id)) {
             b.damage = Math.round((b.damage || 0) * 0.10);
@@ -57848,6 +58314,7 @@ function checkHit(target, b, i){
     if (playing && !gameOver) updateRunnerSystems(dt);
     if (playing && !gameOver) updateVoodoyouSystems(dt);
     if (playing && !gameOver) updatePandySystems(dt);
+    if (playing && !gameOver) updateSnipaSystems(dt);
     if (playing && !gameOver) updatePropPads();
     if (playing && !gameOver) updateChristmasShowdown(dt);
     if (playing && !gameOver) updatePropHuntMode(dt, now);
@@ -60448,6 +60915,19 @@ function checkHit(target, b, i){
               const nextAngle = lerpAngle(currentAngle, targetAngle, 6.5 * dt);
               b.vx = Math.cos(nextAngle) * speed;
               b.vy = Math.sin(nextAngle) * speed;
+          }
+      }
+
+      // Snipa Headshot volley: bullets steer toward their assigned marked target.
+      if (b.isSnipaVolley && b.snipaVolleyTargetId) {
+          const vTarget = (player && player.id === b.snipaVolleyTargetId) ? player : (typeof bots !== 'undefined' ? bots.find((bt) => bt && bt.id === b.snipaVolleyTargetId) : null);
+          if (vTarget && vTarget.hp > 0) {
+              const steerDx = vTarget.x - b.x;
+              const steerDy = vTarget.y - b.y;
+              const steerLen = Math.hypot(steerDx, steerDy) || 1;
+              const steer = 800 * dt;
+              b.vx += (steerDx / steerLen) * steer;
+              b.vy += (steerDy / steerLen) * steer;
           }
       }
 
@@ -67932,6 +68412,32 @@ function checkHit(target, b, i){
                 ctx.fill();
                 ctx.restore();
             }
+            if (brawlerId === 'snipa') {
+                ctx.save();
+                ctx.shadowColor = '#3b82f6';
+                ctx.shadowBlur = 8;
+                ctx.fillStyle = '#60a5fa';
+                ctx.strokeStyle = '#1d4ed8';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(entity.x, drawY - size * 0.1, size * 0.28, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+                ctx.strokeStyle = '#dbeafe';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(entity.x - size * 0.28, drawY - size * 0.1);
+                ctx.lineTo(entity.x + size * 0.28, drawY - size * 0.1);
+                ctx.moveTo(entity.x, drawY - size * 0.38);
+                ctx.lineTo(entity.x, drawY + size * 0.18);
+                ctx.stroke();
+                ctx.fillStyle = '#1d4ed8';
+                ctx.beginPath();
+                ctx.arc(entity.x, drawY - size * 0.1, size * 0.07, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
             ctx.textAlign = 'left';
             ctx.textBaseline = 'alphabetic';
     }
@@ -68396,7 +68902,8 @@ function checkHit(target, b, i){
     // lerping it here keeps mouse-aim, culling, and the render transform
     // consistent with the view on screen.
     const pandyHyperZoomed = !!player && player.hp > 0 && selectedBrawler === 'pandy' && isEntityHyperchargedNow(player, now);
-    const targetZoom = pandyHyperZoomed ? PANDY_HYPER_CAMERA_ZOOM : CAMERA_ZOOM_BASE;
+    const snipaSuperZoomed = !!player && player.hp > 0 && selectedBrawler === 'snipa' && isSnipaChanneling(player, now);
+    const targetZoom = pandyHyperZoomed ? PANDY_HYPER_CAMERA_ZOOM : snipaSuperZoomed ? SNIPA_SUPER_CAMERA_ZOOM : CAMERA_ZOOM_BASE;
     const zoomDt = clamp((now - (lastCameraZoomAt || now)) / 1000, 0, 0.1);
     lastCameraZoomAt = now;
     CAMERA_ZOOM += (targetZoom - CAMERA_ZOOM) * Math.min(1, zoomDt * 5);
@@ -68462,6 +68969,7 @@ function checkHit(target, b, i){
     renderMallowEffects();
     renderVoodoyouEffects();
     renderPandyEffects();
+    renderSnipaEffects();
     renderNightshadeEffects();
     renderRunnerEffects(ctx);
     if (typeof renderBouncinBossEvent === 'function') renderBouncinBossEvent('ground');
@@ -70874,6 +71382,9 @@ function checkHit(target, b, i){
       }
       ctx.globalAlpha = 1.0;
       
+      // Pandy Focus bar (2026-11-12, Anthony): above the ammo bar, below the HP bar.
+      if (selectedBrawler === 'pandy' && player.hp > 0) drawPandyFocusHudBar(ctx, player, drawY);
+
       // ammo bar UI
       const teetherFlossReady = selectedBrawler === 'teether' && performance.now() < (player.teetherAttachedUntil || 0);
       if (teetherFlossReady) {
@@ -75753,6 +76264,14 @@ function checkHit(target, b, i){
       }
       if (b.isPandyCandyShell) {
         drawPandyCandyShell(ctx, b);
+        continue;
+      }
+      if (b.isSnipaLongshot) {
+        drawSnipaLongshot(ctx, b);
+        continue;
+      }
+      if (b.isSnipaVolley) {
+        drawSnipaVolleyBullet(ctx, b);
         continue;
       }
       const earlyProjectileBrawler = b.ownerBrawler || (b.ownerId === player.id ? selectedBrawler : '');
@@ -84556,6 +85075,64 @@ function checkHit(target, b, i){
     } catch (e) { /* voice must never break the loop */ }
   }
 
+  let snipaVoicePrevPlaying = false;
+  let snipaVoicePrevGameOver = false;
+  let snipaVoiceMatchEndPlayed = false;
+  let snipaVoiceLastHp = null;
+  let snipaVoiceLastActionAt = 0;
+  let snipaVoiceLastIdleAt = 0;
+  function updateSnipaVoiceState() {
+    try {
+      if (typeof selectedBrawler === 'undefined' || !player) return;
+      const now = performance.now();
+      const isSnipa = selectedBrawler === 'snipa';
+      // Match start: playing flips false -> true.
+      if (playing && !snipaVoicePrevPlaying) {
+        snipaVoiceMatchEndPlayed = false;
+        snipaVoiceLastHp = player.hp;
+        snipaVoiceLastActionAt = now;
+        snipaVoiceLastIdleAt = 0;
+        player.snipaWinAt = 0;
+        player.snipaDeathAt = 0;
+        if (isSnipa) window.BraweSnipaVoice?.play('spawn');
+      }
+      // Match end: gameOver flips false -> true.
+      if (gameOver && !snipaVoicePrevGameOver && !snipaVoiceMatchEndPlayed) {
+        snipaVoiceMatchEndPlayed = true;
+        if (isSnipa) {
+          if (player.hp > 0) {
+            player.snipaWinAt = now;
+            window.BraweSnipaVoice?.play('win');
+          } else {
+            player.snipaDeathAt = now;
+            window.BraweSnipaVoice?.play('death');
+            explosions.push({ x: player.x, y: player.y, radius: 60, life: 0, maxLife: .8, color: 'rgba(96,165,250,.55)', fxKind: 'snipaDeathBurst' });
+            spawnFloatingText(player.x, player.y - 46, '🎯 SNIPED!', '#60a5fa');
+          }
+        }
+      }
+      // Hurt voice: player HP dropped since last frame.
+      if (playing && !gameOver && isSnipa && player.hp > 0 && snipaVoiceLastHp !== null && player.hp < snipaVoiceLastHp) {
+        snipaVoiceLastActionAt = now;
+        window.BraweSnipaVoice?.play('hurt');
+      }
+      if (player) snipaVoiceLastHp = player.hp;
+      // Idle voice: alive, unmoving, no attack and no damage for 20s.
+      if (playing && !gameOver && isSnipa && player.hp > 0) {
+        const moved = Math.hypot((player.x || 0) - (player.snipaVoicePrevX ?? player.x ?? 0), (player.y || 0) - (player.snipaVoicePrevY ?? player.y ?? 0)) > 4;
+        if (moved || (player.lastAttackAt || 0) > snipaVoiceLastActionAt) snipaVoiceLastActionAt = now;
+        player.snipaVoicePrevX = player.x;
+        player.snipaVoicePrevY = player.y;
+        if (now - snipaVoiceLastActionAt > 20000 && now - snipaVoiceLastIdleAt > 25000) {
+          snipaVoiceLastIdleAt = now;
+          window.BraweSnipaVoice?.play('idle');
+        }
+      }
+      snipaVoicePrevPlaying = !!playing;
+      snipaVoicePrevGameOver = !!gameOver;
+    } catch (e) { /* voice must never break the loop */ }
+  }
+
   function loop(){
     if (runtimeLoopCrashed) return;
     try {
@@ -84580,6 +85157,7 @@ function checkHit(target, b, i){
         updateOutlitVoiceState();
         updateVoodoyouVoiceState();
         updatePandyVoiceState();
+        updateSnipaVoiceState();
         const homeVisible = homeScreen && homeScreen.style.display !== 'none';
         if (playing || !homeVisible) render();
     } catch (err) {

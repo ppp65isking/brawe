@@ -72,6 +72,7 @@ check('SP constants: SP1 1.5x build / SP2 1.2x range / +0.7% per point', game.in
 check('super constants: 1000 speed / 1100 range / x1.8 damage', game.includes('const PANDY_SUPER_SPEED = 1000;') && game.includes('const PANDY_SUPER_RANGE = 1100;') && game.includes('const PANDY_SUPER_DAMAGE_MULT = 1.8;'));
 check('trap constants: 120 radius / 8s / 45% damage / 40% slow 2s', game.includes('const PANDY_TRAP_RADIUS = 120;') && game.includes('const PANDY_TRAP_DURATION_MS = 8000;') && game.includes('const PANDY_TRAP_DAMAGE_RATIO = 0.45;') && game.includes('const PANDY_TRAP_SLOW_MULT = 0.60;'));
 check('hyper: pierce + focus locked at 100 (2x build retired)', game.includes('pierce: pandyHyper, ownerId: fromEntity.id') && game.includes('// Balance 2026-11-12: Hyper LOCKS Focus at 100 for the whole Hyper'));
+check('hyper wording: exact brawler-screen text (lock, pierce, 6 shells, range — no 2x build claim)', game.includes("hyper: 'Sugar Surge: while Hypercharged, Focus locks at 100, shots pierce, Candy Cannon fires 6 huge shells in all directions, and main range grows.'"));
 check('balance 2026-11-12: base range 729.6 (-23.2%)', game.includes('const PANDY_SUGARSHOT_BASE_RANGE = 729.6;'));
 check('balance: super size +25% constant', game.includes('const PANDY_SUPER_SIZE_MULT = 1.25;'));
 check('balance: hyper super fires 6 radial shells', game.includes('const PANDY_HYPER_SUPER_COUNT = 6;') && game.includes('for (let i = 0; i < PANDY_HYPER_SUPER_COUNT; i++) fireShell((i * Math.PI * 2) / PANDY_HYPER_SUPER_COUNT);'));
@@ -82,6 +83,9 @@ check('balance: hyper camera zoom 0.72', game.includes('const PANDY_HYPER_CAMERA
 check('balance: off-map kill for unlimited shells', game.includes('if (b.pandyUnlimitedRange && (b.x < -60 || b.x > WORLD_W + 60 || b.y < -60 || b.y > WORLD_H + 60))'));
 check('balance: telegraph in renderPandyEffects', game.includes('const teleRange = pandyEffectiveRange(player);') && game.includes("ctx.setLineDash([14, 10]);"));
 check('balance: purple hyper aura in renderPandyEffects', game.includes('// Balance 2026-11-12: Hyper purple aura') && game.includes("ctx.fillStyle = '#a855f7';"));
+check('focus bar: player bar drawn in HUD stack above ammo', game.includes("if (selectedBrawler === 'pandy' && player.hp > 0) drawPandyFocusHudBar(ctx, player, drawY);"));
+check('focus bar: overhead loop skips the player', game.includes("if (e.id === player.id) continue; // the player's bar lives in the HUD stack now"));
+check('focus bar: HUD helper exists (drawY-27, 48 wide)', game.includes('function drawPandyFocusHudBar(ctx, entity, drawY) {') && game.includes('const bx = entity.x - w / 2, by = drawY - 27;'));
 check('balance: camera zoom lerps in render()', game.includes('const pandyHyperZoomed = !!player && player.hp > 0 && selectedBrawler ===') && game.includes('CAMERA_ZOOM += (targetZoom - CAMERA_ZOOM) * Math.min(1, zoomDt * 5);'));
 check('balance: camera zoom is mutable (base 0.90)', game.includes('const CAMERA_ZOOM_BASE = 0.90;') && game.includes('let CAMERA_ZOOM = CAMERA_ZOOM_BASE;'));
 check('SP gates use stored keys slow/long (never sp1/sp2 alone)',
@@ -382,6 +386,7 @@ try {
     extractFn(game, 'pandyEffectiveRange') + '\n' +
     extractFn(game, 'drawPandySugarshot') + '\n' +
     extractFn(game, 'drawPandyCandyShell') + '\n' +
+    extractFn(game, 'drawPandyFocusHudBar') + '\n' +
     extractFn(game, 'renderPandyEffects'),
     sandbox);
   const s1 = stubCtx();
@@ -397,22 +402,39 @@ try {
   check('hyper shell art: +30% again (arc ~27.6) and purple', hasArcIn(s2h.calls, 26, 29) && hasFill(s2h.sets, '#c084fc'));
   const s3 = stubCtx();
   sandbox.ctx = s3.proxy;
+  // The player's overhead bar moved to the HUD stack (2026-11-12), so the
+  // overhead gold check runs against a BOT Pandy; the player is skipped.
+  sandbox.bots = [{ id: 2, brawler: 'pandy', hp: 5200, pandyFocus: 100, x: 300, y: 100, radius: 14 }];
   sandbox.renderPandyEffects();
   check('render effects: trap drawn pink', hasFill(s3.sets, '#f472b6'));
-  check('render effects: focus bar drawn gold at max', hasFill(s3.sets, '#fbbf24'));
+  check('render effects: bot overhead focus bar drawn gold at max', hasFill(s3.sets, '#fbbf24'));
   // Telegraph: player at (100,100), focus 100, mouse at (500,100) -> aim 0°,
   // range 729.6 x 1.15 = 839.04 -> line ends at (939.04, 100).
   check('render effects: telegraph dashed line drawn', s3.calls.some((c) => c.m === 'setLineDash'));
   check('render effects: telegraph ends at current effective range', s3.calls.some((c) => c.m === 'lineTo' && near(c.args[0], 939.04) && near(c.args[1], 100)));
-  // Focus bar track is drawn even at 0 Focus (empty track, 46 wide).
+  // Focus bar track is drawn even at 0 Focus (empty track, 46 wide) — bot bar.
   const s3b = stubCtx();
   sandbox.ctx = s3b.proxy;
   sandbox.player = { id: 1, brawler: 'pandy', hp: 5200, pandyFocus: 0, x: 100, y: 100, radius: 14 };
+  sandbox.bots = [{ id: 2, brawler: 'pandy', hp: 5200, pandyFocus: 0, x: 300, y: 100, radius: 14 }];
   sandbox.renderPandyEffects();
-  check('render effects: focus bar track visible at 0 Focus', s3b.calls.some((c) => c.m === 'fillRect' && c.args[2] === 46 && c.args[3] === 7));
+  check('render effects: bot overhead focus bar track visible at 0 Focus', s3b.calls.some((c) => c.m === 'fillRect' && c.args[2] === 46 && c.args[3] === 7));
+  // The player's bar now lives in the HUD stack above ammo (drawY-27).
+  const s3c = stubCtx();
+  sandbox.drawPandyFocusHudBar(s3c.proxy, { hp: 5200, pandyFocus: 100, pandyFocusOn: true, x: 100 }, 200);
+  check('focus HUD bar: gold at max', hasFill(s3c.sets, '#fbbf24'));
+  check('focus HUD bar: sits above ammo (drawY-27, 5 tall)', s3c.calls.some((c) => c.m === 'fillRect' && c.args[1] === 173 && c.args[3] === 5));
+  check('focus HUD bar: FOCUS MAX label kept', s3c.calls.some((c) => c.m === 'fillText' && String(c.args[0]).includes('FOCUS MAX')));
+  const s3d = stubCtx();
+  sandbox.drawPandyFocusHudBar(s3d.proxy, { hp: 5200, pandyFocus: 0, x: 100 }, 200);
+  check('focus HUD bar: track visible at 0 Focus (50 x 7)', s3d.calls.some((c) => c.m === 'fillRect' && c.args[2] === 50 && c.args[3] === 7));
+  const s3e = stubCtx();
+  sandbox.drawPandyFocusHudBar(s3e.proxy, { hp: 5200, pandyFocus: 50, x: 100 }, 200);
+  check('focus HUD bar: pink while building', hasFill(s3e.sets, '#f472b6'));
   // Purple hyper aura around a hypercharged Pandy.
   const s3h = stubCtx();
   sandbox.ctx = s3h.proxy;
+  sandbox.bots = [];
   sandbox.player = { id: 1, brawler: 'pandy', hp: 5200, pandyFocus: 100, x: 100, y: 100, radius: 14, _hyperTest: true };
   sandbox.renderPandyEffects();
   check('render effects: hyper purple aura drawn', hasFill(s3h.sets, '#a855f7'));
