@@ -6,9 +6,12 @@
 // with Focus — a 0-100 meter that builds while standing still (40/s, ~2.5s
 // to full) and decays while moving (120/s); Focus adds +0.5% damage per
 // point (max +50%) and +0.15% range per point (max +15%). Firing does NOT
-// consume Focus. Super Candy Cannon: giant piercing shell, base = main dmg
+// consume Focus. Base range 729.6 (balance 2026-11-12: -23.2% from 950).
+// Super Candy Cannon: giant piercing shell (+25% size), base = main dmg
 // x1.8 (1620 at P11), damage also scales with distance + Focus. Hyper
-// Sugar Surge: shots pierce and Focus builds twice as fast. G1 Sweet Spot
+// Sugar Surge: shots pierce, Focus LOCKS at 100, Super fires 6 radial
+// shells with unlimited range, main range +12%, purple visuals, camera
+// zooms out (balance 2026-11-12). G1 Sweet Spot
 // (14s): Focus instantly to 100. G2 Candy Trap (16s): drop a trap (120px,
 // 8s) — first enemy to step on it takes 45% of main damage and is slowed
 // 40% for 2s. SP1 Steady Aim: Focus builds 50% faster. SP2 Long Game:
@@ -68,7 +71,19 @@ check('constants: focus 40/s build / 120/s decay / +0.5% per point / 1.8x distan
 check('SP constants: SP1 1.5x build / SP2 1.2x range / +0.7% per point', game.includes('const PANDY_SP1_BUILD_MULT = 1.5;') && game.includes('const PANDY_SP2_RANGE_MULT = 1.2;') && game.includes('const PANDY_FOCUS_DAMAGE_PER_POINT_SP2 = 0.007;'));
 check('super constants: 1000 speed / 1100 range / x1.8 damage', game.includes('const PANDY_SUPER_SPEED = 1000;') && game.includes('const PANDY_SUPER_RANGE = 1100;') && game.includes('const PANDY_SUPER_DAMAGE_MULT = 1.8;'));
 check('trap constants: 120 radius / 8s / 45% damage / 40% slow 2s', game.includes('const PANDY_TRAP_RADIUS = 120;') && game.includes('const PANDY_TRAP_DURATION_MS = 8000;') && game.includes('const PANDY_TRAP_DAMAGE_RATIO = 0.45;') && game.includes('const PANDY_TRAP_SLOW_MULT = 0.60;'));
-check('hyper: pierce + 2x focus build', game.includes('const PANDY_HYPER_FOCUS_BUILD_MULT = 2;') && game.includes('pierce: pandyHyper, ownerId: fromEntity.id'));
+check('hyper: pierce + focus locked at 100 (2x build retired)', game.includes('pierce: pandyHyper, ownerId: fromEntity.id') && game.includes('// Balance 2026-11-12: Hyper LOCKS Focus at 100 for the whole Hyper'));
+check('balance 2026-11-12: base range 729.6 (-23.2%)', game.includes('const PANDY_SUGARSHOT_BASE_RANGE = 729.6;'));
+check('balance: super size +25% constant', game.includes('const PANDY_SUPER_SIZE_MULT = 1.25;'));
+check('balance: hyper super fires 6 radial shells', game.includes('const PANDY_HYPER_SUPER_COUNT = 6;') && game.includes('for (let i = 0; i < PANDY_HYPER_SUPER_COUNT; i++) fireShell((i * Math.PI * 2) / PANDY_HYPER_SUPER_COUNT);'));
+check('balance: hyper radial shells +30% size', game.includes('const PANDY_HYPER_SUPER_SIZE_MULT = 1.3;'));
+check('balance: hyper super unlimited maxLife', game.includes('const PANDY_HYPER_SUPER_MAX_LIFE = 120;'));
+check('balance: hyper main range +12%', game.includes('const PANDY_HYPER_RANGE_MULT = 1.12;') && game.includes('PANDY_HYPER_RANGE_MULT : 1'));
+check('balance: hyper camera zoom 0.72', game.includes('const PANDY_HYPER_CAMERA_ZOOM = 0.72;'));
+check('balance: off-map kill for unlimited shells', game.includes('if (b.pandyUnlimitedRange && (b.x < -60 || b.x > WORLD_W + 60 || b.y < -60 || b.y > WORLD_H + 60))'));
+check('balance: telegraph in renderPandyEffects', game.includes('const teleRange = pandyEffectiveRange(player);') && game.includes("ctx.setLineDash([14, 10]);"));
+check('balance: purple hyper aura in renderPandyEffects', game.includes('// Balance 2026-11-12: Hyper purple aura') && game.includes("ctx.fillStyle = '#a855f7';"));
+check('balance: camera zoom lerps in render()', game.includes('const pandyHyperZoomed = !!player && player.hp > 0 && selectedBrawler ===') && game.includes('CAMERA_ZOOM += (targetZoom - CAMERA_ZOOM) * Math.min(1, zoomDt * 5);'));
+check('balance: camera zoom is mutable (base 0.90)', game.includes('const CAMERA_ZOOM_BASE = 0.90;') && game.includes('let CAMERA_ZOOM = CAMERA_ZOOM_BASE;'));
 check('SP gates use stored keys slow/long (never sp1/sp2 alone)',
   game.includes("function pandyHasSP1(entity) { const c = pandyStarChoice(entity); return c === 'slow' || c === 'sp1'; }") &&
   game.includes("function pandyHasSP2(entity) { const c = pandyStarChoice(entity); return c === 'long' || c === 'sp2'; }"));
@@ -128,14 +143,17 @@ try {
   const sandbox = {
     Math,
     clamp: (v, lo, hi) => Math.min(hi, Math.max(lo, v)),
+    performance: { now: () => 100000 },
     getEntityStarChoice: (e) => (e && e.selectedStar) || 'none',
-    PANDY_SUGARSHOT_BASE_RANGE: 950,
+    isEntityHyperchargedNow: () => false,
+    PANDY_SUGARSHOT_BASE_RANGE: 729.6,
     PANDY_DISTANCE_DAMAGE_MAX_MULT: 1.8,
     PANDY_FOCUS_MAX: 100,
     PANDY_FOCUS_DAMAGE_PER_POINT: 0.005,
     PANDY_FOCUS_DAMAGE_PER_POINT_SP2: 0.007,
     PANDY_FOCUS_RANGE_PER_POINT: 0.0015,
     PANDY_SP2_RANGE_MULT: 1.2,
+    PANDY_HYPER_RANGE_MULT: 1.12,
   };
   vm.createContext(sandbox);
   vm.runInContext(
@@ -148,20 +166,20 @@ try {
     extractFn(game, 'pandyEffectiveRange') + '\n' +
     extractFn(game, 'pandyDistanceDamageMult'),
     sandbox);
-  check('distance: 0px travelled is 1.0x', near(sandbox.pandyDistanceDamageMult(0, 950), 1.0));
-  check('distance: half range is 1.4x', near(sandbox.pandyDistanceDamageMult(475, 950), 1.4));
-  check('distance: full range is 1.8x', near(sandbox.pandyDistanceDamageMult(950, 950), 1.8));
-  check('distance: beyond range clamps at 1.8x', near(sandbox.pandyDistanceDamageMult(2000, 950), 1.8));
+  check('distance: 0px travelled is 1.0x', near(sandbox.pandyDistanceDamageMult(0, 729.6), 1.0));
+  check('distance: half range is 1.4x', near(sandbox.pandyDistanceDamageMult(364.8, 729.6), 1.4));
+  check('distance: full range is 1.8x', near(sandbox.pandyDistanceDamageMult(729.6, 729.6), 1.8));
+  check('distance: beyond range clamps at 1.8x', near(sandbox.pandyDistanceDamageMult(2000, 729.6), 1.8));
   check('focus: 0 focus is +0% (mult 1.0)', near(sandbox.pandyFocusDamageMult({ pandyFocus: 0 }), 1.0));
   check('focus: 50 focus is +25% (mult 1.25)', near(sandbox.pandyFocusDamageMult({ pandyFocus: 50 }), 1.25));
   check('focus: 100 focus is +50% (mult 1.5)', near(sandbox.pandyFocusDamageMult({ pandyFocus: 100 }), 1.5));
   check('focus: SP2 100 focus is +70% (mult 1.7)', near(sandbox.pandyFocusDamageMult({ pandyFocus: 100, selectedStar: 'long' }), 1.7));
   check('focus: SP1 does not change damage bonus', near(sandbox.pandyFocusDamageMult({ pandyFocus: 100, selectedStar: 'slow' }), 1.5));
-  check('range: 0 focus is 950', near(sandbox.pandyEffectiveRange({ pandyFocus: 0 }), 950));
-  check('range: 100 focus is 950 x 1.15 = 1092.5', near(sandbox.pandyEffectiveRange({ pandyFocus: 100 }), 1092.5));
-  check('range: SP2 0 focus is 950 x 1.2 = 1140', near(sandbox.pandyEffectiveRange({ pandyFocus: 0, selectedStar: 'long' }), 1140));
-  check('range: SP2 100 focus is 1140 x 1.15 = 1311', near(sandbox.pandyEffectiveRange({ pandyFocus: 100, selectedStar: 'long' }), 1311));
-  check('combined max: 900 x 1.8 x 1.5 = 2430 at max range + full focus', Math.round(900 * sandbox.pandyDistanceDamageMult(950, 950) * sandbox.pandyFocusDamageMult({ pandyFocus: 100 })) === 2430);
+  check('range: 0 focus is 729.6', near(sandbox.pandyEffectiveRange({ pandyFocus: 0 }), 729.6));
+  check('range: 100 focus is 729.6 x 1.15 = 839.04', near(sandbox.pandyEffectiveRange({ pandyFocus: 100 }), 839.04));
+  check('range: SP2 0 focus is 729.6 x 1.2 = 875.52', near(sandbox.pandyEffectiveRange({ pandyFocus: 0, selectedStar: 'long' }), 875.52));
+  check('range: SP2 100 focus is 875.52 x 1.15 = 1006.848', near(sandbox.pandyEffectiveRange({ pandyFocus: 100, selectedStar: 'long' }), 1006.848));
+  check('combined max: 900 x 1.8 x 1.5 = 2430 at max range + full focus', Math.round(900 * sandbox.pandyDistanceDamageMult(729.6, 729.6) * sandbox.pandyFocusDamageMult({ pandyFocus: 100 })) === 2430);
   check('SP1 gate: stored slow is true', sandbox.pandyHasSP1({ selectedStar: 'slow' }) === true);
   check('SP1 gate: stored long is false', sandbox.pandyHasSP1({ selectedStar: 'long' }) === false);
   check('SP1 gate: no star is false', sandbox.pandyHasSP1({ selectedStar: 'none' }) === false);
@@ -169,6 +187,39 @@ try {
   check('SP2 gate: stored slow is false', sandbox.pandyHasSP2({ selectedStar: 'slow' }) === false);
   check('SP2 gate: no star is false', sandbox.pandyHasSP2({ selectedStar: 'none' }) === false);
 } catch (e) { failures.push('distance/focus vm block threw: ' + e.message); }
+
+// --- executed: Hyper +12% main range (balance 2026-11-12) ---
+try {
+  const sandbox = {
+    Math,
+    clamp: (v, lo, hi) => Math.min(hi, Math.max(lo, v)),
+    performance: { now: () => 100000 },
+    getEntityStarChoice: (e) => (e && e.selectedStar) || 'none',
+    isEntityHyperchargedNow: () => true,
+    PANDY_SUGARSHOT_BASE_RANGE: 729.6,
+    PANDY_DISTANCE_DAMAGE_MAX_MULT: 1.8,
+    PANDY_FOCUS_MAX: 100,
+    PANDY_FOCUS_DAMAGE_PER_POINT: 0.005,
+    PANDY_FOCUS_DAMAGE_PER_POINT_SP2: 0.007,
+    PANDY_FOCUS_RANGE_PER_POINT: 0.0015,
+    PANDY_SP2_RANGE_MULT: 1.2,
+    PANDY_HYPER_RANGE_MULT: 1.12,
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(
+    extractFn(game, 'pandyStarChoice') + '\n' +
+    extractFn(game, 'pandyHasSP1') + '\n' +
+    extractFn(game, 'pandyHasSP2') + '\n' +
+    extractFn(game, 'pandyFocusDamagePerPoint') + '\n' +
+    extractFn(game, 'pandyRangeMult') + '\n' +
+    extractFn(game, 'pandyFocusDamageMult') + '\n' +
+    extractFn(game, 'pandyEffectiveRange') + '\n' +
+    extractFn(game, 'pandyDistanceDamageMult'),
+    sandbox);
+  check('hyper range: 0 focus is 729.6 x 1.12 = 817.152', near(sandbox.pandyEffectiveRange({ pandyFocus: 0 }), 817.152));
+  check('hyper range: 100 focus is 729.6 x 1.15 x 1.12 = 939.7248', near(sandbox.pandyEffectiveRange({ pandyFocus: 100 }), 939.7248));
+  check('hyper range: SP2 100 focus is 729.6 x 1.2 x 1.15 x 1.12 = 1127.66976', near(sandbox.pandyEffectiveRange({ pandyFocus: 100, selectedStar: 'long' }), 1127.66976));
+} catch (e) { failures.push('hyper range vm block threw: ' + e.message); }
 
 // --- executed: G1 + G2 + focus build/decay + trap trigger ---
 try {
@@ -182,7 +233,7 @@ try {
     getEntityStarChoice: (e) => (e && e.selectedStar) || 'none',
     getScaledStats: () => ({ dmg: 900, hp: 5200, speed: 270 }),
     getSelectedBrawlerLevel: () => 11,
-    isEntityHyperchargedNow: () => false,
+    isEntityHyperchargedNow: (e) => !!e._hyperTest,
     areAlliedEntities: (a, t) => a.id === 1 && t.id === 5, // id 5 is the owner's ally
     checkHit: (target, b) => { hits.push({ id: target.id, dmg: b.damage }); return true; },
     spawnFloatingText: (x, y, t) => { floating.push(t); },
@@ -247,6 +298,31 @@ try {
   sandbox.player = dead;
   sandbox.updatePandySystems(0.5);
   check('focus: death resets Focus to 0', dead.pandyFocus === 0);
+  // Hyper: Focus LOCKS at 100 even while moving (balance 2026-11-12).
+  const hyperMover = { id: 1, hp: 5200, pandyFocus: 50, selectedStar: 'none', x: 0, y: 0, brawler: 'pandy', pandyLastX: -100, pandyLastY: 0, _hyperTest: true };
+  sandbox.player = hyperMover;
+  sandbox.updatePandySystems(1.0);
+  check('hyper: moving 1s keeps Focus locked at 100', hyperMover.pandyFocus === 100 && hyperMover.pandyFocusOn === true);
+  // Hyper: purple trail particle spawns while Hyper.
+  check('hyper: purple trail particle spawns', sandbox.explosions.some((p) => p.isParticle && (p.color === '#c084fc' || p.color === '#a855f7')));
+  // Focus ON/OFF: reaching 100 turns ON, draining to 0 turns OFF.
+  const toMax = { id: 1, hp: 5200, pandyFocus: 60, selectedStar: 'none', x: 0, y: 0, brawler: 'pandy', pandyLastX: 0, pandyLastY: 0 };
+  sandbox.player = toMax;
+  sandbox.updatePandySystems(1.0);
+  check('focus: reaching 100 turns Focus ON', toMax.pandyFocus === 100 && toMax.pandyFocusOn === true);
+  const toZero = { id: 1, hp: 5200, pandyFocus: 50, selectedStar: 'none', x: 0, y: 0, brawler: 'pandy', pandyLastX: -100, pandyLastY: 0, pandyFocusOn: true };
+  sandbox.player = toZero;
+  sandbox.updatePandySystems(1.0);
+  check('focus: draining to 0 turns Focus OFF', toZero.pandyFocus === 0 && toZero.pandyFocusOn === false);
+  // G1 sets the ON flag too.
+  const g1ent = { id: 1, hp: 5200, pandyFocus: 0, selectedStar: 'none', x: 0, y: 0, brawler: 'pandy' };
+  sandbox.executePandyG1(g1ent);
+  check('G1: Focus ON flag set', g1ent.pandyFocusOn === true);
+  // Death clears the ON flag.
+  const deadHyper = { id: 1, hp: 0, pandyFocus: 100, pandyFocusOn: true, selectedStar: 'none', x: 0, y: 0, brawler: 'pandy', pandyLastX: 0, pandyLastY: 0, _hyperTest: true };
+  sandbox.player = deadHyper;
+  sandbox.updatePandySystems(0.5);
+  check('focus: death clears Focus ON flag', deadHyper.pandyFocus === 0 && deadHyper.pandyFocusOn === false);
   // Trap: enemy steps on it -> 405 damage (45% of 900) + slow, trap consumed.
   sandbox.executePandyG2(owner);
   const enemy = { id: 2, hp: 5000, x: 50, y: 0 };
@@ -282,15 +358,28 @@ try {
     Math,
     clamp: (v, lo, hi) => Math.min(hi, Math.max(lo, v)),
     performance: { now: () => 100000 },
+    getEntityStarChoice: (e) => (e && e.selectedStar) || 'none',
+    getMouseWorld: () => ({ x: 500, y: 100 }),
+    isEntityHyperchargedNow: (e) => !!e._hyperTest,
     player: { id: 1, brawler: 'pandy', hp: 5200, pandyFocus: 100, x: 100, y: 100, radius: 14 },
     bots: [],
     selectedBrawler: 'pandy',
     pandyTraps: [{ x: 200, y: 200, radius: 120, until: 200000 }],
     PANDY_VISUALS_ENABLED: true,
     PANDY_FOCUS_MAX: 100,
+    PANDY_SUGARSHOT_BASE_RANGE: 729.6,
+    PANDY_FOCUS_RANGE_PER_POINT: 0.0015,
+    PANDY_SP2_RANGE_MULT: 1.2,
+    PANDY_HYPER_RANGE_MULT: 1.12,
+    PANDY_SUPER_SIZE_MULT: 1.25,
   };
   vm.createContext(sandbox);
   vm.runInContext(
+    extractFn(game, 'pandyStarChoice') + '\n' +
+    extractFn(game, 'pandyHasSP1') + '\n' +
+    extractFn(game, 'pandyHasSP2') + '\n' +
+    extractFn(game, 'pandyRangeMult') + '\n' +
+    extractFn(game, 'pandyEffectiveRange') + '\n' +
     extractFn(game, 'drawPandySugarshot') + '\n' +
     extractFn(game, 'drawPandyCandyShell') + '\n' +
     extractFn(game, 'renderPandyEffects'),
@@ -302,13 +391,92 @@ try {
   const s2 = stubCtx();
   sandbox.drawPandyCandyShell(s2.proxy, { vx: 1000, vy: 0, x: 0, y: 0 });
   check('candy shell art: gold shell body', hasFill(s2.sets, '#fbbf24'));
-  check('candy shell art: bigger than sugarshot (arc ~17)', hasArcIn(s2.calls, 16, 18));
+  check('candy shell art: +25% size (arc ~21.25)', hasArcIn(s2.calls, 20, 23));
+  const s2h = stubCtx();
+  sandbox.drawPandyCandyShell(s2h.proxy, { vx: 1000, vy: 0, x: 0, y: 0, hyperVisual: true, pandyShellScale: 1.625 });
+  check('hyper shell art: +30% again (arc ~27.6) and purple', hasArcIn(s2h.calls, 26, 29) && hasFill(s2h.sets, '#c084fc'));
   const s3 = stubCtx();
   sandbox.ctx = s3.proxy;
   sandbox.renderPandyEffects();
   check('render effects: trap drawn pink', hasFill(s3.sets, '#f472b6'));
   check('render effects: focus bar drawn gold at max', hasFill(s3.sets, '#fbbf24'));
+  // Telegraph: player at (100,100), focus 100, mouse at (500,100) -> aim 0°,
+  // range 729.6 x 1.15 = 839.04 -> line ends at (939.04, 100).
+  check('render effects: telegraph dashed line drawn', s3.calls.some((c) => c.m === 'setLineDash'));
+  check('render effects: telegraph ends at current effective range', s3.calls.some((c) => c.m === 'lineTo' && near(c.args[0], 939.04) && near(c.args[1], 100)));
+  // Focus bar track is drawn even at 0 Focus (empty track, 46 wide).
+  const s3b = stubCtx();
+  sandbox.ctx = s3b.proxy;
+  sandbox.player = { id: 1, brawler: 'pandy', hp: 5200, pandyFocus: 0, x: 100, y: 100, radius: 14 };
+  sandbox.renderPandyEffects();
+  check('render effects: focus bar track visible at 0 Focus', s3b.calls.some((c) => c.m === 'fillRect' && c.args[2] === 46 && c.args[3] === 7));
+  // Purple hyper aura around a hypercharged Pandy.
+  const s3h = stubCtx();
+  sandbox.ctx = s3h.proxy;
+  sandbox.player = { id: 1, brawler: 'pandy', hp: 5200, pandyFocus: 100, x: 100, y: 100, radius: 14, _hyperTest: true };
+  sandbox.renderPandyEffects();
+  check('render effects: hyper purple aura drawn', hasFill(s3h.sets, '#a855f7'));
 } catch (e) { failures.push('art vm block threw: ' + e.message); }
+
+// --- executed: super — normal shell vs Hyper radial x6 (balance 2026-11-12) ---
+try {
+  const floating = [];
+  const sandbox = {
+    Math,
+    clamp: (v, lo, hi) => Math.min(hi, Math.max(lo, v)),
+    performance: { now: () => 100000 },
+    getEntityStarChoice: (e) => (e && e.selectedStar) || 'none',
+    getScaledStats: () => ({ dmg: 900, hp: 5200, speed: 270 }),
+    getSelectedBrawlerLevel: () => 11,
+    isEntityHyperchargedNow: (e) => !!e._hyperTest,
+    spawnFloatingText: (x, y, t) => { floating.push(t); },
+    bullets: [],
+    player: { id: 1, brawler: 'pandy', hp: 5200, pandyFocus: 0, x: 0, y: 0, radius: 14 },
+    window: {},
+    PANDY_ENABLED: true,
+    PANDY_FOCUS_MAX: 100,
+    PANDY_FOCUS_DAMAGE_PER_POINT: 0.005,
+    PANDY_FOCUS_DAMAGE_PER_POINT_SP2: 0.007,
+    PANDY_FOCUS_RANGE_PER_POINT: 0.0015,
+    PANDY_SP2_RANGE_MULT: 1.2,
+    PANDY_SUPER_SPEED: 1000,
+    PANDY_SUPER_RANGE: 1100,
+    PANDY_SUPER_DAMAGE_MULT: 1.8,
+    PANDY_SUPER_SIZE_MULT: 1.25,
+    PANDY_HYPER_SUPER_COUNT: 6,
+    PANDY_HYPER_SUPER_SIZE_MULT: 1.3,
+    PANDY_HYPER_SUPER_MAX_LIFE: 120,
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(
+    extractFn(game, 'pandyStarChoice') + '\n' +
+    extractFn(game, 'pandyHasSP1') + '\n' +
+    extractFn(game, 'pandyHasSP2') + '\n' +
+    extractFn(game, 'pandyFocusDamagePerPoint') + '\n' +
+    extractFn(game, 'pandyRangeMult') + '\n' +
+    extractFn(game, 'pandyFocusDamageMult') + '\n' +
+    extractFn(game, 'pandyLevelFor') + '\n' +
+    extractFn(game, 'castPandySuper'),
+    sandbox);
+  // Normal super: one shell, +25% size (hitboxMod 2.0), 1620 damage at P11.
+  const solo = { id: 1, hp: 5200, pandyFocus: 0, selectedStar: 'none', x: 0, y: 0, radius: 14 };
+  sandbox.castPandySuper(solo, false, 100, 0);
+  check('super: normal fires exactly 1 shell', sandbox.bullets.length === 1);
+  const shell = sandbox.bullets[0];
+  check('super: normal shell +25% size (hitboxMod 2.0, scale 1.25)', shell.hitboxMod === 2.0 && shell.pandyShellScale === 1.25);
+  check('super: normal shell damage 1620 at P11', shell.damage === 1620);
+  check('super: normal shell has capped range (maxLife 1.1)', near(shell.maxLife, 1.1) && shell.pandyUnlimitedRange === false);
+  // Hyper super: 6 radial shells, +30% bigger again, unlimited range.
+  sandbox.bullets.length = 0;
+  const hyperEnt = { id: 1, hp: 5200, pandyFocus: 100, selectedStar: 'none', x: 0, y: 0, radius: 14, _hyperTest: true };
+  sandbox.castPandySuper(hyperEnt, false, 100, 0);
+  check('super: hyper fires exactly 6 radial shells (no single shell too)', sandbox.bullets.length === 6);
+  check('super: radial shells 30% bigger (hitboxMod 2.6, scale 1.625)', sandbox.bullets.every((b) => b.hitboxMod === 2.6 && b.pandyShellScale === 1.625));
+  check('super: radial shells unlimited range (maxLife 120, flagged)', sandbox.bullets.every((b) => b.maxLife === 120 && b.pandyUnlimitedRange === true));
+  check('super: radial shells every 60 degrees', near(sandbox.bullets[0].vx, 1000) && near(sandbox.bullets[0].vy, 0) && near(sandbox.bullets[1].vx, 500) && near(sandbox.bullets[1].vy, 866.03, 0.1));
+  check('super: radial shells deal super damage (2430 at full focus)', sandbox.bullets.every((b) => b.damage === 2430));
+  check('super: hyper shows SUGAR SURGE text', floating.some((t) => t.includes('SUGAR SURGE')));
+} catch (e) { failures.push('super vm block threw: ' + e.message); }
 
 // --- executed: voice module (silent without audio + RULE ONE scan) ---
 try {
