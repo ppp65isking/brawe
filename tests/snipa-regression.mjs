@@ -5,16 +5,27 @@
 // (729.6px); every hit on an enemy brawler stretches range +0.5 tiles
 // (24px), stacking to +3 tiles (144px), reset on death. Super Headshot:
 // roots Snipa and sweeps a big blue aura (~600px) that steadily marks
-// enemies inside it (~2s to full) — the aura never marks through walls
-// (line of sight per enemy) or into bushes; at ~2.5s she auto-fires a
-// rapid volley (3 bullets per marked enemy) at every marked enemy, fully
-// marked enemies taking +50% (scaled by mark progress). Camera zooms out
-// while the Super channels. Hyper Deadeye Surge: the Super marks through
-// walls AND bushes, and aiming the main attack marks enemies in the
-// reticle (~1s to full) for +25% damage from Snipa. G1 Deadeye (14s):
-// next main attack +50% damage and double range bonus on hit. G2 Long
-// Lens (16s): main range +3 tiles for 5s. SP1 Eagle Eye: +0.75 tiles per
-// hit. SP2 Hair Trigger: volley fires 4 bullets per marked enemy.
+// enemies inside it (~1.2s to full, balance patch #1 — was ~2s) — the aura
+// never marks through walls (line of sight per enemy) or into bushes; at
+// ~1.5s she auto-fires a rapid volley (3 bullets per marked enemy) at
+// every marked enemy, fully marked enemies taking +50% (scaled by mark
+// progress). Camera zooms out while the Super channels. Reticle marking is
+// ALWAYS ON now (balance patch #1 — was Hyper-only): aiming the main
+// attack marks enemies in a thin cone (~8 deg, ~1s to full) for +25%
+// damage from Snipa. Hyper Deadeye Surge: the Super marks through walls
+// AND bushes, and the reticle cone widens (~18 deg) and marks faster
+// (~0.6s to full). Training dummies CAN be marked now (balance patch #1,
+// Change 6) — the full mark -> volley chain works on them. VOLLEY
+// ZERO-DAMAGE FIX (balance patch #1): the shipped volley bullets flew at
+// 2400px/s with accelerate-toward-target steering that barely turned, so
+// they tunneled past / curved too slowly to hit ANY moving target. Volley
+// bullets now steer with a linear turn rate (BlinkEye-missile pattern) at
+// 1600px/s and register hits with a swept segment test against their
+// assigned target (walls still block a normal volley; a Hyper volley
+// executes through walls). G1 Deadeye (14s): next main attack +50% damage
+// and double range bonus on hit. G2 Long Lens (16s): main range +3 tiles
+// for 5s. SP1 Eagle Eye: +0.75 tiles per hit. SP2 Hair Trigger: volley
+// fires 4 bullets per marked enemy.
 // Visuals are DEDICATED branches: longshots and volley bullets are drawn
 // before the universal skin renderer call (PR #48 lesson), never through
 // it, and never as dots. Star gates use the STORED keys 'slow' (SP1) /
@@ -75,9 +86,19 @@ check('update loop calls updateSnipaSystems', game.includes('if (playing && !gam
 check('render calls renderSnipaEffects', game.includes('    renderSnipaEffects();'));
 check('portrait body-art branch (scope)', game.includes("if (brawlerId === 'snipa') {"));
 check('constants: tile 48 / +0.5 per hit / +3 cap / 729.6 base', game.includes('const SNIPA_TILE_PX = 48;') && game.includes('const SNIPA_RANGE_BONUS_PER_HIT_TILES = 0.5;') && game.includes('const SNIPA_RANGE_BONUS_MAX_TILES = 3;') && game.includes('const SNIPA_MAIN_BASE_RANGE = 729.6;'));
-check('constants: aura 600 / mark 2s / volley 2.5s / 3 bullets', game.includes('const SNIPA_SUPER_AURA_RADIUS = 600;') && game.includes('const SNIPA_MARK_TIME_MS = 2000;') && game.includes('const SNIPA_VOLLEY_DELAY_MS = 2500;') && game.includes('const SNIPA_VOLLEY_BULLETS_PER_TARGET = 3;'));
-check('constants: volley 0.6x damage / +50% full mark / 2400 speed', game.includes('const SNIPA_VOLLEY_DAMAGE_RATIO = 0.6;') && game.includes('const SNIPA_VOLLEY_FULL_MARK_BONUS = 0.5;') && game.includes('const SNIPA_VOLLEY_SPEED = 2400;'));
-check('constants: hyper mark 1s / +25% / 4s duration / 12deg cone', game.includes('const SNIPA_HYPER_MARK_TIME_MS = 1000;') && game.includes('const SNIPA_HYPER_MARK_DMG_MULT = 1.25;') && game.includes('const SNIPA_HYPER_MARK_DURATION_MS = 4000;') && game.includes('const SNIPA_HYPER_MARK_CONE_HALF_ANGLE = 0.21;'));
+check('constants: aura 600 / mark 1.2s / volley 1.5s / 3 bullets', game.includes('const SNIPA_SUPER_AURA_RADIUS = 600;') && game.includes('const SNIPA_MARK_TIME_MS = 1200;') && game.includes('const SNIPA_VOLLEY_DELAY_MS = 1500;') && game.includes('const SNIPA_VOLLEY_BULLETS_PER_TARGET = 3;'));
+check('constants: volley 0.6x damage / +50% full mark / 1600 speed / 6.5 turn rate / 10px grace', game.includes('const SNIPA_VOLLEY_DAMAGE_RATIO = 0.6;') && game.includes('const SNIPA_VOLLEY_FULL_MARK_BONUS = 0.5;') && game.includes('const SNIPA_VOLLEY_SPEED = 1600;') && game.includes('const SNIPA_VOLLEY_TURN_RATE = 6.5;') && game.includes('const SNIPA_VOLLEY_HIT_GRACE_PX = 10;'));
+check('constants: hyper mark 0.6s / baseline 1s / +25% / 4s duration / 18deg hyper cone / 8deg baseline cone', game.includes('const SNIPA_HYPER_MARK_TIME_MS = 600;') && game.includes('const SNIPA_RETICLE_MARK_TIME_MS = 1000;') && game.includes('const SNIPA_HYPER_MARK_DMG_MULT = 1.25;') && game.includes('const SNIPA_HYPER_MARK_DURATION_MS = 4000;') && game.includes('const SNIPA_HYPER_MARK_CONE_HALF_ANGLE = 0.31;') && game.includes('const SNIPA_MARK_CONE_HALF_ANGLE = 0.14;'));
+check('volley fix: turn-rate steer + swept segment helpers exist and are called in the bullet loop', game.includes('function snipaSteerVolleyBullet(b, vTarget, dt) {') && game.includes('function snipaVolleySegmentHitsTarget(b, target, dt) {') && game.includes('snipaSteerVolleyBullet(b, vTarget, dt);') && game.includes('snipaVolleySegmentHitsTarget(b, vTarget, dt)'));
+check('volley fix: swept hit calls checkHit and does NOT double-splice (checkHit splices non-piercing bullets itself)', game.includes('if (checkHit(vTarget, b, i)) continue;') && !game.includes('if (checkHit(vTarget, b, i)) { bullets.splice(i, 1);'));
+check('volley fix: walls block a normal volley, Hyper volley executes through walls', game.includes('b.hyperVisual || hasBlinkEyeSight(b.x, b.y, vTarget.x, vTarget.y)'));
+check('reticle marking is always-on (Hyper picks cone + rate, it does not gate the block)', game.includes('const hyperMarking = isEntityHyperchargedNow(entity, now);') && game.includes('const markCone = hyperMarking ? SNIPA_HYPER_MARK_CONE_HALF_ANGLE : SNIPA_MARK_CONE_HALF_ANGLE;') && game.includes('const markTimeMs = hyperMarking ? SNIPA_HYPER_MARK_TIME_MS : SNIPA_RETICLE_MARK_TIME_MS;'));
+check('dummies can be marked (no isDummy skip in either Snipa marking loop)', (() => {
+  const region = game.slice(game.indexOf('function updateSnipaSystems'), game.indexOf('function snipaPointInWall'));
+  return !region.includes('isDummy');
+})());
+check('marking visuals: bigger ring (+16), dark under-stroke, gold when full', game.includes('const r = (t.radius || 14) + 16;') && game.includes("ctx.strokeStyle = 'rgba(2,6,23,0.75)';") && game.includes("ctx.strokeStyle = full ? '#fbbf24' : '#38bdf8';"));
+check('telegraph wedge is always drawn (active cone, thin baseline / wide Hyper)', game.includes('const markCone = hyper ? SNIPA_HYPER_MARK_CONE_HALF_ANGLE : SNIPA_MARK_CONE_HALF_ANGLE;') && game.includes('ctx.arc(player.x, player.y, teleRange, aimAng - markCone, aimAng + markCone);'));
 check('constants: G2 +3 tiles 5s / SP1 +0.75 / SP2 +1 bullet / G1 +50%', game.includes('const SNIPA_G2_RANGE_BONUS_TILES = 3;') && game.includes('const SNIPA_SP1_BONUS_PER_HIT_TILES = 0.75;') && game.includes('const SNIPA_SP2_VOLLEY_BONUS_BULLETS = 1;') && game.includes('const SNIPA_G1_DAMAGE_MULT = 1.5;'));
 check('constants: super camera zoom 0.72', game.includes('const SNIPA_SUPER_CAMERA_ZOOM = 0.72;'));
 check('camera zoom targets snipa channel in render()', game.includes('const snipaSuperZoomed = !!player && player.hp > 0 && selectedBrawler ===') && game.includes('snipaSuperZoomed ? SNIPA_SUPER_CAMERA_ZOOM : CAMERA_ZOOM_BASE'));
@@ -330,18 +351,22 @@ try {
     SNIPA_G2_RANGE_BONUS_TILES: 3,
     SNIPA_G2_DURATION_MS: 5000,
     SNIPA_SUPER_AURA_RADIUS: 600,
-    SNIPA_MARK_TIME_MS: 2000,
-    SNIPA_VOLLEY_DELAY_MS: 2500,
+    SNIPA_MARK_TIME_MS: 1200,
+    SNIPA_VOLLEY_DELAY_MS: 1500,
     SNIPA_VOLLEY_BULLETS_PER_TARGET: 3,
-    SNIPA_VOLLEY_SPEED: 2400,
+    SNIPA_VOLLEY_SPEED: 1600,
+    SNIPA_VOLLEY_TURN_RATE: 6.5,
+    SNIPA_VOLLEY_HIT_GRACE_PX: 10,
     SNIPA_VOLLEY_DAMAGE_RATIO: 0.6,
     SNIPA_VOLLEY_FULL_MARK_BONUS: 0.5,
     SNIPA_SP2_VOLLEY_BONUS_BULLETS: 1,
-    SNIPA_HYPER_MARK_TIME_MS: 1000,
+    SNIPA_HYPER_MARK_TIME_MS: 600,
+    SNIPA_RETICLE_MARK_TIME_MS: 1000,
     SNIPA_HYPER_MARK_DMG_MULT: 1.25,
     SNIPA_HYPER_MARK_DURATION_MS: 4000,
     SNIPA_HYPER_MARK_DECAY_PER_S: 0.5,
-    SNIPA_HYPER_MARK_CONE_HALF_ANGLE: 0.21,
+    SNIPA_MARK_CONE_HALF_ANGLE: 0.14,
+    SNIPA_HYPER_MARK_CONE_HALF_ANGLE: 0.31,
   };
   vm.createContext(sandbox);
   vm.runInContext(
@@ -363,32 +388,33 @@ try {
   sandbox.player = snipa;
   sandbox.bots = [enemy, farEnemy];
   sandbox.castSnipaSuper(snipa, false, 500, 0);
-  check('super: channel starts, rooted for 2.5s', snipa.snipaChannelUntil === 102500 && snipa.rootUntil === 102500 && sandbox.isSnipaChanneling(snipa, 100000) === true);
+  check('super: channel starts, rooted for 1.5s', snipa.snipaChannelUntil === 101500 && snipa.rootUntil === 101500 && sandbox.isSnipaChanneling(snipa, 100000) === true);
   check('super: shows HEADSHOT!', floating.some((t) => t.includes('HEADSHOT!')));
-  check('super: re-cast while channeling is ignored', (() => { sandbox.castSnipaSuper(snipa, false, 500, 0); return snipa.snipaChannelUntil === 102500; })());
+  check('super: re-cast while channeling is ignored', (() => { sandbox.castSnipaSuper(snipa, false, 500, 0); return snipa.snipaChannelUntil === 101500; })());
   sandbox.updateSnipaSystems(1.0);
-  check('super: 1s in aura is half marked (0.5)', near(enemy.snipaMarkProgress, 0.5) && enemy.snipaMarkById === 1);
+  check('super: 1s in aura is 5/6 marked (0.833)', near(enemy.snipaMarkProgress, 0.833) && enemy.snipaMarkById === 1);
   check('super: enemy outside the 600 aura is not marked', (farEnemy.snipaMarkProgress || 0) === 0);
   nowValue = 101000;
-  sandbox.updateSnipaSystems(1.0);
-  check('super: 2s in aura is fully marked (1.0)', enemy.snipaMarkProgress === 1);
-  nowValue = 102500;
+  sandbox.updateSnipaSystems(0.2);
+  check('super: 1.2s in aura is fully marked (1.0)', enemy.snipaMarkProgress === 1);
+  nowValue = 101500;
   sandbox.updateSnipaSystems(0.016);
-  check('super: volley fires at 2.5s (3 bullets at the marked enemy)', sandbox.bullets.length === 3 && sandbox.bullets.every((b) => b.isSnipaVolley === true && b.snipaVolleyTargetId === 2));
+  check('super: volley fires at 1.5s (3 bullets at the marked enemy)', sandbox.bullets.length === 3 && sandbox.bullets.every((b) => b.isSnipaVolley === true && b.snipaVolleyTargetId === 2));
   check('super: fully marked volley bullet is 810 (900 x 0.6 x 1.5)', sandbox.bullets.every((b) => b.damage === 810));
-  check('super: volley bullets home at 2400 speed', sandbox.bullets.every((b) => b.homing === true && b.vx > 0 && Math.hypot(b.vx, b.vy) >= 2400 - 1));
-  check('super: channel ends after the volley', sandbox.isSnipaChanneling(snipa, 102500) === false);
+  check('super: volley bullets home at 1600 speed', sandbox.bullets.every((b) => b.homing === true && b.vx > 0 && Math.hypot(b.vx, b.vy) >= 1600 - 1));
+  check('super: channel ends after the volley', sandbox.isSnipaChanneling(snipa, 101500) === false);
   check('super: marks clear after the volley', (enemy.snipaMarkProgress || 0) === 0 && enemy.snipaMarkById == null);
-  // Partial mark: 1s of marking then volley -> 675 per bullet (900 x 0.6 x 1.25).
+  check('super: reticle marking resumes the moment the channel ends', near(enemy.snipaHyperMarkProgress, 0.016) && enemy.snipaHyperMarkedById === 1);
+  // Partial mark: 1s of marking then volley -> 765 per bullet (900 x 0.6 x 1.4167).
   sandbox.bullets.length = 0;
   nowValue = 200000;
   const enemy2 = { id: 2, hp: 5000, x: 300, y: 0, radius: 14 };
   sandbox.bots = [enemy2];
   sandbox.castSnipaSuper(snipa, false, 500, 0);
   sandbox.updateSnipaSystems(1.0);
-  nowValue = 202500;
+  nowValue = 201500;
   sandbox.updateSnipaSystems(0.016);
-  check('super: half-marked volley bullet is 675 (900 x 0.6 x 1.25)', sandbox.bullets.length === 3 && sandbox.bullets.every((b) => b.damage === 675));
+  check('super: 5/6-marked volley bullet is 765 (900 x 0.6 x 1.4167)', sandbox.bullets.length === 3 && sandbox.bullets.every((b) => b.damage === 765));
   // SP2: 4 bullets per marked enemy.
   sandbox.bullets.length = 0;
   nowValue = 300000;
@@ -397,7 +423,7 @@ try {
   sandbox.bots = [enemy3];
   sandbox.castSnipaSuper(snipa, false, 500, 0);
   sandbox.updateSnipaSystems(2.0);
-  nowValue = 302500;
+  nowValue = 301500;
   sandbox.updateSnipaSystems(0.016);
   check('super: SP2 fires 4 bullets per marked enemy', sandbox.bullets.length === 4);
   snipa.selectedStar = 'none';
@@ -411,7 +437,7 @@ try {
   sandbox.updateSnipaSystems(2.0);
   check('super: wall blocks marking (no line of sight)', (enemy4.snipaMarkProgress || 0) === 0);
   sandbox.bullets.length = 0;
-  nowValue = 402500;
+  nowValue = 401500;
   sandbox.updateSnipaSystems(0.016);
   check('super: no volley when nobody is marked', sandbox.bullets.length === 0);
   // Bush: hidden in a bush -> no mark on a normal channel.
@@ -441,7 +467,7 @@ try {
   sandbox.bots = [enemy7];
   sandbox.castSnipaSuper(snipa, false, 500, 0);
   sandbox.updateSnipaSystems(1.0);
-  check('super: mark building before death', near(enemy7.snipaMarkProgress, 0.5));
+  check('super: mark building before death', near(enemy7.snipaMarkProgress, 0.833));
   snipa.hp = 0;
   sandbox.updateSnipaSystems(0.016);
   check('super: death fizzles the channel', sandbox.isSnipaChanneling(snipa, 700000) === false);
@@ -450,7 +476,7 @@ try {
   snipa.hp = 5200;
 } catch (e) { failures.push('super vm block threw: ' + e.message); }
 
-// --- executed: Hyper reticle marking ---
+// --- executed: reticle marking (always-on since balance patch #1) ---
 try {
   let nowValue = 100000;
   const sandbox = {
@@ -482,18 +508,20 @@ try {
     SNIPA_G2_RANGE_BONUS_TILES: 3,
     SNIPA_G2_DURATION_MS: 5000,
     SNIPA_SUPER_AURA_RADIUS: 600,
-    SNIPA_MARK_TIME_MS: 2000,
-    SNIPA_VOLLEY_DELAY_MS: 2500,
+    SNIPA_MARK_TIME_MS: 1200,
+    SNIPA_VOLLEY_DELAY_MS: 1500,
     SNIPA_VOLLEY_BULLETS_PER_TARGET: 3,
-    SNIPA_VOLLEY_SPEED: 2400,
+    SNIPA_VOLLEY_SPEED: 1600,
     SNIPA_VOLLEY_DAMAGE_RATIO: 0.6,
     SNIPA_VOLLEY_FULL_MARK_BONUS: 0.5,
     SNIPA_SP2_VOLLEY_BONUS_BULLETS: 1,
-    SNIPA_HYPER_MARK_TIME_MS: 1000,
+    SNIPA_HYPER_MARK_TIME_MS: 600,
+    SNIPA_RETICLE_MARK_TIME_MS: 1000,
     SNIPA_HYPER_MARK_DMG_MULT: 1.25,
     SNIPA_HYPER_MARK_DURATION_MS: 4000,
     SNIPA_HYPER_MARK_DECAY_PER_S: 0.5,
-    SNIPA_HYPER_MARK_CONE_HALF_ANGLE: 0.21,
+    SNIPA_MARK_CONE_HALF_ANGLE: 0.14,
+    SNIPA_HYPER_MARK_CONE_HALF_ANGLE: 0.31,
   };
   vm.createContext(sandbox);
   vm.runInContext(
@@ -513,28 +541,273 @@ try {
   const tooFar = { id: 4, hp: 5000, x: 900, y: 0, radius: 14 };
   sandbox.player = snipa;
   sandbox.bots = [ahead, aside, tooFar];
-  sandbox.updateSnipaSystems(1.0);
-  check('hyper reticle: 1s aimed is fully marked (1.0)', ahead.snipaHyperMarkProgress === 1 && ahead.snipaHyperMarkedById === 1);
-  check('hyper reticle: mark lasts 4s from the aim', ahead.snipaHyperMarkUntil === 104000);
-  check('hyper reticle: enemy off to the side is not marked', (aside.snipaHyperMarkProgress || 0) === 0);
-  check('hyper reticle: enemy beyond range is not marked', (tooFar.snipaHyperMarkProgress || 0) === 0);
+  sandbox.updateSnipaSystems(0.6);
+  check('reticle: Hyper 0.6s aimed is fully marked (1.0)', ahead.snipaHyperMarkProgress === 1 && ahead.snipaHyperMarkedById === 1);
+  check('reticle: mark lasts 4s from the aim', ahead.snipaHyperMarkUntil === 104000);
+  check('reticle: enemy off to the side is not marked', (aside.snipaHyperMarkProgress || 0) === 0);
+  check('reticle: enemy beyond range is not marked', (tooFar.snipaHyperMarkProgress || 0) === 0);
   // Aim away: the mark decays 0.5/s.
   sandbox.getMouseWorld = () => ({ x: 0, y: 500 });
   sandbox.updateSnipaSystems(1.0);
-  check('hyper reticle: looking away decays the mark (1.0 -> 0.5)', near(ahead.snipaHyperMarkProgress, 0.5));
+  check('reticle: looking away decays the mark (1.0 -> 0.5)', near(ahead.snipaHyperMarkProgress, 0.5));
   // Mark expires 4s after the last aim refresh.
-  nowValue = 108001;
+  nowValue = 104001;
   sandbox.updateSnipaSystems(0.016);
-  check('hyper reticle: mark expires after 4s', (ahead.snipaHyperMarkProgress || 0) === 0 && ahead.snipaHyperMarkedById == null);
-  // Not hypercharged: no reticle marking at all.
+  check('reticle: mark expires after 4s', (ahead.snipaHyperMarkProgress || 0) === 0 && ahead.snipaHyperMarkedById == null);
+  // Baseline (not Hypercharged): marking is ALWAYS ON now — 1s to full.
   snipa._hyperTest = false;
   nowValue = 200000;
   sandbox.getMouseWorld = () => ({ x: 500, y: 0 });
   const ahead2 = { id: 2, hp: 5000, x: 400, y: 0, radius: 14 };
   sandbox.bots = [ahead2];
-  sandbox.updateSnipaSystems(2.0);
-  check('hyper reticle: no marking when not Hypercharged', (ahead2.snipaHyperMarkProgress || 0) === 0);
-} catch (e) { failures.push('hyper reticle vm block threw: ' + e.message); }
+  sandbox.updateSnipaSystems(1.0);
+  check('reticle: baseline marking works without Hyper (1s to full)', ahead2.snipaHyperMarkProgress === 1 && ahead2.snipaHyperMarkedById === 1);
+  // Baseline cone is thinner than Hyper: ~10 deg off-axis is outside the
+  // 8 deg baseline cone but inside the 18 deg Hyper cone.
+  nowValue = 300000;
+  const offAxis = { id: 5, hp: 5000, x: 400, y: 70, radius: 14 }; // atan2(70, 400) ~= 9.9 deg
+  sandbox.bots = [offAxis];
+  sandbox.updateSnipaSystems(1.0);
+  check('reticle: baseline cone misses ~10 deg off-axis', (offAxis.snipaHyperMarkProgress || 0) === 0);
+  snipa._hyperTest = true;
+  sandbox.updateSnipaSystems(0.6);
+  check('reticle: Hyper cone catches ~10 deg off-axis (0.6s to full)', offAxis.snipaHyperMarkProgress === 1);
+  snipa._hyperTest = false;
+  // Training dummy: marked by the reticle just like a live enemy.
+  nowValue = 400000;
+  const dummy = { id: 6, hp: 5000, x: 400, y: 0, radius: 14, isDummy: true };
+  sandbox.bots = [dummy];
+  sandbox.updateSnipaSystems(1.0);
+  check('reticle: training dummy gets marked', dummy.snipaHyperMarkProgress === 1 && dummy.snipaHyperMarkedById === 1);
+} catch (e) { failures.push('reticle vm block threw: ' + e.message); }
+
+// --- executed: volley hit path end-to-end (the 2026-11-12 zero-damage fix) ---
+// Real fireSnipaVolley -> real steering/segment helpers -> real checkHit.
+// The harness below mirrors the game's bullet loop for volley bullets
+// (steer -> swept test -> checkHit -> move); checkHit itself splices a
+// non-piercing bullet on a hit, exactly as in the live loop.
+try {
+  let nowValue = 100000;
+  const sandbox = {
+    Math,
+    clamp: (v, lo, hi) => Math.min(hi, Math.max(lo, v)),
+    performance: { now: () => nowValue },
+    getEntityStarChoice: (e) => (e && e.selectedStar) || 'none',
+    getSelectedBrawlerLevel: () => 11,
+    getScaledStats: () => ({ dmg: 900, hp: 5200, speed: 260 }),
+    isEntityHyperchargedNow: (e) => !!e._hyperTest,
+    isBeastyBeastActive: () => false,
+    getEntityBrawlerId: (e) => (e && e.brawler) || 'hope',
+    getEntitySlopEffectTotal: () => 0,
+    areAlliedEntities: () => false,
+    isFriendlyFireActive: () => false,
+    hasBlinkEyeSight: () => true,
+    isEntityInsideBush: () => false,
+    getMouseWorld: () => ({ x: 500, y: 0 }),
+    spawnFloatingText: () => {},
+    spawnDamageText: () => {},
+    tryCrystilaGlassReflect: () => false,
+    tryAntiRoyalBlock: () => false,
+    getOutgoingDamageMultiplier: () => 1,
+    applyShieldDamage: (t, d) => d,
+    getVaultDamagePerHit: (d) => d,
+    recordOverdriveSurgedHit: () => {},
+    grantPressureCharge: () => {},
+    recordTrainingBotDamage: () => {},
+    handleTrinketDamageDealt: () => {},
+    applyPacketHit: () => {},
+    registerConstructionCartDamage: () => {},
+    registerDamageFillerDamage: () => {},
+    triggerHitConfirmFeedback: () => {},
+    applyDirectHitBoxDamage: () => {},
+    applySlopSushiOnHit: () => {},
+    recordCoreBreachCombatDamage: () => {},
+    recordPacketEquippedDamage: () => {},
+    addEventQuestProgress: () => {},
+    progressSeasonPassQuest: () => {},
+    addSpecialQuestProgress: () => {},
+    getSpecialAbilityDef: () => null,
+    grantMainAttackCharge: () => {},
+    applyHealnsteinPoisonHit: () => {},
+    ELECTROSTIEN_ENABLED: false,
+    isArenaForgeMode: false,
+    isSlopSushiMode: false,
+    isCoreBreachIntroMode: false,
+    isTutorialMode: false,
+    AURA_CHARMER_MARK_DMG_MULT: 1.3,
+    AEGIS_SP2_DAMAGE_MULT: 0.9,
+    SNIPA_HYPER_MARK_DMG_MULT: 1.25,
+    healingPods: [],
+    explosions: [],
+    powerups: [],
+    bullets: [],
+    window: {},
+    selectedBrawler: 'snipa',
+    selectedStar: 'none',
+    player: null,
+    bots: [],
+    SNIPA_ENABLED: true,
+    SNIPA_TILE_PX: 48,
+    SNIPA_MAIN_BASE_RANGE: 729.6,
+    SNIPA_RANGE_BONUS_PER_HIT_TILES: 0.5,
+    SNIPA_RANGE_BONUS_MAX_TILES: 3,
+    SNIPA_RANGE_BONUS_PER_HIT_PX: 24,
+    SNIPA_RANGE_BONUS_MAX_PX: 144,
+    SNIPA_SP1_BONUS_PER_HIT_TILES: 0.75,
+    SNIPA_G2_RANGE_BONUS_TILES: 3,
+    SNIPA_G2_DURATION_MS: 5000,
+    SNIPA_SUPER_AURA_RADIUS: 600,
+    SNIPA_MARK_TIME_MS: 1200,
+    SNIPA_VOLLEY_DELAY_MS: 1500,
+    SNIPA_VOLLEY_BULLETS_PER_TARGET: 3,
+    SNIPA_VOLLEY_SPEED: 1600,
+    SNIPA_VOLLEY_TURN_RATE: 6.5,
+    SNIPA_VOLLEY_HIT_GRACE_PX: 10,
+    SNIPA_VOLLEY_DAMAGE_RATIO: 0.6,
+    SNIPA_VOLLEY_FULL_MARK_BONUS: 0.5,
+    SNIPA_SP2_VOLLEY_BONUS_BULLETS: 1,
+    SNIPA_HYPER_MARK_TIME_MS: 600,
+    SNIPA_RETICLE_MARK_TIME_MS: 1000,
+    SNIPA_HYPER_MARK_DMG_MULT: 1.25,
+    SNIPA_HYPER_MARK_DURATION_MS: 4000,
+    SNIPA_HYPER_MARK_DECAY_PER_S: 0.5,
+    SNIPA_MARK_CONE_HALF_ANGLE: 0.14,
+    SNIPA_HYPER_MARK_CONE_HALF_ANGLE: 0.31,
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(
+    extractFn(game, 'snipaStarChoice') + '\n' +
+    extractFn(game, 'snipaHasSP1') + '\n' +
+    extractFn(game, 'snipaHasSP2') + '\n' +
+    extractFn(game, 'snipaLevelFor') + '\n' +
+    extractFn(game, 'snipaRangeBonusPerHitPx') + '\n' +
+    extractFn(game, 'snipaEffectiveRange') + '\n' +
+    extractFn(game, 'snipaApplyHyperMarkDamage') + '\n' +
+    extractFn(game, 'snipaApplyHitBonus') + '\n' +
+    extractFn(game, 'isSnipaChanneling') + '\n' +
+    extractFn(game, 'snipaClearMarksBy') + '\n' +
+    extractFn(game, 'snipaSteerVolleyBullet') + '\n' +
+    extractFn(game, 'snipaVolleySegmentHitsTarget') + '\n' +
+    extractFn(game, 'castSnipaSuper') + '\n' +
+    extractFn(game, 'fireSnipaVolley') + '\n' +
+    extractFn(game, 'updateSnipaSystems') + '\n' +
+    extractFn(game, 'getPlayerDamageScale') + '\n' +
+    extractFn(game, 'getLevelDamageScale') + '\n' +
+    extractFn(game, 'getPacketOutgoingDamageMultiplier') + '\n' +
+    extractFn(game, 'normalizeDamageBreakpoint') + '\n' +
+    extractFn(game, 'checkHit'),
+    sandbox);
+  // Harness: one frame of volley-bullet processing, game-loop order.
+  function stepVolley(sb, target, dt, maxFrames = 72) {
+    let frames = 0;
+    for (let f = 0; f < maxFrames && sb.bullets.length > 0; f++) {
+      for (let i = sb.bullets.length - 1; i >= 0; i--) {
+        const b = sb.bullets[i];
+        if (!b.isSnipaVolley) continue;
+        sb.snipaSteerVolleyBullet(b, target, dt);
+        if (sb.snipaVolleySegmentHitsTarget(b, target, dt) && (b.hyperVisual || sb.hasBlinkEyeSight(b.x, b.y, target.x, target.y))) {
+          if (sb.checkHit(target, b, i)) continue; // checkHit splices non-piercing bullets itself
+        }
+        b.x += b.vx * dt;
+        b.y += b.vy * dt;
+        b.life += dt;
+      }
+      if (target.vx || target.vy) { target.x += (target.vx || 0) * dt; target.y += (target.vy || 0) * dt; }
+      frames++;
+    }
+    return frames;
+  }
+  // Steering helper: turns toward the target at the turn rate, speed kept.
+  {
+    const b = { x: 0, y: 0, vx: 1600, vy: 0 };
+    sandbox.snipaSteerVolleyBullet(b, { x: 300, y: 300 }, 1 / 60);
+    const ang = Math.atan2(b.vy, b.vx);
+    check('volley steer: turns toward the target at 6.5 rad/s', near(ang, 6.5 / 60));
+    check('volley steer: speed stays 1600 (no runaway accel)', near(Math.hypot(b.vx, b.vy), 1600));
+  }
+  // Swept test: catches a target the point check would step over.
+  {
+    const b = { x: 0, y: 0, vx: 1600, vy: 0 };
+    check('volley swept test: target mid-step is a hit', sandbox.snipaVolleySegmentHitsTarget(b, { x: 13, y: 20, radius: 14 }, 1 / 60) === true);
+    check('volley swept test: target clear of the path is a miss', sandbox.snipaVolleySegmentHitsTarget(b, { x: 0, y: 40, radius: 14 }, 1 / 60) === false);
+    check('volley swept test: target past the step is a miss', sandbox.snipaVolleySegmentHitsTarget(b, { x: 56.7, y: 0, radius: 14 }, 1 / 60) === false);
+  }
+  // A: marked LIVE bot, static, 300px — all 3 volley bullets land (810 each).
+  {
+    const snipa = { id: 1, hp: 5200, snipaRangeBonusPx: 0, selectedStar: 'none', x: 0, y: 0, radius: 14, brawler: 'snipa' };
+    const enemy = { id: 2, hp: 5000, x: 300, y: 0, radius: 14, brawler: 'hope', snipaMarkById: 1, snipaMarkProgress: 1 };
+    sandbox.player = snipa;
+    sandbox.bots = [enemy];
+    sandbox.bullets.length = 0;
+    sandbox.fireSnipaVolley(snipa);
+    check('volley hit path: 3 bullets fired at the marked live bot', sandbox.bullets.length === 3);
+    stepVolley(sandbox, enemy, 1 / 60);
+    check('volley hit path: all 3 bullets deal 810 through real checkHit (5000 -> 2570)', enemy.hp === 2570);
+    check('volley hit path: all bullets consumed', sandbox.bullets.length === 0);
+  }
+  // B: marked LIVE bot STRAFING at 260px/s — the old steering missed every
+  // moving target; the new turn-rate steering + swept test must land all 3.
+  {
+    const snipa = { id: 1, hp: 5200, snipaRangeBonusPx: 0, selectedStar: 'none', x: 0, y: 0, radius: 14, brawler: 'snipa' };
+    const enemy = { id: 2, hp: 5000, x: 300, y: 0, radius: 14, brawler: 'hope', snipaMarkById: 1, snipaMarkProgress: 1, vx: 0, vy: 260 };
+    sandbox.player = snipa;
+    sandbox.bots = [enemy];
+    sandbox.bullets.length = 0;
+    sandbox.fireSnipaVolley(snipa);
+    stepVolley(sandbox, enemy, 1 / 60);
+    check('volley hit path: strafing target (260px/s) still takes all 3 bullets (5000 -> 2570)', enemy.hp === 2570);
+    check('volley hit path: strafing case consumes all bullets', sandbox.bullets.length === 0);
+  }
+  // C: training dummy — the full mark -> volley chain, through the Super.
+  {
+    nowValue = 100000;
+    const snipa = { id: 1, hp: 5200, snipaRangeBonusPx: 0, selectedStar: 'none', x: 0, y: 0, radius: 14, brawler: 'snipa' };
+    const dummy = { id: 6, hp: 5000, x: 300, y: 0, radius: 14, brawler: 'hope', isDummy: true, team: 'enemy' };
+    sandbox.player = snipa;
+    sandbox.bots = [dummy];
+    sandbox.bullets.length = 0;
+    sandbox.castSnipaSuper(snipa, false, 500, 0);
+    sandbox.updateSnipaSystems(1.2);
+    check('volley hit path: training dummy gets aura-marked to full', dummy.snipaMarkProgress === 1 && dummy.snipaMarkById === 1);
+    nowValue = 101500;
+    sandbox.updateSnipaSystems(0.016);
+    check('volley hit path: volley fires at the dummy (3 bullets)', sandbox.bullets.length === 3 && sandbox.bullets.every((b) => b.snipaVolleyTargetId === 6));
+    stepVolley(sandbox, dummy, 1 / 60);
+    // Note: 1015 per bullet, not 810 — the volley fires inside
+    // updateSnipaSystems, and the reticle block then marks the dummy at
+    // 0.016 progress, which is enough for the +25% reticle-mark damage
+    // (snipaApplyHyperMarkDamage has no progress threshold, as pinned in
+    // the hit-bonus block): 810 x 1.25 = 1013 -> normalized to 1015.
+    // 5000 - 3 x 1015 = 1955.
+    check('volley hit path: dummy takes all 3 bullets through real checkHit (5000 -> 1955)', dummy.hp === 1955);
+    check('volley hit path: dummy case consumes all bullets', sandbox.bullets.length === 0);
+  }
+  // D: wall gate — a normal volley cannot hit through a wall; a Hyper
+  // volley executes through it (matches the Hyper mark-through-walls rule).
+  {
+    const snipa = { id: 1, hp: 5200, snipaRangeBonusPx: 0, selectedStar: 'none', x: 0, y: 0, radius: 14, brawler: 'snipa' };
+    const enemy = { id: 2, hp: 5000, x: 300, y: 0, radius: 14, brawler: 'hope', snipaMarkById: 1, snipaMarkProgress: 1 };
+    sandbox.player = snipa;
+    sandbox.bots = [enemy];
+    sandbox.hasBlinkEyeSight = () => false;
+    sandbox.bullets.length = 0;
+    sandbox.fireSnipaVolley(snipa);
+    stepVolley(sandbox, enemy, 1 / 60);
+    check('volley hit path: wall blocks a normal volley (no damage)', enemy.hp === 5000);
+    // Hyper volley: same wall, bullets carry hyperVisual.
+    sandbox.bullets.length = 0;
+    enemy.hp = 5000;
+    enemy.snipaMarkById = 1;
+    enemy.snipaMarkProgress = 1;
+    snipa._hyperTest = true;
+    sandbox.fireSnipaVolley(snipa);
+    check('volley hit path: Hyper volley bullets carry hyperVisual', sandbox.bullets.every((b) => b.hyperVisual === true));
+    stepVolley(sandbox, enemy, 1 / 60);
+    check('volley hit path: Hyper volley hits through the wall (5000 -> 2570)', enemy.hp === 2570);
+    snipa._hyperTest = false;
+    sandbox.hasBlinkEyeSight = () => true;
+  }
+} catch (e) { failures.push('volley hit-path vm block threw: ' + e.message); }
 
 // --- executed: projectile + aura + mark-circle + telegraph art (stub canvas) ---
 try {
@@ -561,7 +834,8 @@ try {
     SNIPA_G2_RANGE_BONUS_TILES: 3,
     SNIPA_G2_DURATION_MS: 5000,
     SNIPA_SUPER_AURA_RADIUS: 600,
-    SNIPA_HYPER_MARK_CONE_HALF_ANGLE: 0.21,
+    SNIPA_MARK_CONE_HALF_ANGLE: 0.14,
+    SNIPA_HYPER_MARK_CONE_HALF_ANGLE: 0.31,
     PANDY_FOCUS_MAX: 100,
   };
   vm.createContext(sandbox);
@@ -592,14 +866,22 @@ try {
   sandbox.renderSnipaEffects();
   check('render effects: headshot aura drawn blue', hasFill(s3.sets, 'rgba(59,130,246'));
   check('render effects: aura reaches the full 600 radius with no walls', s3.calls.some((c) => (c.m === 'lineTo' || c.m === 'moveTo') && near(c.args[0], 700) && near(c.args[1], 100, 60)));
-  // Mark circle: half-marked enemy shows a half arc.
+  // Mark circle: half-marked enemy shows a half arc on a bigger ring.
   const s4 = stubCtx();
   sandbox.ctx = s4.proxy;
   sandbox.player = { id: 1, brawler: 'snipa', hp: 5200, snipaRangeBonusPx: 0, x: 100, y: 100, radius: 14 };
   sandbox.bots = [{ id: 2, hp: 5000, x: 400, y: 100, radius: 14, snipaMarkProgress: 0.5 }];
   sandbox.renderSnipaEffects();
-  check('render effects: mark circle drawn blue', s4.sets.some((s) => (s.p === 'strokeStyle' || s.p === 'fillStyle') && String(s.v).includes('#60a5fa')) || hasFill(s4.sets, 'rgba(59,130,246'));
+  check('render effects: mark ring has a dark under-stroke', s4.sets.some((s) => s.p === 'strokeStyle' && String(s.v).includes('rgba(2,6,23')));
+  check('render effects: mark circle drawn bright blue', s4.sets.some((s) => s.p === 'strokeStyle' && String(s.v).includes('#38bdf8')));
+  check('render effects: mark ring is bigger (radius 14 + 16 = 30)', s4.calls.some((c) => c.m === 'arc' && near(c.args[2], 30)));
   check('render effects: half mark is a half arc (ends at PI/2)', s4.calls.some((c) => c.m === 'arc' && near(c.args[3], -Math.PI / 2) && near(c.args[4], Math.PI / 2)));
+  // Full mark: gold ring.
+  const s4b = stubCtx();
+  sandbox.ctx = s4b.proxy;
+  sandbox.bots = [{ id: 2, hp: 5000, x: 400, y: 100, radius: 14, snipaMarkProgress: 1 }];
+  sandbox.renderSnipaEffects();
+  check('render effects: full mark ring is gold', s4b.sets.some((s) => s.p === 'strokeStyle' && String(s.v) === '#fbbf24'));
   // Telegraph: player at (100,100), mouse at (500,100) -> aim 0, range 729.6 -> ends (829.6, 100).
   const s5 = stubCtx();
   sandbox.ctx = s5.proxy;
@@ -607,12 +889,15 @@ try {
   sandbox.renderSnipaEffects();
   check('render effects: telegraph dashed line drawn', s5.calls.some((c) => c.m === 'setLineDash'));
   check('render effects: telegraph ends at current effective range', s5.calls.some((c) => c.m === 'lineTo' && near(c.args[0], 829.6) && near(c.args[1], 100)));
-  // Hyper telegraph: cyan side segments + wedge fill.
+  check('render effects: baseline wedge drawn cyan (always-on marking)', hasFill(s5.sets, '#22d3ee'));
+  check('render effects: baseline wedge is thin (8 deg half-angle)', s5.calls.some((c) => c.m === 'arc' && near(c.args[2], 729.6) && near(c.args[3], -0.14) && near(c.args[4], 0.14)));
+  // Hyper telegraph: cyan side segments + wider wedge fill.
   const s6 = stubCtx();
   sandbox.ctx = s6.proxy;
   sandbox.player = { id: 1, brawler: 'snipa', hp: 5200, snipaRangeBonusPx: 0, x: 100, y: 100, radius: 14, _hyperTest: true };
   sandbox.renderSnipaEffects();
   check('render effects: hyper wedge drawn cyan', hasFill(s6.sets, 'rgba(34,211,238') || s6.sets.some((s) => s.p === 'strokeStyle' && String(s.v).includes('#22d3ee')));
+  check('render effects: hyper wedge is wider (18 deg half-angle)', s6.calls.some((c) => c.m === 'arc' && near(c.args[2], 729.6) && near(c.args[3], -0.31) && near(c.args[4], 0.31)));
   // Pandy Focus HUD bar: gold at max, pink while building, track at 0, label kept.
   const s7 = stubCtx();
   sandbox.drawPandyFocusHudBar(s7.proxy, { hp: 5200, pandyFocus: 100, pandyFocusOn: true, x: 100 }, 200);

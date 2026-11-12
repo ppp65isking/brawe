@@ -24347,17 +24347,28 @@ let heistFeverActive = false;
     // bullet at Pandy's basic range (729.6px); every hit on an enemy
     // brawler stretches her range +0.5 tiles (24px), stacking to +3 tiles
     // (144px), reset on death. Super Headshot roots her and sweeps a big
-    // blue aura (~600px) that steadily marks enemies inside it (~2s to
-    // full) — the aura never marks through walls (line of sight per enemy)
-    // or into bushes; at ~2.5s she auto-fires a rapid volley at every
-    // marked enemy, fully marked enemies taking +50% (scaled by mark
-    // progress). The camera zooms out while the Super channels. Hyper
-    // Deadeye Surge: the Super marks through walls and bushes, and aiming
-    // the main attack marks enemies in the reticle (~1s to full) for +25%
-    // damage from Snipa. Kill switches are `let` so regression tests can
-    // flip them. Dedicated art lives in its OWN branches below: Snipa
-    // projectiles are drawn before the universal skin renderer call, never
-    // through it (PR #48 lesson).
+    // blue aura (~600px) that steadily marks enemies inside it (~1.2s to
+    // full, balance patch #1 — was ~2s) — the aura never marks through
+    // walls (line of sight per enemy) or into bushes; at ~1.5s she
+    // auto-fires a rapid volley at every marked enemy, fully marked
+    // enemies taking +50% (scaled by mark progress). The camera zooms out
+    // while the Super channels. Reticle marking is ALWAYS ON now (balance
+    // patch #1 — was Hyper-only): aiming the main attack marks enemies in
+    // a thin cone (~8 deg, ~1s to full) for +25% damage from Snipa. Hyper
+    // Deadeye Surge: the Super marks through walls and bushes, the reticle
+    // cone widens (~18 deg) and marks faster (~0.6s to full).
+    // VOLLEY ZERO-DAMAGE FIX (balance patch #1, 2026-11-12): the shipped
+    // volley bullets flew at 2400px/s with accelerate-toward-target
+    // steering that mostly added forward speed and barely turned, so they
+    // tunneled past / curved too slowly to hit ANY moving target — the
+    // generic point-collision window is only 18px wide while a volley
+    // bullet steps ~40px/frame. Volley bullets now steer with a linear
+    // turn rate (BlinkEye-missile pattern) at 1600px/s and register hits
+    // with a swept segment test against their assigned target, so the
+    // execution actually lands. Kill switches are `let` so regression
+    // tests can flip them. Dedicated art lives in its OWN branches below:
+    // Snipa projectiles are drawn before the universal skin renderer call,
+    // never through it (PR #48 lesson).
     let SNIPA_ENABLED = true;
     let SNIPA_VISUALS_ENABLED = true;
     const SNIPA_TILE_PX = 48; // one arena tile (ARENA_WALL_TILE)
@@ -24368,18 +24379,22 @@ let heistFeverActive = false;
     const SNIPA_RANGE_BONUS_PER_HIT_PX = SNIPA_TILE_PX * SNIPA_RANGE_BONUS_PER_HIT_TILES; // 24
     const SNIPA_RANGE_BONUS_MAX_PX = SNIPA_TILE_PX * SNIPA_RANGE_BONUS_MAX_TILES; // 144
     const SNIPA_SUPER_AURA_RADIUS = 600; // Headshot marking aura
-    const SNIPA_MARK_TIME_MS = 2000; // ~2s to fully mark in the aura
-    const SNIPA_VOLLEY_DELAY_MS = 2500; // volley fires ~2.5s after activation
+    const SNIPA_MARK_TIME_MS = 1200; // balance patch #1: ~1.2s to fully mark in the aura (was 2000)
+    const SNIPA_VOLLEY_DELAY_MS = 1500; // balance patch #1: volley fires ~1.5s after activation (was 2500)
     const SNIPA_VOLLEY_BULLETS_PER_TARGET = 3; // rapid volley per marked enemy
-    const SNIPA_VOLLEY_SPEED = 2400;
+    const SNIPA_VOLLEY_SPEED = 1600; // balance patch #1: was 2400 — slower so the turn rate can actually track
+    const SNIPA_VOLLEY_TURN_RATE = 6.5; // balance patch #1: linear turn rate in rad/s (BlinkEye-missile pattern)
+    const SNIPA_VOLLEY_HIT_GRACE_PX = 10; // balance patch #1: swept-test grace around the target circle
     const SNIPA_VOLLEY_DAMAGE_RATIO = 0.6; // each volley bullet = 60% of main dmg
     const SNIPA_VOLLEY_FULL_MARK_BONUS = 0.5; // fully marked: +50% (scaled by progress)
     const SNIPA_SUPER_CAMERA_ZOOM = 0.72; // camera zooms out while Headshot channels (matches Pandy Hyper)
-    const SNIPA_HYPER_MARK_TIME_MS = 1000; // ~1s of aiming to fully mark in the reticle
+    const SNIPA_HYPER_MARK_TIME_MS = 600; // balance patch #1: ~0.6s of aiming to fully mark in the reticle while Hyper (was 1000)
+    const SNIPA_RETICLE_MARK_TIME_MS = 1000; // balance patch #1: ~1s of aiming to fully mark in the reticle at baseline (always-on)
     const SNIPA_HYPER_MARK_DMG_MULT = 1.25; // reticle-marked enemies take +25% from Snipa
     const SNIPA_HYPER_MARK_DURATION_MS = 4000; // reticle mark lasts 4s once built
     const SNIPA_HYPER_MARK_DECAY_PER_S = 0.5; // reticle mark fades when not aimed
-    const SNIPA_HYPER_MARK_CONE_HALF_ANGLE = 0.21; // ~12 deg half-angle marking wedge around the aim line
+    const SNIPA_MARK_CONE_HALF_ANGLE = 0.14; // balance patch #1: ~8 deg half-angle baseline marking wedge (always-on, thinner than Hyper)
+    const SNIPA_HYPER_MARK_CONE_HALF_ANGLE = 0.31; // balance patch #1: ~18 deg half-angle marking wedge while Hyper (was 0.21 / ~12 deg)
     const SNIPA_G2_RANGE_BONUS_TILES = 3; // Long Lens: +3 tiles for 5s
     const SNIPA_G2_DURATION_MS = 5000;
     const SNIPA_SP1_BONUS_PER_HIT_TILES = 0.75; // Eagle Eye: +0.75 tiles per hit
@@ -24423,6 +24438,42 @@ let heistFeverActive = false;
             if (!t) continue;
             if (t.snipaMarkById === entity.id) { t.snipaMarkById = null; t.snipaMarkProgress = 0; }
         }
+    }
+
+    // Balance patch #1 (2026-11-12): volley steering + swept hit helpers.
+    // The shipped volley used accelerate-toward-target steering (800/s^2)
+    // at 2400px/s, which mostly added forward speed and barely turned, so
+    // bullets tunneled past / curved too slowly to hit ANY moving target —
+    // the generic point-collision window is only 18px wide while a volley
+    // bullet steps ~40px/frame. These helpers are the fix: linear turn-rate
+    // steering (BlinkEye-missile pattern, constant speed) plus a swept
+    // segment test against the assigned target.
+    function snipaSteerVolleyBullet(b, vTarget, dt) {
+        if (!b || !vTarget) return;
+        const curAng = Math.atan2(b.vy, b.vx);
+        const tgtAng = Math.atan2(vTarget.y - b.y, vTarget.x - b.x);
+        let diff = tgtAng - curAng;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        const turn = clamp(diff, -SNIPA_VOLLEY_TURN_RATE * dt, SNIPA_VOLLEY_TURN_RATE * dt);
+        const spd = Math.hypot(b.vx, b.vy) || SNIPA_VOLLEY_SPEED;
+        b.vx = Math.cos(curAng + turn) * spd;
+        b.vy = Math.sin(curAng + turn) * spd;
+    }
+    function snipaVolleySegmentHitsTarget(b, target, dt) {
+        // Does the segment from the bullet's current position to its
+        // predicted next position pass within the target's circle (with a
+        // small grace for the step size)? Catches hits the point check
+        // would step over between frames.
+        if (!b || !target) return false;
+        const nx = b.x + b.vx * dt, ny = b.y + b.vy * dt;
+        const dx = nx - b.x, dy = ny - b.y;
+        const len2 = dx * dx + dy * dy || 1;
+        let t = ((target.x - b.x) * dx + (target.y - b.y) * dy) / len2;
+        t = Math.max(0, Math.min(1, t));
+        const cx = b.x + t * dx, cy = b.y + t * dy;
+        const r = (target.radius || 14) + SNIPA_VOLLEY_HIT_GRACE_PX;
+        return Math.hypot(target.x - cx, target.y - cy) <= r;
     }
     function fireSnipaMain(fromEntity, ang, targetX, targetY, opts) {
         if (!SNIPA_ENABLED) return;
@@ -24493,7 +24544,7 @@ let heistFeverActive = false;
                 entity.snipaChannelVolleyAt = 0;
                 continue;
             }
-            // Headshot channel: mark enemies in the aura, volley at ~2.5s.
+            // Headshot channel: mark enemies in the aura, volley at ~1.5s.
             // NOTE: the volley trigger is gated on the channel PENDING
             // (snipaChannelUntil > 0), not on isSnipaChanneling() — the
             // channel ends at exactly the volley time, so isSnipaChanneling
@@ -24508,7 +24559,11 @@ let heistFeverActive = false;
                     const hyperChannel = !!entity.snipaChannelHyper;
                     for (const target of [player, ...bots]) {
                         if (!target || target.hp <= 0 || target.id === entity.id) continue;
-                        if (target.isDummy || target.isStructure || target.isPet || target.isCore) continue;
+                        // Balance patch #1: training dummies CAN be marked now
+                        // (Change 6) — they are in `bots` and the volley
+                        // targets them once marked. Structures/pets/Core
+                        // still never get marked.
+                        if (target.isStructure || target.isPet || target.isCore) continue;
                         if (areAlliedEntities(entity, target)) continue;
                         if (Math.hypot(target.x - entity.x, target.y - entity.y) > SNIPA_SUPER_AURA_RADIUS) continue;
                         // Wall occlusion (Anthony's rule): the aura never marks
@@ -24523,24 +24578,31 @@ let heistFeverActive = false;
                     }
                 }
             }
-            // Hyper reticle marking: while Hypercharged, aiming the main
-            // attack at an enemy steadily marks them (~1s to full).
-            if (isEntityHyperchargedNow(entity, now) && !isSnipaChanneling(entity, now)) {
+            // Reticle marking (balance patch #1): ALWAYS ON now, not
+            // Hyper-only. Aiming the main attack at an enemy steadily marks
+            // them in a thin cone (~8 deg, ~1s to full). While Hypercharged
+            // the cone widens (~18 deg) and marking builds faster (~0.6s
+            // to full). Still no marking while the Super channels, and
+            // training dummies CAN be marked (Change 6).
+            if (!isSnipaChanneling(entity, now)) {
+                const hyperMarking = isEntityHyperchargedNow(entity, now);
+                const markCone = hyperMarking ? SNIPA_HYPER_MARK_CONE_HALF_ANGLE : SNIPA_MARK_CONE_HALF_ANGLE;
+                const markTimeMs = hyperMarking ? SNIPA_HYPER_MARK_TIME_MS : SNIPA_RETICLE_MARK_TIME_MS;
                 const aimAng = entity.id === player.id ? Math.atan2(getMouseWorld().y - entity.y, getMouseWorld().x - entity.x) : (entity.visualAimAngle || 0);
                 const range = snipaEffectiveRange(entity);
                 for (const target of [player, ...bots]) {
                     if (!target || target.hp <= 0 || target.id === entity.id) continue;
-                    if (target.isDummy || target.isStructure || target.isPet || target.isCore) continue;
+                    if (target.isStructure || target.isPet || target.isCore) continue;
                     if (areAlliedEntities(entity, target)) continue;
                     const dx = target.x - entity.x, dy = target.y - entity.y;
                     const dist = Math.hypot(dx, dy);
                     if (dist > range) continue;
                     let angDiff = Math.abs(Math.atan2(dy, dx) - aimAng);
                     if (angDiff > Math.PI) angDiff = Math.PI * 2 - angDiff;
-                    const aimed = angDiff <= SNIPA_HYPER_MARK_CONE_HALF_ANGLE && hasBlinkEyeSight(entity.x, entity.y, target.x, target.y);
+                    const aimed = angDiff <= markCone && hasBlinkEyeSight(entity.x, entity.y, target.x, target.y);
                     if (aimed) {
                         target.snipaHyperMarkedById = entity.id;
-                        target.snipaHyperMarkProgress = Math.min(1, (target.snipaHyperMarkProgress || 0) + dt / (SNIPA_HYPER_MARK_TIME_MS / 1000));
+                        target.snipaHyperMarkProgress = Math.min(1, (target.snipaHyperMarkProgress || 0) + dt / (markTimeMs / 1000));
                         target.snipaHyperMarkUntil = now + SNIPA_HYPER_MARK_DURATION_MS;
                     } else if (target.snipaHyperMarkedById === entity.id) {
                         target.snipaHyperMarkProgress = Math.max(0, (target.snipaHyperMarkProgress || 0) - SNIPA_HYPER_MARK_DECAY_PER_S * dt);
@@ -24639,38 +24701,48 @@ let heistFeverActive = false;
             ctx.stroke();
             ctx.restore();
         }
-        // Mark progress circles: a ring around a marked enemy fills as the
-        // mark builds; a full ring means fully marked. Same indicator for
-        // the Super mark and the Hyper reticle mark.
+        // Mark progress circles (balance patch #1: bigger and brighter so
+        // marking is unmissable): a thick ring around a marked enemy fills
+        // as the mark builds; a full ring means fully marked — gold when
+        // full. Same indicator for the Super mark and the reticle mark.
         for (const t of [player, ...bots]) {
             if (!t || t.hp <= 0) continue;
             const progress = Math.max(t.snipaMarkProgress || 0, t.snipaHyperMarkProgress || 0);
             if (progress <= 0) continue;
-            const r = (t.radius || 14) + 10;
+            const r = (t.radius || 14) + 16;
             const full = progress >= 1;
             ctx.save();
-            ctx.strokeStyle = 'rgba(96,165,250,0.35)';
-            ctx.lineWidth = 3;
+            // Dark under-stroke so the ring reads on any background.
+            ctx.strokeStyle = 'rgba(2,6,23,0.75)';
+            ctx.lineWidth = 8;
             ctx.beginPath();
             ctx.arc(t.x, t.y, r, 0, Math.PI * 2);
             ctx.stroke();
-            ctx.strokeStyle = full ? '#93c5fd' : '#60a5fa';
-            ctx.lineWidth = full ? 4 : 3;
-            if (full) { ctx.shadowColor = '#3b82f6'; ctx.shadowBlur = 12; }
+            ctx.strokeStyle = 'rgba(147,197,253,0.65)';
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            ctx.arc(t.x, t.y, r, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.strokeStyle = full ? '#fbbf24' : '#38bdf8';
+            ctx.lineWidth = full ? 6 : 5;
+            if (full) { ctx.shadowColor = '#f59e0b'; ctx.shadowBlur = 16; }
             ctx.beginPath();
             ctx.arc(t.x, t.y, r, -Math.PI / 2, -Math.PI / 2 + progress * Math.PI * 2);
             ctx.stroke();
             ctx.restore();
         }
         // Main-attack telegraph (player only) — a dashed blue aim line whose
-        // length is the CURRENT effective range (Pandy pattern). While
-        // Hypercharged, cyan side segments show the reticle marking wedge:
-        // point the wedge at an enemy to start marking them.
+        // length is the CURRENT effective range (Pandy pattern). Cyan side
+        // segments + a faint wedge show the reticle marking cone (balance
+        // patch #1: always drawn now, since reticle marking is always on):
+        // point the cone at an enemy to start marking them. The cone is
+        // thin at baseline and wider while Hypercharged.
         if (player && player.hp > 0 && selectedBrawler === 'snipa') {
             const wm = getMouseWorld();
             const aimAng = Math.atan2(wm.y - player.y, wm.x - player.x);
             const teleRange = snipaEffectiveRange(player);
             const hyper = isEntityHyperchargedNow(player, now);
+            const markCone = hyper ? SNIPA_HYPER_MARK_CONE_HALF_ANGLE : SNIPA_MARK_CONE_HALF_ANGLE;
             ctx.save();
             ctx.globalAlpha = 0.55;
             ctx.strokeStyle = '#60a5fa';
@@ -24686,28 +24758,26 @@ let heistFeverActive = false;
             ctx.beginPath();
             ctx.arc(player.x + Math.cos(aimAng) * teleRange, player.y + Math.sin(aimAng) * teleRange, 6, 0, Math.PI * 2);
             ctx.stroke();
-            if (hyper) {
-                // Cyan side segments: the reticle marking wedge.
-                ctx.globalAlpha = 0.75;
-                ctx.strokeStyle = '#22d3ee';
-                ctx.lineWidth = 3;
-                ctx.setLineDash([8, 8]);
-                for (const side of [-1, 1]) {
-                    const wa = aimAng + side * SNIPA_HYPER_MARK_CONE_HALF_ANGLE;
-                    ctx.beginPath();
-                    ctx.moveTo(player.x, player.y);
-                    ctx.lineTo(player.x + Math.cos(wa) * teleRange, player.y + Math.sin(wa) * teleRange);
-                    ctx.stroke();
-                }
-                ctx.setLineDash([]);
-                ctx.globalAlpha = 0.12;
-                ctx.fillStyle = '#22d3ee';
+            // Cyan side segments: the reticle marking wedge (always on).
+            ctx.globalAlpha = 0.75;
+            ctx.strokeStyle = '#22d3ee';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([8, 8]);
+            for (const side of [-1, 1]) {
+                const wa = aimAng + side * markCone;
                 ctx.beginPath();
                 ctx.moveTo(player.x, player.y);
-                ctx.arc(player.x, player.y, teleRange, aimAng - SNIPA_HYPER_MARK_CONE_HALF_ANGLE, aimAng + SNIPA_HYPER_MARK_CONE_HALF_ANGLE);
-                ctx.closePath();
-                ctx.fill();
+                ctx.lineTo(player.x + Math.cos(wa) * teleRange, player.y + Math.sin(wa) * teleRange);
+                ctx.stroke();
             }
+            ctx.setLineDash([]);
+            ctx.globalAlpha = 0.12;
+            ctx.fillStyle = '#22d3ee';
+            ctx.beginPath();
+            ctx.moveTo(player.x, player.y);
+            ctx.arc(player.x, player.y, teleRange, aimAng - markCone, aimAng + markCone);
+            ctx.closePath();
+            ctx.fill();
             ctx.restore();
         }
     }
@@ -60919,15 +60989,28 @@ function checkHit(target, b, i){
       }
 
       // Snipa Headshot volley: bullets steer toward their assigned marked target.
+      // Balance patch #1 (2026-11-12 zero-damage fix): the shipped
+      // accelerate-toward-target steering (800/s^2 at 2400px/s) mostly added
+      // forward speed and barely turned, so volley bullets tunneled past /
+      // curved too slowly to hit ANY moving target. Steering is now a linear
+      // turn rate (BlinkEye-missile pattern, constant speed) and hits are
+      // registered with a swept segment test against the assigned target —
+      // the generic point-collision window (18px) is narrower than one
+      // frame's travel at volley speed. Walls still block a normal volley
+      // (same as the generic path); a Hyper volley executes through walls,
+      // matching the Hyper mark-through-walls rule.
       if (b.isSnipaVolley && b.snipaVolleyTargetId) {
           const vTarget = (player && player.id === b.snipaVolleyTargetId) ? player : (typeof bots !== 'undefined' ? bots.find((bt) => bt && bt.id === b.snipaVolleyTargetId) : null);
           if (vTarget && vTarget.hp > 0) {
-              const steerDx = vTarget.x - b.x;
-              const steerDy = vTarget.y - b.y;
-              const steerLen = Math.hypot(steerDx, steerDy) || 1;
-              const steer = 800 * dt;
-              b.vx += (steerDx / steerLen) * steer;
-              b.vy += (steerDy / steerLen) * steer;
+              snipaSteerVolleyBullet(b, vTarget, dt);
+              if (snipaVolleySegmentHitsTarget(b, vTarget, dt) && (b.hyperVisual || hasBlinkEyeSight(b.x, b.y, vTarget.x, vTarget.y))) {
+                  // checkHit applies the damage AND removes a non-piercing
+                  // bullet itself (bullets.splice(i, 1) at its tail) — do
+                  // NOT splice again here, or the next bullet gets deleted.
+                  // A false return (invulnerable, etc.) leaves the bullet
+                  // flying so the generic collision can still catch it.
+                  if (checkHit(vTarget, b, i)) continue;
+              }
           }
       }
 
