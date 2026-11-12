@@ -110,6 +110,7 @@ async function startLegacyRuntime() {
     './modules/visuals/roster-2p5d.js',
     './modules/audio/outlit-voicelines.js',
     './modules/audio/voodoyou-voicelines.js',
+    './modules/audio/pandy-voicelines.js',
     './modules/core/registry.js',
     './modules/brawlers/common/roster.js',
     './modules/brawlers/common/outlit.js',
