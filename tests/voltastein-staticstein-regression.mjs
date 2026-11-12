@@ -28,10 +28,10 @@ check('getScaledStats staticstein branch: 6200 HP / 800 dmg / 290 speed', game.i
 check('power scaling mirrors (HP curve): Volta P1 2320/495, P12 6148/940; Static P1 2480/440, P12 6572/836',
   Math.round(5800 * hpScale(1)) === 2320 && Math.round(900 * scale(1)) === 495 && Math.round(5800 * hpScale(12)) === 6148 && Math.round(900 * scale(12)) === 940
   && Math.round(6200 * hpScale(1)) === 2480 && Math.round(800 * scale(1)) === 440 && Math.round(6200 * hpScale(12)) === 6572 && Math.round(800 * scale(12)) === 836);
-check('allBrawlers has both; 106 ids total (104 + Healnstein + Voodoyou)', (() => { const all = allBrawlers(); return all.includes('voltastein') && all.includes('staticstein') && all.length === 106; })());
-check('selectable is 98 (106 minus the 8 disabled, neither new brawler disabled)', (() => {
+check('allBrawlers has both; 107 ids total (104 + Healnstein + Voodoyou + Pandy)', (() => { const all = allBrawlers(); return all.includes('voltastein') && all.includes('staticstein') && all.length === 107; })());
+check('selectable is 99 (107 minus the 8 disabled, neither new brawler disabled)', (() => {
   const all = allBrawlers();
-  return all.filter(id => !DISABLED.includes(id)).length === 98 && !game.match(/const disabledBrawlers = new Set\(\[([\s\S]*?)\]\)/)[1].includes('voltastein') && !game.match(/const disabledBrawlers = new Set\(\[([\s\S]*?)\]\)/)[1].includes('staticstein');
+  return all.filter(id => !DISABLED.includes(id)).length === 99 && !game.match(/const disabledBrawlers = new Set\(\[([\s\S]*?)\]\)/)[1].includes('voltastein') && !game.match(/const disabledBrawlers = new Set\(\[([\s\S]*?)\]\)/)[1].includes('staticstein');
 })());
 check('rarity maps: voltastein Anomaly (850 souls), staticstein Mythic (270 souls)', game.includes("voltastein: 'Anomaly'") && game.includes('Anomaly: 850') && game.includes("staticstein: 'Mythic'") && game.includes('Mythic: 270'));
 check('primary roles: voltastein Artillery (Thrower is not a code role), staticstein Damage Dealer', game.includes("voltastein:'Artillery'") && game.includes("staticstein:'Damage Dealer'"));

@@ -319,6 +319,11 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             const hpScale = getLevelHpScale(level);
             return { hp: Math.round(6600 * hpScale), dmg: Math.round(700 * scale), speed: 280 };
         }
+        if (brawlerId === 'pandy') {
+            const scale = 0.55 + (level - 1) * 0.045;
+            const hpScale = getLevelHpScale(level);
+            return { hp: Math.round(5200 * hpScale), dmg: Math.round(900 * scale), speed: 270 };
+        }
         if (brawlerId === 'looma') {
             const scale = 0.55 + (level - 1) * 0.045;
             const hpScale = getLevelHpScale(level);
@@ -899,6 +904,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             if (selectedBrawler === 'outlit') { try { window.BraweOutlitVoice?.play('kill'); } catch (e) {} }
             // Voodoyou voice: player kill line.
             if (selectedBrawler === 'voodoyou') { try { window.BraweVoodoyouVoice?.play('kill'); } catch (e) {} }
+            // Pandy voice: player kill line.
+            if (selectedBrawler === 'pandy') { try { window.BrawePandyVoice?.play('kill'); } catch (e) {} }
         }
         if (target && target.hp <= 0 && hasTrinket(owner, 'fresh_magazine')) {
             if (now - (target.trinketFreshMagazineKillAt || 0) > 1000) {
@@ -5113,6 +5120,7 @@ const bolznstienPendingStrikes = [];
             staticstein: 1500,
             healnstein: 1600,
             voodoyou: 1400,
+            pandy: 1900,
             carmela_fudge: 1400,
             oil_maker: 90,
             magnatar: 1450,
@@ -5181,6 +5189,7 @@ const bolznstienPendingStrikes = [];
             staticstein: 300,
             healnstein: 300,
             voodoyou: 300,
+            pandy: 350,
             carmela_fudge: 180,
             oil_maker: 112,
             magnatar: 200,
@@ -5272,6 +5281,7 @@ const bolznstienPendingStrikes = [];
         if (now < (entity.electrostienRealmSlowUntil || 0)) baseSlow = Math.min(baseSlow, 0.70);
         if (now < (entity.mallowSlowUntil || 0)) baseSlow = Math.min(baseSlow, getMallowSlowMultiplier(entity, now));
         if (now < (entity.voodoyouPatchSlowUntil || 0)) baseSlow = Math.min(baseSlow, VOODOOYOU_PATCH_SLOW_MULT);
+        if (now < (entity.pandyTrapSlowUntil || 0)) baseSlow = Math.min(baseSlow, PANDY_TRAP_SLOW_MULT);
         if (now < (entity.runnerSlowUntil || 0)) baseSlow = Math.min(baseSlow, RUNNER_TRAIL_SLOW_MULT);
         if (now < (entity.auraCharmerSlowUntil || 0)) baseSlow = Math.min(baseSlow, AURA_CHARMER_G1_SLOW_MULT);
         if (entity.powerOutageUntil && now < entity.powerOutageUntil) baseSlow = Math.min(baseSlow, getPowerOutageSlowMult(entity, now));
@@ -5478,7 +5488,7 @@ const bolznstienPendingStrikes = [];
         'boom_arang', 'teether', 'fuel', 'xray', 'angel', 'demon', 'warrior', 'relay',
         'upiedown', 'chickpig', 'jetpack', 'snapper', 'robber', 'rocketeer',
         'carmela_fudge', 'peter_pickle', 'unstable', 'homer', 'orbo', 'predator', 'fastpass', 'freestyle', 'portalo', 'ghoul', 'jacktrade', 'darkener', 'awakenator', 'adlof', 'cluster', 'witch', 'boomer', 'blade_vane', 'daggershard', 'ice_cream', 'swimmer', 'kage', 'drainbow', 'draflygon', 'axeywaxy', 'trampaheal', 'mageny', 'ramage', 'upgradart', 'cinderion', 'cursed', 'king', 'anti_royal', 'sir_cheeseburger', 'weefee', 'blinkeye', 'bolznstien', 'magnatar', 'oil_maker', 'rager', 'badbat', 'looma',
-        'feathers', 'spikey', 'electrostien', 'mallow', 'nightshade', 'aegis', 'runner', 'aura_charmer', 'voltastein', 'staticstein', 'healnstein', 'voodoyou'
+        'feathers', 'spikey', 'electrostien', 'mallow', 'nightshade', 'aegis', 'runner', 'aura_charmer', 'voltastein', 'staticstein', 'healnstein', 'voodoyou', 'pandy'
     ];
     const registeredBrawlerModules = window.ArenaForgeModules?.brawlers || Object.create(null);
     for (const moduleId of Object.keys(registeredBrawlerModules)) {
@@ -5567,6 +5577,7 @@ const bolznstienPendingStrikes = [];
             duck: 'Epic',
             unhitabble: 'Epic',
             mallow: 'Epic',
+            pandy: 'Epic',
 
             // Mythic (13)
             dashaholic: 'Mythic',
@@ -10484,6 +10495,17 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           g2: 'Doll Snatch (Instantly steal 1 voodoo from the nearest enemy within range)',
           sp1: 'Hexed Yarn (Yarn-ball explosions leave a yarn patch that slows enemies 25% for 2 seconds)',
           sp2: 'Puppet Master (Voodoo cap 3 to 4, control lasts 4.5 seconds, +1 max helper)'
+      },
+      'pandy': {
+          name: 'Pandy', role: 'Damage Dealer', rarity: 'Epic', color: '#ec4899',
+          desc: 'A candy-coated sharpshooter stitched together from a long-range umbrella and a candy cannon. Her Sugarshot hits harder the farther it flies — and the longer she stands still, the sweeter it gets.',
+          attack: 'Sugarshot', attackDesc: 'Fires a single long-range candy shot. Damage grows with distance, and standing still builds Focus for bonus damage and range.',
+          super: 'Candy Cannon', superDesc: 'Fires a giant piercing candy shell that deals more damage the farther it travels.',
+          hyper: 'Sugar Surge: while Hypercharged, Sugarshot and Candy Cannon pierce through enemies and Focus builds twice as fast.',
+          g1: 'Sweet Spot (Instantly build Focus to max)',
+          g2: 'Candy Trap (Drop a candy trap that slows and hurts the first enemy to step on it)',
+          sp1: 'Steady Aim (Focus builds 50% faster)',
+          sp2: 'Long Game (Sugarshot range +20% and max Focus grants +70% damage instead of +50%)'
       }
   };
 
@@ -10509,7 +10531,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
 
     // V4 standardized primary-role organization: exactly one gameplay role per brawler.
     const PRIMARY_ROLE_BY_BRAWLER = {
-        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank', rager:'Controller', looma:'Controller', feathers:'Controller', spikey:'Damage Dealer', electrostien:'Assassin', mallow:'Controller', nightshade:'Assassin', runner:'Controller', aura_charmer:'Support', voltastein:'Artillery', staticstein:'Damage Dealer', healnstein:'Support', voodoyou:'Controller',
+        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank', rager:'Controller', looma:'Controller', feathers:'Controller', spikey:'Damage Dealer', electrostien:'Assassin', mallow:'Controller', nightshade:'Assassin', runner:'Controller', aura_charmer:'Support', voltastein:'Artillery', staticstein:'Damage Dealer', healnstein:'Support', voodoyou:'Controller', pandy:'Damage Dealer',
     carmela_fudge:'Damage Dealer', bolznstien:'Damage Dealer', badbat:'Damage Dealer', magnatar:'Controller', oil_maker:'Controller', sir_cheeseburger:'Tank',
         blade_vane:'Assassin', kage:'Assassin', drainbow:'Controller', bowlin_rida:'Assassin', dashaholic:'Assassin', demon:'Assassin', jetpack:'Assassin', malakor:'Assassin', predator:'Assassin', swimmer:'Assassin', teether:'Assassin',
         boom_arang:'Marksman', cheseypuff:'Marksman', crystila:'Marksman', homer:'Marksman', hunter:'Marksman', orbo:'Marksman', snapper:'Marksman', xray:'Marksman',
@@ -10539,6 +10561,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
             staticstein: '⚡📺',
             healnstein: '💚🩹',
             voodoyou: '🧶',
+            pandy: '🍬',
     looma: '🪡🧵',
         sir_cheeseburger: '🛡️',
         anti_royal: '🏴‍☠️',
@@ -11695,6 +11718,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
       staticstein: { g1: 15000, g2: 15000 },
       healnstein: { g1: 15000, g2: 15000 },
       voodoyou: { g1: 14000, g2: 16000 },
+      pandy: { g1: 14000, g2: 16000 },
       carmela_fudge: { g1: 8000, g2: 8000 },
       bolznstien: { g1: 14000, g2: 15000 },
       sir_cheeseburger: { g1: 13000, g2: 14000 },
@@ -23976,6 +24000,221 @@ let heistFeverActive = false;
         }
     }
 
+
+    // ===== Pandy systems (Sugarshot + Candy Cannon + Sugar Surge) =====
+    // Anthony design (2026-11-11, builder picks — flagged for his correction):
+    // a Piper + Mandy fusion: an Epic candy sharpshooter. Main attack fires
+    // one long-range Sugarshot whose damage grows with distance (Piper) and
+    // with Focus — a meter that builds while she stands still (Mandy) and
+    // decays when she moves; Focus also adds range. Super Candy Cannon is a
+    // giant piercing shell whose damage also scales with distance. Hyper
+    // Sugar Surge makes shots pierce and Focus build twice as fast. Kill
+    // switches are `let` so regression tests can flip them. Dedicated art
+    // lives in its OWN branches below: Pandy projectiles are drawn before
+    // the universal skin renderer call, never through it (PR #48 lesson).
+    let PANDY_ENABLED = true;
+    let PANDY_VISUALS_ENABLED = true;
+    const PANDY_SUGARSHOT_SPEED = 1400;
+    const PANDY_SUGARSHOT_BASE_RANGE = 950;
+    const PANDY_DISTANCE_DAMAGE_MAX_MULT = 1.8; // damage at max range vs point blank
+    const PANDY_FOCUS_MAX = 100;
+    const PANDY_FOCUS_BUILD_PER_S = 40; // ~2.5s standing still to full Focus
+    const PANDY_FOCUS_DECAY_PER_S = 120;
+    const PANDY_FOCUS_DAMAGE_PER_POINT = 0.005; // +0.5% damage per Focus point (max +50%)
+    const PANDY_FOCUS_DAMAGE_PER_POINT_SP2 = 0.007; // SP2 Long Game: max +70%
+    const PANDY_FOCUS_RANGE_PER_POINT = 0.0015; // +0.15% range per Focus point (max +15%)
+    const PANDY_SP1_BUILD_MULT = 1.5; // SP1 Steady Aim: Focus builds 50% faster
+    const PANDY_SP2_RANGE_MULT = 1.2; // SP2 Long Game: +20% range
+    const PANDY_HYPER_FOCUS_BUILD_MULT = 2; // Hyper Sugar Surge: Focus builds twice as fast
+    const PANDY_SUPER_SPEED = 1000;
+    const PANDY_SUPER_RANGE = 1100;
+    const PANDY_SUPER_DAMAGE_MULT = 1.8; // super shell base = main dmg x 1.8 (1620 at P11)
+    const PANDY_TRAP_RADIUS = 120;
+    const PANDY_TRAP_DURATION_MS = 8000;
+    const PANDY_TRAP_DAMAGE_RATIO = 0.45; // trap hit = 45% of main damage
+    const PANDY_TRAP_SLOW_MULT = 0.60; // 40% slow
+    const PANDY_TRAP_SLOW_DURATION_MS = 2000;
+    let pandyTraps = [];
+    function isPandyEntity(entity) {
+        return !!entity && (entity.brawler === 'pandy' || (!!player && entity.id === player.id && selectedBrawler === 'pandy'));
+    }
+    function pandyStarChoice(entity) { try { return getEntityStarChoice(entity); } catch (_) { return entity ? entity.selectedStar : null; } }
+    function pandyHasSP1(entity) { const c = pandyStarChoice(entity); return c === 'slow' || c === 'sp1'; }
+    function pandyHasSP2(entity) { const c = pandyStarChoice(entity); return c === 'long' || c === 'sp2'; }
+    function pandyFocusDamagePerPoint(entity) { return pandyHasSP2(entity) ? PANDY_FOCUS_DAMAGE_PER_POINT_SP2 : PANDY_FOCUS_DAMAGE_PER_POINT; }
+    function pandyRangeMult(entity) { return pandyHasSP2(entity) ? PANDY_SP2_RANGE_MULT : 1; }
+    function pandyFocusDamageMult(entity) { return 1 + (entity.pandyFocus || 0) * pandyFocusDamagePerPoint(entity); }
+    function pandyEffectiveRange(entity) { return PANDY_SUGARSHOT_BASE_RANGE * (1 + (entity.pandyFocus || 0) * PANDY_FOCUS_RANGE_PER_POINT) * pandyRangeMult(entity); }
+    function pandyLevelFor(entity) { return entity && entity.id === player.id ? getSelectedBrawlerLevel() : (entity.level || 11); }
+    function pandyDistanceDamageMult(dist, range) { const t = clamp(dist / Math.max(1, range), 0, 1); return 1 + t * (PANDY_DISTANCE_DAMAGE_MAX_MULT - 1); }
+    function firePandyMain(fromEntity, ang, targetX, targetY, opts) {
+        if (!PANDY_ENABLED) return;
+        const isBot = !!opts.isBot, now = opts.now;
+        const donorMode = !!opts.donorMode;
+        const damageMult = opts.damageMult || 1, hitboxMult = opts.hitboxMult || 1;
+        const pandyHyper = donorMode ? false : isEntityHyperchargedNow(fromEntity, now);
+        const pandyLevel = donorMode ? 11 : pandyLevelFor(fromEntity);
+        const pandyStats = getScaledStats('pandy', pandyLevel);
+        const range = pandyEffectiveRange(fromEntity);
+        const baseDamage = Math.round(pandyStats.dmg * pandyFocusDamageMult(fromEntity) * damageMult);
+        bullets.push({ ownerBrawler: 'pandy', isPandySugarshot: true, isPrimaryChargeProjectile: true, pandyOriginX: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 7), pandyOriginY: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 7), pandyBaseDamage: baseDamage, pandyRange: range, ...staticsteinDonorTag('pandy', donorMode), x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 7), y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 7), vx: Math.cos(ang) * PANDY_SUGARSHOT_SPEED, vy: Math.sin(ang) * PANDY_SUGARSHOT_SPEED, life: 0, maxLife: range / PANDY_SUGARSHOT_SPEED, damage: baseDamage, pierce: pandyHyper, ownerId: fromEntity.id, hitIds: {}, hitboxMod: 1.3 * hitboxMult, hyperVisual: pandyHyper });
+    }
+    function castPandySuper(entity, isHyper, targetX, targetY) {
+        if (!PANDY_ENABLED || !entity || entity.hp <= 0) return;
+        const ang = Math.atan2(targetY - entity.y, targetX - entity.x);
+        const hyper = !!isHyper || isEntityHyperchargedNow(entity, performance.now());
+        const stats = getScaledStats('pandy', pandyLevelFor(entity));
+        const range = PANDY_SUPER_RANGE * (1 + (entity.pandyFocus || 0) * PANDY_FOCUS_RANGE_PER_POINT) * pandyRangeMult(entity);
+        const baseDamage = Math.round(stats.dmg * PANDY_SUPER_DAMAGE_MULT * pandyFocusDamageMult(entity));
+        bullets.push({ ownerBrawler: 'pandy', isPandyCandyShell: true, pandyOriginX: entity.x + Math.cos(ang) * (entity.radius + 7), pandyOriginY: entity.y + Math.sin(ang) * (entity.radius + 7), pandyBaseDamage: baseDamage, pandyRange: range, x: entity.x + Math.cos(ang) * (entity.radius + 7), y: entity.y + Math.sin(ang) * (entity.radius + 7), vx: Math.cos(ang) * PANDY_SUPER_SPEED, vy: Math.sin(ang) * PANDY_SUPER_SPEED, life: 0, maxLife: range / PANDY_SUPER_SPEED, damage: baseDamage, pierce: true, super: true, ownerId: entity.id, hitIds: {}, hitboxMod: 1.6, hyperVisual: hyper });
+        if (entity.id === player.id) { try { window.BrawePandyVoice?.play('super'); } catch (e) {} }
+        spawnFloatingText(entity.x, entity.y - 40, '🍬 CANDY CANNON!', '#f472b6');
+    }
+    function executePandyG1(entity) {
+        if (!PANDY_ENABLED || !entity || entity.hp <= 0) return;
+        entity.pandyFocus = PANDY_FOCUS_MAX;
+        spawnFloatingText(entity.x, entity.y - 36, '🍬 SWEET SPOT! FOCUS MAX', '#f472b6');
+    }
+    function executePandyG2(entity) {
+        if (!PANDY_ENABLED || !entity || entity.hp <= 0) return;
+        pandyTraps.push({ ownerId: entity.id, x: entity.x, y: entity.y, radius: PANDY_TRAP_RADIUS, until: performance.now() + PANDY_TRAP_DURATION_MS });
+        spawnFloatingText(entity.x, entity.y - 36, '🍬 CANDY TRAP SET', '#f472b6');
+    }
+    function updatePandySystems(dt) {
+        if (!PANDY_ENABLED) return;
+        const now = performance.now();
+        for (const entity of [player, ...bots]) {
+            if (!entity) continue;
+            const isPandy = entity.brawler === 'pandy' || (entity.id === player.id && selectedBrawler === 'pandy');
+            if (!isPandy) continue;
+            if (entity.hp <= 0) { entity.pandyFocus = 0; entity.pandyLastX = entity.x; entity.pandyLastY = entity.y; continue; }
+            const moved = Math.hypot(entity.x - (entity.pandyLastX ?? entity.x), entity.y - (entity.pandyLastY ?? entity.y));
+            entity.pandyLastX = entity.x;
+            entity.pandyLastY = entity.y;
+            const hyper = isEntityHyperchargedNow(entity, now);
+            const buildRate = PANDY_FOCUS_BUILD_PER_S * (pandyHasSP1(entity) ? PANDY_SP1_BUILD_MULT : 1) * (hyper ? PANDY_HYPER_FOCUS_BUILD_MULT : 1);
+            if (moved < 1.5) entity.pandyFocus = Math.min(PANDY_FOCUS_MAX, (entity.pandyFocus || 0) + buildRate * dt);
+            else entity.pandyFocus = Math.max(0, (entity.pandyFocus || 0) - PANDY_FOCUS_DECAY_PER_S * dt);
+        }
+        // Candy traps: first enemy to step on one takes damage + slow, trap consumed.
+        for (let ti = pandyTraps.length - 1; ti >= 0; ti--) {
+            const trap = pandyTraps[ti];
+            if (!trap || now >= trap.until) { pandyTraps.splice(ti, 1); continue; }
+            const owner = trap.ownerId === player.id ? player : bots.find((b) => b && b.id === trap.ownerId);
+            if (!owner || owner.hp <= 0) { pandyTraps.splice(ti, 1); continue; }
+            let victim = null;
+            for (const target of [player, ...bots]) {
+                if (!target || target.hp <= 0 || target.id === owner.id) continue;
+                if (target.isDummy || target.isStructure || target.isPet || target.isCore) continue;
+                if (areAlliedEntities(owner, target)) continue;
+                if (Math.hypot(target.x - trap.x, target.y - trap.y) <= trap.radius) { victim = target; break; }
+            }
+            if (!victim) continue;
+            const stats = getScaledStats('pandy', pandyLevelFor(owner));
+            const dmg = Math.round(stats.dmg * PANDY_TRAP_DAMAGE_RATIO);
+            checkHit(victim, { ownerBrawler: 'pandy', ownerId: owner.id, damage: dmg, pierce: true, super: false, hitIds: {}, pandyTrapHit: true, hyperVisual: false }, -1);
+            victim.pandyTrapSlowUntil = now + PANDY_TRAP_SLOW_DURATION_MS;
+            explosions.push({ x: trap.x, y: trap.y, radius: trap.radius, life: 0, maxLife: 0.3, color: 'rgba(244,114,182,0.85)', fxKind: 'pandyTrap' });
+            spawnFloatingText(victim.x, victim.y - 36, '🍬 CANDY TRAP!', '#f472b6');
+            pandyTraps.splice(ti, 1);
+        }
+    }
+    function drawPandySugarshot(ctx, b) {
+        const a = Math.atan2(b.vy, b.vx);
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        ctx.rotate(a);
+        ctx.shadowColor = '#ec4899';
+        ctx.shadowBlur = 14;
+        ctx.fillStyle = '#f472b6';
+        ctx.strokeStyle = '#be185d';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, 10, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#fbcfe8';
+        ctx.beginPath();
+        ctx.moveTo(-10, 0); ctx.lineTo(-18, -7); ctx.lineTo(-18, 7); ctx.closePath();
+        ctx.moveTo(10, 0); ctx.lineTo(18, -7); ctx.lineTo(18, 7); ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(-3, -3, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+    function drawPandyCandyShell(ctx, b) {
+        const a = Math.atan2(b.vy, b.vx);
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        ctx.rotate(a);
+        ctx.shadowColor = '#f59e0b';
+        ctx.shadowBlur = 22;
+        ctx.fillStyle = '#fbbf24';
+        ctx.strokeStyle = '#b45309';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(0, 0, 17, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = '#ec4899';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(0, 0, 10, 0.3, Math.PI * 1.3);
+        ctx.stroke();
+        ctx.fillStyle = '#fbcfe8';
+        ctx.beginPath();
+        ctx.moveTo(-17, 0); ctx.lineTo(-28, -10); ctx.lineTo(-28, 10); ctx.closePath();
+        ctx.moveTo(17, 0); ctx.lineTo(28, -10); ctx.lineTo(28, 10); ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+    }
+    function renderPandyEffects() {
+        if (!PANDY_VISUALS_ENABLED) return;
+        const now = performance.now();
+        // Candy traps on the ground.
+        for (const trap of pandyTraps) {
+            if (!trap) continue;
+            const pulse = 0.6 + 0.4 * Math.sin(now / 200);
+            ctx.save();
+            ctx.globalAlpha = pulse;
+            ctx.fillStyle = '#f472b6';
+            ctx.strokeStyle = '#be185d';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(trap.x, trap.y, 12, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.globalAlpha = 0.5;
+            ctx.beginPath();
+            ctx.arc(trap.x, trap.y, trap.radius, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+        }
+        // Focus bar over Pandy while Focus is building or full.
+        for (const e of [player, ...bots]) {
+            if (!e || e.hp <= 0 || !(e.pandyFocus > 0)) continue;
+            if (!(e.brawler === 'pandy' || (e.id === player.id && selectedBrawler === 'pandy'))) continue;
+            const w = 44, pct = clamp((e.pandyFocus || 0) / PANDY_FOCUS_MAX, 0, 1);
+            const bx = e.x - w / 2, by = e.y - (e.radius || 14) - 22;
+            ctx.save();
+            ctx.fillStyle = 'rgba(0,0,0,0.45)';
+            ctx.fillRect(bx - 1, by - 1, w + 2, 7);
+            ctx.fillStyle = pct >= 1 ? '#fbbf24' : '#f472b6';
+            ctx.fillRect(bx, by, w * pct, 5);
+            if (pct >= 1) {
+                ctx.font = 'bold 11px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#fde68a';
+                ctx.fillText('✦ FOCUS MAX', e.x, by - 4);
+            }
+            ctx.restore();
+        }
+    }
+
     // ===== Christmas Showdown buffs (Season 6: Xplodemis) =====
     let christmasBuffTimer = 0;
     function isChristmasShowdownMatch() { return showdownMode === 'christmas_showdown' && !isTraining; }
@@ -27494,6 +27733,7 @@ let heistFeverActive = false;
         if (bot.brawler === 'electrostien') return distance < ELECTROSTIEN_SUPER_THROW_RANGE - 40; // realm throw range
         if (bot.brawler === 'voltastein') return distance < VOLTASTEIN_ZAP_RADIUS; // Power Outage zap range
         if (bot.brawler === 'voodoyou') return distance < VOODOOYOU_NEEDLE_RANGE; // needle throw range
+        if (bot.brawler === 'pandy') return distance < PANDY_SUPER_RANGE; // candy shell range
         const targetHpPct = target.hp ? target.hp / Math.max(1, target.maxHp || target.hp) : 1;
         const clustered = getBotLivingEnemies(bot).filter((enemy) => Math.hypot(enemy.x - target.x, enemy.y - target.y) < 190).length;
         const objectiveFight = (isObjectiveMode || isTugZoneMode) && Math.hypot(target.x - (objectiveZone?.x || WORLD_W*0.5), target.y - (objectiveZone?.y || WORLD_H*0.5)) < (objectiveZone?.r || 240) + 80;
@@ -29793,7 +30033,7 @@ let heistFeverActive = false;
       beam:8, fuser:24, heater_miser:20, minigunnin:72, money_and_tax:24, outlit:30, steamer:8,
       bouncin_balls:6, chickpig:12, classy:6, copyphase:6, goonbob:6, hoop:5, hyperorigin:5, robber:42,
       portalo:7, ghoul:6, jacktrade:18, darkener:6, awakenator:8, trampaheal:6, axeywaxy:6, mageny:6, draflygon:6, ramage:6, upgradart:10, cinderion:10, cursed:7, king:6, anti_royal:6, weefee:6, rager:4,
-    carmela_fudge:5, bolznstien:5, sir_cheeseburger:4, blinkeye:4, magnatar:6, oil_maker:16, badbat:5, looma:7, feathers:5, spikey:6, electrostien:14, mallow:12, nightshade: 6, runner: 6, aura_charmer: 6, voltastein: 6, staticstein: 6, healnstein: 6, voodoyou: 6
+    carmela_fudge:5, bolznstien:5, sir_cheeseburger:4, blinkeye:4, magnatar:6, oil_maker:16, badbat:5, looma:7, feathers:5, spikey:6, electrostien:14, mallow:12, nightshade: 6, runner: 6, aura_charmer: 6, voltastein: 6, staticstein: 6, healnstein: 6, voodoyou: 6, pandy: 6
   });
   let nextMainAttackActivationId = 1;
   function getSuperChargeHitsForBrawler(brawler) {
@@ -35525,6 +35765,8 @@ let heistFeverActive = false;
     if (!isBot && fromEntity === player && (fromEntity.fusedPartCall || selectedBrawler) === 'outlit') { try { window.BraweOutlitVoice?.play('attack'); } catch (e) {} }
     // Voodoyou voice: player attack line (throttled inside the voice module).
     if (!isBot && fromEntity === player && (fromEntity.fusedPartCall || selectedBrawler) === 'voodoyou') { try { window.BraweVoodoyouVoice?.play('attack'); } catch (e) {} }
+    // Pandy voice: player attack line (throttled inside the voice module).
+    if (!isBot && fromEntity === player && (fromEntity.fusedPartCall || selectedBrawler) === 'pandy') { try { window.BrawePandyVoice?.play('attack'); } catch (e) {} }
 
     fireArenaForgeCapturedHyperAttacks(fromEntity, ang, now);
 
@@ -38286,6 +38528,9 @@ let heistFeverActive = false;
     } else if (brawler === 'voodoyou') {
         fireVoodoyouMain(fromEntity, ang, targetX, targetY, { isBot, now, damageMult: 1, hitboxMult: 1, donorMode: false });
         return;
+    } else if (brawler === 'pandy') {
+        firePandyMain(fromEntity, ang, targetX, targetY, { isBot, now, damageMult: 1, hitboxMult: 1, donorMode: false });
+        return;
     } else if (brawler === 'nightshade') {
         fireNightshadeMain(fromEntity, ang, targetX, targetY, { isBot, now, damageMult: 1, hitboxMult: 1, donorMode: false });
         return;
@@ -40649,6 +40894,7 @@ let heistFeverActive = false;
     if (combatBrawler === 'electrostien') { castElectrostienSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'mallow') { castMallowSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'voodoyou') { castVoodoyouSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
+    if (combatBrawler === 'pandy') { castPandySuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'nightshade') { castNightshadeSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'aegis') { castAegisSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'runner') { castRunnerSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
@@ -41967,6 +42213,10 @@ let heistFeverActive = false;
       executeVoodoyouG1(bot);
     } else if (bot.brawler === 'voodoyou' && g === 'g2') {
       executeVoodoyouG2(bot);
+    } else if (bot.brawler === 'pandy' && g === 'g1') {
+      executePandyG1(bot);
+    } else if (bot.brawler === 'pandy' && g === 'g2') {
+      executePandyG2(bot);
     } else if (bot.brawler === 'nightshade' && g === 'g1') {
       executeNightshadeG1(bot, target?.x ?? (bot.x + Math.cos(ang) * 200), target?.y ?? (bot.y + Math.sin(ang) * 200));
     } else if (bot.brawler === 'nightshade' && g === 'g2') {
@@ -42527,6 +42777,7 @@ let heistFeverActive = false;
     if (botCombatBrawler === 'electrostien') { castElectrostienSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'mallow') { castMallowSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'voodoyou') { castVoodoyouSuper(bot, isHyper, targetX, targetY); return; }
+    if (botCombatBrawler === 'pandy') { castPandySuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'nightshade') { castNightshadeSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'aegis') { castAegisSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'runner') { castRunnerSuper(bot, isHyper, targetX, targetY); return; }
@@ -44104,6 +44355,18 @@ let heistFeverActive = false;
         return;
     } else if (curBrawler === 'voodoyou' && curGadget === 'g2') {
         executeVoodoyouG2(player);
+        gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
+        setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
+        updateGadgetButton();
+        return;
+    } else if (curBrawler === 'pandy' && curGadget === 'g1') {
+        executePandyG1(player);
+        gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
+        setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
+        updateGadgetButton();
+        return;
+    } else if (curBrawler === 'pandy' && curGadget === 'g2') {
+        executePandyG2(player);
         gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
         setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
         updateGadgetButton();
@@ -57482,6 +57745,7 @@ function checkHit(target, b, i){
     if (playing && !gameOver) updateAegisSystems(dt);
     if (playing && !gameOver) updateRunnerSystems(dt);
     if (playing && !gameOver) updateVoodoyouSystems(dt);
+    if (playing && !gameOver) updatePandySystems(dt);
     if (playing && !gameOver) updatePropPads();
     if (playing && !gameOver) updateChristmasShowdown(dt);
     if (playing && !gameOver) updatePropHuntMode(dt, now);
@@ -60932,6 +61196,12 @@ function checkHit(target, b, i){
           const progress = clamp(b.maxLife > 0 ? b.life / b.maxLife : 1, 0, 1);
           b.hitboxMod = (b.cursedMarkedFate ? 1.25 : 1) * (.72 + progress * 1.72);
           b.damage = Math.round((b.baseDamage || b.damage || 0) * (b.cursedDreadExpansion ? (1 + progress * .15) : 1));
+      }
+      // Pandy Sugarshot / Candy Cannon: damage grows with distance travelled
+      // (Piper) — recomputed every frame from the origin, Cursed-bolt pattern.
+      if (b.isPandySugarshot || b.isPandyCandyShell) {
+          const dist = Math.hypot(b.x - (b.pandyOriginX ?? b.x), b.y - (b.pandyOriginY ?? b.y));
+          b.damage = Math.round((b.pandyBaseDamage || b.damage || 0) * pandyDistanceDamageMult(dist, b.pandyRange || PANDY_SUGARSHOT_BASE_RANGE));
       }
       // Sheet Round 41 Group C: minimal main/super-attack visuals (trail particles).
       if (b.isEvilDoctorSyringe) {
@@ -67531,6 +67801,31 @@ function checkHit(target, b, i){
                 ctx.stroke();
                 ctx.restore();
             }
+            if (brawlerId === 'pandy') {
+                ctx.save();
+                ctx.shadowColor = '#ec4899';
+                ctx.shadowBlur = 8;
+                ctx.fillStyle = '#f472b6';
+                ctx.strokeStyle = '#be185d';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(entity.x, drawY - size * 0.1, size * 0.28, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = '#fbcfe8';
+                ctx.beginPath();
+                ctx.moveTo(entity.x - size * 0.28, drawY - size * 0.1);
+                ctx.lineTo(entity.x - size * 0.48, drawY - size * 0.3);
+                ctx.lineTo(entity.x - size * 0.48, drawY + size * 0.1);
+                ctx.closePath();
+                ctx.moveTo(entity.x + size * 0.28, drawY - size * 0.1);
+                ctx.lineTo(entity.x + size * 0.48, drawY - size * 0.3);
+                ctx.lineTo(entity.x + size * 0.48, drawY + size * 0.1);
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+            }
             ctx.textAlign = 'left';
             ctx.textBaseline = 'alphabetic';
     }
@@ -68050,6 +68345,7 @@ function checkHit(target, b, i){
     renderElectrostienEffects();
     renderMallowEffects();
     renderVoodoyouEffects();
+    renderPandyEffects();
     renderNightshadeEffects();
     renderRunnerEffects(ctx);
     if (typeof renderBouncinBossEvent === 'function') renderBouncinBossEvent('ground');
@@ -75333,6 +75629,14 @@ function checkHit(target, b, i){
       }
       if (b.isVoodoyouNeedle) {
         drawVoodoyouNeedle(ctx, b);
+        continue;
+      }
+      if (b.isPandySugarshot) {
+        drawPandySugarshot(ctx, b);
+        continue;
+      }
+      if (b.isPandyCandyShell) {
+        drawPandyCandyShell(ctx, b);
         continue;
       }
       const earlyProjectileBrawler = b.ownerBrawler || (b.ownerId === player.id ? selectedBrawler : '');
@@ -84072,6 +84376,70 @@ function checkHit(target, b, i){
     } catch (e) { /* voice must never break the loop */ }
   }
 
+  // Pandy voice-line state watcher (2026-11-11): spawn / win / death / idle
+  // and the hurt voice. Attack, Super and kill fire from their own hooks;
+  // this watcher only owns the transitions with no single call site (match
+  // start/end, idling, HP drops). Mirrors updateVoodoyouVoiceState. Runs in
+  // loop() after update() because update() returns early once gameOver is
+  // set. Never throws.
+  let pandyVoicePrevPlaying = false;
+  let pandyVoicePrevGameOver = false;
+  let pandyVoiceMatchEndPlayed = false;
+  let pandyVoiceLastHp = null;
+  let pandyVoiceLastActionAt = 0;
+  let pandyVoiceLastIdleAt = 0;
+  function updatePandyVoiceState() {
+    try {
+      if (typeof selectedBrawler === 'undefined' || !player) return;
+      const now = performance.now();
+      const isPandy = selectedBrawler === 'pandy';
+      // Match start: playing flips false -> true.
+      if (playing && !pandyVoicePrevPlaying) {
+        pandyVoiceMatchEndPlayed = false;
+        pandyVoiceLastHp = player.hp;
+        pandyVoiceLastActionAt = now;
+        pandyVoiceLastIdleAt = 0;
+        player.pandyWinAt = 0;
+        player.pandyDeathAt = 0;
+        if (isPandy) window.BrawePandyVoice?.play('spawn');
+      }
+      // Match end: gameOver flips false -> true.
+      if (gameOver && !pandyVoicePrevGameOver && !pandyVoiceMatchEndPlayed) {
+        pandyVoiceMatchEndPlayed = true;
+        if (isPandy) {
+          if (player.hp > 0) {
+            player.pandyWinAt = now;
+            window.BrawePandyVoice?.play('win');
+          } else {
+            player.pandyDeathAt = now;
+            window.BrawePandyVoice?.play('death');
+            explosions.push({ x: player.x, y: player.y, radius: 60, life: 0, maxLife: .8, color: 'rgba(244,114,182,.55)', fxKind: 'pandyDeathBurst' });
+            spawnFloatingText(player.x, player.y - 46, '🍬 MELTED!', '#f472b6');
+          }
+        }
+      }
+      // Hurt voice: player HP dropped since last frame.
+      if (playing && !gameOver && isPandy && player.hp > 0 && pandyVoiceLastHp !== null && player.hp < pandyVoiceLastHp) {
+        pandyVoiceLastActionAt = now;
+        window.BrawePandyVoice?.play('hurt');
+      }
+      if (player) pandyVoiceLastHp = player.hp;
+      // Idle voice: alive, unmoving, no attack and no damage for 20s.
+      if (playing && !gameOver && isPandy && player.hp > 0) {
+        const moved = Math.hypot((player.x || 0) - (player.pandyVoicePrevX ?? player.x ?? 0), (player.y || 0) - (player.pandyVoicePrevY ?? player.y ?? 0)) > 4;
+        if (moved || (player.lastAttackAt || 0) > pandyVoiceLastActionAt) pandyVoiceLastActionAt = now;
+        player.pandyVoicePrevX = player.x;
+        player.pandyVoicePrevY = player.y;
+        if (now - pandyVoiceLastActionAt > 20000 && now - pandyVoiceLastIdleAt > 25000) {
+          pandyVoiceLastIdleAt = now;
+          window.BrawePandyVoice?.play('idle');
+        }
+      }
+      pandyVoicePrevPlaying = !!playing;
+      pandyVoicePrevGameOver = !!gameOver;
+    } catch (e) { /* voice must never break the loop */ }
+  }
+
   function loop(){
     if (runtimeLoopCrashed) return;
     try {
@@ -84095,6 +84463,7 @@ function checkHit(target, b, i){
         update(dt);
         updateOutlitVoiceState();
         updateVoodoyouVoiceState();
+        updatePandyVoiceState();
         const homeVisible = homeScreen && homeScreen.style.display !== 'none';
         if (playing || !homeVisible) render();
     } catch (err) {
