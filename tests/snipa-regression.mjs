@@ -37,8 +37,11 @@
 // 640px/s (balance patch #2 — was 1600, -60%) and register hits
 // with a swept segment test against their assigned target (walls still block a normal volley; a Hyper volley
 // executes through walls). Hypercharge also paints Snipa purple now
-// (balance patch #2): a pulsing purple aura + purple trail particles,
-// mirroring Pandy's Hyper treatment (same shades, same 60ms cadence). G1 Deadeye (14s): next main attack +50% damage
+// (balance patch #2, made unmistakable by the hyper-visuals fix 2026-11-13 — the patch #2 ring was too faint
+// to read on a phone and the purple shots never rendered): a big bright pulsing purple aura (halo + rim +
+// ring) + bigger longer-lived purple trail particles (same shades, same 60ms cadence) + purple Longshot and
+// volley bullets while hypercharged (their hyperVisual flags were already set at fire time; the draw fns
+// just ignored them). G1 Deadeye (14s): next main attack +50% damage
 // and double range bonus on hit. G2 Long Lens (16s): main range +3 tiles
 // for 5s. SP1 Eagle Eye: +0.75 tiles per hit. SP2 Hair Trigger: volley
 // fires 4 bullets per marked enemy.
@@ -111,6 +114,8 @@ check('rework: instant volley on full mark (reset to 0) + single-target helper',
 check('rework: purple slow constants + slow wired into getEntitySlowMultiplier', game.includes('const SNIPA_PURPLE_SLOW_MIN = 0.10;') && game.includes('const SNIPA_PURPLE_SLOW_MAX = 0.70;') && game.includes('const SNIPA_PURPLE_SLOW_REFRESH_MS = 120;') && game.includes('if (now < (entity.snipaPurpleSlowUntil || 0)) baseSlow = Math.min(baseSlow, Number(entity.snipaPurpleSlowMult) || 1);'));
 check('rework: card text matches the new mechanics', game.includes("superDesc: 'Stands still and sweeps a big blue aura around her, marking enemies inside it. The moment an enemy is fully marked, a rapid volley fires at them") && game.includes("hyper: 'Deadeye Surge: while Hypercharged, Headshot marks through walls and bushes, its marks turn purple and slow enemies inside the aura") && game.includes('bonus damage to marked enemies'));
 check('hyper visuals: purple aura + trail mirror Pandy (same shades, 60ms cadence)', game.includes("color: Math.random() < 0.5 ? '#c084fc' : '#a855f7', isParticle: true") && game.includes("ctx.strokeStyle = '#c084fc';") && game.includes("ctx.fillStyle = '#a855f7';") && game.includes('entity.snipaHyperTrailAt = now + 60;'));
+check('hyper visuals fix: Longshot + volley draw purple on hyperVisual (Pandy-shell palette)', game.includes("ctx.fillStyle = hyper ? '#c084fc' : '#60a5fa';") && game.includes("ctx.fillStyle = hyper ? '#c084fc' : '#bfdbfe';"));
+check('hyper visuals fix: aura constants are the bigger/brighter values', game.includes('const SNIPA_HYPER_AURA_RADIUS_BONUS = 20;') && game.includes('const SNIPA_HYPER_AURA_LINE_WIDTH = 5;') && game.includes('const SNIPA_HYPER_AURA_STROKE_ALPHA = 0.9;'));
 check('volley fix: turn-rate steer + swept segment helpers exist and are called in the bullet loop', game.includes('function snipaSteerVolleyBullet(b, vTarget, dt) {') && game.includes('function snipaVolleySegmentHitsTarget(b, target, dt) {') && game.includes('snipaSteerVolleyBullet(b, vTarget, dt);') && game.includes('snipaVolleySegmentHitsTarget(b, vTarget, dt)'));
 check('volley fix: swept hit calls checkHit and does NOT double-splice (checkHit splices non-piercing bullets itself)', game.includes('if (checkHit(vTarget, b, i)) continue;') && !game.includes('if (checkHit(vTarget, b, i)) { bullets.splice(i, 1);'));
 check('volley fix: walls block a normal volley, Hyper volley executes through walls', game.includes('b.hyperVisual || hasBlinkEyeSight(b.x, b.y, vTarget.x, vTarget.y)'));
@@ -1124,6 +1129,12 @@ try {
     SNIPA_SUPER_AURA_RADIUS: 600,
     SNIPA_MARK_CONE_HALF_ANGLE: 0.14,
     SNIPA_HYPER_MARK_CONE_HALF_ANGLE: 0.31,
+    SNIPA_HYPER_AURA_RADIUS_BONUS: 20,
+    SNIPA_HYPER_AURA_PULSE_PX: 6,
+    SNIPA_HYPER_AURA_LINE_WIDTH: 5,
+    SNIPA_HYPER_AURA_STROKE_ALPHA: 0.9,
+    SNIPA_HYPER_AURA_FILL_ALPHA: 0.3,
+    SNIPA_HYPER_AURA_SHADOW_BLUR: 28,
     PANDY_FOCUS_MAX: 100,
   };
   vm.createContext(sandbox);
@@ -1147,6 +1158,16 @@ try {
   const s2 = stubCtx();
   sandbox.drawSnipaVolleyBullet(s2.proxy, { vx: 2400, vy: 0, x: 0, y: 0 });
   check('volley art: bright blue dart', hasFill(s2.sets, '#bfdbfe'));
+  // Hyper-visuals fix (2026-11-13): Longshot + volley bullets render
+  // PURPLE while hypercharged (their hyperVisual flags were already set
+  // at fire time; the draw fns ignored them and always drew blue).
+  const s1h = stubCtx();
+  sandbox.drawSnipaLongshot(s1h.proxy, { vx: 1500, vy: 0, x: 0, y: 0, hyperVisual: true });
+  check('longshot art: purple bullet body while hypercharged', hasFill(s1h.sets, '#c084fc'));
+  check('longshot art: purple core while hypercharged', hasFill(s1h.sets, '#f3e8ff'));
+  const s2h = stubCtx();
+  sandbox.drawSnipaVolleyBullet(s2h.proxy, { vx: 2400, vy: 0, x: 0, y: 0, hyperVisual: true });
+  check('volley art: purple dart while hypercharged', hasFill(s2h.sets, '#c084fc'));
   // Aura: channeling Snipa at (100,100), no walls -> full 600px blue polygon.
   const s3 = stubCtx();
   sandbox.ctx = s3.proxy;
@@ -1218,6 +1239,14 @@ try {
   check('render effects: hyper aura drawn purple (#c084fc ring)', s10.sets.some((s) => s.p === 'strokeStyle' && String(s.v) === '#c084fc'));
   check('render effects: hyper aura filled purple (#a855f7)', hasFill(s10.sets, '#a855f7'));
   check('render effects: cyan wedge still drawn while hyper (purple is a layer on top)', hasFill(s10.sets, '#22d3ee'));
+  // Hyper-visuals fix (2026-11-13): the ring is now big and bright
+  // enough to read on a phone — bright ring radius 37-40 (was ~26),
+  // 5px line (was 3), plus a halo ring at +10 and a purple rim disc
+  // (radius 18) hugging the brawler.
+  check('render effects: hyper aura ring is bigger (radius 37-40)', s10.calls.some((c) => c.m === 'arc' && c.args[2] >= 37 && c.args[2] <= 40));
+  check('render effects: hyper aura has a wide halo ring (radius 47-50)', s10.calls.some((c) => c.m === 'arc' && c.args[2] >= 47 && c.args[2] <= 50));
+  check('render effects: hyper aura has a purple rim disc on the brawler (radius 18)', s10.calls.some((c) => c.m === 'arc' && near(c.args[2], 18)));
+  check('render effects: hyper aura ring is 5px thick (was 3)', s10.sets.some((s) => s.p === 'lineWidth' && s.v === 5));
   const s11 = stubCtx();
   sandbox.ctx = s11.proxy;
   sandbox.player = { id: 1, brawler: 'snipa', hp: 5200, snipaRangeBonusPx: 0, x: 100, y: 100, radius: 14 };
@@ -1236,6 +1265,63 @@ try {
   sandbox.drawPandyFocusHudBar(s9.proxy, { hp: 5200, pandyFocus: 50, x: 100 }, 200);
   check('focus HUD bar: pink while building', hasFill(s9.sets, '#f472b6'));
 } catch (e) { failures.push('art vm block threw: ' + e.message); }
+
+// --- executed: Hyper purple aura through the REAL isEntityHyperchargedNow gate ---
+// Regression for the 2026-11-13 report ("no purple visuals when HC is
+// active"): every earlier aura test stubbed the gate as
+// `(e) => !!e._hyperTest`, so the suite proved the render code draws GIVEN
+// a hyper signal — but never proved the REAL gate returns true for a
+// hypercharged player in live play. This block extracts the genuine
+// isEntityHyperchargedNow from game.js and runs renderSnipaEffects against
+// the real global `isHypercharged`, exactly as live play sees it.
+try {
+  const sandbox = {
+    Math,
+    performance: { now: () => 100000 },
+    // REAL global, as live play has it (activateHypercharge sets it true).
+    isHypercharged: true,
+    getMouseWorld: () => ({ x: 500, y: 100 }),
+    player: { id: 1, brawler: 'snipa', hp: 5200, snipaRangeBonusPx: 0, x: 100, y: 100, radius: 14 },
+    bots: [],
+    selectedBrawler: 'snipa',
+    cubes: [],
+    destructibleWalls: [],
+    SNIPA_VISUALS_ENABLED: true,
+    SNIPA_TILE_PX: 48,
+    SNIPA_MAIN_BASE_RANGE: 729.6,
+    SNIPA_G2_RANGE_BONUS_TILES: 3,
+    SNIPA_SUPER_AURA_RADIUS: 600,
+    SNIPA_MARK_CONE_HALF_ANGLE: 0.14,
+    SNIPA_HYPER_MARK_CONE_HALF_ANGLE: 0.31,
+    SNIPA_HYPER_AURA_RADIUS_BONUS: 20,
+    SNIPA_HYPER_AURA_PULSE_PX: 6,
+    SNIPA_HYPER_AURA_LINE_WIDTH: 5,
+    SNIPA_HYPER_AURA_STROKE_ALPHA: 0.9,
+    SNIPA_HYPER_AURA_FILL_ALPHA: 0.3,
+    SNIPA_HYPER_AURA_SHADOW_BLUR: 28,
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(
+    extractFn(game, 'isEntityHyperchargedNow') + '\n' +
+    extractFn(game, 'isSnipaChanneling') + '\n' +
+    extractFn(game, 'snipaPointInWall') + '\n' +
+    extractFn(game, 'snipaEffectiveRange') + '\n' +
+    extractFn(game, 'renderSnipaEffects'),
+    sandbox);
+  check('real-gate: hypercharged player reads true through the REAL gate', sandbox.isEntityHyperchargedNow(sandbox.player, 100000) === true);
+  const rg1 = stubCtx();
+  sandbox.ctx = rg1.proxy;
+  sandbox.renderSnipaEffects();
+  check('real-gate: purple aura draws with the real global true', rg1.sets.some((s) => s.p === 'strokeStyle' && String(s.v) === '#c084fc'));
+  check('real-gate: purple aura fill draws with the real global true', hasFill(rg1.sets, '#a855f7'));
+  // Flip the global off (Hyper expired): the aura must vanish.
+  sandbox.isHypercharged = false;
+  check('real-gate: gate reads false once the global clears', sandbox.isEntityHyperchargedNow(sandbox.player, 100000) === false);
+  const rg2 = stubCtx();
+  sandbox.ctx = rg2.proxy;
+  sandbox.renderSnipaEffects();
+  check('real-gate: NO purple aura once the global clears', !rg2.sets.some((s) => s.p === 'strokeStyle' && String(s.v) === '#c084fc') && !hasFill(rg2.sets, '#a855f7'));
+} catch (e) { failures.push('real-gate hyper aura vm block threw: ' + e.message); }
 
 // --- executed: voice module (silent without audio + RULE ONE scan) ---
 try {
