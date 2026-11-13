@@ -24402,6 +24402,16 @@ let heistFeverActive = false;
     const SNIPA_PURPLE_SLOW_MIN = 0.10; // Hyper aura slow at low mark (10%)
     const SNIPA_PURPLE_SLOW_MAX = 0.70; // Hyper aura slow at full mark (70%)
     const SNIPA_PURPLE_SLOW_REFRESH_MS = 120; // aura slow refresh window — expires ~instantly after leaving the aura
+    // Hyper-visuals fix (2026-11-13): the patch #2 aura was real but too
+    // faint to read on a phone (3px stroke, ~0.4 alpha, ~26px radius), and
+    // the purple shots it implied never rendered — the draw fns ignored
+    // the hyperVisual flags fireSnipaMain/fireSnipaVolleyAt already set.
+    const SNIPA_HYPER_AURA_RADIUS_BONUS = 20; // ring radius = brawler radius + 20 (was +12)
+    const SNIPA_HYPER_AURA_PULSE_PX = 6; // ring breathes +6px (was +4)
+    const SNIPA_HYPER_AURA_LINE_WIDTH = 5; // was 3
+    const SNIPA_HYPER_AURA_STROKE_ALPHA = 0.9; // was 0.55
+    const SNIPA_HYPER_AURA_FILL_ALPHA = 0.3; // was 0.18
+    const SNIPA_HYPER_AURA_SHADOW_BLUR = 28; // was 22
     const SNIPA_HYPER_MARK_DURATION_MS = 4000; // reticle mark lasts 4s once built
     const SNIPA_HYPER_MARK_DECAY_PER_S = 0.5; // reticle mark fades when not aimed
     const SNIPA_MARK_CONE_HALF_ANGLE = 0.14; // balance patch #1: ~8 deg half-angle baseline marking wedge (always-on, thinner than Hyper)
@@ -24579,10 +24589,13 @@ let heistFeverActive = false;
             }
             // Balance patch #2: purple trail particles while Hypercharged
             // (Pandy pattern — same shades, same 60ms cadence).
+            // Hyper-visuals fix (2026-11-13): bigger (5-9px, was 3-6px)
+            // and longer-lived (0.7s, was 0.4s) — the old dots were nearly
+            // invisible on a phone.
             if (isEntityHyperchargedNow(entity, now)) {
                 if (!entity.snipaHyperTrailAt || now >= entity.snipaHyperTrailAt) {
                     entity.snipaHyperTrailAt = now + 60;
-                    explosions.push({ x: entity.x + (Math.random() - 0.5) * 20, y: entity.y + (Math.random() - 0.5) * 20, vx: (Math.random() - 0.5) * 30, vy: (Math.random() - 0.5) * 30, radius: 3 + Math.random() * 3, life: 0, maxLife: 0.4, color: Math.random() < 0.5 ? '#c084fc' : '#a855f7', isParticle: true });
+                    explosions.push({ x: entity.x + (Math.random() - 0.5) * 20, y: entity.y + (Math.random() - 0.5) * 20, vx: (Math.random() - 0.5) * 30, vy: (Math.random() - 0.5) * 30, radius: 5 + Math.random() * 4, life: 0, maxLife: 0.7, color: Math.random() < 0.5 ? '#c084fc' : '#a855f7', isParticle: true });
                 }
             }
             // Headshot channel: mark enemies in the aura, volley at ~1.5s.
@@ -24705,20 +24718,26 @@ let heistFeverActive = false;
     }
     function drawSnipaLongshot(ctx, b) {
         const a = Math.atan2(b.vy, b.vx);
+        // Hyper-visuals fix (2026-11-13): fireSnipaMain already stamps
+        // hyperVisual on Longshots fired while Hypercharged, but this draw
+        // fn ignored it and always drew blue — so a hypercharged Snipa's
+        // shots looked identical to normal ones. Purple now (Pandy-shell
+        // palette: shadow #a855f7, fill #c084fc, stroke #7e22ce).
+        const hyper = !!b.hyperVisual;
         ctx.save();
         ctx.translate(b.x, b.y);
         ctx.rotate(a);
-        ctx.shadowColor = '#3b82f6';
-        ctx.shadowBlur = 16;
-        ctx.fillStyle = '#60a5fa';
-        ctx.strokeStyle = '#1d4ed8';
+        ctx.shadowColor = hyper ? '#a855f7' : '#3b82f6';
+        ctx.shadowBlur = hyper ? 22 : 16;
+        ctx.fillStyle = hyper ? '#c084fc' : '#60a5fa';
+        ctx.strokeStyle = hyper ? '#7e22ce' : '#1d4ed8';
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.ellipse(0, 0, 18, 8, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
         ctx.shadowBlur = 0;
-        ctx.fillStyle = '#dbeafe';
+        ctx.fillStyle = hyper ? '#f3e8ff' : '#dbeafe';
         ctx.beginPath();
         ctx.ellipse(-4, 0, 8, 3.5, 0, 0, Math.PI * 2);
         ctx.fill();
@@ -24726,13 +24745,17 @@ let heistFeverActive = false;
     }
     function drawSnipaVolleyBullet(ctx, b) {
         const a = Math.atan2(b.vy, b.vx);
+        // Hyper-visuals fix (2026-11-13): same as Longshot — volley
+        // bullets carry hyperVisual from fireSnipaVolleyAt but always drew
+        // blue. Purple while hypercharged (Pandy-shell palette).
+        const hyper = !!b.hyperVisual;
         ctx.save();
         ctx.translate(b.x, b.y);
         ctx.rotate(a);
-        ctx.shadowColor = '#93c5fd';
-        ctx.shadowBlur = 14;
-        ctx.fillStyle = '#bfdbfe';
-        ctx.strokeStyle = '#2563eb';
+        ctx.shadowColor = hyper ? '#a855f7' : '#93c5fd';
+        ctx.shadowBlur = hyper ? 22 : 14;
+        ctx.fillStyle = hyper ? '#c084fc' : '#bfdbfe';
+        ctx.strokeStyle = hyper ? '#7e22ce' : '#2563eb';
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.moveTo(10, 0); ctx.lineTo(-8, -5); ctx.lineTo(-4, 0); ctx.lineTo(-8, 5); ctx.closePath();
@@ -24813,22 +24836,42 @@ let heistFeverActive = false;
         // around any hypercharged Snipa (Pandy pattern — same shades and
         // timing). Sits on top of the cyan reticle telegraph, never
         // replaces it.
+        // Hyper-visuals fix (2026-11-13): the patch #2 ring was real but
+        // too faint to read on a phone (3px stroke, ~0.4 alpha, ~26px
+        // radius), so a hypercharged Snipa looked unchanged in live play.
+        // The ring is now bigger/brighter, a purple rim hugs the brawler
+        // herself, and a wide faint halo adds presence.
         for (const e of [player, ...bots]) {
             if (!e || e.hp <= 0) continue;
             if (!(e.brawler === 'snipa' || (e.id === player.id && selectedBrawler === 'snipa'))) continue;
             if (!isEntityHyperchargedNow(e, now)) continue;
             const pulse = 0.75 + 0.25 * Math.sin(now / 160);
-            const ar = (e.radius || 14) + 12 + 4 * pulse;
+            const ar = (e.radius || 14) + SNIPA_HYPER_AURA_RADIUS_BONUS + SNIPA_HYPER_AURA_PULSE_PX * pulse;
             ctx.save();
-            ctx.globalAlpha = 0.55 * pulse;
-            ctx.shadowColor = '#a855f7';
-            ctx.shadowBlur = 22;
+            // Wide faint halo — the Hyper state reads at a glance.
+            ctx.globalAlpha = 0.25 * pulse;
             ctx.strokeStyle = '#c084fc';
-            ctx.lineWidth = 3;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(e.x, e.y, ar + 10, 0, Math.PI * 2);
+            ctx.stroke();
+            // Purple rim hugging the brawler herself (the sprite covers
+            // the middle of this disc, so only the rim shows).
+            ctx.globalAlpha = 0.35 * pulse;
+            ctx.fillStyle = '#a855f7';
+            ctx.beginPath();
+            ctx.arc(e.x, e.y, (e.radius || 14) + 4, 0, Math.PI * 2);
+            ctx.fill();
+            // The bright ring (same shades as patch #2, now thicker).
+            ctx.globalAlpha = SNIPA_HYPER_AURA_STROKE_ALPHA * pulse;
+            ctx.shadowColor = '#a855f7';
+            ctx.shadowBlur = SNIPA_HYPER_AURA_SHADOW_BLUR;
+            ctx.strokeStyle = '#c084fc';
+            ctx.lineWidth = SNIPA_HYPER_AURA_LINE_WIDTH;
             ctx.beginPath();
             ctx.arc(e.x, e.y, ar, 0, Math.PI * 2);
             ctx.stroke();
-            ctx.globalAlpha = 0.18 * pulse;
+            ctx.globalAlpha = SNIPA_HYPER_AURA_FILL_ALPHA * pulse;
             ctx.fillStyle = '#a855f7';
             ctx.beginPath();
             ctx.arc(e.x, e.y, ar, 0, Math.PI * 2);
