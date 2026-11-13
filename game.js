@@ -5293,6 +5293,7 @@ const bolznstienPendingStrikes = [];
         if (now < (entity.mallowSlowUntil || 0)) baseSlow = Math.min(baseSlow, getMallowSlowMultiplier(entity, now));
         if (now < (entity.voodoyouPatchSlowUntil || 0)) baseSlow = Math.min(baseSlow, VOODOOYOU_PATCH_SLOW_MULT);
         if (now < (entity.pandyTrapSlowUntil || 0)) baseSlow = Math.min(baseSlow, PANDY_TRAP_SLOW_MULT);
+        if (now < (entity.snipaPurpleSlowUntil || 0)) baseSlow = Math.min(baseSlow, Number(entity.snipaPurpleSlowMult) || 1); // Snipa rework patch #3: Hyper aura purple slow, 10%->70% by mark (mult 0.90->0.30, refreshed each aura tick)
         if (now < (entity.runnerSlowUntil || 0)) baseSlow = Math.min(baseSlow, RUNNER_TRAIL_SLOW_MULT);
         if (now < (entity.auraCharmerSlowUntil || 0)) baseSlow = Math.min(baseSlow, AURA_CHARMER_G1_SLOW_MULT);
         if (entity.powerOutageUntil && now < entity.powerOutageUntil) baseSlow = Math.min(baseSlow, getPowerOutageSlowMult(entity, now));
@@ -10522,9 +10523,9 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
       'snipa': {
           name: 'Snipa', role: 'Marksman', rarity: 'Epic', color: '#3b82f6',
           desc: "Pandy's sharpshooting sister. Her wide blue bullets stretch her range with every hit, and her Headshot aura marks enemies for a deadly volley.",
-          attack: 'Longshot', attackDesc: 'Fires a wide blue bullet. Each hit stretches her range a little farther, up to a limit.',
-          super: 'Headshot', superDesc: 'Stands still and sweeps a big blue aura around her, marking enemies inside it. After a moment she fires a rapid volley at every marked enemy — fully marked enemies take more damage.',
-          hyper: 'Deadeye Surge: while Hypercharged, Headshot marks through walls and bushes, and aiming the main attack marks enemies in the reticle for bonus damage.',
+          attack: 'Longshot', attackDesc: 'Fires a wide blue bullet. Each hit stretches her range a little farther, up to a limit. Shots deal bonus damage to marked enemies — much more when they are fully marked.',
+          super: 'Headshot', superDesc: 'Stands still and sweeps a big blue aura around her, marking enemies inside it. The moment an enemy is fully marked, a rapid volley fires at them — and when the aura ends, any enemy still marked takes a volley scaled to their mark.',
+          hyper: 'Deadeye Surge: while Hypercharged, Headshot marks through walls and bushes, its marks turn purple and slow enemies inside the aura, and aiming marks enemies faster in a wider cone.',
           g1: 'Deadeye (Next main attack deals +50% damage and grants double range bonus on hit)',
           g2: 'Long Lens (Main attack range +3 tiles for 5 seconds)',
           sp1: 'Eagle Eye (Each main-attack hit adds +0.75 tiles of range instead of +0.5)',
@@ -24347,14 +24348,15 @@ let heistFeverActive = false;
     // bullet at Pandy's basic range (729.6px); every hit on an enemy
     // brawler stretches her range +0.5 tiles (24px), stacking to +3 tiles
     // (144px), reset on death. Super Headshot roots her and sweeps a big
-    // blue aura (~600px) that steadily marks enemies inside it (~1.2s to
-    // full, balance patch #1 — was ~2s) — the aura never marks through
+    // blue aura (~600px) that steadily marks enemies inside it (~1.09s to
+    // full, balance patch #2 — was ~1.2s) — the aura never marks through
     // walls (line of sight per enemy) or into bushes; at ~1.5s she
     // auto-fires a rapid volley at every marked enemy, fully marked
     // enemies taking +50% (scaled by mark progress). The camera zooms out
     // while the Super channels. Reticle marking is ALWAYS ON now (balance
     // patch #1 — was Hyper-only): aiming the main attack marks enemies in
-    // a thin cone (~8 deg, ~1s to full) for +25% damage from Snipa. Hyper
+    // a thin cone (~8 deg, ~1.3s to full at baseline, balance patch #2 —
+    // was ~1s) for +25% damage from Snipa. Hyper
     // Deadeye Surge: the Super marks through walls and bushes, the reticle
     // cone widens (~18 deg) and marks faster (~0.6s to full).
     // VOLLEY ZERO-DAMAGE FIX (balance patch #1, 2026-11-12): the shipped
@@ -24363,7 +24365,7 @@ let heistFeverActive = false;
     // tunneled past / curved too slowly to hit ANY moving target — the
     // generic point-collision window is only 18px wide while a volley
     // bullet steps ~40px/frame. Volley bullets now steer with a linear
-    // turn rate (BlinkEye-missile pattern) at 1600px/s and register hits
+    // turn rate (BlinkEye-missile pattern) at 640px/s and register hits
     // with a swept segment test against their assigned target, so the
     // execution actually lands. Kill switches are `let` so regression
     // tests can flip them. Dedicated art lives in its OWN branches below:
@@ -24379,18 +24381,27 @@ let heistFeverActive = false;
     const SNIPA_RANGE_BONUS_PER_HIT_PX = SNIPA_TILE_PX * SNIPA_RANGE_BONUS_PER_HIT_TILES; // 24
     const SNIPA_RANGE_BONUS_MAX_PX = SNIPA_TILE_PX * SNIPA_RANGE_BONUS_MAX_TILES; // 144
     const SNIPA_SUPER_AURA_RADIUS = 600; // Headshot marking aura
-    const SNIPA_MARK_TIME_MS = 1200; // balance patch #1: ~1.2s to fully mark in the aura (was 2000)
+    const SNIPA_MARK_TIME_MS = 1091; // balance patch #2: ~1.09s to fully mark in the aura (was 1200, +10% faster)
     const SNIPA_VOLLEY_DELAY_MS = 1500; // balance patch #1: volley fires ~1.5s after activation (was 2500)
     const SNIPA_VOLLEY_BULLETS_PER_TARGET = 3; // rapid volley per marked enemy
-    const SNIPA_VOLLEY_SPEED = 1600; // balance patch #1: was 2400 — slower so the turn rate can actually track
+    const SNIPA_VOLLEY_SPEED = 640; // balance patch #2: was 1600 (-60%) — slower, dodgeable volley; turn rate + swept test still land it
     const SNIPA_VOLLEY_TURN_RATE = 6.5; // balance patch #1: linear turn rate in rad/s (BlinkEye-missile pattern)
     const SNIPA_VOLLEY_HIT_GRACE_PX = 10; // balance patch #1: swept-test grace around the target circle
     const SNIPA_VOLLEY_DAMAGE_RATIO = 0.6; // each volley bullet = 60% of main dmg
     const SNIPA_VOLLEY_FULL_MARK_BONUS = 0.5; // fully marked: +50% (scaled by progress)
     const SNIPA_SUPER_CAMERA_ZOOM = 0.72; // camera zooms out while Headshot channels (matches Pandy Hyper)
     const SNIPA_HYPER_MARK_TIME_MS = 600; // balance patch #1: ~0.6s of aiming to fully mark in the reticle while Hyper (was 1000)
-    const SNIPA_RETICLE_MARK_TIME_MS = 1000; // balance patch #1: ~1s of aiming to fully mark in the reticle at baseline (always-on)
-    const SNIPA_HYPER_MARK_DMG_MULT = 1.25; // reticle-marked enemies take +25% from Snipa
+    const SNIPA_RETICLE_MARK_TIME_MS = 1300; // balance patch #2: ~1.3s of aiming to fully mark in the reticle at baseline (was 1000, +30% longer); Hyper stays 600
+    // Mini-rework patch #3 (2026-11-12): the old +25% reticle-mark damage
+    // (SNIPA_HYPER_MARK_DMG_MULT, applied at ANY mark progress — the open
+    // PR #99 question) is RETIRED. Main shots now get staged FLAT bonuses
+    // from the target's shared mark progress: +300 at 50-99%, +750 at 100%.
+    const SNIPA_MARK_BONUS_HALF_THRESHOLD = 0.5; // below this: no bonus
+    const SNIPA_MARK_BONUS_HALF = 300; // 50-99% marked: +300 on main shots
+    const SNIPA_MARK_BONUS_FULL = 750; // 100% marked: +750 on main shots
+    const SNIPA_PURPLE_SLOW_MIN = 0.10; // Hyper aura slow at low mark (10%)
+    const SNIPA_PURPLE_SLOW_MAX = 0.70; // Hyper aura slow at full mark (70%)
+    const SNIPA_PURPLE_SLOW_REFRESH_MS = 120; // aura slow refresh window — expires ~instantly after leaving the aura
     const SNIPA_HYPER_MARK_DURATION_MS = 4000; // reticle mark lasts 4s once built
     const SNIPA_HYPER_MARK_DECAY_PER_S = 0.5; // reticle mark fades when not aimed
     const SNIPA_MARK_CONE_HALF_ANGLE = 0.14; // balance patch #1: ~8 deg half-angle baseline marking wedge (always-on, thinner than Hyper)
@@ -24416,11 +24427,28 @@ let heistFeverActive = false;
         const perHit = snipaRangeBonusPerHitPx(owner) * (bullet.snipaDeadeye ? 2 : 1);
         owner.snipaRangeBonusPx = Math.min(SNIPA_RANGE_BONUS_MAX_PX, (owner.snipaRangeBonusPx || 0) + perHit);
     }
-    function snipaApplyHyperMarkDamage(target, b) {
-        // Called from checkHit: reticle-marked enemies take +25% damage from
-        // the Snipa who marked them.
-        if (target && (target.snipaHyperMarkUntil || 0) > performance.now() && target.snipaHyperMarkedById === b.ownerId && b && typeof b.damage === 'number') {
-            b.damage = Math.round(b.damage * SNIPA_HYPER_MARK_DMG_MULT);
+    function snipaMarkBonusFor(target) {
+        // Mini-rework patch #3: staged flat bonus from the target's SHARED
+        // mark progress — 50-99%: +300, 100%: +750, below 50%: nothing.
+        // Staged, not interpolated: 50% gives +300 flat, 100% gives +750.
+        const p = clamp((target && target.snipaMarkProgress) || 0, 0, 1);
+        if (p >= 1) return SNIPA_MARK_BONUS_FULL;
+        if (p >= SNIPA_MARK_BONUS_HALF_THRESHOLD) return SNIPA_MARK_BONUS_HALF;
+        return 0;
+    }
+    function snipaApplyMarkBonusDamage(target, b) {
+        // Called from checkHit: MAIN shots only (isSnipaLongshot) against
+        // an enemy the shooting Snipa marked get the staged flat bonus.
+        // Volley bullets never get it (they keep their own 540->810 mark
+        // scaling). Once per bullet — the flag guards re-application if a
+        // piercing path ever re-enters checkHit with the same bullet.
+        if (!target || !b || !b.isSnipaLongshot || b.snipaMarkBonusApplied) return;
+        if (target.snipaMarkById !== b.ownerId) return;
+        if ((target.snipaMarkUntil || 0) <= performance.now()) return;
+        const bonus = snipaMarkBonusFor(target);
+        if (bonus > 0 && typeof b.damage === 'number') {
+            b.damage = Math.round(b.damage) + bonus;
+            b.snipaMarkBonusApplied = true;
         }
     }
     function snipaEffectiveRange(entity) {
@@ -24436,7 +24464,7 @@ let heistFeverActive = false;
         if (!entity) return;
         for (const t of [player, ...bots]) {
             if (!t) continue;
-            if (t.snipaMarkById === entity.id) { t.snipaMarkById = null; t.snipaMarkProgress = 0; }
+            if (t.snipaMarkById === entity.id) { t.snipaMarkById = null; t.snipaMarkProgress = 0; t.snipaMarkUntil = 0; }
         }
     }
 
@@ -24502,20 +24530,25 @@ let heistFeverActive = false;
         if (entity.id === player.id) { try { window.BraweSnipaVoice?.play('super'); } catch (e) {} }
         spawnFloatingText(entity.x, entity.y - 40, '🎯 HEADSHOT!', '#60a5fa');
     }
-    function fireSnipaVolley(snipa) {
-        if (!snipa || snipa.hp <= 0) return;
+    function fireSnipaVolleyAt(snipa, target, progress) {
+        // Mini-rework patch #3: one volley at ONE enemy, damage scaled by
+        // that enemy's mark progress (540 at 0 -> 810 at full). Shared by
+        // the instant on-full-mark volley and the end-of-channel volley.
+        if (!snipa || snipa.hp <= 0 || !target || target.hp <= 0) return;
         const now = performance.now();
         const stats = getScaledStats('snipa', snipaLevelFor(snipa));
         const perTarget = SNIPA_VOLLEY_BULLETS_PER_TARGET + (snipaHasSP2(snipa) ? SNIPA_SP2_VOLLEY_BONUS_BULLETS : 0);
-        const targets = [player, ...bots].filter((t) => t && t.hp > 0 && t.snipaMarkById === snipa.id && (t.snipaMarkProgress || 0) > 0);
-        for (const target of targets) {
-            const progress = clamp(target.snipaMarkProgress || 0, 0, 1);
-            const dmg = Math.round(stats.dmg * SNIPA_VOLLEY_DAMAGE_RATIO * (1 + SNIPA_VOLLEY_FULL_MARK_BONUS * progress));
-            for (let i = 0; i < perTarget; i++) {
-                const ang = Math.atan2(target.y - snipa.y, target.x - snipa.x) + (i - (perTarget - 1) / 2) * 0.05;
-                bullets.push({ ownerBrawler: 'snipa', isSnipaVolley: true, homing: true, homingRadius: 1400, snipaVolleyTargetId: target.id, x: snipa.x + Math.cos(ang) * (snipa.radius + 7), y: snipa.y + Math.sin(ang) * (snipa.radius + 7), vx: Math.cos(ang) * SNIPA_VOLLEY_SPEED, vy: Math.sin(ang) * SNIPA_VOLLEY_SPEED, life: 0, maxLife: 1.2, damage: dmg, pierce: false, ownerId: snipa.id, hitIds: {}, hitboxMod: 1.0, hyperVisual: isEntityHyperchargedNow(snipa, now) });
-            }
+        const p = clamp(progress || 0, 0, 1);
+        const dmg = Math.round(stats.dmg * SNIPA_VOLLEY_DAMAGE_RATIO * (1 + SNIPA_VOLLEY_FULL_MARK_BONUS * p));
+        for (let i = 0; i < perTarget; i++) {
+            const ang = Math.atan2(target.y - snipa.y, target.x - snipa.x) + (i - (perTarget - 1) / 2) * 0.05;
+            bullets.push({ ownerBrawler: 'snipa', isSnipaVolley: true, homing: true, homingRadius: 1400, snipaVolleyTargetId: target.id, x: snipa.x + Math.cos(ang) * (snipa.radius + 7), y: snipa.y + Math.sin(ang) * (snipa.radius + 7), vx: Math.cos(ang) * SNIPA_VOLLEY_SPEED, vy: Math.sin(ang) * SNIPA_VOLLEY_SPEED, life: 0, maxLife: 1.2, damage: dmg, pierce: false, ownerId: snipa.id, hitIds: {}, hitboxMod: 1.0, hyperVisual: isEntityHyperchargedNow(snipa, now) });
         }
+    }
+    function fireSnipaVolley(snipa) {
+        if (!snipa || snipa.hp <= 0) return;
+        const targets = [player, ...bots].filter((t) => t && t.hp > 0 && t.snipaMarkById === snipa.id && (t.snipaMarkProgress || 0) > 0);
+        for (const target of targets) fireSnipaVolleyAt(snipa, target, target.snipaMarkProgress || 0);
         snipaClearMarksBy(snipa);
     }
     function executeSnipaG1(entity) {
@@ -24543,6 +24576,14 @@ let heistFeverActive = false;
                 entity.snipaChannelHyper = false;
                 entity.snipaChannelVolleyAt = 0;
                 continue;
+            }
+            // Balance patch #2: purple trail particles while Hypercharged
+            // (Pandy pattern — same shades, same 60ms cadence).
+            if (isEntityHyperchargedNow(entity, now)) {
+                if (!entity.snipaHyperTrailAt || now >= entity.snipaHyperTrailAt) {
+                    entity.snipaHyperTrailAt = now + 60;
+                    explosions.push({ x: entity.x + (Math.random() - 0.5) * 20, y: entity.y + (Math.random() - 0.5) * 20, vx: (Math.random() - 0.5) * 30, vy: (Math.random() - 0.5) * 30, radius: 3 + Math.random() * 3, life: 0, maxLife: 0.4, color: Math.random() < 0.5 ? '#c084fc' : '#a855f7', isParticle: true });
+                }
             }
             // Headshot channel: mark enemies in the aura, volley at ~1.5s.
             // NOTE: the volley trigger is gated on the channel PENDING
@@ -24575,6 +24616,30 @@ let heistFeverActive = false;
                         }
                         target.snipaMarkById = entity.id;
                         target.snipaMarkProgress = Math.min(1, (target.snipaMarkProgress || 0) + dt / (SNIPA_MARK_TIME_MS / 1000));
+                        target.snipaMarkUntil = now + SNIPA_HYPER_MARK_DURATION_MS;
+                        // Mini-rework patch #3: Hyper purple slow — a
+                        // purple-marked enemy is slowed INSIDE the aura,
+                        // 10% at low mark scaling to 70% at full mark
+                        // (slow% = 10 + 60 x progress). Refreshed every
+                        // tick while in the aura; expires ~120ms after
+                        // leaving, so there is no lingering slow.
+                        if (hyperChannel) {
+                            const slowPct = SNIPA_PURPLE_SLOW_MIN + (SNIPA_PURPLE_SLOW_MAX - SNIPA_PURPLE_SLOW_MIN) * (target.snipaMarkProgress || 0);
+                            target.snipaPurpleSlowMult = 1 - slowPct;
+                            target.snipaPurpleSlowUntil = now + SNIPA_PURPLE_SLOW_REFRESH_MS;
+                        }
+                        // Mini-rework patch #3: the volley fires at THIS
+                        // enemy the instant they hit 100% mark — staggered
+                        // per enemy, no more waiting for the 1.5s timer.
+                        // Their mark then RESETS TO 0 and rebuilds at
+                        // normal speed if they stay in the aura. A target
+                        // that enters the aura ALREADY fully marked
+                        // (pre-marked by the reticle — Anthony's combo)
+                        // volleys on the very first tick of the channel.
+                        if ((target.snipaMarkProgress || 0) >= 1) {
+                            fireSnipaVolleyAt(entity, target, 1);
+                            target.snipaMarkProgress = 0;
+                        }
                     }
                 }
             }
@@ -24601,26 +24666,32 @@ let heistFeverActive = false;
                     if (angDiff > Math.PI) angDiff = Math.PI * 2 - angDiff;
                     const aimed = angDiff <= markCone && hasBlinkEyeSight(entity.x, entity.y, target.x, target.y);
                     if (aimed) {
-                        target.snipaHyperMarkedById = entity.id;
-                        target.snipaHyperMarkProgress = Math.min(1, (target.snipaHyperMarkProgress || 0) + dt / (markTimeMs / 1000));
-                        target.snipaHyperMarkUntil = now + SNIPA_HYPER_MARK_DURATION_MS;
-                    } else if (target.snipaHyperMarkedById === entity.id) {
-                        target.snipaHyperMarkProgress = Math.max(0, (target.snipaHyperMarkProgress || 0) - SNIPA_HYPER_MARK_DECAY_PER_S * dt);
-                        if ((target.snipaHyperMarkProgress || 0) <= 0 || (target.snipaHyperMarkUntil || 0) <= now) {
-                            target.snipaHyperMarkedById = null;
-                            target.snipaHyperMarkProgress = 0;
+                        // Mini-rework patch #3: SHARED mark progress — the
+                        // reticle writes the SAME snipaMarkProgress /
+                        // snipaMarkById the Super aura writes, so a
+                        // pre-mark carries straight into the Super
+                        // (Anthony's Hyper-aim -> Super combo). Same 4s
+                        // expiry and 0.5/s off-aim decay as before.
+                        target.snipaMarkById = entity.id;
+                        target.snipaMarkProgress = Math.min(1, (target.snipaMarkProgress || 0) + dt / (markTimeMs / 1000));
+                        target.snipaMarkUntil = now + SNIPA_HYPER_MARK_DURATION_MS;
+                    } else if (target.snipaMarkById === entity.id) {
+                        target.snipaMarkProgress = Math.max(0, (target.snipaMarkProgress || 0) - SNIPA_HYPER_MARK_DECAY_PER_S * dt);
+                        if ((target.snipaMarkProgress || 0) <= 0 || (target.snipaMarkUntil || 0) <= now) {
+                            target.snipaMarkById = null;
+                            target.snipaMarkProgress = 0;
                         }
                     }
                 }
             }
         }
         // Stale marks expire: super marks die with the channel (cleared
-        // above), hyper marks expire 4s after the last aim refresh, and
+        // above), reticle marks expire 4s after the last aim refresh, and
         // dead fighters never stay marked.
         for (const t of [player, ...bots]) {
             if (!t) continue;
-            if (t.hp <= 0) { t.snipaMarkById = null; t.snipaMarkProgress = 0; t.snipaHyperMarkedById = null; t.snipaHyperMarkProgress = 0; continue; }
-            if (t.snipaHyperMarkedById && (t.snipaHyperMarkUntil || 0) <= now) { t.snipaHyperMarkedById = null; t.snipaHyperMarkProgress = 0; }
+            if (t.hp <= 0) { t.snipaMarkById = null; t.snipaMarkProgress = 0; t.snipaMarkUntil = 0; continue; }
+            if (t.snipaMarkById && (t.snipaMarkUntil || 0) <= now) { t.snipaMarkById = null; t.snipaMarkProgress = 0; }
         }
     }
     function snipaPointInWall(x, y) {
@@ -24707,10 +24778,17 @@ let heistFeverActive = false;
         // full. Same indicator for the Super mark and the reticle mark.
         for (const t of [player, ...bots]) {
             if (!t || t.hp <= 0) continue;
-            const progress = Math.max(t.snipaMarkProgress || 0, t.snipaHyperMarkProgress || 0);
+            // Mini-rework patch #3: ONE shared mark progress now (reticle
+            // and aura write the same field), so no Math.max of two marks.
+            const progress = t.snipaMarkProgress || 0;
             if (progress <= 0) continue;
             const r = (t.radius || 14) + 16;
             const full = progress >= 1;
+            // Purple marks: while a Hyper Super channels, its marks render
+            // purple (partial #c084fc, full #a855f7) instead of blue/gold —
+            // distinct from the cyan reticle telegraph, which stays cyan.
+            const markOwner = [player, ...bots].find((e) => e && e.id === t.snipaMarkById);
+            const purpleMark = !!markOwner && isSnipaChanneling(markOwner, now) && !!markOwner.snipaChannelHyper;
             ctx.save();
             // Dark under-stroke so the ring reads on any background.
             ctx.strokeStyle = 'rgba(2,6,23,0.75)';
@@ -24723,12 +24801,38 @@ let heistFeverActive = false;
             ctx.beginPath();
             ctx.arc(t.x, t.y, r, 0, Math.PI * 2);
             ctx.stroke();
-            ctx.strokeStyle = full ? '#fbbf24' : '#38bdf8';
+            ctx.strokeStyle = purpleMark ? (full ? '#a855f7' : '#c084fc') : (full ? '#fbbf24' : '#38bdf8');
             ctx.lineWidth = full ? 6 : 5;
-            if (full) { ctx.shadowColor = '#f59e0b'; ctx.shadowBlur = 16; }
+            if (full) { ctx.shadowColor = purpleMark ? '#a855f7' : '#f59e0b'; ctx.shadowBlur = 16; }
             ctx.beginPath();
             ctx.arc(t.x, t.y, r, -Math.PI / 2, -Math.PI / 2 + progress * Math.PI * 2);
             ctx.stroke();
+            ctx.restore();
+        }
+        // Balance patch #2: Hyper purple aura — a pulsing purple glow ring
+        // around any hypercharged Snipa (Pandy pattern — same shades and
+        // timing). Sits on top of the cyan reticle telegraph, never
+        // replaces it.
+        for (const e of [player, ...bots]) {
+            if (!e || e.hp <= 0) continue;
+            if (!(e.brawler === 'snipa' || (e.id === player.id && selectedBrawler === 'snipa'))) continue;
+            if (!isEntityHyperchargedNow(e, now)) continue;
+            const pulse = 0.75 + 0.25 * Math.sin(now / 160);
+            const ar = (e.radius || 14) + 12 + 4 * pulse;
+            ctx.save();
+            ctx.globalAlpha = 0.55 * pulse;
+            ctx.shadowColor = '#a855f7';
+            ctx.shadowBlur = 22;
+            ctx.strokeStyle = '#c084fc';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(e.x, e.y, ar, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.globalAlpha = 0.18 * pulse;
+            ctx.fillStyle = '#a855f7';
+            ctx.beginPath();
+            ctx.arc(e.x, e.y, ar, 0, Math.PI * 2);
+            ctx.fill();
             ctx.restore();
         }
         // Main-attack telegraph (player only) — a dashed blue aim line whose
@@ -55251,8 +55355,9 @@ function checkHit(target, b, i){
             b.damage = Math.round(b.damage * AURA_CHARMER_MARK_DMG_MULT);
         }
 
-        // Snipa hyper reticle mark: marked enemies take +25% damage from the Snipa who marked them.
-        snipaApplyHyperMarkDamage(target, b);
+        // Snipa rework patch #3: staged flat mark bonus on MAIN shots only
+        // (replaces the retired +25% at any progress).
+        snipaApplyMarkBonusDamage(target, b);
 
         // Snipa Longshot: each main-attack hit on an enemy brawler stretches
         // her range +0.5 tiles (SP1 Eagle Eye: +0.75), stacking to +3 tiles.
