@@ -329,6 +329,11 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             const hpScale = getLevelHpScale(level);
             return { hp: Math.round(5200 * hpScale), dmg: Math.round(900 * scale), speed: 260 };
         }
+        if (brawlerId === 'bookworm') {
+            const scale = 0.55 + (level - 1) * 0.045;
+            const hpScale = getLevelHpScale(level);
+            return { hp: Math.round(5000 * hpScale), dmg: Math.round(800 * scale), speed: 270 };
+        }
         if (brawlerId === 'looma') {
             const scale = 0.55 + (level - 1) * 0.045;
             const hpScale = getLevelHpScale(level);
@@ -913,6 +918,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             if (selectedBrawler === 'pandy') { try { window.BrawePandyVoice?.play('kill'); } catch (e) {} }
             // Snipa voice: player kill line.
             if (selectedBrawler === 'snipa') { try { window.BraweSnipaVoice?.play('kill'); } catch (e) {} }
+            // Bookworm voice: player kill line.
+            if (selectedBrawler === 'bookworm') { try { window.BraweBookwormVoice?.play('kill'); } catch (e) {} }
         }
         if (target && target.hp <= 0 && hasTrinket(owner, 'fresh_magazine')) {
             if (now - (target.trinketFreshMagazineKillAt || 0) > 1000) {
@@ -3170,7 +3177,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
   function getNativeAmmoCapacity(brawlerId){
       if(brawlerId==='oil_maker')return 120;
       if(brawlerId==='minigunnin'||brawlerId==='steamer'||brawlerId==='beam')return 100;
-      if(brawlerId==='bowlin_rida'||brawlerId==='boom_arang'||brawlerId==='jetpack'||brawlerId==='the_deleter'||brawlerId==='healnstein')return 1;
+      if(brawlerId==='bowlin_rida'||brawlerId==='boom_arang'||brawlerId==='jetpack'||brawlerId==='the_deleter'||brawlerId==='healnstein'||brawlerId==='bookworm')return 1;
       if(brawlerId==='demon'||brawlerId==='fastpass')return 2;
       if(brawlerId==='trampaheal')return 2;
       if(brawlerId==='rocketeer')return 4;
@@ -5131,6 +5138,7 @@ const bolznstienPendingStrikes = [];
             voodoyou: 1400,
             pandy: 1900,
             snipa: 1600,
+            bookworm: 1700,
             carmela_fudge: 1400,
             oil_maker: 90,
             magnatar: 1450,
@@ -5201,6 +5209,7 @@ const bolznstienPendingStrikes = [];
             voodoyou: 300,
             pandy: 350,
             snipa: 300,
+            bookworm: 300,
             carmela_fudge: 180,
             oil_maker: 112,
             magnatar: 200,
@@ -5500,7 +5509,7 @@ const bolznstienPendingStrikes = [];
         'boom_arang', 'teether', 'fuel', 'xray', 'angel', 'demon', 'warrior', 'relay',
         'upiedown', 'chickpig', 'jetpack', 'snapper', 'robber', 'rocketeer',
         'carmela_fudge', 'peter_pickle', 'unstable', 'homer', 'orbo', 'predator', 'fastpass', 'freestyle', 'portalo', 'ghoul', 'jacktrade', 'darkener', 'awakenator', 'adlof', 'cluster', 'witch', 'boomer', 'blade_vane', 'daggershard', 'ice_cream', 'swimmer', 'kage', 'drainbow', 'draflygon', 'axeywaxy', 'trampaheal', 'mageny', 'ramage', 'upgradart', 'cinderion', 'cursed', 'king', 'anti_royal', 'sir_cheeseburger', 'weefee', 'blinkeye', 'bolznstien', 'magnatar', 'oil_maker', 'rager', 'badbat', 'looma',
-        'feathers', 'spikey', 'electrostien', 'mallow', 'nightshade', 'aegis', 'runner', 'aura_charmer', 'voltastein', 'staticstein', 'healnstein', 'voodoyou', 'pandy', 'snipa'
+        'feathers', 'spikey', 'electrostien', 'mallow', 'nightshade', 'aegis', 'runner', 'aura_charmer', 'voltastein', 'staticstein', 'healnstein', 'voodoyou', 'pandy', 'snipa', 'bookworm'
     ];
     const registeredBrawlerModules = window.ArenaForgeModules?.brawlers || Object.create(null);
     for (const moduleId of Object.keys(registeredBrawlerModules)) {
@@ -5591,6 +5600,7 @@ const bolznstienPendingStrikes = [];
             mallow: 'Epic',
             pandy: 'Epic',
             snipa: 'Epic',
+            bookworm: 'Epic',
 
             // Mythic (13)
             dashaholic: 'Mythic',
@@ -10530,6 +10540,17 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           g2: 'Long Lens (Main attack range +3 tiles for 5 seconds)',
           sp1: 'Eagle Eye (Each main-attack hit adds +0.75 tiles of range instead of +0.5)',
           sp2: 'Hair Trigger (Headshot volley fires 4 bullets per marked enemy instead of 3)'
+      },
+      'bookworm': {
+          name: 'Bookworm', role: 'Controller', rarity: 'Epic', color: '#84cc16',
+          desc: 'A little worm who lives inside a big book. He hurls his home across the arena, steers it once mid-flight, then pops out to stack up a root.',
+          attack: 'Bookmark Toss', attackDesc: 'Bookworm hurls a piercing book he can redirect once, then a worm bursts out to stack up a root.',
+          super: 'Worm Leap', superDesc: 'Bookworm leaps with his book — worms burst out and slam back down. Two jumps, second one hits harder.',
+          hyper: 'Bookworm Fever: side worms home in, and every jump echoes a second later.',
+          g1: 'Speed Read (Next book flies 50% faster and 30% farther)',
+          g2: 'Wormhole (Teleport to your flying book)',
+          sp1: 'Voracious Reader (Worm stacks last 50% longer before fading)',
+          sp2: 'Cliffhanger (Root lasts 1.75 seconds instead of 1)'
       }
   };
 
@@ -10555,7 +10576,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
 
     // V4 standardized primary-role organization: exactly one gameplay role per brawler.
     const PRIMARY_ROLE_BY_BRAWLER = {
-        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank', rager:'Controller', looma:'Controller', feathers:'Controller', spikey:'Damage Dealer', electrostien:'Assassin', mallow:'Controller', nightshade:'Assassin', runner:'Controller', aura_charmer:'Support', voltastein:'Artillery', staticstein:'Damage Dealer', healnstein:'Support', voodoyou:'Controller', pandy:'Damage Dealer',
+        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank', rager:'Controller', looma:'Controller', feathers:'Controller', spikey:'Damage Dealer', electrostien:'Assassin', mallow:'Controller', nightshade:'Assassin', runner:'Controller', aura_charmer:'Support', voltastein:'Artillery', staticstein:'Damage Dealer', healnstein:'Support', voodoyou:'Controller', pandy:'Damage Dealer', bookworm:'Controller',
     carmela_fudge:'Damage Dealer', bolznstien:'Damage Dealer', badbat:'Damage Dealer', magnatar:'Controller', oil_maker:'Controller', sir_cheeseburger:'Tank',
         blade_vane:'Assassin', kage:'Assassin', drainbow:'Controller', bowlin_rida:'Assassin', dashaholic:'Assassin', demon:'Assassin', jetpack:'Assassin', malakor:'Assassin', predator:'Assassin', swimmer:'Assassin', teether:'Assassin',
         boom_arang:'Marksman', cheseypuff:'Marksman', crystila:'Marksman', homer:'Marksman', hunter:'Marksman', orbo:'Marksman', snapper:'Marksman', xray:'Marksman', snipa:'Marksman',
@@ -10587,6 +10608,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
             voodoyou: '🧶',
             pandy: '🍬',
             snipa: '🎯',
+            bookworm: '🐛',
     looma: '🪡🧵',
         sir_cheeseburger: '🛡️',
         anti_royal: '🏴‍☠️',
@@ -11745,6 +11767,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
       voodoyou: { g1: 14000, g2: 16000 },
       pandy: { g1: 14000, g2: 16000 },
       snipa: { g1: 14000, g2: 16000 },
+      bookworm: { g1: 14000, g2: 16000 },
       carmela_fudge: { g1: 8000, g2: 8000 },
       bolznstien: { g1: 14000, g2: 15000 },
       sir_cheeseburger: { g1: 13000, g2: 14000 },
@@ -24951,6 +24974,579 @@ let heistFeverActive = false;
         ctx.restore();
     }
 
+    // ===== Bookworm (Epic Controller) — Anthony's core kit (2026-11-14) =====
+    // Main "Bookmark Toss": a piercing book Bookworm steers once mid-flight
+    // (camera follows the book), then a worm bursts out and stacks a root.
+    // Super "Worm Leap": Bookworm transforms — main is replaced by 2 jump
+    // charges, each a 4-worm slam (no explosion animation, ever). Hyper:
+    // homing side worms on the main, +1 jump charge, and every jump echoes
+    // a mirror jump 1s later in the same direction.
+    const BOOKWORM_BOOK_SPEED = 1100; // book flight speed (px/s)
+    const BOOKWORM_BOOK_RANGE = 950; // book max range (px)
+    const BOOKWORM_BOOK_DMG = 800; // P11 book damage (getScaledStats)
+    const BOOKWORM_WORM_SPEED = 1400; // worm speed after the book ends
+    const BOOKWORM_WORM_RANGE = 650; // worm range (px)
+    const BOOKWORM_WORM_DMG = 350; // P11 worm damage
+    const BOOKWORM_WORM_STACKS_TO_ROOT = 3; // 3 worm hits = rooted
+    const BOOKWORM_WORM_STACK_DECAY_MS = 4000; // stacks fade after 4s without a new stack
+    const BOOKWORM_ROOT_DURATION_MS = 1000; // root lasts 1s
+    const BOOKWORM_REDIRECT_MIN_AGE_MS = 250; // book must fly 250ms before it can be steered
+    const BOOKWORM_SUPER_JUMP1_DIST = 400; // first jump distance (px)
+    const BOOKWORM_SUPER_JUMP2_DIST = 600; // second jump distance (px)
+    const BOOKWORM_SUPER_JUMP1_SLAM_DMG = 600; // first slam damage
+    const BOOKWORM_SUPER_JUMP2_SLAM_DMG = 900; // second slam damage
+    const BOOKWORM_SUPER_JUMP1_SLAM_RADIUS = 150; // first slam AoE radius (px)
+    const BOOKWORM_SUPER_JUMP2_SLAM_RADIUS = 180; // second slam AoE radius (px)
+    const BOOKWORM_SUPER_JUMP_DIRECT_RADIUS = 70; // direct-hit radius around the landing point
+    const BOOKWORM_SUPER_JUMP_DIRECT_DMG = 1200; // direct-hit slam damage
+    const BOOKWORM_SUPER_FORM_DURATION_MS = 8000; // form lasts max 8s
+    const BOOKWORM_SUPER_CHARGE_HITS = 7; // 7 main-attack hits to charge
+    const BOOKWORM_SIDE_WORM_SPEED = 1200; // Hyper side worm speed (px/s)
+    const BOOKWORM_SIDE_WORM_DMG = 300; // Hyper side worm damage
+    const BOOKWORM_SIDE_WORM_RANGE = 800; // Hyper side worm base range (px)
+    const BOOKWORM_SIDE_WORM_REDIRECT_BONUS_RANGE = 250; // +range when the book is redirected
+    const BOOKWORM_SIDE_WORM_TURN_RATE = 4; // homing turn rate (rad/s)
+    const BOOKWORM_MIRROR_DELAY_MS = 1000; // Hyper mirror jump fires 1s after the real jump
+    const BOOKWORM_JUMP1_DURATION_MS = 300; // first jump air time
+    const BOOKWORM_JUMP2_DURATION_MS = 380; // second jump air time
+    const BOOKWORM_G1_SPEED_MULT = 1.5; // Speed Read: next book +50% speed
+    const BOOKWORM_G1_RANGE_MULT = 1.3; // Speed Read: next book +30% range
+    const BOOKWORM_SP1_STACK_DECAY_MULT = 1.5; // Voracious Reader: stacks last 50% longer (4s -> 6s)
+    const BOOKWORM_SP2_ROOT_DURATION_MS = 1750; // Cliffhanger: root 1s -> 1.75s
+    const BOOKWORM_HYPER_AURA_RADIUS_BONUS = 20; // Hyper aura ring radius bonus (Pandy/Snipa pattern)
+    const BOOKWORM_HYPER_AURA_PULSE_PX = 6;
+    const BOOKWORM_HYPER_AURA_LINE_WIDTH = 5;
+    const BOOKWORM_HYPER_AURA_STROKE_ALPHA = 0.9;
+    const BOOKWORM_HYPER_AURA_FILL_ALPHA = 0.3;
+    const BOOKWORM_HYPER_AURA_SHADOW_BLUR = 28;
+    const BOOKWORM_SLAM_FX_DURATION_MS = 350; // dust-ring slam visual lifetime
+    let bookwormSlamFx = []; // {x, y, radius, at, dur} — dust rings only, never explosions
+
+    function bookwormStarChoice(entity) { return getEntityStarChoice(entity); }
+    function bookwormHasSP1(entity) { return bookwormStarChoice(entity) === 'slow'; }
+    function bookwormHasSP2(entity) { return bookwormStarChoice(entity) === 'long'; }
+    function isBookworm(entity) { return !!entity && (entity.brawler === 'bookworm' || (entity.id === player.id && selectedBrawler === 'bookworm')); }
+    function isBookwormFormActive(entity) { return !!entity && !!entity.bookwormFormActive && performance.now() < (entity.bookwormFormUntil || 0); }
+    function bookwormRootDurationMs(entity) { return bookwormHasSP2(entity) ? BOOKWORM_SP2_ROOT_DURATION_MS : BOOKWORM_ROOT_DURATION_MS; }
+    function bookwormStackDecayMs(entity) { return bookwormHasSP1(entity) ? Math.round(BOOKWORM_WORM_STACK_DECAY_MS * BOOKWORM_SP1_STACK_DECAY_MULT) : BOOKWORM_WORM_STACK_DECAY_MS; }
+
+    // One worm hit = +1 worm stack on the enemy (brawlers and training
+    // dummies only — never structures, never pets, never allies). 3 stacks
+    // root the enemy, then the stack count resets to 0.
+    function bookwormApplyWormStack(owner, target) {
+        if (!owner || !target || target.hp <= 0) return;
+        if (target.isPet || target.isStructure || target.brawler === 'tower_core' || target.brawler === 'turret') return;
+        if (areAlliedEntities(owner, target)) return;
+        const now = performance.now();
+        const stacks = Math.min(BOOKWORM_WORM_STACKS_TO_ROOT, (target.bookwormWormStacks || 0) + 1);
+        target.bookwormWormStacks = stacks;
+        target.bookwormWormStackAt = now;
+        target.bookwormWormStackById = owner.id;
+        if (stacks >= BOOKWORM_WORM_STACKS_TO_ROOT) {
+            target.rootUntil = now + bookwormRootDurationMs(owner);
+            target.bookwormWormStacks = 0;
+            target.bookwormWormStackAt = 0;
+            spawnFloatingText(target.x, target.y - 42, '🪱 ROOTED!', '#a3e635');
+        }
+    }
+
+    // Main attack: fire the piercing book. While Hypercharged, two side
+    // worms fire with it and home in on enemies. The normal worm still
+    // comes out when the book ends (bookwormEndBook).
+    function fireBookwormMain(fromEntity, targetX, targetY, isBot) {
+        const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
+        const stats = getScaledStats('bookworm', fromEntity === player ? getSelectedBrawlerLevel() : (fromEntity.level || 11));
+        const baseDmg = stats.dmg || BOOKWORM_BOOK_DMG;
+        const ang = Math.atan2(targetY - fromEntity.y, targetX - fromEntity.x);
+        let speed = BOOKWORM_BOOK_SPEED;
+        let range = BOOKWORM_BOOK_RANGE;
+        if (fromEntity.bookwormSpeedReadArmed) {
+            fromEntity.bookwormSpeedReadArmed = false;
+            speed *= BOOKWORM_G1_SPEED_MULT;
+            range *= BOOKWORM_G1_RANGE_MULT;
+        }
+        const book = {
+            x: fromEntity.x + Math.cos(ang) * 30, y: fromEntity.y + Math.sin(ang) * 30,
+            vx: Math.cos(ang) * speed, vy: Math.sin(ang) * speed,
+            radius: 14, damage: baseDmg, ownerId: fromEntity.id,
+            ownerBrawler: 'bookworm', pierce: true, hitIds: {},
+            life: 0, maxLife: range / speed, isBookwormBook: true,
+            isPrimaryChargeProjectile: true, hyperVisual: hyper,
+            color: hyper ? '#c084fc' : '#84cc16',
+            redirected: false, spawnedAt: performance.now(),
+        };
+        bullets.push(book);
+        fromEntity.bookwormBook = book;
+        fromEntity.bookwormBookSpawnedAt = performance.now();
+        if (hyper) {
+            for (const side of [-1, 1]) {
+                const sa = ang + side * (Math.PI / 2);
+                bullets.push({
+                    x: fromEntity.x + Math.cos(sa) * 26, y: fromEntity.y + Math.sin(sa) * 26,
+                    vx: Math.cos(sa) * BOOKWORM_SIDE_WORM_SPEED, vy: Math.sin(sa) * BOOKWORM_SIDE_WORM_SPEED,
+                    radius: 10, damage: BOOKWORM_SIDE_WORM_DMG, ownerId: fromEntity.id,
+                    ownerBrawler: 'bookworm', pierce: false, hitIds: {},
+                    life: 0, maxLife: BOOKWORM_SIDE_WORM_RANGE / BOOKWORM_SIDE_WORM_SPEED,
+                    isBookwormSideWorm: true, hyperVisual: true, color: '#c084fc',
+                });
+            }
+        }
+        return book;
+    }
+
+    // Steer the flying book ONCE toward the current aim. Only the attack
+    // button does this (no auto-redirect). Returns false when there is no
+    // live book, the book already turned, or it is too young to steer.
+    function tryBookwormRedirect(fromEntity, targetX, targetY) {
+        const book = fromEntity.bookwormBook;
+        if (!book || !bullets.includes(book)) { fromEntity.bookwormBook = null; return false; }
+        if (book.redirected) return false;
+        if (performance.now() - (fromEntity.bookwormBookSpawnedAt || 0) < BOOKWORM_REDIRECT_MIN_AGE_MS) return false;
+        const ang = Math.atan2(targetY - book.y, targetX - book.x);
+        const speed = Math.hypot(book.vx, book.vy) || BOOKWORM_BOOK_SPEED;
+        book.vx = Math.cos(ang) * speed;
+        book.vy = Math.sin(ang) * speed;
+        book.redirected = true;
+        // Hyper side worms gain +250px range when the book is redirected.
+        for (const b of bullets) {
+            if (b.isBookwormSideWorm && b.ownerId === fromEntity.id && b.life < b.maxLife) {
+                b.maxLife += BOOKWORM_SIDE_WORM_REDIRECT_BONUS_RANGE / BOOKWORM_SIDE_WORM_SPEED;
+            }
+        }
+        return true;
+    }
+
+    // The book's flight ended (max range or wall): the worm comes out in
+    // the book's final flight direction. No worm if the owner is dead.
+    function bookwormEndBook(book) {
+        if (!book || book._bookwormEnded) return;
+        book._bookwormEnded = true;
+        const owner = getEntityById(book.ownerId);
+        if (owner) owner.bookwormBook = null;
+        if (!owner || owner.hp <= 0) return;
+        const ang = Math.atan2(book.vy, book.vx);
+        bullets.push({
+            x: book.x, y: book.y,
+            vx: Math.cos(ang) * BOOKWORM_WORM_SPEED, vy: Math.sin(ang) * BOOKWORM_WORM_SPEED,
+            radius: 10, damage: BOOKWORM_WORM_DMG, ownerId: owner.id,
+            ownerBrawler: 'bookworm', pierce: false, hitIds: {},
+            life: 0, maxLife: BOOKWORM_WORM_RANGE / BOOKWORM_WORM_SPEED,
+            isBookwormWorm: true, hyperVisual: !!book.hyperVisual, color: book.hyperVisual ? '#c084fc' : '#a3e635',
+        });
+    }
+
+    // Super "Worm Leap": transform — the main attack is replaced by jump
+    // charges (2, or 3 while Hypercharged) until both are spent or the
+    // 8s form timer runs out.
+    function castBookwormSuper(entity, hyper, targetX, targetY) {
+        if (!entity || entity.hp <= 0) return false;
+        const now = performance.now();
+        entity.bookwormFormActive = true;
+        entity.bookwormFormUntil = now + BOOKWORM_SUPER_FORM_DURATION_MS;
+        entity.bookwormJumpCharges = hyper ? 3 : 2;
+        entity.bookwormJumpsUsed = 0;
+        entity.bookwormFormHyper = !!hyper;
+        entity.bookwormMirrorQueue = [];
+        entity.bookwormSuperTargetX = targetX;
+        entity.bookwormSuperTargetY = targetY;
+        if (entity.id === player.id) { try { window.BraweBookwormVoice?.play('super'); } catch (e) {} }
+        spawnFloatingText(entity.x, entity.y - 46, '🪱 WORM LEAP!', '#a3e635');
+        return true;
+    }
+
+    function bookwormPointInWall(x, y) {
+        if (x < 0 || y < 0 || x >= WORLD_W || y >= WORLD_H) return true;
+        if (typeof pointInWall === 'function' && pointInWall(x, y)) return true;
+        if (Array.isArray(destructibleWalls)) {
+            for (const w of destructibleWalls) {
+                if (w.hp > 0 && x >= w.x && x <= w.x + w.w && y >= w.y && y <= w.y + w.h) return true;
+            }
+        }
+        return false;
+    }
+
+    // Shared jump setup: arc to the landing point, slam params stored for
+    // the landing branch in the jump mechanics.
+    function bookwormStartJump(entity, ang, dist, slamDmg, slamRadius, isJump2) {
+        let landX = entity.x + Math.cos(ang) * dist;
+        let landY = entity.y + Math.sin(ang) * dist;
+        for (let d = dist; d > 0; d -= 24) {
+            const px = entity.x + Math.cos(ang) * d, py = entity.y + Math.sin(ang) * d;
+            if (!bookwormPointInWall(px, py)) { landX = px; landY = py; break; }
+        }
+        landX = clamp(landX, (entity.radius || 14) + 4, WORLD_W - (entity.radius || 14) - 4);
+        landY = clamp(landY, (entity.radius || 14) + 4, WORLD_H - (entity.radius || 14) - 4);
+        entity.isJumping = true;
+        entity.isSuperJump = true;
+        entity.isBookwormSuperJump = true;
+        entity.jumpStartX = entity.x;
+        entity.jumpStartY = entity.y;
+        entity.jumpTargetX = landX;
+        entity.jumpTargetY = landY;
+        entity.jumpDuration = isJump2 ? BOOKWORM_JUMP2_DURATION_MS : BOOKWORM_JUMP1_DURATION_MS;
+        entity.jumpElapsed = 0;
+        entity.bookwormJumpSlam = {
+            dmg: slamDmg, radius: slamRadius,
+            directRadius: BOOKWORM_SUPER_JUMP_DIRECT_RADIUS, directDmg: BOOKWORM_SUPER_JUMP_DIRECT_DMG,
+            isJump2,
+        };
+        return true;
+    }
+
+    // Player/bot jump: spends one charge. The 2nd jump goes farther and
+    // slams harder. Hyper queues a mirror jump 1s later (same direction).
+    function bookwormDoJump(entity, targetX, targetY) {
+        if (!entity || entity.hp <= 0) return false;
+        if (!isBookwormFormActive(entity)) return false;
+        if (entity.isJumping || entity.isDashing) return false;
+        if ((entity.bookwormJumpCharges || 0) <= 0) return false;
+        const jumpsUsed = entity.bookwormJumpsUsed || 0;
+        const isJump2 = jumpsUsed >= 1;
+        const dist = isJump2 ? BOOKWORM_SUPER_JUMP2_DIST : BOOKWORM_SUPER_JUMP1_DIST;
+        const ang = Math.atan2(targetY - entity.y, targetX - entity.x);
+        const slamDmg = isJump2 ? BOOKWORM_SUPER_JUMP2_SLAM_DMG : BOOKWORM_SUPER_JUMP1_SLAM_DMG;
+        const slamRadius = isJump2 ? BOOKWORM_SUPER_JUMP2_SLAM_RADIUS : BOOKWORM_SUPER_JUMP1_SLAM_RADIUS;
+        bookwormStartJump(entity, ang, dist, slamDmg, slamRadius, isJump2);
+        entity.bookwormJumpCharges -= 1;
+        entity.bookwormJumpsUsed = jumpsUsed + 1;
+        if (entity.bookwormFormHyper) {
+            if (!Array.isArray(entity.bookwormMirrorQueue)) entity.bookwormMirrorQueue = [];
+            entity.bookwormMirrorQueue.push({ at: performance.now() + BOOKWORM_MIRROR_DELAY_MS, ang, dist, slamDmg, slamRadius, isJump2 });
+        }
+        return true;
+    }
+
+    // Hyper mirror: automatic, same direction and same slam as the jump it
+    // echoes. Never consumes a charge, never mirrors again.
+    function bookwormDoJumpMirror(entity, m) {
+        if (!entity || entity.hp <= 0) return false;
+        if (!entity.bookwormFormActive || performance.now() >= (entity.bookwormFormUntil || 0)) return false;
+        if (entity.isJumping || entity.isDashing) return false;
+        return bookwormStartJump(entity, m.ang, m.dist, m.slamDmg, m.slamRadius, m.isJump2);
+    }
+
+    // The slam: 4 worms burst out and smash back down — AoE damage in a
+    // radius, drawn as a dust ring (never an explosion). Enemies hit by a
+    // slam also gain +1 worm stack. Direct hits (within 70px of the
+    // landing point) take 1200. Brawlers only — never structures.
+    function bookwormApplySlam(owner, x, y, slam) {
+        if (!owner || !slam) return;
+        bookwormSlamFx.push({ x, y, radius: slam.radius, at: performance.now(), dur: BOOKWORM_SLAM_FX_DURATION_MS });
+        for (const t of [player, ...bots]) {
+            if (!t || t.hp <= 0 || t.id === owner.id) continue;
+            if (areAlliedEntities(owner, t)) continue;
+            if (t.isPet || t.isStructure) continue;
+            const dist = Math.hypot(t.x - x, t.y - y);
+            if (dist > slam.radius + (t.radius || 14)) continue;
+            const dmg = dist <= slam.directRadius ? slam.directDmg : slam.dmg;
+            checkHit(t, { ownerBrawler: 'bookworm', damage: dmg, pierce: true, super: true, ownerId: owner.id, hitIds: {} }, -1);
+            bookwormApplyWormStack(owner, t);
+        }
+    }
+
+    // Hyper side worms home in on the nearest enemy (BlinkEye pattern:
+    // constant speed, capped turn rate of 4 rad/s).
+    function bookwormSteerSideWorm(b, dt) {
+        let best = null, bestD = Infinity;
+        const owner = getEntityById(b.ownerId);
+        for (const t of [player, ...bots]) {
+            if (!t || t.hp <= 0 || t.id === b.ownerId) continue;
+            if (t.isPet) continue;
+            if (owner && areAlliedEntities(owner, t)) continue;
+            const d = Math.hypot(t.x - b.x, t.y - b.y);
+            if (d < bestD) { bestD = d; best = t; }
+        }
+        if (!best) return;
+        const cur = Math.atan2(b.vy, b.vx);
+        const want = Math.atan2(best.y - b.y, best.x - b.x);
+        let diff = want - cur;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        const maxTurn = BOOKWORM_SIDE_WORM_TURN_RATE * dt;
+        const turn = clamp(diff, -maxTurn, maxTurn);
+        const speed = Math.hypot(b.vx, b.vy) || BOOKWORM_SIDE_WORM_SPEED;
+        const na = cur + turn;
+        b.vx = Math.cos(na) * speed;
+        b.vy = Math.sin(na) * speed;
+    }
+
+    function updateBookwormSystems(dt) {
+        const now = performance.now();
+        for (const e of [player, ...bots]) {
+            if (!e) continue;
+            // Stale book ref: the book was destroyed (bubble/shield) without
+            // ending — clear it so the camera returns; no worm fires.
+            if (e.bookwormBook && !bullets.includes(e.bookwormBook)) e.bookwormBook = null;
+            // Worm stack decay: 4s without a new stack (6s with the owner's SP1).
+            if ((e.bookwormWormStacks || 0) > 0) {
+                const stackOwner = getEntityById(e.bookwormWormStackById);
+                const decayMs = stackOwner ? bookwormStackDecayMs(stackOwner) : BOOKWORM_WORM_STACK_DECAY_MS;
+                if (now - (e.bookwormWormStackAt || 0) > decayMs) {
+                    e.bookwormWormStacks = 0;
+                    e.bookwormWormStackAt = 0;
+                }
+            }
+            if (!isBookworm(e)) continue;
+            // Death clears the form, the book, and the mirror queue.
+            if (e.hp <= 0) {
+                e.bookwormFormActive = false;
+                e.bookwormJumpCharges = 0;
+                e.bookwormMirrorQueue = [];
+                e.bookwormBook = null;
+                continue;
+            }
+            // Form ends when the timer runs out, or when both charges are
+            // spent (and the last jump has landed) with no mirror pending.
+            if (e.bookwormFormActive) {
+                const chargesOut = (e.bookwormJumpCharges || 0) <= 0;
+                const mirrorsPending = Array.isArray(e.bookwormMirrorQueue) && e.bookwormMirrorQueue.length > 0;
+                if (now >= (e.bookwormFormUntil || 0) || (chargesOut && !e.isJumping && !mirrorsPending)) {
+                    e.bookwormFormActive = false;
+                    e.bookwormJumpCharges = 0;
+                }
+            }
+            // Hyper mirror jumps: fire 1s after the real jump, same direction.
+            if (Array.isArray(e.bookwormMirrorQueue) && e.bookwormMirrorQueue.length > 0) {
+                const due = e.bookwormMirrorQueue.filter((m) => now >= m.at);
+                if (due.length > 0) {
+                    e.bookwormMirrorQueue = e.bookwormMirrorQueue.filter((m) => now < m.at);
+                    for (const m of due) {
+                        if (!e.isJumping && !e.isDashing && e.hp > 0) {
+                            bookwormDoJumpMirror(e, m);
+                        } else if (e.hp > 0) {
+                            // Still airborne: re-queue 150ms later so the mirror is not lost.
+                            e.bookwormMirrorQueue.push({ ...m, at: now + 150 });
+                        }
+                    }
+                }
+            }
+            // Hyper trail particles (Pandy/Snipa pattern: every 60ms).
+            if (isEntityHyperchargedNow(e) && now - (e.bookwormTrailAt || 0) > 60) {
+                e.bookwormTrailAt = now;
+                explosions.push({ x: e.x, y: e.y, radius: 5 + Math.random() * 4, life: 0, maxLife: 0.7, color: Math.random() < 0.5 ? 'rgba(192,132,252,0.8)' : 'rgba(168,85,247,0.8)', isParticle: true });
+            }
+        }
+    }
+
+    // Gadgets: G1 Speed Read (next book +50% speed, +30% range), G2
+    // Wormhole (teleport to the flying book; the book ends and the worm
+    // fires as normal). G2 with no live book fizzles and shows NO BOOK!.
+    function executeBookwormGadget(entity, gadget, isBot) {
+        if (!entity || entity.hp <= 0) return false;
+        if (gadget === 'g1') {
+            entity.bookwormSpeedReadArmed = true;
+            spawnFloatingText(entity.x, entity.y - 40, '📖 SPEED READ!', '#a3e635');
+            return true;
+        }
+        if (gadget === 'g2') {
+            const book = entity.bookwormBook;
+            if (!book || !bullets.includes(book)) {
+                spawnFloatingText(entity.x, entity.y - 40, 'NO BOOK!', '#fca5a5');
+                return false;
+            }
+            entity.x = clamp(book.x, (entity.radius || 14) + 4, WORLD_W - (entity.radius || 14) - 4);
+            entity.y = clamp(book.y, (entity.radius || 14) + 4, WORLD_H - (entity.radius || 14) - 4);
+            bookwormEndBook(book);
+            const idx = bullets.indexOf(book);
+            if (idx >= 0) bullets.splice(idx, 1);
+            spawnFloatingText(entity.x, entity.y - 40, '🌀 WORMHOLE!', '#a3e635');
+            return true;
+        }
+        return false;
+    }
+
+    function drawBookwormBook(ctx, b) {
+        const ang = Math.atan2(b.vy, b.vx);
+        const hyper = !!b.hyperVisual;
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        ctx.rotate(ang);
+        ctx.shadowColor = hyper ? '#a855f7' : '#84cc16';
+        ctx.shadowBlur = 10;
+        ctx.fillStyle = hyper ? '#c084fc' : '#a3e635';
+        ctx.strokeStyle = hyper ? '#7e22ce' : '#4d7c0f';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.rect(-16, -9, 32, 18);
+        ctx.fill();
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = hyper ? '#f3e8ff' : '#ecfccb';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(-10, -4); ctx.lineTo(10, -4);
+        ctx.moveTo(-10, 0); ctx.lineTo(10, 0);
+        ctx.moveTo(-10, 4); ctx.lineTo(10, 4);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    function drawBookwormWorm(ctx, b) {
+        const ang = Math.atan2(b.vy, b.vx);
+        const hyper = !!b.hyperVisual;
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        ctx.rotate(ang);
+        ctx.shadowColor = hyper ? '#a855f7' : '#84cc16';
+        ctx.shadowBlur = 8;
+        const body = hyper ? '#c084fc' : '#a3e635';
+        const dark = hyper ? '#7e22ce' : '#4d7c0f';
+        ctx.fillStyle = body;
+        ctx.strokeStyle = dark;
+        ctx.lineWidth = 1.5;
+        for (let i = 2; i >= 0; i--) {
+            const cx = -i * 8;
+            const cy = Math.sin((performance.now() / 90) + i * 1.4) * 3;
+            ctx.beginPath();
+            ctx.arc(cx, cy, i === 0 ? 7 : 5.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+        }
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.arc(3, -3, 2.2, 0, Math.PI * 2); ctx.arc(3, 3, 2.2, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#111';
+        ctx.beginPath(); ctx.arc(4, -3, 1.1, 0, Math.PI * 2); ctx.arc(4, 3, 1.1, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+    }
+
+    // Slam dust rings (a slam, never an explosion), worm-stack bars above
+    // enemies, the Hyper purple aura, and the Worm Leap form ring.
+    function renderBookwormEffects() {
+        const now = performance.now();
+        bookwormSlamFx = bookwormSlamFx.filter((fx) => now - fx.at < fx.dur);
+        for (const fx of bookwormSlamFx) {
+            const p = (now - fx.at) / fx.dur;
+            const r = fx.radius * (0.4 + 0.6 * p);
+            ctx.save();
+            ctx.globalAlpha = 0.85 * (1 - p);
+            ctx.strokeStyle = '#a3e635';
+            ctx.lineWidth = 5 * (1 - p) + 1;
+            ctx.beginPath();
+            ctx.arc(fx.x, fx.y, r, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.globalAlpha = 0.5 * (1 - p);
+            ctx.fillStyle = '#d9f99d';
+            ctx.beginPath();
+            ctx.arc(fx.x, fx.y, r * 0.35, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+        // Worm-stack bar: 3 segments above any enemy with stacks.
+        for (const t of [player, ...bots]) {
+            if (!t || t.hp <= 0) continue;
+            const stacks = t.bookwormWormStacks || 0;
+            if (stacks <= 0) continue;
+            const w = 36, h = 6;
+            const bx = t.x - w / 2, by = t.y - (t.radius || 14) - 22;
+            ctx.save();
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.fillRect(bx - 1, by - 1, w + 2, h + 2);
+            for (let s = 0; s < 3; s++) {
+                ctx.fillStyle = s < stacks ? '#a3e635' : 'rgba(163,230,53,0.25)';
+                ctx.fillRect(bx + s * (w / 3) + 1, by, w / 3 - 2, h);
+            }
+            ctx.restore();
+        }
+        // Hyper purple aura (Pandy/Snipa pattern) + Worm Leap form ring.
+        for (const e of [player, ...bots]) {
+            if (!e || e.hp <= 0 || !isBookworm(e)) continue;
+            if (isEntityHyperchargedNow(e)) {
+                const pulse = Math.sin(now / 160) * BOOKWORM_HYPER_AURA_PULSE_PX;
+                const ar = (e.radius || 14) + BOOKWORM_HYPER_AURA_RADIUS_BONUS + pulse;
+                ctx.save();
+                ctx.strokeStyle = `rgba(192,132,252,${BOOKWORM_HYPER_AURA_STROKE_ALPHA})`;
+                ctx.fillStyle = `rgba(168,85,247,${BOOKWORM_HYPER_AURA_FILL_ALPHA})`;
+                ctx.lineWidth = BOOKWORM_HYPER_AURA_LINE_WIDTH;
+                ctx.shadowColor = '#a855f7';
+                ctx.shadowBlur = BOOKWORM_HYPER_AURA_SHADOW_BLUR;
+                ctx.beginPath();
+                ctx.arc(e.x, e.y, ar, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                ctx.restore();
+            }
+            if (isBookwormFormActive(e)) {
+                const r = (e.radius || 14) + 10 + Math.sin(now / 140) * 3;
+                ctx.save();
+                ctx.strokeStyle = '#a3e635';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(e.x, e.y, r, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.restore();
+                const jumps = e.bookwormJumpCharges || 0;
+                if (jumps > 0) {
+                    ctx.save();
+                    ctx.font = 'bold 11px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillStyle = '#d9f99d';
+                    ctx.fillText('🪱'.repeat(jumps), e.x, e.y - (e.radius || 14) - 26);
+                    ctx.restore();
+                }
+            }
+        }
+    }
+
+    // Bookworm voice: spawn/win/death/hurt/idle (Pandy pattern). Silent
+    // until Anthony picks a voice — the module degrades to a no-op.
+    let bookwormVoicePrevPlaying = false;
+    let bookwormVoicePrevGameOver = false;
+    let bookwormVoiceMatchEndPlayed = false;
+    let bookwormVoiceLastHp = null;
+    let bookwormVoiceLastActionAt = 0;
+    let bookwormVoiceLastIdleAt = 0;
+    function updateBookwormVoiceState() {
+      try {
+        if (typeof selectedBrawler === 'undefined' || !player) return;
+        const now = performance.now();
+        const isBook = selectedBrawler === 'bookworm';
+        // Match start: playing flips false -> true.
+        if (playing && !bookwormVoicePrevPlaying) {
+          bookwormVoiceMatchEndPlayed = false;
+          bookwormVoiceLastHp = player.hp;
+          bookwormVoiceLastActionAt = now;
+          bookwormVoiceLastIdleAt = 0;
+          player.bookwormWinAt = 0;
+          player.bookwormDeathAt = 0;
+          if (isBook) window.BraweBookwormVoice?.play('spawn');
+        }
+        // Match end: gameOver flips false -> true.
+        if (gameOver && !bookwormVoicePrevGameOver && !bookwormVoiceMatchEndPlayed) {
+          bookwormVoiceMatchEndPlayed = true;
+          if (isBook) {
+            if (player.hp > 0) {
+              player.bookwormWinAt = now;
+              window.BraweBookwormVoice?.play('win');
+            } else {
+              player.bookwormDeathAt = now;
+              window.BraweBookwormVoice?.play('death');
+              explosions.push({ x: player.x, y: player.y, radius: 60, life: 0, maxLife: .8, color: 'rgba(163,230,53,.55)', fxKind: 'bookwormDeathBurst' });
+              spawnFloatingText(player.x, player.y - 46, '🐛 SQUISHED!', '#a3e635');
+            }
+          }
+        }
+        // Hurt voice: player HP dropped since last frame.
+        if (playing && !gameOver && isBook && player.hp > 0 && bookwormVoiceLastHp !== null && player.hp < bookwormVoiceLastHp) {
+          bookwormVoiceLastActionAt = now;
+          window.BraweBookwormVoice?.play('hurt');
+        }
+        if (player) bookwormVoiceLastHp = player.hp;
+        // Idle voice: alive, unmoving, no attack and no damage for 20s.
+        if (playing && !gameOver && isBook && player.hp > 0) {
+          const moved = Math.hypot((player.x || 0) - (player.bookwormVoicePrevX ?? player.x ?? 0), (player.y || 0) - (player.bookwormVoicePrevY ?? player.y ?? 0)) > 4;
+          if (moved || (player.lastAttackAt || 0) > bookwormVoiceLastActionAt) bookwormVoiceLastActionAt = now;
+          player.bookwormVoicePrevX = player.x;
+          player.bookwormVoicePrevY = player.y;
+          if (now - bookwormVoiceLastActionAt > 20000 && now - bookwormVoiceLastIdleAt > 25000) {
+            bookwormVoiceLastIdleAt = now;
+            window.BraweBookwormVoice?.play('idle');
+          }
+        }
+        bookwormVoicePrevPlaying = playing;
+        bookwormVoicePrevGameOver = gameOver;
+      } catch (e) {}
+    }
+
     // ===== Christmas Showdown buffs (Season 6: Xplodemis) =====
     let christmasBuffTimer = 0;
     function isChristmasShowdownMatch() { return showdownMode === 'christmas_showdown' && !isTraining; }
@@ -28472,6 +29068,7 @@ let heistFeverActive = false;
         if (bot.brawler === 'voodoyou') return distance < VOODOOYOU_NEEDLE_RANGE; // needle throw range
         if (bot.brawler === 'pandy') return distance < PANDY_SUPER_RANGE; // candy shell range
         if (bot.brawler === 'snipa') return distance < SNIPA_SUPER_AURA_RADIUS; // headshot aura range
+        if (bot.brawler === 'bookworm') return distance < 550; // Worm Leap jump 2 reaches 600px
         const targetHpPct = target.hp ? target.hp / Math.max(1, target.maxHp || target.hp) : 1;
         const clustered = getBotLivingEnemies(bot).filter((enemy) => Math.hypot(enemy.x - target.x, enemy.y - target.y) < 190).length;
         const objectiveFight = (isObjectiveMode || isTugZoneMode) && Math.hypot(target.x - (objectiveZone?.x || WORLD_W*0.5), target.y - (objectiveZone?.y || WORLD_H*0.5)) < (objectiveZone?.r || 240) + 80;
@@ -30771,7 +31368,7 @@ let heistFeverActive = false;
       beam:8, fuser:24, heater_miser:20, minigunnin:72, money_and_tax:24, outlit:30, steamer:8,
       bouncin_balls:6, chickpig:12, classy:6, copyphase:6, goonbob:6, hoop:5, hyperorigin:5, robber:42,
       portalo:7, ghoul:6, jacktrade:18, darkener:6, awakenator:8, trampaheal:6, axeywaxy:6, mageny:6, draflygon:6, ramage:6, upgradart:10, cinderion:10, cursed:7, king:6, anti_royal:6, weefee:6, rager:4,
-    carmela_fudge:5, bolznstien:5, sir_cheeseburger:4, blinkeye:4, magnatar:6, oil_maker:16, badbat:5, looma:7, feathers:5, spikey:6, electrostien:14, mallow:12, nightshade: 6, runner: 6, aura_charmer: 6, voltastein: 6, staticstein: 6, healnstein: 6, voodoyou: 6, pandy: 6, snipa: 6
+    carmela_fudge:5, bolznstien:5, sir_cheeseburger:4, blinkeye:4, magnatar:6, oil_maker:16, badbat:5, looma:7, feathers:5, spikey:6, electrostien:14, mallow:12, nightshade: 6, runner: 6, aura_charmer: 6, voltastein: 6, staticstein: 6, healnstein: 6, voodoyou: 6, pandy: 6, snipa: 6, bookworm: 7
   });
   let nextMainAttackActivationId = 1;
   function getSuperChargeHitsForBrawler(brawler) {
@@ -36310,7 +36907,19 @@ let heistFeverActive = false;
         // the control the moment the body takes damage).
         if (brawler === 'voodoyou' && isVoodoyouControlling(fromEntity, now)) return;
         // Snipa: while Headshot is channeling, the body stands still and cannot attack.
-        if (brawler === 'snipa' && isSnipaChanneling(fromEntity, now)) return;
+    if (brawler === 'snipa' && isSnipaChanneling(fromEntity, now)) return; // Super channeling: cannot attack
+    // Bookworm: while the Worm Leap form is active the attack button jumps
+    // (main attack stays locked until both charges are spent); while the
+    // book is flying the attack button redirects it once. Fused mode skips
+    // both — the fused component fires the normal main attack instead.
+    if (brawler === 'bookworm' && !fromEntity.fusedPartCall && !isFusedEntity(fromEntity)) {
+        if (isBookwormFormActive(fromEntity)) { bookwormDoJump(fromEntity, targetX, targetY); return; }
+        if (fromEntity.bookwormBook && bullets.includes(fromEntity.bookwormBook)) {
+            tryBookwormRedirect(fromEntity, targetX, targetY);
+            return; // book still flying: steer it (once) or wait — never a second book
+        }
+        fromEntity.bookwormBook = null; // stale ref
+    }
         // Fused mode: one press fires both components. The outer call runs the
         // per-press gates once; the two inner calls (fusedPartCall set) skip
         // them and run only the per-component gates/branch.
@@ -36509,6 +37118,8 @@ let heistFeverActive = false;
     if (!isBot && fromEntity === player && (fromEntity.fusedPartCall || selectedBrawler) === 'pandy') { try { window.BrawePandyVoice?.play('attack'); } catch (e) {} }
     // Snipa voice: player attack line (throttled inside the voice module).
     if (!isBot && fromEntity === player && (fromEntity.fusedPartCall || selectedBrawler) === 'snipa') { try { window.BraweSnipaVoice?.play('attack'); } catch (e) {} }
+    // Bookworm voice: player attack line (throttled inside the voice module).
+    if (!isBot && fromEntity === player && (fromEntity.fusedPartCall || selectedBrawler) === 'bookworm') { try { window.BraweBookwormVoice?.play('attack'); } catch (e) {} }
 
     fireArenaForgeCapturedHyperAttacks(fromEntity, ang, now);
 
@@ -39276,6 +39887,9 @@ let heistFeverActive = false;
     } else if (brawler === 'snipa') {
         fireSnipaMain(fromEntity, ang, targetX, targetY, { isBot, now, damageMult: 1, hitboxMult: 1, donorMode: false });
         return;
+    } else if (brawler === 'bookworm') {
+        fireBookwormMain(fromEntity, targetX, targetY, isBot);
+        return;
     } else if (brawler === 'nightshade') {
         fireNightshadeMain(fromEntity, ang, targetX, targetY, { isBot, now, damageMult: 1, hitboxMult: 1, donorMode: false });
         return;
@@ -41646,6 +42260,7 @@ let heistFeverActive = false;
     if (combatBrawler === 'voodoyou') { castVoodoyouSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'pandy') { castPandySuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'snipa') { castSnipaSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
+    if (combatBrawler === 'bookworm') { castBookwormSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'nightshade') { castNightshadeSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'aegis') { castAegisSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'runner') { castRunnerSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
@@ -42972,6 +43587,10 @@ let heistFeverActive = false;
       executeSnipaG1(bot);
     } else if (bot.brawler === 'snipa' && g === 'g2') {
       executeSnipaG2(bot);
+    } else if (bot.brawler === 'bookworm' && g === 'g1') {
+      executeBookwormGadget(bot, 'g1', true);
+    } else if (bot.brawler === 'bookworm' && g === 'g2') {
+      executeBookwormGadget(bot, 'g2', true);
     } else if (bot.brawler === 'nightshade' && g === 'g1') {
       executeNightshadeG1(bot, target?.x ?? (bot.x + Math.cos(ang) * 200), target?.y ?? (bot.y + Math.sin(ang) * 200));
     } else if (bot.brawler === 'nightshade' && g === 'g2') {
@@ -43535,6 +44154,7 @@ let heistFeverActive = false;
     if (botCombatBrawler === 'voodoyou') { castVoodoyouSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'pandy') { castPandySuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'snipa') { castSnipaSuper(bot, isHyper, targetX, targetY); return; }
+    if (botCombatBrawler === 'bookworm') { castBookwormSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'nightshade') { castNightshadeSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'aegis') { castAegisSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'runner') { castRunnerSuper(bot, isHyper, targetX, targetY); return; }
@@ -45141,6 +45761,18 @@ let heistFeverActive = false;
         return;
     } else if (curBrawler === 'snipa' && curGadget === 'g2') {
         executeSnipaG2(player);
+        gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
+        setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
+        updateGadgetButton();
+        return;
+    } else if (curBrawler === 'bookworm' && curGadget === 'g1') {
+        executeBookwormGadget(player, 'g1', false);
+        gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
+        setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
+        updateGadgetButton();
+        return;
+    } else if (curBrawler === 'bookworm' && curGadget === 'g2') {
+        executeBookwormGadget(player, 'g2', false);
         gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
         setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
         updateGadgetButton();
@@ -55402,6 +56034,14 @@ function checkHit(target, b, i){
         // (replaces the retired +25% at any progress).
         snipaApplyMarkBonusDamage(target, b);
 
+        // Bookworm: worm hits (main worm and Hyper side worms) stack the root
+        // — 3 worm hits on the same enemy root them for 1s (dummies count so
+        // the root is testable in training; structures never take stacks).
+        if (b && (b.isBookwormWorm || b.isBookwormSideWorm) && target && target.hp > 0) {
+            const bookwormOwner = getEntityById(b.ownerId);
+            if (bookwormOwner) bookwormApplyWormStack(bookwormOwner, target);
+        }
+
         // Snipa Longshot: each main-attack hit on an enemy brawler stretches
         // her range +0.5 tiles (SP1 Eagle Eye: +0.75), stacking to +3 tiles.
         // Deadeye (G1) doubles the bonus on the flagged shot.
@@ -58533,6 +59173,7 @@ function checkHit(target, b, i){
     if (playing && !gameOver) updateVoodoyouSystems(dt);
     if (playing && !gameOver) updatePandySystems(dt);
     if (playing && !gameOver) updateSnipaSystems(dt);
+    if (playing && !gameOver) updateBookwormSystems(dt);
     if (playing && !gameOver) updatePropPads();
     if (playing && !gameOver) updateChristmasShowdown(dt);
     if (playing && !gameOver) updatePropHuntMode(dt, now);
@@ -61954,6 +62595,8 @@ function checkHit(target, b, i){
           }
       }
       b.life += dt;
+      // Bookworm: Hyper side worms home in on the nearest enemy.
+      if (b.isBookwormSideWorm) bookwormSteerSideWorm(b, dt);
       // Resolve this aimed core after its lifetime advances but before generic expiry cleanup.
       if (b.isCinderionScatterCore && b.life >= b.maxLife && !b.cinderionBurstDetonated) {
           b.cinderionBurstDetonated=true;
@@ -62394,6 +63037,10 @@ function checkHit(target, b, i){
       }
       if (b.isFeatherShot && b.life >= b.maxLife) {
           feathersWindBurst(b);
+      }
+      // Bookworm: the book's flight ends at max range — the worm comes out.
+      if (b.isBookwormBook && b.life >= b.maxLife) {
+          bookwormEndBook(b);
       }
       if (b.isSpikeyThrow && b.life >= b.maxLife) {
           parkSpikeyBall(b);
@@ -63027,7 +63674,15 @@ function checkHit(target, b, i){
           b.y += b.vy * dt * 1.25;
           b.lastCleanBounceAt = now;
           hitCube = false; // Resolved bounce, don't destroy
-      } else if(hitCube && !canPierceWall){ 
+      } else if(hitCube && !canPierceWall){
+           // Bookworm: the book's flight ends on a wall (piercing is vs
+           // enemies, not walls) — the worm comes out, then the book dies.
+           if (b.isBookwormBook) {
+               bookwormEndBook(b);
+               bullets.splice(i, 1);
+               i--;
+               continue;
+           }
            if (b.isOilMakerCrude) {           if (b.isVoodoyouYarn) {
                triggerVoodoyouYarnExplosion(b, null);
                bullets.splice(i, 1);
@@ -64139,7 +64794,13 @@ function checkHit(target, b, i){
                 const isTempoMaker = e.id === player.id ? selectedBrawler === 'tempo_maker' : e.brawler === 'tempo_maker';
                 
                 if (e.isSuperJump) {
-                    if (e.isTeetherSuper) {
+                    if (e.isBookwormSuperJump) {
+                        const slam = e.bookwormJumpSlam || { dmg: BOOKWORM_SUPER_JUMP1_SLAM_DMG, radius: BOOKWORM_SUPER_JUMP1_SLAM_RADIUS, directRadius: BOOKWORM_SUPER_JUMP_DIRECT_RADIUS, directDmg: BOOKWORM_SUPER_JUMP_DIRECT_DMG, isJump2: false };
+                        bookwormApplySlam(e, e.x, e.y, slam);
+                        e.isBookwormSuperJump = false;
+                        e.isSuperJump = false;
+                        e.bookwormJumpSlam = null;
+                    } else if (e.isTeetherSuper) {
                         const hyper = !!e.teetherSuperHyper;
                         const toothCount = hyper ? 8 : 6;
                         for (let tooth = 0; tooth < toothCount; tooth++) {
@@ -68669,6 +69330,36 @@ function checkHit(target, b, i){
                 ctx.fill();
                 ctx.restore();
             }
+            if (brawlerId === 'bookworm') {
+                ctx.save();
+                ctx.shadowColor = '#84cc16';
+                ctx.shadowBlur = 8;
+                ctx.fillStyle = '#a3e635';
+                ctx.strokeStyle = '#4d7c0f';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.rect(entity.x - size * 0.26, drawY - size * 0.34, size * 0.52, size * 0.42, 3);
+                ctx.fill();
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+                ctx.strokeStyle = '#ecfccb';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(entity.x - size * 0.18, drawY - size * 0.26);
+                ctx.lineTo(entity.x + size * 0.18, drawY - size * 0.26);
+                ctx.moveTo(entity.x - size * 0.18, drawY - size * 0.16);
+                ctx.lineTo(entity.x + size * 0.18, drawY - size * 0.16);
+                ctx.stroke();
+                ctx.fillStyle = '#65a30d';
+                ctx.beginPath();
+                ctx.arc(entity.x + size * 0.18, drawY + size * 0.16, size * 0.09, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(entity.x + size * 0.15, drawY + size * 0.13, size * 0.03, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
             ctx.textAlign = 'left';
             ctx.textBaseline = 'alphabetic';
     }
@@ -69145,6 +69836,12 @@ function checkHit(target, b, i){
         cameraTargetX = player.blinkeyeActiveEye.x;
         cameraTargetY = player.blinkeyeActiveEye.y;
     }
+    // Bookworm: while the book is flying, the camera focuses on the book
+    // so the player can aim the redirect; it returns to Bookworm after.
+    if (player && selectedBrawler === 'bookworm' && player.bookwormBook && bullets.includes(player.bookwormBook)) {
+        cameraTargetX = player.bookwormBook.x;
+        cameraTargetY = player.bookwormBook.y;
+    }
     if (player.hp <= 0 && (isDuoShowdown || isTrioShowdownMode || isBraweBallMode || isKnockoutMode || isObjectiveMode || isConstructionMode || isBrickVaultMode || isDamageFillerMode || isMirrorMode || isKnockDonateMode || isArenaForgeMode || isMarkedMayhemMode || isTugZoneMode)) {
         const ally = bots.find(b => b.isTeammate && b.hp > 0) || bots.find(b => b.team === 'player' && b.hp > 0);
         if (ally && Number.isFinite(ally.x) && Number.isFinite(ally.y)) {
@@ -69201,6 +69898,7 @@ function checkHit(target, b, i){
     renderVoodoyouEffects();
     renderPandyEffects();
     renderSnipaEffects();
+    renderBookwormEffects();
     renderNightshadeEffects();
     renderRunnerEffects(ctx);
     if (typeof renderBouncinBossEvent === 'function') renderBouncinBossEvent('ground');
@@ -76503,6 +77201,14 @@ function checkHit(target, b, i){
       }
       if (b.isSnipaVolley) {
         drawSnipaVolleyBullet(ctx, b);
+        continue;
+      }
+      if (b.isBookwormBook) {
+        drawBookwormBook(ctx, b);
+        continue;
+      }
+      if (b.isBookwormWorm || b.isBookwormSideWorm) {
+        drawBookwormWorm(ctx, b);
         continue;
       }
       const earlyProjectileBrawler = b.ownerBrawler || (b.ownerId === player.id ? selectedBrawler : '');
@@ -85389,6 +86095,7 @@ function checkHit(target, b, i){
         updateVoodoyouVoiceState();
         updatePandyVoiceState();
         updateSnipaVoiceState();
+        updateBookwormVoiceState();
         const homeVisible = homeScreen && homeScreen.style.display !== 'none';
         if (playing || !homeVisible) render();
     } catch (err) {
