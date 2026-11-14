@@ -4,7 +4,8 @@
 // Locked design: Epic Controller (170 souls), 5000 HP / 270 speed, 800 base
 // main damage. Main "Bookmark Toss": 1 ammo, Bookworm moves while attacking
 // (never rooted by his own attack). Step 1: a piercing book (1100 px/s,
-// 950px range) flies; while it flies the CAMERA FOCUSES ON THE BOOK so the
+// 475px range, halved 2026-11-14 per Anthony — worm range stays 650px)
+// flies; while it flies the CAMERA FOCUSES ON THE BOOK so the
 // player can aim it again. Step 2: pressing attack again redirects the book
 // ONCE to the current aim (attack-button trigger; 250ms minimum book age so
 // a mash cannot steer it instantly). Book flight ends at max range or on a
@@ -28,8 +29,13 @@
 // that HOME IN on enemies (1200 px/s, 4 rad/s turn, 300 dmg each, 800px
 // range, +250px range when the book is redirected); the normal worm STILL
 // comes out after. Super while hypercharged: an EXTRA charge (3 total) and
-// the jump mirrors itself 1s later in the SAME direction (automatic, same
-// distance and same slam; mirrors never consume charges). G1 Speed Read
+// the jump mirrors itself 1s later in the SAME direction as a SHADOW CLONE
+// (round 1, 2026-11-14: the clone does the jump, not Bookworm — he stays
+// put; the clone spawns at his current position, jumps the same direction
+// and distance with the same slam, then vanishes; visual only, not
+// targetable, no HP; mirrors never consume charges and fire on schedule
+// while the form lasts — no re-queue when he is mid-air; dropped if the
+// form expired). G1 Speed Read
 // (14s): next book flies 50% faster and +30% range. G2 Wormhole (16s):
 // teleport to the flying book (the book ends and the worm fires as normal;
 // fizzles with NO BOOK! when no book is live). SP1 Voracious Reader: worm
@@ -70,7 +76,7 @@ check('reload 1700ms', game.includes('bookworm: 1700,'));
 check('fire delay 300ms', game.includes('bookworm: 300,'));
 check('super charge 7 hits', game.includes('bookworm: 7'));
 check('brawlerData entry present (no coming-soon placeholders)', game.includes("'bookworm': {") && game.includes("name: 'Bookworm'") && game.includes("attack: 'Bookmark Toss'") && game.includes("super: 'Worm Leap'") && game.includes("g1: 'Speed Read") && game.includes("g2: 'Wormhole") && game.includes("sp1: 'Voracious Reader") && game.includes("sp2: 'Cliffhanger") && !game.slice(game.indexOf("'bookworm': {"), game.indexOf("'bookworm': {") + 2600).includes('coming soon'));
-check('card text matches the kit (redirect once, worm root, 2 jumps, hyper side worms + mirror)', game.includes("Bookworm hurls a piercing book he can redirect once, then a worm bursts out to stack up a root.") && game.includes('Two jumps, second one hits harder.') && game.includes('side worms home in, and every jump echoes a second later.'));
+check('card text matches the kit (redirect once, worm root, 2 jumps, hyper side worms + shadow clone)', game.includes("Bookworm hurls a piercing book he can redirect once, then a worm bursts out to stack up a root.") && game.includes('Two jumps, second one hits harder.') && game.includes('side worms home in, and a shadow clone echoes every jump a second later.'));
 check('gadget cooldown map entry', game.includes('bookworm: { g1: 14000, g2: 16000 },'));
 check('fire pre-check: form jumps, live book redirects, never a second book', game.includes("if (brawler === 'bookworm' && !fromEntity.fusedPartCall && !isFusedEntity(fromEntity)) {") && game.includes("if (isBookwormFormActive(fromEntity)) { bookwormDoJump(fromEntity, targetX, targetY); return; }") && game.includes('tryBookwormRedirect(fromEntity, targetX, targetY);'));
 check('fire branch exists with primary-charge book', game.includes("} else if (brawler === 'bookworm') {") && game.includes('fireBookwormMain(fromEntity, targetX, targetY, isBot);') && game.includes('isBookwormBook: true,') && game.includes('isPrimaryChargeProjectile: true'));
@@ -96,7 +102,7 @@ check('slam never pushes an explosion (dust ring only)', (() => {
   const body = game.slice(start, end);
   return body.includes('bookwormSlamFx.push(') && !body.includes('explosions.push');
 })());
-check('constants: book 1100/950/800, worm 1400/650/350', game.includes('const BOOKWORM_BOOK_SPEED = 1100;') && game.includes('const BOOKWORM_BOOK_RANGE = 950;') && game.includes('const BOOKWORM_BOOK_DMG = 800;') && game.includes('const BOOKWORM_WORM_SPEED = 1400;') && game.includes('const BOOKWORM_WORM_RANGE = 650;') && game.includes('const BOOKWORM_WORM_DMG = 350;'));
+check('constants: book 1100/475/800, worm 1400/650/350', game.includes('const BOOKWORM_BOOK_SPEED = 1100;') && game.includes('const BOOKWORM_BOOK_RANGE = 475;') && game.includes('const BOOKWORM_BOOK_DMG = 800;') && game.includes('const BOOKWORM_WORM_SPEED = 1400;') && game.includes('const BOOKWORM_WORM_RANGE = 650;') && game.includes('const BOOKWORM_WORM_DMG = 350;'));
 check('constants: 3 stacks / 4s decay / 1s root / 250ms redirect age', game.includes('const BOOKWORM_WORM_STACKS_TO_ROOT = 3;') && game.includes('const BOOKWORM_WORM_STACK_DECAY_MS = 4000;') && game.includes('const BOOKWORM_ROOT_DURATION_MS = 1000;') && game.includes('const BOOKWORM_REDIRECT_MIN_AGE_MS = 250;'));
 check('constants: jumps 400/600, slams 600/900, radii 150/180, direct 70/1200', game.includes('const BOOKWORM_SUPER_JUMP1_DIST = 400;') && game.includes('const BOOKWORM_SUPER_JUMP2_DIST = 600;') && game.includes('const BOOKWORM_SUPER_JUMP1_SLAM_DMG = 600;') && game.includes('const BOOKWORM_SUPER_JUMP2_SLAM_DMG = 900;') && game.includes('const BOOKWORM_SUPER_JUMP1_SLAM_RADIUS = 150;') && game.includes('const BOOKWORM_SUPER_JUMP2_SLAM_RADIUS = 180;') && game.includes('const BOOKWORM_SUPER_JUMP_DIRECT_RADIUS = 70;') && game.includes('const BOOKWORM_SUPER_JUMP_DIRECT_DMG = 1200;'));
 check('constants: form 8s / charge 7 / side worms 1200/300/800/+250/4 rad/s / mirror 1s', game.includes('const BOOKWORM_SUPER_FORM_DURATION_MS = 8000;') && game.includes('const BOOKWORM_SUPER_CHARGE_HITS = 7;') && game.includes('const BOOKWORM_SIDE_WORM_SPEED = 1200;') && game.includes('const BOOKWORM_SIDE_WORM_DMG = 300;') && game.includes('const BOOKWORM_SIDE_WORM_RANGE = 800;') && game.includes('const BOOKWORM_SIDE_WORM_REDIRECT_BONUS_RANGE = 250;') && game.includes('const BOOKWORM_SIDE_WORM_TURN_RATE = 4;') && game.includes('const BOOKWORM_MIRROR_DELAY_MS = 1000;'));
@@ -114,6 +120,13 @@ check('voice lines: exactly 12, flavor-only (RULE ONE — no mechanics words)', 
   return spoken.length === 12 && bad.length === 0;
 })());
 check('G2 fizzles with NO BOOK! when no book is live', game.includes("spawnFloatingText(entity.x, entity.y - 40, 'NO BOOK!', '#fca5a5');"));
+check('mirror is a shadow clone (visual only, slams, not targetable)', game.includes('function bookwormSpawnShadowClone(owner, m) {') && game.includes('let bookwormShadowClones = [];') && game.includes('return bookwormSpawnShadowClone(entity, m);') && !game.slice(game.indexOf('function bookwormDoJumpMirror('), game.indexOf('function bookwormSpawnShadowClone(')).includes('bookwormStartJump(entity,'));
+check('mirror queue: no re-queue when airborne (clone fires on schedule)', (() => {
+  const start = game.indexOf('// Hyper mirror jumps: 1s after the real jump, a shadow clone');
+  const end = game.indexOf('// Hyper trail particles');
+  const body = game.slice(start, end);
+  return body.includes('bookwormDoJumpMirror(e, m);') && !body.includes('at: now + 150');
+})());
 check('worm bar is a 3-segment bar above the enemy', game.includes('const w = 36, h = 6;') && game.includes("for (let s = 0; s < 3; s++) {") && game.includes("ctx.fillStyle = s < stacks ? '#a3e635' : 'rgba(163,230,53,0.25)';"));
 
 // ---------------------------------------------------------- 2. vm execution
@@ -195,6 +208,7 @@ function resetWorld() {
   sandbox.bullets = bullets;
   sandbox.explosions = explosions;
   sandbox.bookwormSlamFx = [];
+  sandbox.bookwormShadowClones = [];
   sandbox.isHypercharged = false;
   sandbox.selectedBrawler = 'bookworm';
 }
@@ -234,6 +248,7 @@ const sandbox = {
   bullets: [],
   explosions: [],
   bookwormSlamFx: [],
+  bookwormShadowClones: [],
   isHypercharged: false,
   selectedBrawler: 'bookworm',
   ctx: null,
@@ -249,10 +264,11 @@ vm.runInContext(
     'isBookwormFormActive', 'bookwormRootDurationMs', 'bookwormStackDecayMs',
     'bookwormApplyWormStack', 'fireBookwormMain', 'tryBookwormRedirect',
     'bookwormEndBook', 'castBookwormSuper', 'bookwormPointInWall',
-    'bookwormStartJump', 'bookwormDoJump', 'bookwormDoJumpMirror',
+    'bookwormJumpLanding', 'bookwormStartJump', 'bookwormDoJump',
+    'bookwormDoJumpMirror', 'bookwormSpawnShadowClone',
     'bookwormApplySlam', 'bookwormSteerSideWorm', 'updateBookwormSystems',
     'executeBookwormGadget', 'drawBookwormBook', 'drawBookwormWorm',
-    'renderBookwormEffects',
+    'drawBookwormShadowClone', 'renderBookwormEffects',
   ].map((fn) => extractFn(game, fn)).join('\n'),
   sandbox);
 
@@ -336,7 +352,7 @@ try {
   const owner = playerEnt;
   const book = sandbox.fireBookwormMain(owner, 1000, 0, false);
   check('main: one piercing book spawns', bullets.length === 1 && book.isBookwormBook === true && book.pierce === true);
-  check('main: book speed 1100, range 950 (maxLife 950/1100)', near(book.vx, 1100) && near(book.maxLife, 950 / 1100));
+  check('main: book speed 1100, range 475 (maxLife 475/1100)', near(book.vx, 1100) && near(book.maxLife, 475 / 1100));
   check('main: book damage 800 at P11, primary-charge projectile', book.damage === 800 && book.isPrimaryChargeProjectile === true);
   check('main: owner tracks the live book', owner.bookwormBook === book);
   check('main: no side worms without Hyper', bullets.filter((b) => b.isBookwormSideWorm).length === 0);
@@ -356,6 +372,17 @@ try {
   check('book end: camera ref cleared', owner.bookwormBook === null);
   sandbox.bookwormEndBook(book);
   check('book end: ending twice fires only one worm', bullets.filter((b) => b.isBookwormWorm).length === wormCountBefore + 1);
+  // Book ends at 475px (round 1): the book flies 475px from its spawn,
+  // then the worm comes out from exactly there. Worm range unchanged (650).
+  resetWorld();
+  const rangeOwner = playerEnt;
+  const rangeBook = sandbox.fireBookwormMain(rangeOwner, 1000, 0, false);
+  check('range: book flight lasts 475/1100s (book ends at 475px)', near(rangeBook.maxLife, 475 / 1100));
+  rangeBook.x += rangeBook.vx * rangeBook.maxLife;
+  check('range: book ends 475px from its spawn point', near(rangeBook.x, 30 + 475));
+  sandbox.bookwormEndBook(rangeBook);
+  const rangeWorm = bullets.find((b) => b.isBookwormWorm);
+  check('range: worm comes out from the 475px book-end point, worm range still 650', !!rangeWorm && rangeWorm.x === rangeBook.x && rangeWorm.y === rangeBook.y && near(rangeWorm.maxLife, 650 / 1400));
   // Dead owner: no worm.
   resetWorld();
   const deadOwner = playerEnt;
@@ -394,7 +421,7 @@ try {
   const owner3 = playerEnt;
   owner3.bookwormSpeedReadArmed = true;
   const fastBook = sandbox.fireBookwormMain(owner3, 1000, 0, false);
-  check('G1: next book flies 50% faster (1650) and +30% range (maxLife 1235/1650)', near(fastBook.vx, 1650) && near(fastBook.maxLife, 1235 / 1650));
+  check('G1: next book flies 50% faster (1650) and +30% range (maxLife 617.5/1650)', near(fastBook.vx, 1650) && near(fastBook.maxLife, 617.5 / 1650));
   check('G1: armed flag consumed on fire', owner3.bookwormSpeedReadArmed === false);
   const slowBook = sandbox.fireBookwormMain(owner3, 1000, 0, false);
   check('G1: the book after is back to base speed', near(slowBook.vx, 1100));
@@ -423,8 +450,14 @@ try {
   check('hyper super: jump queues a mirror 1s later, same direction', hyperOwner.bookwormMirrorQueue.length === 1 && hyperOwner.bookwormMirrorQueue[0].at === nowMs + 1000 && near(hyperOwner.bookwormMirrorQueue[0].ang, 0) && hyperOwner.bookwormMirrorQueue[0].dist === 400 && hyperOwner.bookwormMirrorQueue[0].slamDmg === 600);
   const mirror = hyperOwner.bookwormMirrorQueue[0];
   const chargesBefore = hyperOwner.bookwormJumpCharges;
+  const ownerXBefore = hyperOwner.x;
+  const ownerYBefore = hyperOwner.y;
   hyperOwner.isJumping = false;
-  check('mirror: fires the same jump (400px, 600/150) without spending a charge', sandbox.bookwormDoJumpMirror(hyperOwner, mirror) === true && near(hyperOwner.jumpTargetX, 400) && hyperOwner.bookwormJumpSlam.dmg === 600 && hyperOwner.bookwormJumpCharges === chargesBefore);
+  check('mirror: a shadow clone echoes the jump (400px, 600/150) without spending a charge', sandbox.bookwormDoJumpMirror(hyperOwner, mirror) === true && sandbox.bookwormShadowClones.length === 1 && hyperOwner.bookwormJumpCharges === chargesBefore);
+  const clone = sandbox.bookwormShadowClones[0];
+  check('mirror: clone spawns at Bookworm\'s CURRENT position, same direction/distance/slam', clone.startX === ownerXBefore && clone.startY === ownerYBefore && near(clone.targetX, 400) && clone.slam.dmg === 600 && clone.slam.radius === 150 && clone.duration === 300);
+  check('mirror: Bookworm himself does NOT move or jump (his own jump-1 flag stays as it was)', hyperOwner.x === ownerXBefore && hyperOwner.y === ownerYBefore && hyperOwner.isJumping === false);
+  check('mirror: clone is visual only (no hp, no id, not a registered entity)', !('hp' in clone) && !('id' in clone) && sandbox.getEntityById(clone.ownerId) === hyperOwner);
   // Jump 2 mirror keeps jump-2 slam values.
   hyperOwner.isJumping = false;
   hyperOwner.x = 400; // landed at the jump-1 target
@@ -508,15 +541,32 @@ try {
   check('lifecycle: pending mirror keeps the form alive', owner2.bookwormFormActive === true);
   nowMs += 600;
   sandbox.updateBookwormSystems(0.016);
-  check('lifecycle: mirror fires 1s after the real jump (queue drains, entity jumps)', owner2.bookwormMirrorQueue.length === 0 && owner2.isJumping === true && owner2.isBookwormSuperJump === true);
-  // Mirror re-queues instead of being lost when the entity is mid-air.
+  check('lifecycle: mirror fires 1s after the real jump (queue drains, clone spawns, entity does NOT jump)', owner2.bookwormMirrorQueue.length === 0 && sandbox.bookwormShadowClones.length === 1 && owner2.isJumping !== true && owner2.x === 0 && owner2.y === 0);
+  // The clone flies its arc and slams on landing, then vanishes.
+  const cloneEnemy = mkBot('ce1', { x: 400, y: 0, hp: 5000 });
+  const flyingClone = sandbox.bookwormShadowClones[0];
+  flyingClone.elapsed = flyingClone.duration - 1; // almost landed
+  sandbox.updateBookwormSystems(0.016);
+  check('clone: lands at the mirrored jump target and slams (direct 1200 + stack), then vanishes', sandbox.bookwormShadowClones.length === 0 && cloneEnemy.hp === 5000 - 1200 && cloneEnemy.bookwormWormStacks === 1 && sandbox.bookwormSlamFx.length === 1);
+  // The mirror fires on schedule even while the entity is mid-air (the
+  // old +150ms re-queue is gone — the clone is independent).
   resetWorld();
   const owner3 = playerEnt;
   sandbox.castBookwormSuper(owner3, true, 1000, 0);
   owner3.isJumping = true;
+  owner3.jumpTargetX = 400; // its own jump, still in flight
   owner3.bookwormMirrorQueue = [{ at: nowMs, ang: 0, dist: 400, slamDmg: 600, slamRadius: 150, isJump2: false }];
   sandbox.updateBookwormSystems(0.016);
-  check('lifecycle: mirror re-queues 150ms later when the entity is airborne', owner3.bookwormMirrorQueue.length === 1 && owner3.bookwormMirrorQueue[0].at === nowMs + 150);
+  check('lifecycle: mirror fires on schedule even while the entity is airborne (no re-queue)', owner3.bookwormMirrorQueue.length === 0 && sandbox.bookwormShadowClones.length === 1 && owner3.isJumping === true && owner3.jumpTargetX === 400);
+  // A mirror whose form expired before the 1s is up is dropped, not fired.
+  resetWorld();
+  const ownerExp = playerEnt;
+  sandbox.castBookwormSuper(ownerExp, true, 1000, 0);
+  ownerExp.bookwormJumpCharges = 0;
+  ownerExp.bookwormMirrorQueue = [{ at: nowMs + 500, ang: 0, dist: 400, slamDmg: 600, slamRadius: 150, isJump2: false }];
+  nowMs += 8001; // form timer (8s) ran out before the mirror came due
+  sandbox.updateBookwormSystems(0.016);
+  check('lifecycle: mirror dropped if the form expired (queue drains, no clone)', ownerExp.bookwormFormActive === false && ownerExp.bookwormMirrorQueue.length === 0 && sandbox.bookwormShadowClones.length === 0);
   // Death clears everything.
   resetWorld();
   const owner4 = playerEnt;
@@ -583,6 +633,12 @@ try {
   sandbox.ctx = s4.proxy;
   sandbox.renderBookwormEffects();
   check('render: form ring draws while Worm Leap is active', s4.sets.some((s) => s.p === 'strokeStyle' && s.v === '#a3e635'));
+  // Shadow clone draws translucent shadow-purple (body + book).
+  sandbox.bookwormShadowClones = [{ x: 400, y: 0, z: 45, radius: 14, startX: 0, startY: 0, targetX: 400, targetY: 0, duration: 300, elapsed: 150, slam: { dmg: 600, radius: 150, directRadius: 70, directDmg: 1200, isJump2: false }, ownerId: owner.id }];
+  const s7 = stubCtx();
+  sandbox.ctx = s7.proxy;
+  sandbox.renderBookwormEffects();
+  check('render: shadow clone draws translucent purple (body + book)', s7.sets.some((s) => s.p === 'globalAlpha' && s.v === 0.55) && s7.sets.some((s) => s.p === 'fillStyle' && s.v === '#6b21a8') && s7.calls.some((c) => c.m === 'arc') && s7.calls.some((c) => c.m === 'rect'));
   // Dedicated bullet art draws without throwing.
   const s5 = stubCtx();
   sandbox.drawBookwormBook(s5.proxy, { x: 0, y: 0, vx: 1100, vy: 0, hyperVisual: false });

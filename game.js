@@ -10546,7 +10546,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           desc: 'A little worm who lives inside a big book. He hurls his home across the arena, steers it once mid-flight, then pops out to stack up a root.',
           attack: 'Bookmark Toss', attackDesc: 'Bookworm hurls a piercing book he can redirect once, then a worm bursts out to stack up a root.',
           super: 'Worm Leap', superDesc: 'Bookworm leaps with his book — worms burst out and slam back down. Two jumps, second one hits harder.',
-          hyper: 'Bookworm Fever: side worms home in, and every jump echoes a second later.',
+          hyper: 'Bookworm Fever: side worms home in, and a shadow clone echoes every jump a second later.',
           g1: 'Speed Read (Next book flies 50% faster and 30% farther)',
           g2: 'Wormhole (Teleport to your flying book)',
           sp1: 'Voracious Reader (Worm stacks last 50% longer before fading)',
@@ -24979,10 +24979,11 @@ let heistFeverActive = false;
     // (camera follows the book), then a worm bursts out and stacks a root.
     // Super "Worm Leap": Bookworm transforms — main is replaced by 2 jump
     // charges, each a 4-worm slam (no explosion animation, ever). Hyper:
-    // homing side worms on the main, +1 jump charge, and every jump echoes
-    // a mirror jump 1s later in the same direction.
+    // homing side worms on the main, +1 jump charge, and a shadow clone
+    // echoes every jump 1s later in the same direction (round 1, 2026-11-14:
+    // the mirror no longer re-jumps Bookworm himself).
     const BOOKWORM_BOOK_SPEED = 1100; // book flight speed (px/s)
-    const BOOKWORM_BOOK_RANGE = 950; // book max range (px)
+    const BOOKWORM_BOOK_RANGE = 475; // book max range (px) — halved 2026-11-14 per Anthony; worm range unchanged
     const BOOKWORM_BOOK_DMG = 800; // P11 book damage (getScaledStats)
     const BOOKWORM_WORM_SPEED = 1400; // worm speed after the book ends
     const BOOKWORM_WORM_RANGE = 650; // worm range (px)
@@ -25021,6 +25022,7 @@ let heistFeverActive = false;
     const BOOKWORM_HYPER_AURA_SHADOW_BLUR = 28;
     const BOOKWORM_SLAM_FX_DURATION_MS = 350; // dust-ring slam visual lifetime
     let bookwormSlamFx = []; // {x, y, radius, at, dur} — dust rings only, never explosions
+    let bookwormShadowClones = []; // visual-only mirror jumps: {x, y, startX, startY, targetX, targetY, duration, elapsed, z, slam, ownerId, radius} — no HP, not targetable, slam on landing then vanish
 
     function bookwormStarChoice(entity) { return getEntityStarChoice(entity); }
     function bookwormHasSP1(entity) { return bookwormStarChoice(entity) === 'slow'; }
@@ -25165,9 +25167,9 @@ let heistFeverActive = false;
         return false;
     }
 
-    // Shared jump setup: arc to the landing point, slam params stored for
-    // the landing branch in the jump mechanics.
-    function bookwormStartJump(entity, ang, dist, slamDmg, slamRadius, isJump2) {
+    // Shared landing-point calc (wall-clamped): used by the player's jump
+    // and by the shadow clone so both land identically.
+    function bookwormJumpLanding(entity, ang, dist) {
         let landX = entity.x + Math.cos(ang) * dist;
         let landY = entity.y + Math.sin(ang) * dist;
         for (let d = dist; d > 0; d -= 24) {
@@ -25176,13 +25178,20 @@ let heistFeverActive = false;
         }
         landX = clamp(landX, (entity.radius || 14) + 4, WORLD_W - (entity.radius || 14) - 4);
         landY = clamp(landY, (entity.radius || 14) + 4, WORLD_H - (entity.radius || 14) - 4);
+        return { x: landX, y: landY };
+    }
+
+    // Shared jump setup: arc to the landing point, slam params stored for
+    // the landing branch in the jump mechanics.
+    function bookwormStartJump(entity, ang, dist, slamDmg, slamRadius, isJump2) {
+        const land = bookwormJumpLanding(entity, ang, dist);
         entity.isJumping = true;
         entity.isSuperJump = true;
         entity.isBookwormSuperJump = true;
         entity.jumpStartX = entity.x;
         entity.jumpStartY = entity.y;
-        entity.jumpTargetX = landX;
-        entity.jumpTargetY = landY;
+        entity.jumpTargetX = land.x;
+        entity.jumpTargetY = land.y;
         entity.jumpDuration = isJump2 ? BOOKWORM_JUMP2_DURATION_MS : BOOKWORM_JUMP1_DURATION_MS;
         entity.jumpElapsed = 0;
         entity.bookwormJumpSlam = {
@@ -25216,13 +25225,37 @@ let heistFeverActive = false;
         return true;
     }
 
-    // Hyper mirror: automatic, same direction and same slam as the jump it
-    // echoes. Never consumes a charge, never mirrors again.
+    // Hyper mirror, round 2 (2026-11-14): a shadow clone echoes the jump —
+    // Bookworm himself does NOT re-jump. The clone spawns at his CURRENT
+    // position, jumps the same direction and distance with the same slam,
+    // then vanishes on landing. Automatic, never consumes a charge, never
+    // mirrors again. Fires only while the Super form is still active.
     function bookwormDoJumpMirror(entity, m) {
         if (!entity || entity.hp <= 0) return false;
         if (!entity.bookwormFormActive || performance.now() >= (entity.bookwormFormUntil || 0)) return false;
-        if (entity.isJumping || entity.isDashing) return false;
-        return bookwormStartJump(entity, m.ang, m.dist, m.slamDmg, m.slamRadius, m.isJump2);
+        return bookwormSpawnShadowClone(entity, m);
+    }
+
+    // Spawn a shadow clone at the owner's current position. The clone is a
+    // visual entity only: translucent shadow-purple, NO hp, not targetable,
+    // charges nothing, collects nothing, triggers nothing on its own. Its
+    // slam is a real slam (same damage/radius as the mirrored jump, dust
+    // ring, never an explosion) and enemies hit gain +1 worm stack, like a
+    // normal slam. Air time = the jump it mirrors (300ms jump 1 / 380ms
+    // jump 2).
+    function bookwormSpawnShadowClone(owner, m) {
+        const land = bookwormJumpLanding(owner, m.ang, m.dist);
+        bookwormShadowClones.push({
+            x: owner.x, y: owner.y,
+            startX: owner.x, startY: owner.y,
+            targetX: land.x, targetY: land.y,
+            duration: m.isJump2 ? BOOKWORM_JUMP2_DURATION_MS : BOOKWORM_JUMP1_DURATION_MS,
+            elapsed: 0, z: 0,
+            slam: { dmg: m.slamDmg, radius: m.slamRadius, directRadius: BOOKWORM_SUPER_JUMP_DIRECT_RADIUS, directDmg: BOOKWORM_SUPER_JUMP_DIRECT_DMG, isJump2: m.isJump2 },
+            ownerId: owner.id,
+            radius: owner.radius || 14,
+        });
+        return true;
     }
 
     // The slam: 4 worms burst out and smash back down — AoE damage in a
@@ -25305,19 +25338,15 @@ let heistFeverActive = false;
                     e.bookwormJumpCharges = 0;
                 }
             }
-            // Hyper mirror jumps: fire 1s after the real jump, same direction.
+            // Hyper mirror jumps: 1s after the real jump, a shadow clone
+            // echoes it. The clone is independent, so the mirror always
+            // fires on schedule while the form lasts — no re-queue when
+            // Bookworm himself is mid-air (round 1, 2026-11-14).
             if (Array.isArray(e.bookwormMirrorQueue) && e.bookwormMirrorQueue.length > 0) {
                 const due = e.bookwormMirrorQueue.filter((m) => now >= m.at);
                 if (due.length > 0) {
                     e.bookwormMirrorQueue = e.bookwormMirrorQueue.filter((m) => now < m.at);
-                    for (const m of due) {
-                        if (!e.isJumping && !e.isDashing && e.hp > 0) {
-                            bookwormDoJumpMirror(e, m);
-                        } else if (e.hp > 0) {
-                            // Still airborne: re-queue 150ms later so the mirror is not lost.
-                            e.bookwormMirrorQueue.push({ ...m, at: now + 150 });
-                        }
-                    }
+                    for (const m of due) bookwormDoJumpMirror(e, m);
                 }
             }
             // Hyper trail particles (Pandy/Snipa pattern: every 60ms).
@@ -25325,6 +25354,26 @@ let heistFeverActive = false;
                 e.bookwormTrailAt = now;
                 explosions.push({ x: e.x, y: e.y, radius: 5 + Math.random() * 4, life: 0, maxLife: 0.7, color: Math.random() < 0.5 ? 'rgba(192,132,252,0.8)' : 'rgba(168,85,247,0.8)', isParticle: true });
             }
+        }
+        // Shadow clones: fly their arc (same lerp + z as a real jump), slam
+        // on landing, then vanish. A clone whose owner died mid-flight
+        // fizzles without slamming.
+        if (bookwormShadowClones.length > 0) {
+            const stillFlying = [];
+            for (const c of bookwormShadowClones) {
+                c.elapsed += dt * 1000;
+                const t = Math.min(1, c.elapsed / c.duration);
+                c.x = c.startX + (c.targetX - c.startX) * t;
+                c.y = c.startY + (c.targetY - c.startY) * t;
+                c.z = Math.sin(t * Math.PI) * 90;
+                if (t >= 1) {
+                    const owner = getEntityById(c.ownerId);
+                    if (owner && owner.hp > 0) bookwormApplySlam(owner, c.x, c.y, c.slam);
+                    continue;
+                }
+                stillFlying.push(c);
+            }
+            bookwormShadowClones = stillFlying;
         }
     }
 
@@ -25409,10 +25458,37 @@ let heistFeverActive = false;
         ctx.restore();
     }
 
+    // Shadow clone: a translucent shadow-purple copy of Bookworm mid-jump.
+    // Visual only — no HP bar, no nameplate, nothing targetable.
+    function drawBookwormShadowClone(ctx, c) {
+        const drawY = c.y - (c.z || 0);
+        const r = c.radius || 14;
+        ctx.save();
+        ctx.globalAlpha = 0.55;
+        ctx.shadowColor = '#a855f7';
+        ctx.shadowBlur = 14;
+        ctx.fillStyle = '#6b21a8';
+        ctx.strokeStyle = '#c084fc';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(c.x, drawY, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        // A small shadow book, so the clone reads as Bookworm, not a blob.
+        ctx.fillStyle = '#c084fc';
+        ctx.beginPath();
+        ctx.rect(c.x - 10, drawY - 6, 20, 12);
+        ctx.fill();
+        ctx.restore();
+    }
+
     // Slam dust rings (a slam, never an explosion), worm-stack bars above
     // enemies, the Hyper purple aura, and the Worm Leap form ring.
     function renderBookwormEffects() {
         const now = performance.now();
+        // Shadow clones mid-jump (visual only).
+        for (const c of bookwormShadowClones) drawBookwormShadowClone(ctx, c);
         bookwormSlamFx = bookwormSlamFx.filter((fx) => now - fx.at < fx.dur);
         for (const fx of bookwormSlamFx) {
             const p = (now - fx.at) / fx.dur;
