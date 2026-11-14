@@ -23,16 +23,16 @@ check('kit copy is real (no coming-soon placeholders)', (() => {
 })());
 check('getScaledStats healnstein branch: 6200 HP / 750 dmg / 280 speed', game.includes("if (brawlerId === 'healnstein') {") && game.includes('hp: Math.round(6200 * hpScale), dmg: Math.round(750 * scale), speed: 280'));
 check('power scaling mirrors (HP curve): P1 2480/413, P12 6572/784', Math.round(6200 * hpScale(1)) === 2480 && Math.round(750 * scale(1)) === 413 && Math.round(6200 * hpScale(12)) === 6572 && Math.round(750 * scale(12)) === 784);
-check('allBrawlers has healnstein; 108 ids total', (() => { const all = allBrawlers(); return all.includes('healnstein') && all.length === 108; })());
-check('selectable is 100 (108 minus the 8 disabled, healnstein not disabled)', (() => {
+check('allBrawlers has healnstein; 109 ids total', (() => { const all = allBrawlers(); return all.includes('healnstein') && all.length === 109; })());
+check('selectable is 101 (109 minus the 8 disabled, healnstein not disabled)', (() => {
   const all = allBrawlers();
-  return all.filter(id => !DISABLED.includes(id)).length === 100 && !game.match(/const disabledBrawlers = new Set\(([\s\S]*?)\)\)/)[1].includes('healnstein');
+  return all.filter(id => !DISABLED.includes(id)).length === 101 && !game.match(/const disabledBrawlers = new Set\(([\s\S]*?)\)\)/)[1].includes('healnstein');
 })());
 check('rarity maps: healnstein Epic (170 souls)', game.includes("healnstein: 'Epic'") && game.includes('Epic: 170'));
 check('primary role: healnstein Support', game.includes("healnstein:'Support'"));
 check('portrait icon: healnstein', game.includes("healnstein: '💚🩹'"));
 check('reload/fire-delay/super-charge/gadget cooldowns', game.includes('healnstein: 1600,') && game.includes('healnstein: 300,') && game.includes('healnstein: 6') && game.includes('healnstein: { g1: 15000, g2: 15000 }'));
-check('1 ammo: getNativeAmmoCapacity lists healnstein in the 1-ammo return', game.includes("brawlerId==='healnstein')return 1;") || game.includes("||brawlerId==='healnstein')return 1;"));
+check('1 ammo: getNativeAmmoCapacity lists healnstein in the 1-ammo return', game.includes("brawlerId==='healnstein')return 1;") || game.includes("||brawlerId==='healnstein')return 1;") || game.includes("||brawlerId==='healnstein'||brawlerId==='bookworm')return 1;"));
 check('no skins for healnstein (none ordered)', (() => {
   const skinsBlock = roster.slice(roster.indexOf('const skins = {'), roster.indexOf('const skins = {') + 4000);
   return !skinsBlock.includes('healnstein');
