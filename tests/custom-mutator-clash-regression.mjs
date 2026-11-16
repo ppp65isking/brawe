@@ -12,11 +12,13 @@ const checks = [
   ['decayerShieldCap uses fromEntity in fire() to prevent ReferenceError: entity', /const decayerShieldCap = isPowerPlayModifierActive\(fromEntity\)/.test(game)],
 
   // 2. Custom Mutator Clash Registration in Permanent Modes
-  ['custom_clash registered in HOME_MODE_CARDS', /\['custom_clash',\s*'🧪',\s*'Custom Mutator Clash'/.test(game)],
+  // Phase 8 (Friendly Battles) renamed the card/label but kept the
+  // `custom_clash` mode id, so the pins below track the new name.
+  ['custom_clash registered in HOME_MODE_CARDS', /\['custom_clash',\s*'🤝',\s*'Friendly Battle'/.test(game)],
   ['custom_clash registered in HOME_PERMANENT_MODE_IDS', /HOME_PERMANENT_MODE_IDS\s*=\s*\[[\s\S]*?'custom_clash'/.test(game)],
   ['custom_clash registered in HOME_EVENT_REWARDS', /custom_clash:\s*\{\s*type:\s*'coins',\s*amount:\s*80/.test(game)],
   ['custom_clash registered in HOME_MODE_RULES', /custom_clash:\s*\[[\s\S]*?Pick ANY mode[\s\S]*?Select up to 3 active mutators/.test(game)],
-  ['getShowdownModeLabel returns label for custom_clash', /if\s*\(mode === 'custom_clash'\)\s*return 'Custom Mutator Clash';/.test(game)],
+  ['getShowdownModeLabel returns label for custom_clash', /if\s*\(mode === 'custom_clash'\)\s*return 'Friendly Battle';/.test(game)],
 
   // 3. Custom Mutator Picker UI Modal
   ['openCustomMutatorPickerUI function implemented', /function openCustomMutatorPickerUI\(\)/.test(game)],

@@ -103,7 +103,7 @@ check('end screen win text', game.includes("matchText=won?'MEGASTEIN DEFEATED!':
 check('end screen rank text', game.includes("rankText='Solo Boss Fight • One-Week Event';"));
 check('generic end text does not overwrite megastein', game.includes('if(!isLavaBossEvent&&!isHeadlessBossEvent&&!isTombstoneBossEvent&&!isMegasteinBossEvent)matchText'));
 check('reward branch uses 500 coins', game.includes('(isMegasteinBossEvent ? MEGASTEIN_BOSS_REWARD_COINS : 100))'));
-check('reward grant call on win', game.includes('if (isMegasteinBossEvent && won) {\n                const mgReward = grantMegasteinBossRewards();'));
+check('reward grant call on win', game.includes('if (isMegasteinBossEvent && won && !isFriendlyBattle) {\n                const mgReward = grantMegasteinBossRewards();')); // Phase 8: Friendly Battles pay no boss rewards
 check('HUD banner color', game.includes("isMegasteinBossEvent ? '#c084fc' : '#ff6bb2';"));
 check('HUD banner text', game.includes('🧬 MEGASTEIN • MEGA-HARD • SOLO BOSS'));
 check('boss functions exist', game.includes('function initMegasteinBossMatch(){') && game.includes('function updateMegasteinBossEvent(now, dt){') && game.includes('function renderMegasteinBossEvent(){') && game.includes('function openMegasteinBossEvent(){') && game.includes('function ensureMegasteinEventState(now = Date.now()) {') && game.includes('function isMegasteinEventActive(now = Date.now()) {') && game.includes('function grantMegasteinBossRewards() {'));
