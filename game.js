@@ -25029,8 +25029,8 @@ let heistFeverActive = false;
     // homing side worms on the main, +1 jump charge, and a shadow clone
     // echoes every jump 1s later in the same direction (round 1, 2026-11-14:
     // the mirror no longer re-jumps Bookworm himself).
-    const BOOKWORM_BOOK_SPEED = 1100; // book flight speed (px/s)
-    const BOOKWORM_BOOK_RANGE = 475; // book max range (px) — halved 2026-11-14 per Anthony; worm range unchanged
+    const BOOKWORM_BOOK_SPEED = 660; // book flight speed (px/s) — cut 1100→660 (−40%) 2026-11-16 per Anthony (round 2); worm speed unchanged
+    const BOOKWORM_BOOK_RANGE = 375; // book max range (px) — cut 475→375 (−21%) 2026-11-16 per Anthony (round 2); worm range unchanged
     const BOOKWORM_BOOK_DMG = 800; // P11 book damage (getScaledStats)
     const BOOKWORM_WORM_SPEED = 1400; // worm speed after the book ends
     const BOOKWORM_WORM_RANGE = 650; // worm range (px)

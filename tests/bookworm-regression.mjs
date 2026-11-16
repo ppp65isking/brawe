@@ -3,8 +3,9 @@
 // below is a builder pick.
 // Locked design: Epic Controller (170 souls), 5000 HP / 270 speed, 800 base
 // main damage. Main "Bookmark Toss": 1 ammo, Bookworm moves while attacking
-// (never rooted by his own attack). Step 1: a piercing book (1100 px/s,
-// 475px range, halved 2026-11-14 per Anthony — worm range stays 650px)
+// (never rooted by his own attack). Step 1: a piercing book (660 px/s,
+// 375px range, slowed −40% / cut −21% 2026-11-16 per Anthony, round 2 —
+// worm range stays 650px)
 // flies; while it flies the CAMERA FOCUSES ON THE BOOK so the
 // player can aim it again. Step 2: pressing attack again redirects the book
 // ONCE to the current aim (attack-button trigger; 250ms minimum book age so
@@ -104,7 +105,7 @@ check('slam never pushes an explosion (dust ring only)', (() => {
   const body = game.slice(start, end);
   return body.includes('bookwormSlamFx.push(') && !body.includes('explosions.push');
 })());
-check('constants: book 1100/475/800, worm 1400/650/350', game.includes('const BOOKWORM_BOOK_SPEED = 1100;') && game.includes('const BOOKWORM_BOOK_RANGE = 475;') && game.includes('const BOOKWORM_BOOK_DMG = 800;') && game.includes('const BOOKWORM_WORM_SPEED = 1400;') && game.includes('const BOOKWORM_WORM_RANGE = 650;') && game.includes('const BOOKWORM_WORM_DMG = 350;'));
+check('constants: book 660/375/800, worm 1400/650/350', game.includes('const BOOKWORM_BOOK_SPEED = 660;') && game.includes('const BOOKWORM_BOOK_RANGE = 375;') && game.includes('const BOOKWORM_BOOK_DMG = 800;') && game.includes('const BOOKWORM_WORM_SPEED = 1400;') && game.includes('const BOOKWORM_WORM_RANGE = 650;') && game.includes('const BOOKWORM_WORM_DMG = 350;'));
 check('constants: 3 stacks / 4s decay / 1s root / 250ms redirect age', game.includes('const BOOKWORM_WORM_STACKS_TO_ROOT = 3;') && game.includes('const BOOKWORM_WORM_STACK_DECAY_MS = 4000;') && game.includes('const BOOKWORM_ROOT_DURATION_MS = 1000;') && game.includes('const BOOKWORM_REDIRECT_MIN_AGE_MS = 250;'));
 check('constants: jumps 400/600, slams 600/900, radii 150/180, direct 70/1200', game.includes('const BOOKWORM_SUPER_JUMP1_DIST = 400;') && game.includes('const BOOKWORM_SUPER_JUMP2_DIST = 600;') && game.includes('const BOOKWORM_SUPER_JUMP1_SLAM_DMG = 600;') && game.includes('const BOOKWORM_SUPER_JUMP2_SLAM_DMG = 900;') && game.includes('const BOOKWORM_SUPER_JUMP1_SLAM_RADIUS = 150;') && game.includes('const BOOKWORM_SUPER_JUMP2_SLAM_RADIUS = 180;') && game.includes('const BOOKWORM_SUPER_JUMP_DIRECT_RADIUS = 70;') && game.includes('const BOOKWORM_SUPER_JUMP_DIRECT_DMG = 1200;'));
 check('constants: form 8s / charge 7 / side worms 1200/300/800/+250/4 rad/s / mirror 1s', game.includes('const BOOKWORM_SUPER_FORM_DURATION_MS = 8000;') && game.includes('const BOOKWORM_SUPER_CHARGE_HITS = 7;') && game.includes('const BOOKWORM_SIDE_WORM_SPEED = 1200;') && game.includes('const BOOKWORM_SIDE_WORM_DMG = 300;') && game.includes('const BOOKWORM_SIDE_WORM_RANGE = 800;') && game.includes('const BOOKWORM_SIDE_WORM_REDIRECT_BONUS_RANGE = 250;') && game.includes('const BOOKWORM_SIDE_WORM_TURN_RATE = 4;') && game.includes('const BOOKWORM_MIRROR_DELAY_MS = 1000;'));
@@ -354,17 +355,17 @@ try {
   const owner = playerEnt;
   const book = sandbox.fireBookwormMain(owner, 1000, 0, false);
   check('main: one piercing book spawns', bullets.length === 1 && book.isBookwormBook === true && book.pierce === true);
-  check('main: book speed 1100, range 475 (maxLife 475/1100)', near(book.vx, 1100) && near(book.maxLife, 475 / 1100));
+  check('main: book speed 660, range 375 (maxLife 375/660)', near(book.vx, 660) && near(book.maxLife, 375 / 660));
   check('main: book damage 800 at P11, primary-charge projectile', book.damage === 800 && book.isPrimaryChargeProjectile === true);
   check('main: owner tracks the live book', owner.bookwormBook === book);
   check('main: no side worms without Hyper', bullets.filter((b) => b.isBookwormSideWorm).length === 0);
   // Redirect: too young to steer, then steers once, then never again.
   // (The book spawns at (30, 0); aim (30, 500) is straight above it.)
   nowMs += 100;
-  check('redirect: book under 250ms refuses to steer', sandbox.tryBookwormRedirect(owner, 30, 500) === false && near(book.vx, 1100));
+  check('redirect: book under 250ms refuses to steer', sandbox.tryBookwormRedirect(owner, 30, 500) === false && near(book.vx, 660));
   nowMs += 200;
-  check('redirect: book at 300ms steers to the aim', sandbox.tryBookwormRedirect(owner, 30, 500) === true && near(book.vx, 0, 1) && near(book.vy, 1100, 1) && book.redirected === true);
-  check('redirect: second steer refused (once only)', sandbox.tryBookwormRedirect(owner, 1000, 0) === false && near(book.vy, 1100, 1));
+  check('redirect: book at 300ms steers to the aim', sandbox.tryBookwormRedirect(owner, 30, 500) === true && near(book.vx, 0, 1) && near(book.vy, 660, 1) && book.redirected === true);
+  check('redirect: second steer refused (once only)', sandbox.tryBookwormRedirect(owner, 1000, 0) === false && near(book.vy, 660, 1));
   // Book ends -> worm comes out in the book's final direction.
   const wormCountBefore = bullets.filter((b) => b.isBookwormWorm).length;
   sandbox.bookwormEndBook(book);
@@ -374,17 +375,24 @@ try {
   check('book end: camera ref cleared', owner.bookwormBook === null);
   sandbox.bookwormEndBook(book);
   check('book end: ending twice fires only one worm', bullets.filter((b) => b.isBookwormWorm).length === wormCountBefore + 1);
-  // Book ends at 475px (round 1): the book flies 475px from its spawn,
+  // Book ends at 375px (round 2): the book flies 375px from its spawn,
   // then the worm comes out from exactly there. Worm range unchanged (650).
+  // Slower book = longer flight (~568ms vs ~432ms), so the redirect window
+  // is more forgiving: the book is still steerable at 500ms.
+  resetWorld();
+  const lateOwner = playerEnt;
+  const lateBook = sandbox.fireBookwormMain(lateOwner, 1000, 0, false);
+  nowMs += 500;
+  check('redirect: book still steerable at 500ms (flight now ~568ms)', sandbox.tryBookwormRedirect(lateOwner, 30, 500) === true && near(lateBook.vy, 660, 1));
   resetWorld();
   const rangeOwner = playerEnt;
   const rangeBook = sandbox.fireBookwormMain(rangeOwner, 1000, 0, false);
-  check('range: book flight lasts 475/1100s (book ends at 475px)', near(rangeBook.maxLife, 475 / 1100));
+  check('range: book flight lasts 375/660s (book ends at 375px)', near(rangeBook.maxLife, 375 / 660));
   rangeBook.x += rangeBook.vx * rangeBook.maxLife;
-  check('range: book ends 475px from its spawn point', near(rangeBook.x, 30 + 475));
+  check('range: book ends 375px from its spawn point', near(rangeBook.x, 30 + 375));
   sandbox.bookwormEndBook(rangeBook);
   const rangeWorm = bullets.find((b) => b.isBookwormWorm);
-  check('range: worm comes out from the 475px book-end point, worm range still 650', !!rangeWorm && rangeWorm.x === rangeBook.x && rangeWorm.y === rangeBook.y && near(rangeWorm.maxLife, 650 / 1400));
+  check('range: worm comes out from the 375px book-end point, worm range still 650', !!rangeWorm && rangeWorm.x === rangeBook.x && rangeWorm.y === rangeBook.y && near(rangeWorm.maxLife, 650 / 1400));
   // Dead owner: no worm.
   resetWorld();
   const deadOwner = playerEnt;
@@ -423,10 +431,10 @@ try {
   const owner3 = playerEnt;
   owner3.bookwormSpeedReadArmed = true;
   const fastBook = sandbox.fireBookwormMain(owner3, 1000, 0, false);
-  check('G1: next book flies 50% faster (1650) and +30% range (maxLife 617.5/1650)', near(fastBook.vx, 1650) && near(fastBook.maxLife, 617.5 / 1650));
+  check('G1: next book flies 50% faster (990) and +30% range (maxLife 487.5/990)', near(fastBook.vx, 990) && near(fastBook.maxLife, 487.5 / 990));
   check('G1: armed flag consumed on fire', owner3.bookwormSpeedReadArmed === false);
   const slowBook = sandbox.fireBookwormMain(owner3, 1000, 0, false);
-  check('G1: the book after is back to base speed', near(slowBook.vx, 1100));
+  check('G1: the book after is back to base speed', near(slowBook.vx, 660));
 } catch (e) { failures.push('hyper main / G1 threw: ' + e.message); }
 
 // --- executed: Super form + jumps + mirror ---
@@ -643,7 +651,7 @@ try {
   check('render: shadow clone draws translucent purple (body + book)', s7.sets.some((s) => s.p === 'globalAlpha' && s.v === 0.55) && s7.sets.some((s) => s.p === 'fillStyle' && s.v === '#6b21a8') && s7.calls.some((c) => c.m === 'arc') && s7.calls.some((c) => c.m === 'rect'));
   // Dedicated bullet art draws without throwing.
   const s5 = stubCtx();
-  sandbox.drawBookwormBook(s5.proxy, { x: 0, y: 0, vx: 1100, vy: 0, hyperVisual: false });
+  sandbox.drawBookwormBook(s5.proxy, { x: 0, y: 0, vx: 660, vy: 0, hyperVisual: false });
   check('render: book draws (cover + page lines)', s5.calls.some((c) => c.m === 'rect') && s5.calls.some((c) => c.m === 'moveTo'));
   const s6 = stubCtx();
   sandbox.drawBookwormWorm(s6.proxy, { x: 0, y: 0, vx: 1400, vy: 0, hyperVisual: true });
