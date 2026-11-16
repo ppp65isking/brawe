@@ -10588,8 +10588,8 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           name: 'Driller', role: 'Damage Dealer', rarity: 'Epic', color: '#a16207',
           desc: 'A dirt-bomb slinger who digs in deep. His bombs spin dirt out in a cone as they fly, and his drill form chews through anyone dumb enough to stand in front of him.',
           attack: 'Dirt Bomb', attackDesc: 'Driller hurls a dirt bomb that spins dirt clods out in a cone as it travels — and still hits hard on its own.',
-          super: 'Drill Form', superDesc: 'Driller transforms into drill form for 8 seconds: one long ammo bar, short-range forward drill attacks that hit harder the longer you drill the same enemy.',
-          hyper: 'Weakening Dirt: Hyper dirt bombs and their spin clods make enemies deal up to 90% less damage for 0.7 seconds, and Drill Form fires 3 drill bits in a cone at 50% damage with extra range.',
+          super: 'Drill Form', superDesc: 'Driller hops into his drill machine for 8 seconds and drives around: touch damage that ramps up on the same enemy, smash through walls, and take no damage while driving.',
+          hyper: 'Weakening Dirt: Hyper dirt bombs and their spin clods make enemies deal up to 90% less damage for 0.7 seconds, and Drill Form fires 3 drill bits in a forward cone every 0.5 seconds while driving.',
           g1: 'Mud Trap (Next dirt bomb slows enemies it hits by 40% for 2 seconds)',
           g2: 'Wallbreaker Drill (In drill mode, fire a big drill that breaks walls)',
           sp1: 'Spin Cycle (Dirt bombs spin out 4 extra projectiles in a wider cone)',
@@ -26186,15 +26186,20 @@ let heistFeverActive = false;
     // Main: Dirt Bomb — a dirt projectile that spins dirt clods out in a
     // spreading cone as it travels (Firecracker-style shed) but keeps its
     // own direct-hit damage.
-    // Super: Drill Form — 8s form, one long ammo bar; short-range forward
-    // drill attack whose damage ramps on the SAME enemy:
+    // Super: Drill Form (CHANGES ROUND 1 — Moe-style driving) — 8s form,
+    // one long ammo bar; Driller hops into his drill machine and drives
+    // around: contact damage that ramps on the SAME enemy:
     // 100 > 200 > 300 > 500 > 1000 > 2000 (Anthony's 10>20>30>50>100>200,
-    // scaled x10 to P11-meaningful values — FLAGGED, he may correct it).
+    // scaled x10 to P11-meaningful values — FLAGGED, he may correct it),
+    // +35% move speed, invulnerable while in the drill (FLAGGED, big
+    // defensive buff), and walls in his path get smashed (Moe behavior).
     // Hyper main: Weakening Dirt — enemies hit by a Hyper dirt bomb or one
     // of its spin clods deal 30% less damage per hit, stacking to 90%,
     // for 0.7s.
-    // Hyper Super: Triple Drill — each drill attack fires 3 drill bits in
-    // a cone, +20% range, each dealing 50% of the ramped damage.
+    // Hyper Super (CHANGES ROUND 1 rework — the old Triple Drill volley
+    // doesn't fit a driving mode): while driving in Hyper form the drill
+    // fires 3 small drill bits in a forward cone every 0.5s, +20% range
+    // (312px), each dealing 50% of the current ramp damage.
     // G1 Mud Trap: next dirt bomb slows enemies it hits (40%, 2s).
     // G2 Wallbreaker Drill: in drill mode, fire a big drill that breaks walls.
     // SP1 Spin Cycle: +4 extra spin projectiles in a wider cone.
@@ -26213,12 +26218,16 @@ let heistFeverActive = false;
     // wider the farther the bomb flies — narrow clods first, wide last.
     const DRILLER_CLOD_OFFSETS = [0.18, -0.18, 0.38, -0.38, 0.55, -0.55, 0.70, -0.70, 0.85, -0.85];
     const DRILLER_SUPER_FORM_DURATION_MS = 8000;
-    const DRILLER_DRILL_RANGE = 260;
-    const DRILLER_DRILL_RANGE_HYPER = 312; // +20% range in Hyper drill form
-    const DRILLER_DRILL_INTERVAL_MS = 250; // one drill attack every 0.25s
+    const DRILLER_DRILL_RANGE = 260; // bot super pop gate (DRILLER_DRILL_RANGE + 60)
+    const DRILLER_HYPER_CONE_RANGE = 312; // Hyper cone bits fly 312px (+20% vs the old 260px drill range)
+    const DRILLER_CONTACT_GATE_MS = 250; // max one ramp step per enemy per 0.25s of contact
+    const DRILLER_CONTACT_MARGIN = 6; // contact counts when the enemy's edge is within 6px of the driver's edge
+    const DRILLER_FORM_SPEED_MULT = 1.35; // Moe-style driving: +35% move speed in drill form
+    const DRILLER_HYPER_CONE_INTERVAL_MS = 500; // Hyper form fires its 3-bit cone every 0.5s while driving
+    const DRILLER_WALL_BREAK_MARGIN = 6; // walls within 6px of the driver's edge get smashed while driving
+    const DRILLER_DUST_INTERVAL_MS = 120; // dust puff behind the drill machine every 120ms
     const DRILLER_RAMP = [100, 200, 300, 500, 1000, 2000]; // Anthony's 10>20>30>50>100>200, scaled x10 — FLAGGED
     const DRILLER_RAMP_RESET_MS = 1500; // ramp resets after 1.5s without hitting that enemy
-    const DRILLER_RAMP_ARC = 0.6; // drill swipe hits in a forward arc (radians each side)
     const DRILLER_BIT_SPEED = 900;
     const DRILLER_HYPER_WEAKEN_PER_HIT = 0.30;
     const DRILLER_HYPER_WEAKEN_MAX_STACKS = 3; // max 90% damage reduction
@@ -26301,11 +26310,15 @@ let heistFeverActive = false;
         target.drillerSlowUntil = Math.max(target.drillerSlowUntil || 0, performance.now() + DRILLER_G1_SLOW_DURATION_MS);
     }
 
-    // Super "Drill Form": transform — the main attack becomes a short-range
-    // forward drill (one long ammo bar = the 8s form timer) until the form
-    // runs out. SP2 Jump Start heals 3400 HP on activation.
+    // Super "Drill Form" (Moe-style driving, changes round 1): Driller hops
+    // into his drill machine for 8s — +35% move speed, contact damage with
+    // the ramp, invulnerable while in the drill, and walls in his path get
+    // smashed. Fused mode skips the form (Bookworm pattern): the fused
+    // component fires the normal main instead. SP2 Jump Start heals 3400
+    // HP on activation.
     function castDrillerSuper(entity, hyper, targetX, targetY) {
         if (!entity || entity.hp <= 0) return false;
+        if (isFusedEntity(entity)) return false;
         const now = performance.now();
         entity.drillerFormActive = true;
         entity.drillerFormUntil = now + DRILLER_SUPER_FORM_DURATION_MS;
@@ -26313,14 +26326,16 @@ let heistFeverActive = false;
         entity.drillerRampTargetId = null;
         entity.drillerRampIndex = 0;
         entity.drillerRampLastHitAt = 0;
-        entity.drillerLastDrillAt = 0;
+        entity.drillerLastHyperConeAt = 0;
+        entity.drillerContactLastHit = {};
+        entity.drillerLastDustAt = 0;
         if (drillerHasSP2(entity)) {
             entity.hp = Math.min(entity.maxHp, entity.hp + DRILLER_SP2_HEAL);
             entity.healFlashUntil = now + 400;
             spawnFloatingText(entity.x, entity.y - 60, '+3400 HP', '#86efac');
         }
         if (entity.id === player.id) { try { window.BraweDrillerVoice?.play('super'); } catch (e) {} }
-        spawnFloatingText(entity.x, entity.y - 46, hyper ? '⛏️ TRIPLE DRILL!' : '⛏️ DRILL FORM!', '#d97706');
+        spawnFloatingText(entity.x, entity.y - 46, hyper ? '⛏️ HYPER DRILL!' : '⛏️ DRILL FORM!', '#d97706');
         return true;
     }
 
@@ -26344,54 +26359,127 @@ let heistFeverActive = false;
     // tracks the nearest enemy in the forward arc; every enemy in the arc
     // takes the ramp damage. Hyper form fires 3 drill bits in a cone
     // instead (+20% range, each 50% of the ramped damage).
-    function drillerDoDrillAttack(entity, targetX, targetY) {
-        if (!entity || entity.hp <= 0) return false;
-        const now = performance.now();
-        if (now - (entity.drillerLastDrillAt || 0) < DRILLER_DRILL_INTERVAL_MS) return false;
-        entity.drillerLastDrillAt = now;
-        const hyper = !!entity.drillerFormHyper;
-        const range = hyper ? DRILLER_DRILL_RANGE_HYPER : DRILLER_DRILL_RANGE;
-        const ang = Math.atan2(targetY - entity.y, targetX - entity.x);
-        // Primary target: nearest enemy in the forward arc — the ramp
-        // tracks whoever you keep hitting.
-        let primary = null, primaryDist = Infinity;
-        for (const e of [player, ...bots]) {
-            if (!e || e.hp <= 0 || e.id === entity.id || areAlliedEntities(entity, e)) continue;
-            if (e.isStructure || e.isPet) continue;
-            const d = Math.hypot(e.x - entity.x, e.y - entity.y) - (e.radius || 14);
-            if (d > range) continue;
-            const a = Math.atan2(e.y - entity.y, e.x - entity.x);
-            let diff = Math.abs(a - ang); if (diff > Math.PI) diff = Math.PI * 2 - diff;
-            if (diff > DRILLER_RAMP_ARC) continue;
-            if (d < primaryDist) { primaryDist = d; primary = e; }
-        }
-        const rampDmg = primary ? drillerRampDamage(entity, primary, now) : Math.round(DRILLER_RAMP[0] * drillerLevelScale(entity));
-        const rampIndex = entity.drillerRampIndex || 0;
-        // Swipe visual: dirt burst in front, color escalates with the ramp.
+    // Moe-style driving helpers (changes round 1). The old forward-arc
+    // drill attack (drillerDoDrillAttack) is gone — the drill now does its
+    // damage on contact while the machine rolls, and the attack button does
+    // nothing in form. Brawlers only — never structures or pets.
+
+    // Current ramp step value without advancing the ramp (used by the Hyper
+    // cone shots, which fire at 50% of whatever the contact ramp is at).
+    function drillerCurrentRampDamage(entity) {
+        if (!entity) return DRILLER_RAMP[0];
+        const idx = Math.min(entity.drillerRampIndex || 0, DRILLER_RAMP.length - 1);
+        return Math.round(DRILLER_RAMP[idx] * drillerLevelScale(entity));
+    }
+
+    // Contact damage: anything the drill machine touches takes the ramp
+    // damage (100 > 200 > 300 > 500 > 1000 > 2000). Max one ramp step per
+    // enemy per 0.25s; the ramp still resets on a different enemy or after
+    // 1.5s without hitting that enemy (drillerRampDamage owns the reset).
+    function drillerContactHits(entity, now) {
+        if (!entity || entity.hp <= 0) return;
+        entity.drillerContactLastHit = entity.drillerContactLastHit || {};
+        const contactR = (entity.radius || 14) + DRILLER_CONTACT_MARGIN;
         const rampColors = ['#d97706', '#ea580c', '#dc2626', '#9333ea', '#c026d3', '#a855f7'];
-        explosions.push({ x: entity.x + Math.cos(ang) * range * 0.55, y: entity.y + Math.sin(ang) * range * 0.55, radius: range * 0.5, life: 0, maxLife: .25, color: rampColors[rampIndex], legendary: false, fxKind: 'drillerSwipe', hyper: hyper, rampIndex: rampIndex });
-        if (hyper) {
-            // Triple Drill: 3 drill bits in a cone, 50% of ramp damage each.
-            for (const off of [-0.3, 0, 0.3]) {
-                const a = ang + off;
-                bullets.push({ ownerBrawler: 'driller', isDrillerBit: true, ownerId: entity.id, x: entity.x + Math.cos(a) * (entity.radius + 8), y: entity.y + Math.sin(a) * (entity.radius + 8), vx: Math.cos(a) * DRILLER_BIT_SPEED, vy: Math.sin(a) * DRILLER_BIT_SPEED, life: 0, maxLife: range / DRILLER_BIT_SPEED, damage: Math.round(rampDmg * 0.5), pierce: false, hitIds: {}, hitboxMod: 1.2, hyperVisual: true });
-            }
-            if (primary) spawnFloatingText(primary.x, primary.y - 46, rampIndex > 0 ? '⛏️ x' + (rampIndex + 1) : '⛏️ DRILL!', '#c084fc');
-            return true;
-        }
-        // Normal form: melee swipe — every enemy in the arc takes the ramp damage.
         for (const e of [player, ...bots]) {
             if (!e || e.hp <= 0 || e.id === entity.id || areAlliedEntities(entity, e)) continue;
             if (e.isStructure || e.isPet) continue;
             const d = Math.hypot(e.x - entity.x, e.y - entity.y) - (e.radius || 14);
-            if (d > range) continue;
-            const a = Math.atan2(e.y - entity.y, e.x - entity.x);
-            let diff = Math.abs(a - ang); if (diff > Math.PI) diff = Math.PI * 2 - diff;
-            if (diff > DRILLER_RAMP_ARC) continue;
+            if (d > contactR) continue;
+            if (now - (entity.drillerContactLastHit[e.id] || 0) < DRILLER_CONTACT_GATE_MS) continue;
+            entity.drillerContactLastHit[e.id] = now;
+            const rampDmg = drillerRampDamage(entity, e, now);
+            const rampIndex = entity.drillerRampIndex || 0;
+            const hyper = !!entity.drillerFormHyper;
             checkHit(e, { ownerBrawler: 'driller', ownerId: entity.id, damage: rampDmg, pierce: true, super: true, hitIds: {}, isDrillerDrill: true }, -1);
+            // Contact burst: dirt chunks + ring at the victim, color
+            // escalates with the ramp, Hyper state is the owner's real
+            // one (Snipa lesson: never a faked flag).
+            explosions.push({ x: e.x, y: e.y, radius: 40, life: 0, maxLife: .25, color: rampColors[rampIndex], legendary: false, fxKind: 'drillerSwipe', hyper: hyper, rampIndex: rampIndex });
+            spawnFloatingText(e.x, e.y - 46, rampIndex > 0 ? '⛏️ x' + (rampIndex + 1) : '⛏️ DRILL!', hyper ? '#c084fc' : '#fbbf24');
         }
-        if (primary) spawnFloatingText(primary.x, primary.y - 46, rampIndex > 0 ? '⛏️ x' + (rampIndex + 1) : '⛏️ DRILL!', '#fbbf24');
+    }
+
+    // Wall smashing: the drill machine destroys walls it touches (Moe
+    // behavior). Mirrors the bullet wall-break path — same wall kinds,
+    // same rewards, same nav-grid invalidation — so driving through a
+    // power box still drops its cubes. Vaults are never smashed by
+    // driving; cubes (indestructible terrain) are not in this array.
+    function drillerBreakWall(driver, dw) {
+        if (!driver || !dw || dw.isVault || dw.indestructible || dw.isPlatform) return false;
+        if (!isNavigationWall(dw, driver)) return false;
+        const cx = dw.x + dw.w / 2, cy = dw.y + dw.h / 2;
+        // Prop Hunt: smashing a morphed hider's shell reveals them;
+        // smashing a real prop as a seeker pays the wrong-guess tax
+        // (bullet parity).
+        if (isPropHuntMode && dw.propHuntHiderId) revealPropHuntHiderFromShell(dw);
+        if (isPropHuntMode && dw.isProp && !dw.propHuntHiderId && driver.propHuntRole === 'seeker') applyPropHuntWrongGuessTax(driver, dw);
+        recordFullOnDamageToTarget(dw, Math.max(1, dw.hp));
+        dw.hp = 0;
+        if (dw.isArenaWall) {
+            explosions.push({ x: cx, y: cy, radius: Math.max(28, Math.min(72, Math.max(dw.w, dw.h) * .65)), life: 0, maxLife: .24, color: 'rgba(161,98,7,.58)' });
+            spawnFloatingText(cx, cy - 10, 'WALL BREAK!', '#ffe7a8');
+        }
+        if (driver.id === player.id) {
+            addEventQuestProgress('destroy_walls');
+            progressSeasonPassQuest('destroy_walls');
+        }
+        if (dw.isPowerBox || dw.isBox) {
+            if (isWarperEvent && dw.isGreenBox) {
+                // Trial green boxes: heal and double max HP, then drop many cubes.
+                if (driver && !driver.isBoss) {
+                    driver.maxHp = Math.max(1, Math.round((driver.maxHp || 1000) * 2));
+                    driver.hp = driver.maxHp;
+                    driver.healFlashUntil = performance.now() + 400;
+                    spawnFloatingText(driver.x, driver.y - 28, '+100% HP & FULL HEAL', '#7CFC00');
+                }
+                for (let k = 0; k < 10; k++) {
+                    powerups.push({ x: dw.x + dw.w / 2 + (Math.random() * 60 - 30), y: dw.y + dw.h / 2 + (Math.random() * 60 - 30) });
+                }
+            } else spawnShowdownPowerBoxReward(dw);
+        }
+        markBotNavGridDirty(dw);
         return true;
+    }
+
+    function drillerBreakWalls(entity) {
+        if (!entity || entity.hp <= 0) return;
+        const reach = (entity.radius || 14) + DRILLER_WALL_BREAK_MARGIN;
+        for (let wIdx = destructibleWalls.length - 1; wIdx >= 0; wIdx--) {
+            const dw = destructibleWalls[wIdx];
+            if (!dw || !isNavigationWall(dw, entity)) continue;
+            if (!rectCircleCollides(dw.x, dw.y, dw.w, dw.h, entity.x, entity.y, reach)) continue;
+            if (drillerBreakWall(entity, dw)) destructibleWalls.splice(wIdx, 1);
+        }
+    }
+
+    // Hyper Super rework (changes round 1): the old 3-bit cone volley
+    // doesn't fit a driving mode, so while driving in Hyper form the
+    // drill periodically fires 3 small drill bits in a forward cone —
+    // every 0.5s, +20% range (312px), each 50% of the current ramp
+    // damage. Direction is the drive direction (or aim when standing
+    // still). Firing does NOT advance the ramp.
+    function drillerHyperConeShots(entity, now) {
+        if (!entity || entity.hp <= 0 || !entity.drillerFormHyper) return;
+        if (now - (entity.drillerLastHyperConeAt || 0) < DRILLER_HYPER_CONE_INTERVAL_MS) return;
+        entity.drillerLastHyperConeAt = now;
+        const mvx = entity.vx || 0, mvy = entity.vy || 0;
+        const ang = (Math.hypot(mvx, mvy) > 20) ? Math.atan2(mvy, mvx) : (Number.isFinite(entity.visualAimAngle) ? entity.visualAimAngle : 0);
+        const dmg = Math.round(drillerCurrentRampDamage(entity) * 0.5);
+        for (const off of [-0.3, 0, 0.3]) {
+            const a = ang + off;
+            bullets.push({ ownerBrawler: 'driller', isDrillerBit: true, ownerId: entity.id, x: entity.x + Math.cos(a) * (entity.radius + 8), y: entity.y + Math.sin(a) * (entity.radius + 8), vx: Math.cos(a) * DRILLER_BIT_SPEED, vy: Math.sin(a) * DRILLER_BIT_SPEED, life: 0, maxLife: DRILLER_HYPER_CONE_RANGE / DRILLER_BIT_SPEED, damage: dmg, pierce: false, hitIds: {}, hitboxMod: 1.2, hyperVisual: true });
+        }
+    }
+
+    // Dust trail behind the rolling drill machine.
+    function drillerSpawnDust(entity, now) {
+        if (!entity || entity.hp <= 0) return;
+        if (now - (entity.drillerLastDustAt || 0) < DRILLER_DUST_INTERVAL_MS) return;
+        entity.drillerLastDustAt = now;
+        const mvx = entity.vx || 0, mvy = entity.vy || 0;
+        const backAng = (Math.hypot(mvx, mvy) > 20) ? Math.atan2(mvy, mvx) + Math.PI : (Number.isFinite(entity.visualAimAngle) ? entity.visualAimAngle + Math.PI : Math.PI);
+        explosions.push({ x: entity.x + Math.cos(backAng) * 18, y: entity.y + Math.sin(backAng) * 18, radius: 12, life: 0, maxLife: .3, color: 'rgba(161,98,7,.45)' });
     }
 
     // Gadgets: G1 Mud Trap (next dirt bomb slows enemies it hits, 40% for
@@ -26417,6 +26505,11 @@ let heistFeverActive = false;
     // Per-frame Driller maintenance: drill-form expiry, ramp decay, and
     // clearing armed flags on death. No global arrays (state lives on
     // entities), so no mode-start reset sites are needed.
+    // Super "Drill Form" timer + ramp decay + weaken expiry, plus the
+    // Moe-style driving systems (changes round 1): contact damage,
+    // invulnerability, wall smashing, dust trail, Hyper cone shots. No
+    // global arrays (state lives on entities), so no mode-start reset
+    // sites are needed. Also clears armed flags on death.
     function updateDrillerSystems(dt) {
         const now = performance.now();
         for (const e of [player, ...bots]) {
@@ -26425,6 +26518,16 @@ let heistFeverActive = false;
             if (e.drillerFormActive && now >= (e.drillerFormUntil || 0)) e.drillerFormActive = false;
             if ((e.drillerRampLastHitAt || 0) > 0 && now - e.drillerRampLastHitAt > DRILLER_RAMP_RESET_MS) { e.drillerRampTargetId = null; e.drillerRampIndex = 0; e.drillerRampLastHitAt = 0; }
             if ((e.drillerWeakenUntil || 0) > 0 && now > e.drillerWeakenUntil) { e.drillerWeakenStacks = 0; e.drillerWeakenUntil = 0; }
+            // Moe-style driving: only for a real (non-fused) Driller in form.
+            if (!e.drillerFormActive || isFusedEntity(e)) continue;
+            // Invulnerable while in the drill machine (Moe-style — FLAGGED,
+            // a big defensive buff). Refreshed every frame so it ends the
+            // moment the form does; checkHit already gates on it.
+            e.invulnerableUntil = Math.max(e.invulnerableUntil || 0, now + 120);
+            drillerContactHits(e, now);
+            drillerBreakWalls(e);
+            drillerSpawnDust(e, now);
+            if (e.drillerFormHyper) drillerHyperConeShots(e, now);
         }
     }
 
@@ -26507,6 +26610,40 @@ let heistFeverActive = false;
                 ctx.fillStyle = p <= rampIndex ? (p >= 4 ? '#a855f7' : p >= 2 ? '#dc2626' : '#f59e0b') : 'rgba(255,255,255,0.25)';
                 ctx.fillRect(bx + p * (bw / DRILLER_RAMP.length) + 1, by + bh + 3, bw / DRILLER_RAMP.length - 2, 4);
             }
+            // Moe-style drill machine: Driller rides the machine while in
+            // form — steel body + spinning bit up front, oriented by
+            // movement (or aim when standing still). This render runs
+            // before entities are drawn, so the brawler sits on top of it.
+            const mvx = e.vx || 0, mvy = e.vy || 0;
+            const faceAng = (Math.hypot(mvx, mvy) > 20) ? Math.atan2(mvy, mvx) : (Number.isFinite(e.visualAimAngle) ? e.visualAimAngle : 0);
+            ctx.save();
+            ctx.translate(e.x, e.y);
+            ctx.rotate(faceAng);
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = hyper ? '#7e22ce' : '#57534e';
+            ctx.beginPath(); ctx.ellipse(0, 0, 24, 16, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = hyper ? '#a855f7' : '#78716c';
+            ctx.beginPath(); ctx.ellipse(-2, 0, 18, 11, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#292524';
+            ctx.fillRect(-20, -17, 34, 5);
+            ctx.fillRect(-20, 12, 34, 5);
+            // Spinning drill bit up front.
+            ctx.save();
+            ctx.translate(24, 0);
+            ctx.rotate(now / 60);
+            ctx.fillStyle = '#d97706';
+            ctx.beginPath(); ctx.moveTo(12, 0); ctx.lineTo(-6, -7); ctx.lineTo(-10, 0); ctx.lineTo(-6, 7); ctx.closePath(); ctx.fill();
+            ctx.restore();
+            ctx.restore();
+            // Contact-radius ring telegraph: what the drill touches, it hits.
+            ctx.save();
+            ctx.globalAlpha = 0.5;
+            ctx.strokeStyle = hyper ? '#c084fc' : '#d97706';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([8, 6]);
+            ctx.beginPath(); ctx.arc(e.x, e.y, (e.radius || 14) + 20, 0, Math.PI * 2); ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.restore();
             ctx.restore();
         }
     }
@@ -30155,7 +30292,7 @@ let heistFeverActive = false;
         if (bot.brawler === 'snipa') return distance < SNIPA_SUPER_AURA_RADIUS; // headshot aura range
         if (bot.brawler === 'bookworm') return distance < 550; // Worm Leap jump 2 reaches 600px
         if (bot.brawler === 'freezeon') return distance < FREEZEON_SUPER_THROW_RANGE; // ice rink throw range
-        if (bot.brawler === 'driller') return distance < DRILLER_DRILL_RANGE + 60; // drill form: get close, then drill
+        if (bot.brawler === 'driller') return distance < DRILLER_DRILL_RANGE + 60; // drill form: get close, then drive into them
         const targetHpPct = target.hp ? target.hp / Math.max(1, target.maxHp || target.hp) : 1;
         const clustered = getBotLivingEnemies(bot).filter((enemy) => Math.hypot(enemy.x - target.x, enemy.y - target.y) < 190).length;
         const objectiveFight = (isObjectiveMode || isTugZoneMode) && Math.hypot(target.x - (objectiveZone?.x || WORLD_W*0.5), target.y - (objectiveZone?.y || WORLD_H*0.5)) < (objectiveZone?.r || 240) + 80;
@@ -38009,11 +38146,11 @@ let heistFeverActive = false;
         }
         fromEntity.bookwormBook = null; // stale ref
     }
-    // Driller: while Drill Form is active the attack button drills (one
-    // attack every 0.25s, gated inside drillerDoDrillAttack). Fused mode
-    // skips the form — the fused component fires the normal main instead.
+    // Driller: while Drill Form is active the drill does its damage on
+    // contact (Moe-style driving) — the attack button does nothing in
+    // form. Fused mode skips the form — the fused component fires the
+    // normal main instead.
     if (brawler === 'driller' && !fromEntity.fusedPartCall && !isFusedEntity(fromEntity) && isDrillerFormActive(fromEntity)) {
-        drillerDoDrillAttack(fromEntity, targetX, targetY);
         return;
     }
         // Fused mode: one press fires both components. The outer call runs the
@@ -62250,6 +62387,7 @@ function checkHit(target, b, i){
         if (hasSp2) speedMult += 0.15;
         activeSpeed *= speedMult;
     }
+    if (selectedBrawler === 'driller' && !isFusedEntity(player) && isDrillerFormActive(player)) activeSpeed *= DRILLER_FORM_SPEED_MULT; // Moe-style driving: +35% speed in drill form
       if (selectedBrawler === 'warrior' && now < (player.warriorStandUntil || 0) && now >= (player.warriorBattleRushUntil || 0)) {
           activeSpeed *= player.warriorStandHyper ? 0.75 : 0.35;
       }
@@ -67294,6 +67432,7 @@ function checkHit(target, b, i){
           const isStunned = isEntityStunned(t, nowTarget);
           
           let activeBotSpeed = t.speed;
+          if (t.brawler === 'driller' && !isFusedEntity(t) && isDrillerFormActive(t)) activeBotSpeed *= DRILLER_FORM_SPEED_MULT; // Moe-style driving: +35% speed in drill form
           activeBotSpeed *= getFastpassSpeedMultiplier(t, nowTarget);
           if(t.brawler==='anti_royal'){ensureAntiRoyalState(t);if(nowTarget>=(t.antiRoyalBlockReadyAt||0)&&nowTarget>=(t.antiRoyalCounterfeitUntil||0))activeBotSpeed*=.88;}
           if (t.brawler === 'sir_cheeseburger' && (t.selectedStar === 'long' || t.selectedStar === 'sp2') && (t.sirCheeseDmgBonus || 0) >= 0.20) activeBotSpeed *= 1.20;
