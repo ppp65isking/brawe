@@ -342,7 +342,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         if (brawlerId === 'driller') {
             const scale = 0.55 + (level - 1) * 0.045;
             const hpScale = getLevelHpScale(level);
-            return { hp: Math.round(5200 * hpScale), dmg: Math.round(800 * scale), speed: 270 };
+            return { hp: Math.round(5200 * hpScale), dmg: Math.round(400 * scale), speed: 270 };
         }
         if (brawlerId === 'looma') {
             const scale = 0.55 + (level - 1) * 0.045;
@@ -10586,8 +10586,8 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
       },
       'driller': {
           name: 'Driller', role: 'Damage Dealer', rarity: 'Epic', color: '#a16207',
-          desc: 'A dirt-bomb slinger who digs in deep. His bombs spin dirt out in a cone as they fly, and his drill form chews through anyone dumb enough to stand in front of him.',
-          attack: 'Dirt Bomb', attackDesc: 'Driller hurls a dirt bomb that spins dirt clods out in a cone as it travels — and still hits hard on its own.',
+          desc: 'A dirt-bomb slinger who digs in deep. His bombs spin dirt out in a cone as they fly, then burst into a fan of piercing clods on impact, and his drill form chews through anyone dumb enough to stand in front of him.',
+          attack: 'Dirt Bomb', attackDesc: 'Driller hurls a dirt bomb that spins dirt clods out in a cone as it travels, then bursts into a fan of piercing clods on impact — and still hits hard on its own.',
           super: 'Drill Form', superDesc: 'Driller hops into his drill machine for 8 seconds and drives around: touch damage that ramps up on the same enemy, smash through walls, and take no damage while driving.',
           hyper: 'Weakening Dirt: Hyper dirt bombs and their spin clods make enemies deal up to 90% less damage for 0.7 seconds, and Drill Form fires 3 drill bits in a forward cone every 0.5 seconds while driving.',
           g1: 'Mud Trap (Next dirt bomb slows enemies it hits by 40% for 2 seconds)',
@@ -26185,12 +26185,14 @@ let heistFeverActive = false;
     // ===== Driller systems (Anthony's kit, 2026-11-16) =====
     // Main: Dirt Bomb — a dirt projectile that spins dirt clods out in a
     // spreading cone as it travels (Firecracker-style shed) but keeps its
-    // own direct-hit damage.
+    // own direct-hit damage. CHANGES ROUND 2 — real Firecracker: on hitting
+    // an enemy/wall or reaching max range it bursts into a fan of 5 dirt
+    // clods that pierce through enemies.
     // Super: Drill Form (CHANGES ROUND 1 — Moe-style driving) — 8s form,
     // one long ammo bar; Driller hops into his drill machine and drives
     // around: contact damage that ramps on the SAME enemy:
-    // 100 > 200 > 300 > 500 > 1000 > 2000 (Anthony's 10>20>30>50>100>200,
-    // scaled x10 to P11-meaningful values — FLAGGED, he may correct it),
+    // 50 > 100 > 150 > 250 > 500 > 1000 (Anthony's 10>20>30>50>100>200,
+    // scaled x10, then -50% in changes round 2 — FLAGGED, he may correct it),
     // +35% move speed, invulnerable while in the drill (FLAGGED, big
     // defensive buff), and walls in his path get smashed (Moe behavior).
     // Hyper main: Weakening Dirt — enemies hit by a Hyper dirt bomb or one
@@ -26198,8 +26200,8 @@ let heistFeverActive = false;
     // for 0.7s.
     // Hyper Super (CHANGES ROUND 1 rework — the old Triple Drill volley
     // doesn't fit a driving mode): while driving in Hyper form the drill
-    // fires 3 small drill bits in a forward cone every 0.5s, +20% range
-    // (312px), each dealing 50% of the current ramp damage.
+    // fires 3 small drill bits in a forward cone every 0.5s, 390px range
+    // (+25% in changes round 2), each dealing 50% of the current ramp damage.
     // G1 Mud Trap: next dirt bomb slows enemies it hits (40%, 2s).
     // G2 Wallbreaker Drill: in drill mode, fire a big drill that breaks walls.
     // SP1 Spin Cycle: +4 extra spin projectiles in a wider cone.
@@ -26207,7 +26209,7 @@ let heistFeverActive = false;
     // Dirt/slow/debuff effects affect brawlers only, never structures.
     const DRILLER_BOMB_SPEED = 700;
     const DRILLER_BOMB_RANGE = 700;
-    const DRILLER_CLOD_DMG = 150; // P11, level-scaled at shed time
+    const DRILLER_CLOD_DMG = 75; // P11, level-scaled at shed time (CHANGES ROUND 2: -50%, was 150)
     const DRILLER_CLOD_SPEED = 520;
     const DRILLER_CLOD_RANGE = 220;
     const DRILLER_SHED_EVERY_PX = 110; // a clod spins out every ~110px traveled
@@ -26217,16 +26219,19 @@ let heistFeverActive = false;
     // Shed offsets (radians off the bomb's flight angle): the cone fans
     // wider the farther the bomb flies — narrow clods first, wide last.
     const DRILLER_CLOD_OFFSETS = [0.18, -0.18, 0.38, -0.38, 0.55, -0.55, 0.70, -0.70, 0.85, -0.85];
+    const DRILLER_BURST_CLOD_COUNT = 5; // CHANGES ROUND 2: impact burst fires 5 clods in a fan
+    const DRILLER_BURST_CLOD_OFFSETS = [-0.4, -0.2, 0, 0.2, 0.4]; // fan spread off the bomb's flight angle
     const DRILLER_SUPER_FORM_DURATION_MS = 8000;
     const DRILLER_DRILL_RANGE = 260; // bot super pop gate (DRILLER_DRILL_RANGE + 60)
-    const DRILLER_HYPER_CONE_RANGE = 312; // Hyper cone bits fly 312px (+20% vs the old 260px drill range)
+    const DRILLER_HYPER_CONE_RANGE = 390; // Hyper cone bits fly 390px (CHANGES ROUND 2: +25%, was 312)
     const DRILLER_CONTACT_GATE_MS = 250; // max one ramp step per enemy per 0.25s of contact
     const DRILLER_CONTACT_MARGIN = 6; // contact counts when the enemy's edge is within 6px of the driver's edge
+    const DRILLER_CONTACT_RADIUS_MULT = 1.25; // CHANGES ROUND 2: contact radius +25% (balance — "a little more")
     const DRILLER_FORM_SPEED_MULT = 1.35; // Moe-style driving: +35% move speed in drill form
     const DRILLER_HYPER_CONE_INTERVAL_MS = 500; // Hyper form fires its 3-bit cone every 0.5s while driving
     const DRILLER_WALL_BREAK_MARGIN = 6; // walls within 6px of the driver's edge get smashed while driving
     const DRILLER_DUST_INTERVAL_MS = 120; // dust puff behind the drill machine every 120ms
-    const DRILLER_RAMP = [100, 200, 300, 500, 1000, 2000]; // Anthony's 10>20>30>50>100>200, scaled x10 — FLAGGED
+    const DRILLER_RAMP = [50, 100, 150, 250, 500, 1000]; // Anthony's 10>20>30>50>100>200, scaled x10, then -50% in CHANGES ROUND 2 — FLAGGED
     const DRILLER_RAMP_RESET_MS = 1500; // ramp resets after 1.5s without hitting that enemy
     const DRILLER_BIT_SPEED = 900;
     const DRILLER_HYPER_WEAKEN_PER_HIT = 0.30;
@@ -26288,6 +26293,30 @@ let heistFeverActive = false;
         if ((b.drillerShedCount || 0) >= max) b._drillerShedDone = true;
     }
 
+    // CHANGES ROUND 2 — real Firecracker: when the dirt bomb hits an
+    // enemy/wall or reaches max range, it bursts into a fan of 5 dirt
+    // clods that pierce through enemies (75 dmg each, 220px range — same
+    // as the shed clods). Guarded so the bomb bursts exactly once no
+    // matter which end-of-flight path fires. The burst clods inherit the
+    // bomb's hitIds (Rocketeer precedent) so they can't re-hit the enemy
+    // the bomb just struck, and they inherit Hyper + Mud Trap from the
+    // bomb, so the checkHit hook weakens/slows through them too.
+    function drillerBombBurst(b) {
+        if (!b || b._drillerBurstDone) return;
+        b._drillerBurstDone = true;
+        const baseAng = Math.atan2(b.vy, b.vx);
+        const owner = getEntityById(b.ownerId);
+        const scale = owner ? drillerLevelScale(owner) : 1;
+        for (const off of DRILLER_BURST_CLOD_OFFSETS) {
+            const a = baseAng + off;
+            bullets.push({ ownerBrawler: 'driller', isDrillerClod: true, isDrillerBurstClod: true, ownerId: b.ownerId, x: b.x, y: b.y, vx: Math.cos(a) * DRILLER_CLOD_SPEED, vy: Math.sin(a) * DRILLER_CLOD_SPEED, life: 0, maxLife: DRILLER_CLOD_RANGE / DRILLER_CLOD_SPEED, damage: Math.round(DRILLER_CLOD_DMG * scale), pierce: true, pierceWalls: false, hitIds: { ...(b.hitIds || {}) }, hitboxMod: 1.0, hyperVisual: !!b.hyperVisual, drillerMudTrap: !!b.drillerMudTrap });
+        }
+        // Burst telegraph: fan flash at the impact point, purple when the
+        // bomb was Hyper — the bomb's real state (Snipa lesson: never a
+        // faked flag).
+        explosions.push({ x: b.x, y: b.y, radius: 46, life: 0, maxLife: .25, color: '#d97706', fxKind: 'drillerBurst', hyper: !!b.hyperVisual, angle: baseAng });
+    }
+
     // Hyper main: an enemy hit by a Hyper dirt bomb or one of its spin
     // clods deals less damage — 30% per hit, stacking to 90%, for 0.7s.
     // Stacks reset if the debuff expired; brawlers only, never structures.
@@ -26340,7 +26369,7 @@ let heistFeverActive = false;
     }
 
     // Drill ramp: damage climbs while you keep drilling the SAME enemy
-    // (100 > 200 > 300 > 500 > 1000 > 2000) and resets when you hit a
+    // (50 > 100 > 150 > 250 > 500 > 1000) and resets when you hit a
     // different enemy or go 1.5s without hitting that enemy. A whiff
     // doesn't change the ramp.
     function drillerRampDamage(entity, target, now) {
@@ -26373,13 +26402,13 @@ let heistFeverActive = false;
     }
 
     // Contact damage: anything the drill machine touches takes the ramp
-    // damage (100 > 200 > 300 > 500 > 1000 > 2000). Max one ramp step per
+    // damage (50 > 100 > 150 > 250 > 500 > 1000). Max one ramp step per
     // enemy per 0.25s; the ramp still resets on a different enemy or after
     // 1.5s without hitting that enemy (drillerRampDamage owns the reset).
     function drillerContactHits(entity, now) {
         if (!entity || entity.hp <= 0) return;
         entity.drillerContactLastHit = entity.drillerContactLastHit || {};
-        const contactR = (entity.radius || 14) + DRILLER_CONTACT_MARGIN;
+        const contactR = ((entity.radius || 14) + DRILLER_CONTACT_MARGIN) * DRILLER_CONTACT_RADIUS_MULT;
         const rampColors = ['#d97706', '#ea580c', '#dc2626', '#9333ea', '#c026d3', '#a855f7'];
         for (const e of [player, ...bots]) {
             if (!e || e.hp <= 0 || e.id === entity.id || areAlliedEntities(entity, e)) continue;
@@ -26456,9 +26485,9 @@ let heistFeverActive = false;
     // Hyper Super rework (changes round 1): the old 3-bit cone volley
     // doesn't fit a driving mode, so while driving in Hyper form the
     // drill periodically fires 3 small drill bits in a forward cone —
-    // every 0.5s, +20% range (312px), each 50% of the current ramp
-    // damage. Direction is the drive direction (or aim when standing
-    // still). Firing does NOT advance the ramp.
+    // every 0.5s, 390px range (changes round 2: +25%, was 312px), each
+    // 50% of the current ramp damage. Direction is the drive direction
+    // (or aim when standing still). Firing does NOT advance the ramp.
     function drillerHyperConeShots(entity, now) {
         if (!entity || entity.hp <= 0 || !entity.drillerFormHyper) return;
         if (now - (entity.drillerLastHyperConeAt || 0) < DRILLER_HYPER_CONE_INTERVAL_MS) return;
@@ -26641,7 +26670,7 @@ let heistFeverActive = false;
             ctx.strokeStyle = hyper ? '#c084fc' : '#d97706';
             ctx.lineWidth = 2;
             ctx.setLineDash([8, 6]);
-            ctx.beginPath(); ctx.arc(e.x, e.y, (e.radius || 14) + 20, 0, Math.PI * 2); ctx.stroke();
+            ctx.beginPath(); ctx.arc(e.x, e.y, ((e.radius || 14) + DRILLER_CONTACT_MARGIN) * DRILLER_CONTACT_RADIUS_MULT + 14, 0, Math.PI * 2); ctx.stroke();
             ctx.setLineDash([]);
             ctx.restore();
             ctx.restore();
@@ -57976,6 +58005,7 @@ function checkHit(target, b, i){
     if(!b.hitIds) b.hitIds = {};
     b.hitIds[target.id] = true;
     if (b.isRocketeerMain) splitRocketeerRocket(b);
+    if (b.isDrillerBomb) drillerBombBurst(b);
     if (b.isRocketeerMini) triggerRocketeerMiniImpact(b);
     if (b.isRobberCoin && owner) {
         const star = owner.id === player.id ? selectedStar : owner.selectedStar;
@@ -64488,6 +64518,12 @@ function checkHit(target, b, i){
                 splitRocketeerRocket(b);
                 bullets.splice(i,1); i--; continue;
             }
+            // Driller (changes round 2 — real Firecracker): the dirt bomb
+            // bursts into a fan of piercing dirt clods at max range.
+            if (b.isDrillerBomb) {
+                drillerBombBurst(b);
+                bullets.splice(i,1); i--; continue;
+            }
             if (b.isRocketeerMini) {
                 triggerRocketeerMiniImpact(b);
                 bullets.splice(i,1); i--; continue;
@@ -64929,6 +64965,13 @@ function checkHit(target, b, i){
 
       if (hitCube && b.isRocketeerMain) {
           splitRocketeerRocket(b);
+          bullets.splice(i,1);
+          continue;
+      }
+      // Driller (changes round 2 — real Firecracker): the dirt bomb
+      // bursts into a fan of piercing dirt clods when it hits a wall.
+      if (hitCube && b.isDrillerBomb) {
+          drillerBombBurst(b);
           bullets.splice(i,1);
           continue;
       }
@@ -84543,6 +84586,33 @@ function checkHit(target, b, i){
             ctx.strokeStyle = ex.hyper ? '#c084fc' : (ex.color || '#d97706');
             ctx.lineWidth = 3;
             ctx.beginPath(); ctx.arc(ex.x, ex.y, dR, 0, Math.PI * 2); ctx.stroke();
+            ctx.restore();
+            continue;
+        }
+        if (ex.fxKind === 'drillerBurst') {
+            // Driller impact burst: fan flash at the burst point — 5 short
+            // dirt streaks fanning out along the bomb's real flight angle
+            // (ex.angle, stamped at burst time), purple when the bomb was
+            // Hyper (ex.hyper is the bomb's real state — Snipa lesson:
+            // never a faked flag).
+            const bAlpha = Math.max(0, 1 - ex.life / ex.maxLife);
+            const bProgress = clamp(ex.life / ex.maxLife, 0, 1);
+            const bR = (ex.radius || 46) * (0.5 + 0.9 * bProgress);
+            const baseA = Number.isFinite(ex.angle) ? ex.angle : 0;
+            ctx.save();
+            ctx.globalAlpha = bAlpha;
+            ctx.strokeStyle = ex.hyper ? '#c084fc' : '#d97706';
+            ctx.lineWidth = 4;
+            ctx.lineCap = 'round';
+            for (const off of [-0.4, -0.2, 0, 0.2, 0.4]) {
+                const a = baseA + off;
+                ctx.beginPath();
+                ctx.moveTo(ex.x + Math.cos(a) * bR * 0.3, ex.y + Math.sin(a) * bR * 0.3);
+                ctx.lineTo(ex.x + Math.cos(a) * bR, ex.y + Math.sin(a) * bR);
+                ctx.stroke();
+            }
+            ctx.fillStyle = ex.hyper ? 'rgba(192,132,252,0.85)' : 'rgba(217,119,6,0.85)';
+            ctx.beginPath(); ctx.arc(ex.x, ex.y, 8 * bAlpha + 3, 0, Math.PI * 2); ctx.fill();
             ctx.restore();
             continue;
         }
