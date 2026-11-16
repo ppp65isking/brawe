@@ -41,7 +41,8 @@
 // fizzles with NO BOOK! when no book is live). SP1 Voracious Reader: worm
 // stacks last 50% longer (4s -> 6s). SP2 Cliffhanger: root 1s -> 1.75s.
 // Voice lines are flavor-only (RULE ONE) and silent until Anthony picks a
-// voice. Roster: Bookworm makes 109 ids / 101 selectable (108/100 + 1).
+// voice. Roster: Bookworm made 109 ids / 101 selectable (108/100 + 1);
+// FreeZeon (2026-11-15) now makes 110 ids / 102 selectable.
 // Known limitation (flagged, not a spec deviation): in Fused mode the
 // redirect and the jumps are skipped — the fused component fires the normal
 // main attack instead.
@@ -61,11 +62,11 @@ function check(name, cond) {
 const near = (a, b, eps = 0.01) => Math.abs(a - b) < eps;
 
 // ---------------------------------------------------------- 1. source pins
-check('roster includes bookworm (109 ids)', game.includes("'pandy', 'snipa', 'bookworm'"));
-check('selectable is 101 (109 minus the 8 disabled, bookworm not disabled)', (() => {
+check('roster includes bookworm (110 ids with FreeZeon)', game.includes("'pandy', 'snipa', 'bookworm'"));
+check('selectable is 102 (110 minus the 8 disabled, bookworm not disabled)', (() => {
   const all = [...game.match(/const allBrawlers\s*=\s*\[([\s\S]*?)\];/)[1].matchAll(/'([^']+)'/g)].map(m => m[1]);
   const disabled = ['robber', 'boomer', 'daggershard', 'cluster', 'witch', 'adlof', 'swimmer', 'blade_vane'];
-  return all.length === 109 && all.filter(id => !disabled.includes(id)).length === 101;
+  return all.length === 110 && all.filter(id => !disabled.includes(id)).length === 102;
 })());
 check('rarity Epic (170 souls)', game.includes("bookworm: 'Epic',") && game.includes('Epic: 170'));
 check('role Controller', game.includes("bookworm:'Controller',"));
