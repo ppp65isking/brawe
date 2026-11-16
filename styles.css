@@ -23,6 +23,42 @@ html.desktop-device #fullscreenBtn { opacity: .88; }
   --af-panel: rgba(10, 20, 38, 0.45);
   --af-border: rgba(130, 180, 250, 0.16);
   --af-text: #e1f0ff;
+  /* ---- UI Refresh Part 1 — Phase 7A design tokens (Brawl-style) ---- */
+  /* Chunky radius scale (values already in use across the home/HUD CSS). */
+  --af-radius-sm: 8px;
+  --af-radius-md: 14px;
+  --af-radius-lg: 18px;
+  --af-radius-xl: 24px;
+  --af-radius-pill: 999px;
+  /* 2-3px dark/white outlines. */
+  --af-outline-3w: 3px solid rgba(255, 255, 255, 0.85);
+  --af-outline-3w-solid: 3px solid #fff;
+  --af-outline-3w-soft: 3px solid rgba(255, 255, 255, 0.7);
+  /* Offset "slab" shadows (values already in use; one name per value). */
+  --af-slab-gold: 0 7px 0 #a85a08, 0 14px 25px rgba(0, 26, 71, 0.66);
+  --af-slab-gold-2: 0 2px 0 #a85a08;
+  --af-slab-blue-4: 0 4px 0 #0a2a5e;
+  --af-slab-navy-5: 0 5px 0 #051f50;
+  --af-slab-navy-4: 0 4px 0 #061d43;
+  --af-slab-9: 0 9px 0 #020a15, 0 25px 70px #000a;
+  --af-slab-teal-5: 0 5px 0 #12647b;
+  --af-slab-teal-2: 0 2px 0 #12647b;
+  /* Saturated primary / secondary buttons. */
+  --af-btn-primary: linear-gradient(180deg, #ffe95c, #ffb61f);
+  --af-btn-secondary: linear-gradient(180deg, #2b7de0, #16549e);
+  /* Panel gradients. */
+  --af-card-grad: linear-gradient(145deg, #1b75d1, #164493);
+  --af-panel-grad: linear-gradient(155deg, #102b48, #09172a 58%, #111329);
+  /* Rarity colours (shared with the JS mode-colour map). */
+  --af-rarity-common: #9ed9ff;
+  --af-rarity-rare: #5df2c2;
+  --af-rarity-epic: #c084fc;
+  --af-rarity-mythic: #ff5ba7;
+  --af-rarity-legendary: #ffb347;
+  --af-rarity-exotic: #55f7ff;
+  /* Canvas HUD panel colours (mirrored in game.js UI_HUD_TOKENS). */
+  --af-hud-panel: rgba(4, 8, 16, 0.56);
+  --af-hud-stroke: rgba(255, 255, 255, 0.08);
 }
 * { box-sizing: border-box; }
 button, select, input {
@@ -805,7 +841,7 @@ button:disabled {
 #homeHeader::before{content:"SEASON 2";top:2px;color:#b8edff;text-shadow:0 2px #064888}
 #homeTitle{margin-top:16px !important;font-size:clamp(25px,3vw,40px) !important;color:#fff !important;-webkit-text-stroke:1px #052757;text-shadow:0 4px 0 #052757,0 8px 16px rgba(0,0,0,.28)}
 #homeCurrencyBar{margin-left:auto;padding:0 !important;border:0 !important;background:transparent !important;gap:7px !important}
-.home-currency-pill{min-width:92px;min-height:34px !important;justify-content:center;border:2px solid rgba(255,255,255,.68) !important;border-radius:9px !important;background:#132c55 !important;color:#fff !important;font-size:13px;font-weight:1000;box-shadow:0 4px 0 #061d43,inset 0 2px rgba(255,255,255,.14) !important}
+.home-currency-pill{min-width:92px;min-height:34px !important;justify-content:center;border:2px solid rgba(255,255,255,.68) !important;border-radius:9px !important;background:#132c55 !important;color:#fff !important;font-size:13px;font-weight:1000;box-shadow:var(--af-slab-navy-4),inset 0 2px rgba(255,255,255,.14) !important}
 .home-currency-pill.coins{border-color:#ffe873 !important}.home-currency-pill.gems{border-color:#72f4a9 !important}.home-currency-pill.souls{border-color:#d18dff !important}
 #fullscreenBtn{min-height:36px !important;padding:6px 10px !important;border:2px solid #fff8 !important;border-radius:9px !important;background:#183e72 !important;box-shadow:0 4px 0 #062454 !important;text-transform:uppercase}
 #homeQuickActions{display:flex !important;gap:7px !important;position:static !important;transform:none !important;margin:0 !important;max-width:none !important}
@@ -840,7 +876,7 @@ button:disabled {
 .home-event-grid{display:grid !important;grid-template-columns:repeat(3,minmax(150px,1fr)) !important;gap:8px !important}
 .showdown-section .home-event-grid{grid-template-columns:1fr !important}
 .home-showdown-hub{border-radius:13px !important;background:linear-gradient(135deg,#8f38ee,#5221b8) !important;border:3px solid #d7a5ff !important;box-shadow:0 5px 0 #34116e !important}.showdown-hub-trigger{min-height:66px !important}.showdown-hub-copy strong{font-size:17px !important}.showdown-hub-selection{background:#fff;color:#4d1c9e !important}
-.home-mode-card{min-height:110px !important;padding:10px !important;border:3px solid rgba(255,255,255,.7) !important;border-radius:13px !important;background:linear-gradient(145deg,#1b75d1,#164493) !important;box-shadow:0 5px 0 #051f50 !important;transition:transform .12s,filter .12s !important}.home-mode-card:hover{transform:translateY(-2px) scale(1.01);filter:brightness(1.12)}.home-mode-card.active{outline:4px solid #ffe65a;outline-offset:-5px;filter:saturate(1.22)}
+.home-mode-card{min-height:110px !important;padding:10px !important;border:var(--af-outline-3w-soft) !important;border-radius:13px !important;background:var(--af-card-grad) !important;box-shadow:var(--af-slab-navy-5) !important;transition:transform .12s,filter .12s !important}.home-mode-card:hover{transform:translateY(-2px) scale(1.01);filter:brightness(1.12)}.home-mode-card.active{outline:4px solid #ffe65a;outline-offset:-5px;filter:saturate(1.22)}
 .home-mode-card-content{position:relative;z-index:2;align-items:flex-end !important;height:62px}.home-mode-card-content>div:first-child{align-items:flex-end !important}.home-mode-card-content>div:first-child>div:first-child{width:42px !important;height:42px !important;border:2px solid #fff7 !important;background:#061d4b99 !important;font-size:23px !important}.home-mode-card-content div[style*="font-size:13px"]{font-size:14px !important;text-shadow:0 2px #031b45}.home-mode-subtitle{color:#c8efff !important}
 .home-mode-map-preview{opacity:.45 !important;transform:scale(1.05)}.rotating-event-reward{background:#ffda37 !important;color:#311d00 !important}.featured-event-card{border-color:#ffe05a !important;box-shadow:0 5px 0 #8e5600,0 0 18px #ffd83d77 !important}
 #homeUtilityDetails{display:block !important;margin:0 !important;padding:6px !important;border:0 !important;border-radius:11px !important;background:#082c63aa !important;box-shadow:none}#homeUtilityDetails>summary{display:none}#homeUtilityRow{display:grid !important;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:6px !important;margin:0 !important}#homeUtilityRow button{min-height:38px !important;padding:7px 9px !important;border:2px solid #fff6 !important;border-radius:9px !important;box-shadow:0 4px 0 #041c44;font-size:9px !important;font-weight:1000 !important;text-transform:uppercase}
@@ -1540,7 +1576,7 @@ html,body{overflow-x:hidden !important}
 .match-results-overlay{position:fixed;inset:0;z-index:5000;display:grid;place-items:center;padding:18px;box-sizing:border-box;overflow:auto;background:rgba(2,8,18,.94);color:#fff;font-family:Trebuchet MS,Arial,sans-serif}
 .match-results-overlay::before{content:'';position:fixed;inset:0;pointer-events:none;background:linear-gradient(125deg,rgba(53,220,255,.12),transparent 42%,rgba(135,75,255,.13));opacity:.9}
 .match-results-overlay.is-defeat::before{background:linear-gradient(125deg,rgba(255,76,96,.13),transparent 44%,rgba(111,54,163,.12))}
-.match-results-card{position:relative;width:min(760px,96vw);display:grid;gap:15px;padding:clamp(17px,3vw,30px);box-sizing:border-box;border:3px solid #69efda;border-radius:24px;background:linear-gradient(155deg,#102b48,#09172a 58%,#111329);box-shadow:0 9px 0 #020a15,0 25px 70px #000a;overflow:hidden}
+.match-results-card{position:relative;width:min(760px,96vw);display:grid;gap:15px;padding:clamp(17px,3vw,30px);box-sizing:border-box;border:3px solid #69efda;border-radius:var(--af-radius-xl);background:var(--af-panel-grad);box-shadow:var(--af-slab-9);overflow:hidden}
 .is-defeat .match-results-card{border-color:#ff6678;background:linear-gradient(155deg,#3a1827,#10172a 58%,#171126)}
 .match-results-card::after{content:'';position:absolute;right:-55px;top:-70px;width:220px;height:220px;border:34px solid rgba(104,239,218,.08);border-radius:50%;pointer-events:none}.is-defeat .match-results-card::after{border-color:rgba(255,102,120,.08)}
 .match-results-hero{position:relative;z-index:1;display:grid;grid-template-columns:112px minmax(0,1fr);align-items:center;gap:18px;padding-bottom:15px;border-bottom:1px solid #ffffff24}
@@ -1550,7 +1586,7 @@ html,body{overflow-x:hidden !important}
 .match-results-rewards{position:relative;z-index:1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;padding:14px;border:1px solid #395572;border-radius:16px;background:#061426}
 .match-results-rewards-title{grid-column:1/-1;margin:0 0 2px;color:#9fbedb;font-size:11px;letter-spacing:.16em}.match-results-reward{min-width:0;padding:11px;border:1px solid #29425f;border-radius:11px;background:#0d2038;font-size:clamp(14px,2.2vw,20px);font-weight:1000;overflow-wrap:anywhere}.reward-coins{color:#ffe06a}.reward-souls{color:#d5b6ff}.reward-damage{color:#ff9b80}.reward-bricks-positive{color:#70efce}.reward-bricks-negative{color:#ff7d8c}
 .match-results-rewards>div:not(.match-results-reward){grid-column:1/-1}
-.match-results-home{position:relative;z-index:1;min-height:54px;border:2px solid #eaffff;border-radius:13px;background:linear-gradient(135deg,#66edcb,#62dff8);color:#061c27;font-size:17px;font-weight:1000;letter-spacing:.04em;cursor:pointer;box-shadow:0 5px 0 #12647b}.match-results-home:hover{filter:brightness(1.07);transform:translateY(-1px)}.match-results-home:active{transform:translateY(3px);box-shadow:0 2px 0 #12647b}
+.match-results-home{position:relative;z-index:1;min-height:54px;border:2px solid #eaffff;border-radius:13px;background:linear-gradient(135deg,#66edcb,#62dff8);color:#061c27;font-size:17px;font-weight:1000;letter-spacing:.04em;cursor:pointer;box-shadow:var(--af-slab-teal-5)}.match-results-home:hover{filter:brightness(1.07);transform:translateY(-1px)}.match-results-home:active{transform:translateY(3px);box-shadow:var(--af-slab-teal-2)}
 @media(max-width:560px){.match-results-overlay{padding:7px}.match-results-card{width:100%;padding:15px;border-radius:17px}.match-results-hero{grid-template-columns:76px minmax(0,1fr);gap:11px}.match-results-portrait{width:72px;height:72px;border-radius:17px}.match-results-rewards{grid-template-columns:1fr;padding:10px}.match-results-rewards-title{grid-column:1}.match-results-reward{padding:9px}.match-results-home{min-height:48px}}
 
 /* Tower Duels squad builder — static gradients only, so the large roster stays cheap. */
