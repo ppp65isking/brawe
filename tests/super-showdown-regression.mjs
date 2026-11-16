@@ -117,7 +117,9 @@ assert.match(source, /isCircleBlockedByTerrain\(null, bx, by, 14\) \|\| isCircle
 // --- 5. Faster charges: this mode only ---------------------------------------
 assert.match(source, /if \(showdownMode === 'super_showdown'\) return 2\.0;/, 'Super gain must be 2x for this mode');
 assert.match(source, /if \(showdownMode === 'super_showdown'\) return 3\.0;/, 'Core Surge (Hypercharge) gain must be 3x for this mode');
-assert.match(source, /return activeShowdownModifier === 'power_surge' \? 1\.2 : 1\.0;/, 'other modes must keep the existing 1.2/1.0 multiplier path');
+// (Showdown modifiers rework: the 1.2/1.0 fallback now reads through the
+// single isShowdownModifierActive check; the values are unchanged.)
+assert.match(source, /return isShowdownModifierActive\('power_surge'\) \? 1\.2 : 1\.0;/, 'other modes must keep the existing 1.2/1.0 multiplier path');
 assert.match(source, /let modeHyperGain = \(hyperGain \/ getModeSuperGainMultiplier\(\)\) \* getModeHyperGainMultiplier\(\);/, 'existing per-hit gain path must still flow through both multipliers');
 
 // --- 6. Lag guards: present AND mode-gated -----------------------------------
