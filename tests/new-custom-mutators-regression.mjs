@@ -5,11 +5,11 @@ const game = fs.readFileSync(new URL('../game.js', import.meta.url), 'utf8');
 
 const checks = [
   // 1. Modifier Registrations
-  ['friendly_fire_plus registered in RANKED_MODIFIERS', /'friendly_fire_plus':\s*\{[\s\S]*?id:\s*'friendly_fire_plus'[\s\S]*?name:\s*'Friendly Fire\+'/.test(game)],
-  ['super_rate_90 registered in RANKED_MODIFIERS', /'super_rate_90':\s*\{[\s\S]*?id:\s*'super_rate_90'[\s\S]*?name:\s*'90% Super Rate\+'/.test(game)],
-  ['super_rate_plus alias registered in RANKED_MODIFIERS', /'super_rate_plus':\s*\{[\s\S]*?id:\s*'super_rate_plus'/.test(game)],
-  ['giant_projectiles registered in RANKED_MODIFIERS', /'giant_projectiles':\s*\{[\s\S]*?id:\s*'giant_projectiles'[\s\S]*?name:\s*'150% Bigger Projectiles'/.test(game)],
-  ['projectiles_150 alias registered in RANKED_MODIFIERS', /'projectiles_150':\s*\{[\s\S]*?id:\s*'projectiles_150'/.test(game)],
+  ['friendly_fire_plus registered in MUTATOR_DEFS', /const MUTATOR_DEFS = \{[\s\S]*?'friendly_fire_plus':\s*\{[\s\S]*?id:\s*'friendly_fire_plus'[\s\S]*?name:\s*'Friendly Fire\+'/.test(game)],
+  ['super_rate_90 registered in MUTATOR_DEFS', /const MUTATOR_DEFS = \{[\s\S]*?'super_rate_90':\s*\{[\s\S]*?id:\s*'super_rate_90'[\s\S]*?name:\s*'90% Super Rate\+'/.test(game)],
+  ['super_rate_plus alias canonicalises to super_rate_90 (no duplicate def)', /'super_rate_plus':\s*'super_rate_90'/.test(game) && !/'super_rate_plus':\s*\{/.test(game)],
+  ['giant_projectiles registered in MUTATOR_DEFS with rankedPool false', /const MUTATOR_DEFS = \{[\s\S]*?'giant_projectiles':\s*\{[\s\S]*?id:\s*'giant_projectiles'[\s\S]*?name:\s*'150% Bigger Projectiles'[\s\S]*?rankedPool: false/.test(game)],
+  ['projectiles_150 alias canonicalises to giant_projectiles (no duplicate def)', /'projectiles_150':\s*'giant_projectiles'/.test(game) && !/'projectiles_150':\s*\{/.test(game)],
 
   // 2. Helper Functions
   ['isFriendlyFirePlusActive helper function implemented', /function isFriendlyFirePlusActive\(\)/.test(game)],
