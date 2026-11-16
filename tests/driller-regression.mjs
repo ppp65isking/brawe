@@ -1,28 +1,37 @@
 // Driller regression — ordered 2026-11-16 (builder picks, flagged for
 // his correction). Anthony's core kit is authoritative; everything else
 // below is a builder pick.
-// Locked design: Epic Damage Dealer (170 souls), 5200 HP / 270 speed, 400
-// base main damage (CHANGES ROUND 2: -50%, was 800). Main "Dirt Bomb":
-// 700 px/s, 700px range; as it travels it spins dirt clods out in a
-// spreading cone (up to 6 clods, 75 dmg each, shed every ~110px —
-// Firecracker-style) but the bomb itself keeps going and still deals its
-// 400 direct-hit damage — and on hitting an enemy/wall or reaching max
-// range it bursts into a fan of 5 dirt clods that pierce through enemies
-// (75 dmg each, 220px range; CHANGES ROUND 2 — real Firecracker). Super
-// "Drill Form" (CHANGES ROUND 1 — Moe-style driving): 8s form, one long
-// ammo bar; Driller hops into his drill machine and drives around —
-// contact damage that ramps on the SAME enemy: 50 > 100 > 150 > 250 >
-// 500 > 1000 (CHANGES ROUND 2: -50%, was 100 > 200 > 300 > 500 > 1000 >
-// 2000). Contact radius +25% in changes round 2. Ramp resets on a
-// different enemy or after 1.5s without hitting that enemy; max one ramp
-// step per enemy per 0.25s of contact. +35% move speed in form,
-// invulnerable while in the drill (FLAGGED), walls in his path get smashed
-// (Moe behavior). The attack button does nothing in form.
+// Locked design: Epic Damage Dealer (170 souls), 5200 HP / 270 speed, 720
+// base main damage (CHANGES ROUND 3: +80%, was 400 — the round-2 nerf made
+// him awful). Main "Dirt Bomb": 700 px/s, 700px range; as it travels it
+// spins dirt clods out in a spreading cone (up to 6 clods, 113 dmg each,
+// shed every ~110px — Firecracker-style; Hyper bombs shed +3 extra, and
+// SP1+Hyper sheds 13 at 50px spacing) but the bomb itself keeps going and
+// still deals its 720 direct-hit damage — and on hitting an enemy/wall or
+// reaching max range it bursts into a fan of 5 dirt clods that pierce
+// through enemies (113 dmg each, 220px range; 7 clods when Hyper;
+// CHANGES ROUND 2 — real Firecracker). Super "Drill Form" (CHANGES
+// ROUND 1 — Moe-style driving): 8s form, one long ammo bar; Driller hops
+// into his drill machine and drives around — contact damage that ramps on
+// the SAME enemy: 50 > 100 > 150 > 250 > 500 > 1000 (unchanged in round 3;
+// he didn't ask to change Super damage). Contact radius +25% in changes
+// round 2, ANOTHER +35% in changes round 3 (x1.6875 total — FLAGGED).
+// Ramp resets on a different enemy or after 1.5s without hitting that
+// enemy; max one ramp step per enemy per 0.25s of contact. +35% move speed
+// in form, invulnerable while in the drill (FLAGGED), walls in his path
+// get smashed (Moe behavior). The attack button does nothing in form.
+// CHANGES ROUND 3 — VISUAL FIX: the drill machine used to draw in
+// renderDrillerEffects BEFORE entities, and the ~34px brawler portrait
+// covered ~85% of the 24x16px machine — Anthony saw NO super visual.
+// The machine now draws AFTER drawBrawlerPortrait (drawDrillerFormMachine),
+// on top of the portrait, wider than it, with the bit clear out front;
+// the contact ring is thicker/brighter with a filled aura, and the form
+// bar is taller.
 // Hyper main "Weakening Dirt": enemies hit by a Hyper dirt bomb or one of
 // its spin clods deal 30% less damage per hit, stacking to 90%, for 0.7s.
 // Hyper Super (CHANGES ROUND 1 rework): while driving in Hyper form the
-// drill fires 3 small drill bits in a forward cone every 0.5s, 390px range
-// (CHANGES ROUND 2: +25%, was 312px), each dealing 50% of the current
+// drill fires 3 small drill bits in a forward cone every 0.5s, 527px range
+// (CHANGES ROUND 3: +35%, was 390px), each dealing 50% of the current
 // ramp damage.
 // G1 Mud Trap (14s): next dirt bomb slows enemies it hits (40%, 2s).
 // G2 Wallbreaker Drill (16s): in drill mode, fire a big drill (1200 dmg)
@@ -60,7 +69,7 @@ check('selectable is 103 (111 minus the 8 disabled, driller not disabled)', (() 
 check('rarity Epic (170 souls)', game.includes("driller: 'Epic',") && game.includes('Epic: 170'));
 check('role Damage Dealer', game.includes("driller:'Damage Dealer',"));
 check('portrait icon present', game.includes("driller: '⛏️',"));
-check('stats branch 5200/400/270 (CHANGES ROUND 2: -50%)', game.includes("if (brawlerId === 'driller') {") && game.includes('hp: Math.round(5200 * hpScale), dmg: Math.round(400 * scale), speed: 270'));
+check('stats branch 5200/720/270 (CHANGES ROUND 3: +80%)', game.includes("if (brawlerId === 'driller') {") && game.includes('hp: Math.round(5200 * hpScale), dmg: Math.round(720 * scale), speed: 270'));
 check('reload 1600ms', game.includes('driller: 1600,'));
 check('fire delay 300ms', game.includes('driller: 300,'));
 check('super charge 7 hits', game.includes('driller: 7'));
@@ -74,7 +83,10 @@ check('player speed hook: +35% while driving in form', game.includes("if (select
 check('bot speed hook: +35% while driving in form', game.includes("if (t.brawler === 'driller' && !isFusedEntity(t) && isDrillerFormActive(t)) activeBotSpeed *= DRILLER_FORM_SPEED_MULT;"));
 check('updateDrillerSystems refreshes invulnerability while in form', game.includes('e.invulnerableUntil = Math.max(e.invulnerableUntil || 0, now + 120);'));
 check('updateDrillerSystems drives the contact/wall/dust/hyper systems', game.includes('drillerContactHits(e, now);') && game.includes('drillerBreakWalls(e);') && game.includes('drillerSpawnDust(e, now);') && game.includes('if (e.drillerFormHyper) drillerHyperConeShots(e, now);'));
-check('render: drill machine + contact ring telegraph (real Hyper state)', game.includes("ctx.strokeStyle = hyper ? '#c084fc' : '#d97706';") && game.includes('ctx.setLineDash([8, 6]);') && game.includes("ctx.fillStyle = hyper ? '#7e22ce' : '#57534e';"));
+check('render: contact ring telegraph is dashed with the real Hyper state (early slot)', game.includes("ctx.strokeStyle = hyper ? '#c084fc' : '#d97706';") && game.includes('ctx.setLineDash([8, 6]);'));
+check('visual fix (CHANGES ROUND 3): the hidden early-slot machine is GONE — no 24x16 ellipse left in game.js', !game.includes('ctx.ellipse(0, 0, 24, 16'));
+check('visual fix: machine overlay draws AFTER the portrait (player + bots)', game.indexOf("if (isDrillerFormActive(player)) drawDrillerFormMachine(ctx, player, drawY);") > game.indexOf("drawBrawlerPortrait(player, drawY, true, '#9ef6d6', false);") && game.indexOf("if (isDrillerFormActive(t)) drawDrillerFormMachine(ctx, t, drawY);") > game.indexOf("drawBrawlerPortrait(t, drawY, false, botColor, !!t.isBoss);"));
+check('visual fix: machine overlay geometry is wider than the portrait (half-W 30, bit at +36)', game.includes('const DRILLER_MACHINE_HALF_W = 30;') && game.includes('const DRILLER_MACHINE_HALF_H = 22;') && game.includes('const DRILLER_MACHINE_BIT_X = 36;'));
 check('player super dispatch', game.includes("if (combatBrawler === 'driller') { castDrillerSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }"));
 check('bot super dispatch', game.includes("if (botCombatBrawler === 'driller') { castDrillerSuper(bot, isHyper, targetX, targetY); return; }"));
 check('player gadget dispatch (G1 + G2, G2 aims via gadgetWorld)', game.includes("curBrawler === 'driller' && curGadget === 'g1'") && game.includes("curBrawler === 'driller' && curGadget === 'g2'") && game.includes("executeDrillerGadget(player, 'g2', false, gadgetWorld.x, gadgetWorld.y);"));
@@ -82,7 +94,7 @@ check('bot gadget dispatch (G1 + G2)', game.includes("bot.brawler === 'driller' 
 check('bot super range gate: pop Drill Form when close (range + 60)', game.includes("if (bot.brawler === 'driller') return distance < DRILLER_DRILL_RANGE + 60;"));
 check('checkHit hook: Hyper bomb/clod weakens + Mud-Trap bomb/clod slows (brawlers only)', game.includes("if (b && b.ownerBrawler === 'driller' && (b.isDrillerBomb || b.isDrillerClod) && target && target.hp > 0) {") && game.includes('if (b.hyperVisual) drillerApplyWeaken(drillerOwner, target);') && game.includes('if (b.drillerMudTrap) drillerApplyMudSlow(drillerOwner, target);') && game.includes('if (drillerOwner && !target.isStructure && !target.isPet && !areAlliedEntities(drillerOwner, target)) {'));
 check('bullet update hook: bomb sheds clods as it flies', game.includes('if (b.isDrillerBomb) drillerShedClods(b, dt);'));
-check('changes round 2: contact radius x1.25 + burst constants (5 clods, fan -0.4..0.4)', game.includes('const DRILLER_CONTACT_RADIUS_MULT = 1.25;') && game.includes('const DRILLER_BURST_CLOD_COUNT = 5;') && game.includes('const DRILLER_BURST_CLOD_OFFSETS = [-0.4, -0.2, 0, 0.2, 0.4];'));
+check('changes round 3: contact radius x1.6875 + burst constants (5 clods, Hyper 7, fan -0.4..0.4 / -0.5..0.5)', game.includes('const DRILLER_CONTACT_RADIUS_MULT = 1.6875;') && game.includes('const DRILLER_BURST_CLOD_COUNT = 5;') && game.includes('const DRILLER_BURST_CLOD_COUNT_HYPER = 7;') && game.includes('const DRILLER_BURST_CLOD_OFFSETS = [-0.4, -0.2, 0, 0.2, 0.4];') && game.includes('const DRILLER_BURST_CLOD_OFFSETS_HYPER = [-0.5, -0.33, -0.17, 0, 0.17, 0.33, 0.5];'));
 check('contact radius uses the +25% multiplier', game.includes('const contactR = ((entity.radius || 14) + DRILLER_CONTACT_MARGIN) * DRILLER_CONTACT_RADIUS_MULT;'));
 check('render: contact ring radius matches the +25% contact radius', game.includes("ctx.arc(e.x, e.y, ((e.radius || 14) + DRILLER_CONTACT_MARGIN) * DRILLER_CONTACT_RADIUS_MULT + 14, 0, Math.PI * 2);"));
 check('burst hooks: checkHit (enemy) + wall hit + max-range expiry (Rocketeer pattern)', game.includes("if (b.isDrillerBomb) drillerBombBurst(b);") && game.includes("if (hitCube && b.isDrillerBomb) {") && game.includes("if (b.isDrillerBomb) {\n                drillerBombBurst(b);"));
@@ -96,8 +108,8 @@ check('update loop calls updateDrillerSystems', game.includes('if (playing && !g
 check('render calls renderDrillerEffects', game.includes('    renderDrillerEffects();'));
 check('bullet draw branches sit BEFORE the universal skin call (no interception)', game.indexOf('drawDrillerBomb(ctx, b);') > 0 && game.indexOf('drawDrillerBomb(ctx, b);') < game.indexOf('if (renderUniversalSkinProjectile(b, earlyProjectileSkin)) continue;') && game.indexOf('drawDrillerClod(ctx, b);') < game.indexOf('if (renderUniversalSkinProjectile(b, earlyProjectileSkin)) continue;') && game.indexOf('drawDrillerBit(ctx, b);') < game.indexOf('if (renderUniversalSkinProjectile(b, earlyProjectileSkin)) continue;') && game.indexOf('drawDrillerWallbreaker(ctx, b);') < game.indexOf('if (renderUniversalSkinProjectile(b, earlyProjectileSkin)) continue;'));
 check('portrait body-art branch (hard hat + overalls + drill bit)', game.includes("if (brawlerId === 'driller') {") && game.includes("ctx.fillStyle = '#facc15';") && game.includes("ctx.fillStyle = '#78350f';"));
-check('constants: bomb 700/700/400, clod 75/520/220, shed 110px / SP1 65px, max 6 / SP1 10 (CHANGES ROUND 2: -50%)', game.includes('const DRILLER_BOMB_SPEED = 700;') && game.includes('const DRILLER_BOMB_RANGE = 700;') && game.includes('const DRILLER_CLOD_DMG = 75;') && game.includes('const DRILLER_CLOD_SPEED = 520;') && game.includes('const DRILLER_CLOD_RANGE = 220;') && game.includes('const DRILLER_SHED_EVERY_PX = 110;') && game.includes('const DRILLER_SHED_EVERY_PX_SP1 = 65;') && game.includes('const DRILLER_CLOD_MAX = 6;') && game.includes('const DRILLER_CLOD_MAX_SP1 = 10;'));
-check('constants: form 8s / drill range 260 / hyper cone 390 / contact gate 250ms / speed 1.35 / cone interval 500ms / wall margin 6 / dust 120ms / ramp reset 1.5s (CHANGES ROUND 2: cone 312->390)', game.includes('const DRILLER_SUPER_FORM_DURATION_MS = 8000;') && game.includes('const DRILLER_DRILL_RANGE = 260;') && game.includes('const DRILLER_HYPER_CONE_RANGE = 390;') && game.includes('const DRILLER_CONTACT_GATE_MS = 250;') && game.includes('const DRILLER_FORM_SPEED_MULT = 1.35;') && game.includes('const DRILLER_HYPER_CONE_INTERVAL_MS = 500;') && game.includes('const DRILLER_WALL_BREAK_MARGIN = 6;') && game.includes('const DRILLER_DUST_INTERVAL_MS = 120;') && game.includes('const DRILLER_RAMP_RESET_MS = 1500;'));
+check('constants: bomb 700/700/720, clod 113/520/220, shed 110px / SP1 65px / Hyper 50px, max 6 / SP1 10 / Hyper 9 (CHANGES ROUND 3: +80%/+50%)', game.includes('const DRILLER_BOMB_SPEED = 700;') && game.includes('const DRILLER_BOMB_RANGE = 700;') && game.includes('const DRILLER_CLOD_DMG = 113;') && game.includes('const DRILLER_CLOD_SPEED = 520;') && game.includes('const DRILLER_CLOD_RANGE = 220;') && game.includes('const DRILLER_SHED_EVERY_PX = 110;') && game.includes('const DRILLER_SHED_EVERY_PX_SP1 = 65;') && game.includes('const DRILLER_SHED_EVERY_PX_HYPER = 50;') && game.includes('const DRILLER_CLOD_MAX = 6;') && game.includes('const DRILLER_CLOD_MAX_SP1 = 10;') && game.includes('const DRILLER_CLOD_MAX_HYPER = 9;'));
+check('constants: form 8s / drill range 260 / hyper cone 527 / contact gate 250ms / speed 1.35 / cone interval 500ms / wall margin 6 / dust 120ms / ramp reset 1.5s (CHANGES ROUND 3: cone 390->527)', game.includes('const DRILLER_SUPER_FORM_DURATION_MS = 8000;') && game.includes('const DRILLER_DRILL_RANGE = 260;') && game.includes('const DRILLER_HYPER_CONE_RANGE = 527;') && game.includes('const DRILLER_CONTACT_GATE_MS = 250;') && game.includes('const DRILLER_FORM_SPEED_MULT = 1.35;') && game.includes('const DRILLER_HYPER_CONE_INTERVAL_MS = 500;') && game.includes('const DRILLER_WALL_BREAK_MARGIN = 6;') && game.includes('const DRILLER_DUST_INTERVAL_MS = 120;') && game.includes('const DRILLER_RAMP_RESET_MS = 1500;'));
 check('old forward-arc drill constants are gone (no DRILLER_DRILL_INTERVAL_MS / DRILLER_RAMP_ARC / DRILLER_DRILL_RANGE_HYPER)', !game.includes('DRILLER_DRILL_INTERVAL_MS') && !game.includes('DRILLER_RAMP_ARC') && !game.includes('DRILLER_DRILL_RANGE_HYPER'));
 check('constants: ramp 50>100>150>250>500>1000 (Anthony x10, then -50% in CHANGES ROUND 2 — FLAGGED)', game.includes('const DRILLER_RAMP = [50, 100, 150, 250, 500, 1000];'));
 check('constants: weaken 30%/hit, max 3 stacks (90%), 0.7s; G1 slow 0.60/2s; G2 1200/900/700; SP2 heal 3400', game.includes('const DRILLER_HYPER_WEAKEN_PER_HIT = 0.30;') && game.includes('const DRILLER_HYPER_WEAKEN_MAX_STACKS = 3;') && game.includes('const DRILLER_HYPER_WEAKEN_DURATION_MS = 700;') && game.includes('const DRILLER_G1_SLOW_MULT = 0.60;') && game.includes('const DRILLER_G1_SLOW_DURATION_MS = 2000;') && game.includes('const DRILLER_G2_DMG = 1200;') && game.includes('const DRILLER_G2_SPEED = 900;') && game.includes('const DRILLER_G2_RANGE = 700;') && game.includes('const DRILLER_SP2_HEAL = 3400;'));
@@ -253,7 +265,7 @@ const sandbox = {
   clamp: (v, lo, hi) => Math.min(hi, Math.max(lo, v)),
   performance: { now: () => nowMs },
   getEntityStarChoice: (e) => (e && e.selectedStar) || 'none',
-  getScaledStats: (id, lvl) => id === 'driller' ? { hp: 5200, dmg: 400, speed: 270 } : { hp: 5000, dmg: 1000, speed: 250 },
+  getScaledStats: (id, lvl) => id === 'driller' ? { hp: 5200, dmg: 720, speed: 270 } : { hp: 5000, dmg: 1000, speed: 250 },
   getSelectedBrawlerLevel: () => 11,
   getEntityById: (id) => entitiesById.get(id) || null,
   areAlliedEntities: (a, b) => !!a && !!b && a.team === b.team,
@@ -310,6 +322,7 @@ for (const m of game.matchAll(/const (DRILLER_[A-Z0-9_]+) = ([0-9.]+);/g)) {
 sandbox.DRILLER_RAMP = JSON.parse(game.match(/const DRILLER_RAMP = (\[[^\]]+\]);/)[1]);
 sandbox.DRILLER_CLOD_OFFSETS = JSON.parse(game.match(/const DRILLER_CLOD_OFFSETS = (\[[^\]]+\]);/)[1]);
 sandbox.DRILLER_BURST_CLOD_OFFSETS = JSON.parse(game.match(/const DRILLER_BURST_CLOD_OFFSETS = (\[[^\]]+\]);/)[1]);
+sandbox.DRILLER_BURST_CLOD_OFFSETS_HYPER = JSON.parse(game.match(/const DRILLER_BURST_CLOD_OFFSETS_HYPER = (\[[^\]]+\]);/)[1]);
 vm.createContext(sandbox);
 vm.runInContext(
   [
@@ -319,7 +332,7 @@ vm.runInContext(
     'drillerContactHits', 'drillerBreakWall', 'drillerBreakWalls',
     'drillerHyperConeShots', 'drillerSpawnDust',
     'executeDrillerGadget', 'updateDrillerSystems',
-    'renderDrillerEffects', 'drawDrillerBomb', 'drawDrillerClod', 'drawDrillerBit', 'drawDrillerWallbreaker',
+    'renderDrillerEffects', 'drawDrillerFormMachine', 'drawDrillerBomb', 'drawDrillerClod', 'drawDrillerBit', 'drawDrillerWallbreaker',
     'updateDrillerVoiceState',
   ].map((fn) => extractFn(game, fn)).join('\n'),
   sandbox);
@@ -352,7 +365,7 @@ try {
   const bomb = bullets[0];
   check('main: bomb flies 700 px/s straight at the aim', near(bomb.vx, 700) && near(bomb.vy, 0));
   check('main: bomb range 700px (maxLife 1.0s)', near(bomb.maxLife, 1.0));
-  check('main: bomb keeps its 400 direct-hit damage (CHANGES ROUND 2: -50%)', bomb.damage === 400);
+  check('main: bomb deals its 720 direct-hit damage (CHANGES ROUND 3: +80%)', bomb.damage === 720);
   check('main: bomb is not Hyper (no hyperVisual)', bomb.hyperVisual === false);
   check('main: base shed max is 6 clods', bomb.drillerShedMax === 6);
   check('main: bomb is not Mud-Trapped by default', bomb.drillerMudTrap === false);
@@ -361,6 +374,7 @@ try {
   sandbox.isHypercharged = true;
   sandbox.fireDrillerMain(playerEnt, 1000, 0, false);
   check('main (Hyper): bomb carries the real Hyper state', bullets[0].hyperVisual === true);
+  check('main (Hyper): shed max is 9 clods (+3 extra shards)', bullets[0].drillerShedMax === 9);
   // Mud Trap arming is consumed on fire and rides the bomb.
   resetWorld();
   playerEnt.drillerMudTrapArmed = true;
@@ -371,6 +385,12 @@ try {
   playerEnt.selectedStar = 'slow';
   sandbox.fireDrillerMain(playerEnt, 1000, 0, false);
   check('main (SP1): shed max is 10 clods', bullets[0].drillerShedMax === 10);
+  // SP1 + Hyper: 10 + 3 = 13.
+  resetWorld();
+  playerEnt.selectedStar = 'slow';
+  sandbox.isHypercharged = true;
+  sandbox.fireDrillerMain(playerEnt, 1000, 0, false);
+  check('main (SP1+Hyper): shed max is 13 clods', bullets[0].drillerShedMax === 13);
 } catch (e) { failures.push('main attack threw: ' + e.message); }
 
 // --- executed: shed (cone fans wider; SP1 fits all 10 in the flight) ---
@@ -383,7 +403,7 @@ try {
   sandbox.drillerShedClods(bomb, 0.016);
   check('shed: 1 clod after 140px (first threshold 110px)', clods().length === 1);
   check('shed: first clod fans +0.18 rad off the bomb', near(Math.atan2(clods()[0].vy, clods()[0].vx), 0.18));
-  check('shed: clod is 75 dmg / 520 px/s / 220px range (CHANGES ROUND 2: -50%)', clods()[0].damage === 75 && near(Math.hypot(clods()[0].vx, clods()[0].vy), 520) && near(clods()[0].maxLife, 220 / 520));
+  check('shed: clod is 113 dmg / 520 px/s / 220px range (CHANGES ROUND 3: +50%)', clods()[0].damage === 113 && near(Math.hypot(clods()[0].vx, clods()[0].vy), 520) && near(clods()[0].maxLife, 220 / 520));
   check('shed: clod inherits Hyper + Mud Trap from the bomb', clods()[0].hyperVisual === false && clods()[0].drillerMudTrap === false);
   bomb.life = 0.35; // 245px traveled
   sandbox.drillerShedClods(bomb, 0.016);
@@ -406,6 +426,18 @@ try {
   check('shed (SP1): all 10 clods shed by end of flight', sp1Clods.length === 10);
   const sp1Offs = sp1Clods.map((c) => Math.abs(Math.atan2(c.vy, c.vx)));
   check('shed (SP1): widest clods reach 0.85 rad', near(sp1Offs[8], 0.85) && near(sp1Offs[9], 0.85));
+  // SP1+Hyper: all 13 shed inside the flight (50px spacing: 13th at 650px).
+  resetWorld();
+  playerEnt.selectedStar = 'slow';
+  sandbox.isHypercharged = true;
+  sandbox.fireDrillerMain(playerEnt, 1000, 0, false);
+  const sp1HyperBomb = bullets[0];
+  sp1HyperBomb.life = 1.0;
+  sandbox.drillerShedClods(sp1HyperBomb, 0.016);
+  const sp1HyperClods = bullets.filter((b) => b.isDrillerClod);
+  check('shed (SP1+Hyper): all 13 clods shed by end of flight', sp1HyperClods.length === 13);
+  const sp1HyperOffs = sp1HyperClods.map((c) => Math.abs(Math.atan2(c.vy, c.vx)));
+  check('shed (SP1+Hyper): widest clods reach 1.15 rad', near(sp1HyperOffs[12], 1.15));
 } catch (e) { failures.push('shed threw: ' + e.message); }
 
 // --- executed: impact burst (real Firecracker — changes round 2) ---
@@ -421,7 +453,7 @@ try {
   sandbox.drillerBombBurst(bomb);
   check('burst: 5 burst clods in a fan', burstClods().length === 5);
   check('burst: fan spreads -0.4/-0.2/0/+0.2/+0.4 rad off the flight angle', burstClods().every((c, i) => near(Math.atan2(c.vy, c.vx), [-0.4, -0.2, 0, 0.2, 0.4][i])));
-  check('burst: clods are 75 dmg / 520 px/s / 220px range (like shed clods)', burstClods().every((c) => c.damage === 75 && near(Math.hypot(c.vx, c.vy), 520) && near(c.maxLife, 220 / 520)));
+  check('burst: clods are 113 dmg / 520 px/s / 220px range (like shed clods)', burstClods().every((c) => c.damage === 113 && near(Math.hypot(c.vx, c.vy), 520) && near(c.maxLife, 220 / 520)));
   check('burst: clods pierce through enemies but stop at walls', burstClods().every((c) => c.pierce === true && c.pierceWalls === false));
   check('burst: clods inherit the bomb Hyper state + Mud Trap', burstClods().every((c) => c.hyperVisual === false && c.drillerMudTrap === false));
   check('burst: fan-flash explosion carries the real Hyper state (not Hyper)', (() => { const ex = explosions.find((e) => e.fxKind === 'drillerBurst'); return ex && ex.hyper === false && ex.angle === 0; })());
@@ -442,6 +474,7 @@ try {
   const hyperBomb = bullets[0];
   sandbox.drillerBombBurst(hyperBomb);
   check('burst (Hyper): clods + flash carry the real Hyper state', bullets.filter((b) => b.isDrillerBurstClod).every((c) => c.hyperVisual === true) && explosions.find((e) => e.fxKind === 'drillerBurst').hyper === true);
+  check('burst (Hyper): 7 burst clods in a wider fan (CHANGES ROUND 3: more shards)', bullets.filter((b) => b.isDrillerBurstClod).length === 7 && bullets.filter((b) => b.isDrillerBurstClod).every((c, i) => near(Math.atan2(c.vy, c.vx), [-0.5, -0.33, -0.17, 0, 0.17, 0.33, 0.5][i])));
   // G1-armed bomb: burst clods carry Mud Trap.
   resetWorld();
   playerEnt.drillerMudTrapArmed = true;
@@ -539,27 +572,28 @@ try {
   const callsBefore = checkHitCalls.length;
   sandbox.updateDrillerSystems(0.016);
   check('ramp: driving with nobody in contact deals no damage and keeps the ramp', checkHitCalls.length === callsBefore && owner2.drillerRampIndex === rampBefore);
-  // Range: contact reach is ~39px center-to-center ((14 + 6) * 1.25 + 14).
+  // Range: contact reach is ~47px center-to-center ((14 + 6) * 1.6875 + 14).
   resetWorld();
   sandbox.castDrillerSuper(playerEnt, false, 300, 0);
   const far = mkBot('e1', { x: 300, y: 0 });
   nowMs += 300;
   sandbox.updateDrillerSystems(0.016);
   check('drill: enemy at 300px is out of contact range', checkHitCalls.length === 0);
-  // Contact boundary at +25%: (14 + 6) * 1.25 = 25px edge gap — an enemy
-  // 39px away (edge gap 25) is in contact; 40px away (edge gap 26) is not.
+  // Contact boundary at +35% compounding (x1.6875): (14 + 6) * 1.6875 =
+  // 33.75px edge gap — an enemy 47px away (edge gap 33) is in contact;
+  // 48px away (edge gap 34) is not.
   resetWorld();
   sandbox.castDrillerSuper(playerEnt, false, 300, 0);
-  mkBot('e1', { x: 39, y: 0 });
+  mkBot('e1', { x: 47, y: 0 });
   nowMs += 300;
   sandbox.updateDrillerSystems(0.016);
-  check('drill: enemy at 39px center-to-center is in contact (+25% radius)', checkHitCalls.length === 1);
+  check('drill: enemy at 47px center-to-center is in contact (+35% compounding)', checkHitCalls.length === 1);
   resetWorld();
   sandbox.castDrillerSuper(playerEnt, false, 300, 0);
-  mkBot('e1', { x: 40, y: 0 });
+  mkBot('e1', { x: 48, y: 0 });
   nowMs += 300;
   sandbox.updateDrillerSystems(0.016);
-  check('drill: enemy at 40px center-to-center is out of contact', checkHitCalls.length === 0);
+  check('drill: enemy at 48px center-to-center is out of contact', checkHitCalls.length === 0);
   // Contact is omnidirectional (no forward arc anymore) — an enemy
   // behind the driver still gets hit.
   resetWorld();
@@ -633,7 +667,7 @@ try {
   check('hyper cone: each bit deals 50% of the current ramp damage (50 -> 25)', bits.every((b) => b.damage === 25));
   check('hyper cone: bits fly 900 px/s in a forward cone (-0.3/0/+0.3 rad)', near(Math.atan2(bits[0].vy, bits[0].vx), -0.3) && near(Math.atan2(bits[1].vy, bits[1].vx), 0) && near(Math.atan2(bits[2].vy, bits[2].vx), 0.3) && bits.every((b) => near(Math.hypot(b.vx, b.vy), 900)));
   check('hyper cone: bits carry the real Hyper state', bits.every((b) => b.hyperVisual === true));
-  check('hyper cone: bits reach the 390px Hyper range (CHANGES ROUND 2: +25%)', bits.every((b) => near(b.maxLife, 390 / 900)));
+  check('hyper cone: bits reach the 527px Hyper range (CHANGES ROUND 3: +35%)', bits.every((b) => near(b.maxLife, 527 / 900)));
   check('hyper cone: contact hit used checkHit, bits are projectiles (no extra checkHit)', checkHitCalls.length === 1 && checkHitCalls[0].damage === 50);
   const swipe = explosions.find((e) => e.fxKind === 'drillerSwipe');
   check('hyper cone: contact burst carries the real Hyper state', swipe && swipe.hyper === true);
@@ -761,13 +795,27 @@ try {
   check('render: weakened enemy shows WEAK -60% (real stacks, never faked)', stub.calls.some((c) => c.m === 'fillText' && String(c.args[0]).includes('WEAK -60%')));
   check('render: drill form draws the long ammo bar (fillRect)', stub.calls.some((c) => c.m === 'fillRect'));
   check('render: mud-slowed enemy draws a brown ring', stub.calls.some((c) => c.m === 'arc') && stub.sets.some((s) => s.p === 'strokeStyle' && s.v === '#92400e'));
-  check('render: drill form draws the drill machine (ellipse body)', stub.calls.some((c) => c.m === 'ellipse'));
+  check('render: early slot no longer draws the machine (visual fix — it hid under the portrait)', !stub.calls.some((c) => c.m === 'ellipse'));
+  check('render: contact ring is thicker now (lineWidth 4, alpha 0.85)', stub.sets.some((s) => s.p === 'lineWidth' && s.v === 4) && stub.sets.some((s) => s.p === 'globalAlpha' && s.v === 0.85));
   check('render: contact ring telegraph is dashed (real Hyper state)', stub.calls.some((c) => c.m === 'setLineDash') && stub.sets.some((s) => s.p === 'strokeStyle' && s.v === '#d97706'));
   const bomb = bullets.find((b) => b.isDrillerBomb);
   sandbox.drawDrillerBomb(stub.proxy, bomb);
   sandbox.drawDrillerClod(stub.proxy, { x: 10, y: 10, vx: 520, vy: 0, hyperVisual: false });
   sandbox.drawDrillerBit(stub.proxy, { x: 10, y: 10, vx: 900, vy: 0, hyperVisual: true });
   sandbox.drawDrillerWallbreaker(stub.proxy, { x: 10, y: 10, vx: 900, vy: 0, hyperVisual: false });
+  // CHANGES ROUND 3 — visual fix: the machine overlay draws AFTER the
+  // portrait, on top, with the REAL form state. This is the regression
+  // test that would have caught the missing visual: the old code only
+  // proved the early-slot ellipse calls happened, never that anything was
+  // visible over the portrait.
+  const overlay = stubCtx();
+  sandbox.castDrillerSuper(playerEnt, false, 200, 0);
+  sandbox.drawDrillerFormMachine(overlay.proxy, playerEnt, 0);
+  check('visual fix: machine overlay draws the steel frame (ellipse 30x22, wider than the portrait)', overlay.calls.some((c) => c.m === 'ellipse' && c.args[2] === 30 && c.args[3] === 22));
+  check('visual fix: machine overlay draws the spinning bit out front (translate +36, moveTo 16,0)', overlay.calls.some((c) => c.m === 'translate' && c.args[0] === 36) && overlay.calls.some((c) => c.m === 'moveTo' && c.args[0] === 16 && c.args[1] === 0));
+  check('visual fix: machine frame is wider than the brawler portrait (30 > 16 x 2.1 / 2 = 16.8)', sandbox.DRILLER_MACHINE_HALF_W > (playerEnt.radius * 2.1) / 2);
+  check('visual fix: machine overlay draws nothing when the form is not active', (() => { const o2 = stubCtx(); const p2 = mkEntity('p2', { team: 'player', brawler: 'driller', x: 0, y: 0 }); sandbox.drawDrillerFormMachine(o2.proxy, p2, 0); return o2.calls.length === 0; })());
+  check('visual fix: machine overlay goes purple when Hyper (real form state)', (() => { const o3 = stubCtx(); sandbox.castDrillerSuper(playerEnt, true, 200, 0); sandbox.drawDrillerFormMachine(o3.proxy, playerEnt, 0); return o3.sets.some((s) => s.p === 'strokeStyle' && s.v === '#c084fc'); })());
   check('render: all four draw functions run without throwing', true);
 } catch (e) { failures.push('render threw: ' + e.message); }
 
