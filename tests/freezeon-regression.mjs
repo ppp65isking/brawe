@@ -2,15 +2,21 @@
 // his correction). Anthony's core kit is authoritative; everything else
 // below is a builder pick.
 // Locked design: Epic Controller (170 souls), 5200 HP / 270 speed, 500 base
-// main damage. Main "Snow Cones": 4 cones in a spread (Lou fires 3 —
-// Anthony's twist), 780 px/s, 700px range; every cone leaves a 1-second
-// slip zone where it lands (on enemy hit, on a wall, or at max range),
-// enemies inside keep sliding in the direction they were moving. Super
-// "Ice Rink": hurls a patch (throw range 560px, radius 260px, lasts 6s)
-// that does 800 impact damage on landing, then freezes anyone standing in
-// it — 2s standing freezes them solid for 1s (progress resets on freeze,
-// 2.5s immunity after, buildup decays after 2s without a tick). The patch
-// also slides enemies like the slip zones. Hyper Super "Deep Freeze": the
+// main damage. Main "Snow Cones": 4 cones in a STRAIGHT LINE (Lou fires 3 —
+// Anthony's twist; changes round 1: a line, not a fan), 780 px/s, 700px
+// range; every cone leaves a 1-second slip zone (72px after the round-1
+// -40%) where it lands (on enemy hit, on a wall, or at max range), and
+// every cone hit builds the freeze meter (+0.5s — 4 hits freeze).
+// Enemies inside a slip zone keep sliding in the direction they were
+// moving. Super "Ice Rink": LOBBED throwable (changes round 1 — the rink
+// can arcs to the target, 560px throw range) that bursts on landing for
+// 800 impact damage, then stays as a patch (radius 260px, lasts 6s,
+// 30/s DoT) that freezes anyone standing in it — 2s standing freezes
+// them solid for 1s (progress resets on freeze, 2.5s immunity after,
+// buildup decays after 2s without a tick). The patch also slides enemies
+// like the slip zones. Freeze completion fires a REAL ice-explosion
+// visual (purple when the owner is Hypercharged — keyed off the real
+// hyper state, never a faked flag). Hyper Super "Deep Freeze": the
 // rink freezes twice as fast (1s standing) and melts enemies inside for
 // 150/s. Hyper main: every cone hit schedules a brain-freeze shatter 0.6s
 // later — 150px radius, 600 damage, ice-crystal visual, centered on the
@@ -64,22 +70,26 @@ check('bot super dispatch', game.includes("if (botCombatBrawler === 'freezeon') 
 check('player gadget dispatch (G1 + G2, per-brawler cooldowns)', game.includes("curBrawler === 'freezeon' && curGadget === 'g1'") && game.includes("curBrawler === 'freezeon' && curGadget === 'g2'"));
 check('bot gadget dispatch (G1 + G2)', game.includes("bot.brawler === 'freezeon' && g === 'g1'") && game.includes("bot.brawler === 'freezeon' && g === 'g2'"));
 check('bot super range gate is the rink throw range (560)', game.includes("if (bot.brawler === 'freezeon') return distance < FREEZEON_SUPER_THROW_RANGE;"));
-check('checkHit hook: cone lands on hit + Hyper cone hits schedule a shatter', game.includes("if (b && b.ownerBrawler === 'freezeon' && b.isFreezeonCone && target && target.hp > 0) {") && game.includes('freezeonConeLanded(b);') && game.includes('freezeonScheduleShatter(freezeonOwner, target);'));
+check('checkHit hook: cone lands on hit + builds freeze meter + Hyper cone hits schedule a shatter', game.includes("if (b && b.ownerBrawler === 'freezeon' && b.isFreezeonCone && target && target.hp > 0) {") && game.includes('freezeonConeLanded(b);') && game.includes('freezeonApplyFreezeBuild(freezeonOwner, target, FREEZEON_CONE_FREEZE_BUILD);') && game.includes('if (!target.isStructure && !target.isPet) freezeonApplyFreezeBuild') && game.includes('freezeonScheduleShatter(freezeonOwner, target);'));
 check('bullet expiry hook: cone runs out of range -> slip zone', game.includes('if (b.isFreezeonCone && b.life >= b.maxLife) freezeonConeLanded(b);'));
 check('bullet wall hook: cone hits a wall -> slip zone, then dies', game.includes('if (b.isFreezeonCone) {') && game.includes('freezeonConeLanded(b);\n               bullets.splice(i, 1);'));
 check('update loop calls updateFreezeonSystems', game.includes('if (playing && !gameOver) updateFreezeonSystems(dt);'));
 check('render calls renderFreezeonEffects', game.includes('    renderFreezeonEffects();'));
 check('portrait body-art branch (snowman: white body + carrot nose)', game.includes("if (brawlerId === 'freezeon') {") && game.includes("ctx.fillStyle = '#e0f2fe';") && game.includes("ctx.fillStyle = '#f97316';"));
-check('constants: 4 cones / 780 / 700 / 500 dmg / spread 0.42', game.includes('const FREEZEON_CONE_COUNT = 4;') && game.includes('const FREEZEON_CONE_SPEED = 780;') && game.includes('const FREEZEON_CONE_RANGE = 700;') && game.includes('const FREEZEON_CONE_DMG = 500;') && game.includes('const FREEZEON_CONE_SPREAD = 0.42;'));
-check('constants: slip 120px / 1s / drift 1.6', game.includes('const FREEZEON_SLIP_RADIUS = 120;') && game.includes('const FREEZEON_SLIP_DURATION_MS = 1000;') && game.includes('const FREEZEON_SLIP_DRIFT_MULT = 1.6;'));
+check('constants: 4 cones / 780 / 700 / 500 dmg / straight-line stagger 18 (no spread)', game.includes('const FREEZEON_CONE_COUNT = 4;') && game.includes('const FREEZEON_CONE_SPEED = 780;') && game.includes('const FREEZEON_CONE_RANGE = 700;') && game.includes('const FREEZEON_CONE_DMG = 500;') && game.includes('const FREEZEON_CONE_STAGGER = 18;') && !game.includes('FREEZEON_CONE_SPREAD'));
+check('constants: slip 72px (-40%) / 1s / drift 1.6', game.includes('const FREEZEON_SLIP_RADIUS = 72;') && game.includes('const FREEZEON_SLIP_DURATION_MS = 1000;') && game.includes('const FREEZEON_SLIP_DRIFT_MULT = 1.6;'));
 check('constants: super 260px / 6s / throw 560 / impact 800 / charge 7', game.includes('const FREEZEON_SUPER_RADIUS = 260;') && game.includes('const FREEZEON_SUPER_DURATION_MS = 6000;') && game.includes('const FREEZEON_SUPER_THROW_RANGE = 560;') && game.includes('const FREEZEON_SUPER_IMPACT_DMG = 800;') && game.includes('const FREEZEON_SUPER_CHARGE_HITS = 7;'));
 check('constants: freeze tick 250ms / 12.5 / hyper 25 / freeze 1s / SP1 1.5s / immune 2.5s', game.includes('const FREEZEON_FREEZE_TICK_MS = 250;') && game.includes('const FREEZEON_FREEZE_PER_TICK = 12.5;') && game.includes('const FREEZEON_FREEZE_PER_TICK_HYPER = 25;') && game.includes('const FREEZEON_FREEZE_DURATION_MS = 1000;') && game.includes('const FREEZEON_SP1_FREEZE_DURATION_MS = 1500;') && game.includes('const FREEZEON_FREEZE_IMMUNE_MS = 2500;'));
 check('constants: decay 2s delay / 24 per s / hyper DoT 150/s', game.includes('const FREEZEON_FREEZE_DECAY_DELAY_MS = 2000;') && game.includes('const FREEZEON_FREEZE_DECAY_PER_S = 24;') && game.includes('const FREEZEON_HYPER_DOT_PER_S = 150;'));
+check('constants (changes round 1): base DoT 30/s / cone freeze +25 / throw 1100 px/s / arc 80', game.includes('const FREEZEON_SUPER_DOT_PER_S = 30;') && game.includes('const FREEZEON_CONE_FREEZE_BUILD = 25;') && game.includes('const FREEZEON_SUPER_THROW_SPEED = 1100;') && game.includes('const FREEZEON_SUPER_ARC_HEIGHT = 80;'));
+check('lobbed super: thrown-rink array + land function + arc flight', game.includes('let freezeonThrownRinks = [];') && game.includes('function freezeonLandRink(thrown) {') && game.includes('freezeonThrownRinks.push({ startX: entity.x, startY: entity.y, targetX: x, targetY: y, createdAt: now, impactAt: now + flightMs, ownerId: entity.id, hyper: !!hyper });'));
+check('freeze explosion render branch keys off the real hyper flag', game.includes("if (ex.fxKind === 'freezeonFreeze') {") && game.includes("const shard = ex.hyper ? '#e9d5ff' : '#bae6fd';") && game.includes("const ringColor = ex.hyper ? '#a855f7' : '#7dd3fc';"));
+check('freeze explosion carries the real hyper state at freeze time', game.includes('const freezeHyper = owner.id === player.id ? !!isHypercharged : !!owner.isHypercharged;') && game.includes("fxKind: 'freezeonFreeze', hyper: freezeHyper"));
 check('constants: shatter 0.6s / 150px / 600 dmg / caps 4 zones / 2 patches', game.includes('const FREEZEON_SHATTER_DELAY_MS = 600;') && game.includes('const FREEZEON_SHATTER_RADIUS = 150;') && game.includes('const FREEZEON_SHATTER_DMG = 600;') && game.includes('const FREEZEON_MAX_SLIP_ZONES_PER_OWNER = 4;') && game.includes('const FREEZEON_MAX_PATCHES_PER_OWNER = 2;'));
 check('constants: hyper aura mirrors Pandy/Snipa (radius +20, line 5, alpha 0.9)', game.includes('const FREEZEON_HYPER_AURA_RADIUS_BONUS = 20;') && game.includes('const FREEZEON_HYPER_AURA_LINE_WIDTH = 5;') && game.includes('const FREEZEON_HYPER_AURA_STROKE_ALPHA = 0.9;'));
 check('SP gates use stored keys slow/long (never sp1/sp2 alone)', game.includes("function freezeonHasSP1(entity) { return freezeonStarChoice(entity) === 'slow'; }") && game.includes("function freezeonHasSP2(entity) { return freezeonStarChoice(entity) === 'long'; }"));
 check('SP2 Hypothermia: 25% less damage while marked', game.includes("if ((entity.freezeonHypothermiaUntil || 0) > now) mult *= 0.75; // FreeZeon SP2 Hypothermia: 25% less damage inside his rink"));
-check('reset sites clear the FreeZeon arrays (duels + 5 mode starts)', game.includes('freezeonPatches.length = 0; freezeonSlipZones.length = 0; freezeonShatters.length = 0;') && game.includes('electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = [];'));
+check('reset sites clear the FreeZeon arrays (duels + 5 mode starts)', game.includes('freezeonPatches.length = 0; freezeonSlipZones.length = 0; freezeonShatters.length = 0; freezeonThrownRinks.length = 0;') && game.includes('electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = [];'));
 check('voice module registered in bootstrap', bootstrap.includes("'./modules/audio/freezeon-voicelines.js'"));
 check('voice hooks: attack + kill + super + watcher', game.includes("BraweFreezeonVoice?.play('attack')") && game.includes("BraweFreezeonVoice?.play('kill')") && game.includes("BraweFreezeonVoice?.play('super')") && game.includes('updateFreezeonVoiceState();'));
 check('voice lines: exactly 12, flavor-only (RULE ONE — no mechanics words)', (() => {
@@ -179,6 +189,7 @@ function resetWorld() {
   sandbox.freezeonPatches = [];
   sandbox.freezeonSlipZones = [];
   sandbox.freezeonShatters = [];
+  sandbox.freezeonThrownRinks = [];
   sandbox.isHypercharged = false;
   sandbox.selectedBrawler = 'freezeon';
 }
@@ -191,6 +202,13 @@ function mkAlly(id, opts = {}) {
   const b = mkEntity(id, { team: 'player', ...opts });
   botEnts.push(b);
   return b;
+}
+// Advance the clock to the furthest pending rink impact and run a tick,
+// so the lobbed can lands (and its first patch tick fires) in one step.
+function landRinks() {
+  const rinks = sandbox.freezeonThrownRinks;
+  if (rinks.length) nowMs = Math.ceil(Math.max(...rinks.map((r) => r.impactAt)));
+  sandbox.updateFreezeonSystems(0.016);
 }
 
 const sandbox = {
@@ -220,6 +238,7 @@ const sandbox = {
   freezeonPatches: [],
   freezeonSlipZones: [],
   freezeonShatters: [],
+  freezeonThrownRinks: [],
   isHypercharged: false,
   selectedBrawler: 'freezeon',
   isRankedMatch: false,
@@ -240,7 +259,7 @@ vm.runInContext(
     'freezeonStarChoice', 'freezeonHasSP1', 'freezeonHasSP2', 'isFreezeon',
     'freezeonFreezeDurationMs', 'freezeonFindOwner', 'freezeonFreezeTarget',
     'freezeonApplyFreezeBuild', 'freezeonSpawnSlipZone', 'freezeonConeLanded',
-    'fireFreezeonMain', 'castFreezeonSuper', 'freezeonScheduleShatter',
+    'fireFreezeonMain', 'castFreezeonSuper', 'freezeonLandRink', 'freezeonScheduleShatter',
     'freezeonDetonateShatter', 'executeFreezeonGadget', 'updateFreezeonSystems',
     'renderFreezeonEffects', 'drawFreezeonCone',
   ].map((fn) => extractFn(game, fn)).join('\n'),
@@ -269,7 +288,8 @@ try {
   check('main: 4 cones fire (Lou fires 3)', cones.length === 4);
   check('main: cones 780 px/s, 700px range (maxLife 700/780), 500 dmg at P11', cones.every((c) => near(Math.hypot(c.vx, c.vy), 780) && near(c.maxLife, 700 / 780) && c.damage === 500));
   check('main: cones do not pierce, hitbox 1.4x', cones.every((c) => c.pierce === false && c.hitboxMod === 1.4));
-  check('main: cones spread across a fan (distinct angles)', new Set(cones.map((c) => Math.atan2(c.vy, c.vx).toFixed(3))).size === 4);
+  check('main (changes round 1): cones fly in a straight line — one shared angle', new Set(cones.map((c) => Math.atan2(c.vy, c.vx).toFixed(3))).size === 1);
+  check('main (changes round 1): cones trail each other along the line (18px stagger)', cones.every((c, i) => i === 0 || Math.abs((cones[i - 1].x - c.x) - 18) < 0.01) && cones.every((c) => c.y === 0));
   check('main: no hyper tint without Hyper', cones.every((c) => c.hyperVisual === false));
   // Hyper main: purple tint on the cones.
   resetWorld();
@@ -294,7 +314,7 @@ try {
   const cone = { x: 500, y: 300, ownerId: owner.id, isFreezeonCone: true };
   sandbox.freezeonConeLanded(cone);
   check('slip: one cone leaves one slip zone at its landing point', sandbox.freezeonSlipZones.length === 1 && sandbox.freezeonSlipZones[0].x === 500 && sandbox.freezeonSlipZones[0].y === 300);
-  check('slip: zone radius 120, lasts 1s', sandbox.freezeonSlipZones[0].radius === 120 && sandbox.freezeonSlipZones[0].until === nowMs + 1000);
+  check('slip: zone radius 72 (-40%), lasts 1s', sandbox.freezeonSlipZones[0].radius === 72 && sandbox.freezeonSlipZones[0].until === nowMs + 1000);
   sandbox.freezeonConeLanded(cone);
   check('slip: the same cone never leaves a second zone (guard)', sandbox.freezeonSlipZones.length === 1);
   // Cap: 5 cones -> 4 zones (oldest expires).
@@ -330,7 +350,7 @@ try {
   check('slip: velocity decays outside the zone', (enemy._freezeonSlipVx || 0) < slipVxBefore);
 } catch (e) { failures.push('slipping threw: ' + e.message); }
 
-// --- executed: Super cast (impact damage + patch) ---
+// --- executed: Super cast (lobbed throwable: in-flight, then lands) ---
 try {
   resetWorld();
   const owner = playerEnt;
@@ -339,24 +359,32 @@ try {
   const farEnemy = mkBot('e2', { x: 1400, y: 500, hp: 5000 });
   const ally = mkAlly('a1', { x: 800, y: 500, hp: 5000 });
   const structure = mkBot('s1', { x: 800, y: 500, hp: 5000, isStructure: true, brawler: 'tower_core' });
-  check('super: cast returns true, one patch lands at the aim (560px throw range)', sandbox.castFreezeonSuper(owner, false, 800, 500) === true && sandbox.freezeonPatches.length === 1 && sandbox.freezeonPatches[0].x === 800 && sandbox.freezeonPatches[0].y === 500);
+  check('super (changes round 1): cast returns true and lobs a rink can — no patch yet, no damage yet', sandbox.castFreezeonSuper(owner, false, 800, 500) === true && sandbox.freezeonThrownRinks.length === 1 && sandbox.freezeonThrownRinks[0].targetX === 800 && sandbox.freezeonThrownRinks[0].targetY === 500 && sandbox.freezeonPatches.length === 0 && enemy.hp === 5000);
+  landRinks();
+  check('super: the can lands at the aim and forms the patch', sandbox.freezeonThrownRinks.length === 0 && sandbox.freezeonPatches.length === 1 && sandbox.freezeonPatches[0].x === 800 && sandbox.freezeonPatches[0].y === 500);
   check('super: patch radius 260, lasts 6s, not hyper', sandbox.freezeonPatches[0].radius === 260 && sandbox.freezeonPatches[0].until === nowMs + 6000 && sandbox.freezeonPatches[0].hyper === false);
-  check('super: impact damage 800 on the enemy in the patch', enemy.hp === 5000 - 800);
+  check('super: impact damage 800 on the enemy in the patch', checkHitCalls.some((c) => c.targetId === 'e1' && c.damage === 800));
+  check('super: enemy hp is impact 800 + first base-DoT tick 8', enemy.hp === 5000 - 800 - 8);
   check('super: enemy outside the patch takes nothing', farEnemy.hp === 5000);
   check('super: allies take no impact damage', ally.hp === 5000);
   check('super: structures take no impact damage', structure.hp === 5000 && !checkHitCalls.some((c) => c.targetId === 's1'));
-  check('super: ICE RINK! text shown', floatingTexts.some((f) => f.text === '❄️ ICE RINK!'));
+  check('super: ICE RINK! text shown on landing', floatingTexts.some((f) => f.text === '❄️ ICE RINK!'));
   // Throw clamps at 560px.
   resetWorld();
   sandbox.castFreezeonSuper(playerEnt, false, 2000, 0);
-  check('super: throw clamps at 560px', sandbox.freezeonPatches[0].x === 560);
+  check('super: throw clamps at 560px', sandbox.freezeonThrownRinks[0].targetX === 560);
+  landRinks();
+  check('super: clamped throw lands at 560px', sandbox.freezeonPatches[0].x === 560);
   // Hyper cast: DEEP FREEZE! text, hyper patch.
   resetWorld();
   sandbox.castFreezeonSuper(playerEnt, true, 300, 0);
+  check('hyper super: the lobbed can is hyper', sandbox.freezeonThrownRinks[0].hyper === true);
+  landRinks();
   check('hyper super: patch is hyper, DEEP FREEZE! text shown', sandbox.freezeonPatches[0].hyper === true && floatingTexts.some((f) => f.text === '❄️ DEEP FREEZE!'));
   // Cap: 3 casts -> 2 patches (oldest expires).
   sandbox.castFreezeonSuper(playerEnt, false, 100, 0);
   sandbox.castFreezeonSuper(playerEnt, false, 200, 0);
+  landRinks();
   check('super: capped at 2 patches per owner (oldest dropped)', sandbox.freezeonPatches.length === 2 && !sandbox.freezeonPatches.some((p) => p.x === 300));
   // Patches expire after 6s.
   nowMs += 6001;
@@ -370,7 +398,7 @@ try {
   const owner = playerEnt;
   const enemy = mkBot('e1', { x: 300, y: 0, hp: 5000 });
   sandbox.castFreezeonSuper(owner, false, 300, 0);
-  sandbox.updateFreezeonSystems(0.016);
+  landRinks(); // the lobbed can flies, lands, and the first tick fires
   check('freeze: first tick builds 12.5', enemy.freezeonFreeze === 12.5);
   for (let t = 1; t < 7; t++) { nowMs += 250; sandbox.updateFreezeonSystems(0.016); }
   check('freeze: 7 ticks build 87.5, not yet frozen', enemy.freezeonFreeze === 87.5 && !enemy.stunUntil);
@@ -388,7 +416,7 @@ try {
   const owner2 = playerEnt;
   const enemy2 = mkBot('e1', { x: 300, y: 0, hp: 5000 });
   sandbox.castFreezeonSuper(owner2, false, 300, 0);
-  sandbox.updateFreezeonSystems(0.016);
+  landRinks();
   nowMs += 250;
   sandbox.updateFreezeonSystems(0.016);
   check('decay: 2 ticks build 25', enemy2.freezeonFreeze === 25);
@@ -400,6 +428,7 @@ try {
   const sp1Owner = mkBot('sp1', { team: 'player', brawler: 'freezeon', selectedStar: 'slow' });
   const enemy3 = mkBot('e1', { x: 300, y: 0, hp: 5000 });
   sandbox.castFreezeonSuper(sp1Owner, false, 300, 0);
+  landRinks();
   for (let t = 0; t < 8; t++) { sandbox.updateFreezeonSystems(0.016); nowMs += 250; }
   check('freeze: SP1 Supercool freezes for 1500ms', enemy3.stunUntil === nowMs - 250 + 1500);
 } catch (e) { failures.push('patch ticks / freeze threw: ' + e.message); }
@@ -410,7 +439,7 @@ try {
   const owner = playerEnt;
   const enemy = mkBot('e1', { x: 300, y: 0, hp: 5000 });
   sandbox.castFreezeonSuper(owner, true, 300, 0);
-  sandbox.updateFreezeonSystems(0.016);
+  landRinks();
   check('hyper: first tick builds 25 (2x)', enemy.freezeonFreeze === 25);
   check('hyper: DoT ticks 38 damage (150/s * 0.25s, on top of the 800 impact)', enemy.hp === 5000 - 800 - 38);
   for (let t = 1; t < 4; t++) { nowMs += 250; sandbox.updateFreezeonSystems(0.016); }
@@ -421,7 +450,7 @@ try {
   const sp2Owner = mkBot('sp2', { team: 'player', brawler: 'freezeon', selectedStar: 'long' });
   const enemy2 = mkBot('e1', { x: 300, y: 0, hp: 5000 });
   sandbox.castFreezeonSuper(sp2Owner, false, 300, 0);
-  sandbox.updateFreezeonSystems(0.016);
+  landRinks();
   check('SP2: enemy in the rink gets the Hypothermia mark', (enemy2.freezeonHypothermiaUntil || 0) > nowMs);
   const farEnemy = mkBot('e2', { x: 900, y: 0, hp: 5000 });
   sandbox.updateFreezeonSystems(0.016);
@@ -477,6 +506,7 @@ try {
   const owner = playerEnt;
   const enemy = mkBot('e1', { x: 300, y: 0, hp: 5000 });
   sandbox.castFreezeonSuper(owner, false, 300, 0);
+  landRinks();
   check('gadget G1: Cryo Syrup freezes everyone in your rink', sandbox.executeFreezeonGadget(owner, 'g1', false) === true && enemy.stunUntil === nowMs + 1000);
   check('gadget G1: CRYO SYRUP! text shown', floatingTexts.some((f) => f.text === '🧪 CRYO SYRUP!'));
   const farEnemy = mkBot('e2', { x: 900, y: 0, hp: 5000 });
@@ -509,7 +539,7 @@ try {
   const s1 = stubCtx();
   sandbox.ctx = s1.proxy;
   sandbox.renderFreezeonEffects();
-  check('render: slip zone draws a pale ice circle', s1.calls.some((c) => c.m === 'arc' && c.args[2] === 120));
+  check('render: slip zone draws a pale ice circle (72px after -40%)', s1.calls.some((c) => c.m === 'arc' && c.args[2] === 72));
   check('render: patch draws a dashed ice ring', s1.calls.some((c) => c.m === 'setLineDash'));
   check('render: freeze bar draws above the enemy (ice-blue fill)', s1.sets.some((s) => s.p === 'fillStyle' && s.v === '#38bdf8') && s1.calls.some((c) => c.m === 'fillRect'));
   // Hyper aura renders the purple ring (player hyper is the global flag).
@@ -526,6 +556,63 @@ try {
   sandbox.drawFreezeonCone(s4.proxy, { x: 0, y: 0, vx: 780, vy: 0, hyperVisual: true });
   check('render: hyper cone draws a purple scoop', s4.sets.some((s) => s.p === 'fillStyle' && s.v === '#c084fc'));
 } catch (e) { failures.push('render helpers threw: ' + e.message); }
+
+// --- executed: changes round 1 (cone freeze meter / base DoT / real
+// freeze visuals keyed off real state / lobbed rink render) ---
+try {
+  // Cone-hit freeze meter: 4 cone hits freeze (25 each), via the real
+  // buildup path (same decay/immunity rules as the patch).
+  resetWorld();
+  const owner = playerEnt;
+  const enemy = mkBot('e1', { x: 300, y: 0, hp: 5000 });
+  sandbox.freezeonApplyFreezeBuild(owner, enemy, 25);
+  check('cone freeze: one cone hit builds 25 (0.5s)', enemy.freezeonFreeze === 25);
+  sandbox.freezeonApplyFreezeBuild(owner, enemy, 25);
+  sandbox.freezeonApplyFreezeBuild(owner, enemy, 25);
+  check('cone freeze: three hits build 75, not yet frozen', enemy.freezeonFreeze === 75 && !enemy.stunUntil);
+  sandbox.freezeonApplyFreezeBuild(owner, enemy, 25);
+  check('cone freeze: the fourth hit freezes solid for 1s', enemy.freezeonFreeze === 0 && enemy.stunUntil === nowMs + 1000);
+  check('cone freeze: FROZEN! text shown', floatingTexts.some((f) => f.text === 'FROZEN!'));
+  // Base Super DoT: 30/s = 8 per 250ms tick (on top of the 800 impact).
+  resetWorld();
+  const owner4 = playerEnt;
+  const enemy5 = mkBot('e1', { x: 300, y: 0, hp: 5000 });
+  sandbox.castFreezeonSuper(owner4, false, 300, 0);
+  landRinks();
+  check('base DoT: first tick melts 8 (30/s * 0.25s)', enemy5.hp === 5000 - 800 - 8);
+  nowMs += 250;
+  sandbox.updateFreezeonSystems(0.016);
+  check('base DoT: second tick melts another 8', enemy5.hp === 5000 - 800 - 16);
+  // Freeze explosion carries the REAL hyper state (Snipa lesson: the
+  // visual must key off real state, never a faked flag).
+  resetWorld();
+  const owner2 = playerEnt;
+  const enemy2 = mkBot('e1', { x: 300, y: 0, hp: 5000 });
+  sandbox.freezeonFreezeTarget(owner2, enemy2);
+  const fx = explosions.find((x) => x.fxKind === 'freezeonFreeze');
+  check('freeze visual: a normal freeze pushes an ice-blue explosion, hyper flag false', !!fx && fx.hyper === false && fx.color === 'rgba(56,189,248,.82)');
+  resetWorld();
+  const owner3 = playerEnt;
+  sandbox.isHypercharged = true;
+  const enemy3 = mkBot('e1', { x: 300, y: 0, hp: 5000 });
+  sandbox.freezeonFreezeTarget(owner3, enemy3);
+  const fxH = explosions.find((x) => x.fxKind === 'freezeonFreeze');
+  check('freeze visual: a Hyper freeze pushes a purple explosion, hyper flag true', !!fxH && fxH.hyper === true && fxH.color === 'rgba(192,132,252,.82)');
+  resetWorld();
+  const botOwner = mkBot('fz', { brawler: 'freezeon', isHypercharged: true });
+  const enemy4 = mkAlly('a1', { x: 300, y: 0, hp: 5000 });
+  sandbox.freezeonFreezeTarget(botOwner, enemy4);
+  const fxB = explosions.find((x) => x.fxKind === 'freezeonFreeze');
+  check('freeze visual: a Hypercharged bot freeze is purple too', !!fxB && fxB.hyper === true);
+  // Lobbed rink render: dashed landing marker + spinning ice can on the arc.
+  resetWorld();
+  sandbox.castFreezeonSuper(playerEnt, false, 300, 0);
+  const s5 = stubCtx();
+  sandbox.ctx = s5.proxy;
+  sandbox.renderFreezeonEffects();
+  check('render: lobbed rink draws a dashed landing marker (radius 40)', s5.calls.some((c) => c.m === 'arc' && c.args[2] === 40) && s5.calls.some((c) => c.m === 'setLineDash'));
+  check('render: lobbed rink draws the spinning ice can', s5.sets.some((s) => s.p === 'fillStyle' && s.v === '#7dd3fc'));
+} catch (e) { failures.push('changes round 1 threw: ' + e.message); }
 
 // ---------------------------------------------------------- 3. report
 if (failures.length) {
