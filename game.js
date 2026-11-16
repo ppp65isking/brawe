@@ -539,8 +539,11 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
   
   let isTowerTroubleMode = false;
   let isTowerDuelEvent = false;
+  let isTowerDuelsMode = false; // permanent Tower Duels mode: all 8 Tower Powers
+  let isDuelsMaxedMode = false; // Duels + Tower Duels: Power 12 + all gadgets/star powers/Hypercharge
   let towerTroubleVariant = null;
   function getSelectedBrawlerLevel() {
+    if (isDuelsMaxedMode) return 12;
     if (isTraining || isDamageFillerMode || isMirrorMode || isRankedMatch || isTowerTroubleMode || isTowerDuelEvent) return 11;
     try {
             const liveLevel = playerData.brawlers?.[selectedBrawler]?.level;
@@ -599,6 +602,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         return BRICK_RANK_STAGES.find((stage) => lifetime >= stage.minLifetime && lifetime <= stage.maxLifetime) || BRICK_RANK_STAGES[BRICK_RANK_STAGES.length - 1];
     }
     function getBotLevelNearPlayer() {
+        if (isDuelsMaxedMode) return 12;
         if (isDamageFillerMode || isMirrorMode || isRankedMatch || isTowerTroubleMode || isTowerDuelEvent) return 11;
         return getBrickOpponentLevel(getSelectedProgress());
     }
@@ -719,6 +723,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         if (mode === 'prop_hunt') return 'Prop Hunt';
         if (mode === 'tower_defense') return 'Tower Defense';
         if (mode === 'duels') return 'Duels';
+    if (mode === 'tower_duels') return 'Tower Duels';
         if (mode === 'power_play_showdown') return 'Power Play Showdown';
         if (mode === 'corrupted_showdown') return 'Corrupted Showdown';
         if (mode === 'chaos_crown') return 'Chaos Crown';
@@ -3178,6 +3183,13 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     function getSelectedProgress() {
                 normalizeSelectedBrawler();
             const base = getEffectiveBrawlerProgress(selectedBrawler);
+            if (isDuelsMaxedMode) return {
+                ...base,
+                level: 12,
+                gadgetUnlocked: true,
+                starPowerUnlocked: true,
+                hyperchargeUnlocked: true
+            };
             if (!isTraining && !isDamageFillerMode && !isMirrorMode && !isRankedMatch && !isTowerTroubleMode && !isTowerDuelEvent) return base;
             return {
                 ...base,
@@ -12047,6 +12059,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
   const DUELS_MAX_FIGHTERS = 4;
   const DUELS_ROUND_OPTIONS = Object.freeze([7, 9, 15]);
   const DUELS_ACTIVE_TOWER_POWERS = 5;
+const TOWER_DUELS_ACTIVE_TOWER_POWERS = 8;
   let duelsTargetWins = 9;
   function getDuelsWinScore() {
       if (isTowerDuelEvent) return 5;
@@ -16519,7 +16532,8 @@ let heistFeverActive = false;
   }
   function assignSlopSushiBotPowers() {
       if (!isSlopSushiMode) return;
-      const cardCount = Math.max(1, Math.min(5, slopSushiActiveCards.length || 1));
+      const cardCap = isTowerDuelsMode ? TOWER_DUELS_ACTIVE_TOWER_POWERS : 5;
+      const cardCount = Math.max(1, Math.min(cardCap, slopSushiActiveCards.length || 1));
       if(isTowerTroubleMode&&towerTroubleVariant==='chaos'){const rule=getChaosCrownRule(playerData.slopSushi?.chaosRun?.floor||1);if(rule.startSuper){superCharge=100;updateSuperButton();}if(rule.startHyper){hyperChargeCharge=100;updateHyperchargeButton();}}
       for (const bot of bots) {
           if (!bot || bot.isDummy || bot.isPet || bot.copyphaseClone) continue;
@@ -16950,7 +16964,8 @@ let heistFeverActive = false;
   }
 
   let slopSushiCardHud=null;
-  function removeSlopSushiCardHud(){if(slopSushiCardHud)slopSushiCardHud.remove();slopSushiCardHud=null;}
+  let slopSushiBotCardHud=null;
+  function removeSlopSushiCardHud(){if(slopSushiCardHud)slopSushiCardHud.remove();slopSushiCardHud=null;if(slopSushiBotCardHud)slopSushiBotCardHud.remove();slopSushiBotCardHud=null;}
   function renderSlopSushiCardHud(){
       removeSlopSushiCardHud();if(!isSlopSushiMode||!slopSushiActiveCards.length)return;
       const tray=document.createElement('div');tray.style.cssText='position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:95;display:flex;gap:7px;align-items:flex-end;pointer-events:none;font-family:sans-serif';
@@ -16963,6 +16978,18 @@ let heistFeverActive = false;
           item.appendChild(tip);item.onmouseenter=()=>{tip.style.display='block';item.style.transform='translateY(-5px) scale(1.06)'};item.onmouseleave=()=>{tip.style.display='none';item.style.transform='none'};tray.appendChild(item);
       });
       document.body.appendChild(tray);slopSushiCardHud=tray;
+      // Tower Duels: show the bot's Tower Powers too, so the player can see
+      // the bot is maxed the same way. Icons come from the bot's REAL card
+      // list (assigned in assignSlopSushiBotPowers before this runs).
+      if (isTowerDuelsMode && bots[0] && Array.isArray(bots[0].slopSushiCards) && bots[0].slopSushiCards.length) {
+          const botTray=document.createElement('div');botTray.style.cssText='position:fixed;left:50%;bottom:70px;transform:translateX(-50%);z-index:95;display:flex;gap:5px;align-items:center;pointer-events:none;font-family:sans-serif';
+          const botLabel=document.createElement('div');botLabel.textContent='BOT POWERS';botLabel.style.cssText='font-size:10px;font-weight:900;color:#fca5a5;letter-spacing:1px;margin-right:4px';botTray.appendChild(botLabel);
+          bots[0].slopSushiCards.forEach(card=>{
+              const item=document.createElement('div');item.title=card.name;item.style.cssText='position:relative;width:34px;height:34px;border:2px solid #f87171;border-radius:9px;background:#1a1014;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 0 10px #f8717144';
+              item.textContent=card.icon||'🗼';botTray.appendChild(item);
+          });
+          document.body.appendChild(botTray);slopSushiBotCardHud=botTray;
+      }
   }
 
   function openSushiEventHub(){
@@ -33146,15 +33173,24 @@ let heistFeverActive = false;
         const towerDuelPreset = isTowerDuelEvent ? towerDuelPowerLoadouts[selectedBrawler] : null;
         slopSushiActiveCards = Array.isArray(towerDuelPreset) && towerDuelPreset.length
             ? [...towerDuelPreset]
-            : duelTowerDeck.slice(0, DUELS_ACTIVE_TOWER_POWERS).map(card => card.id);
+            : duelTowerDeck.slice(0, isTowerDuelsMode ? TOWER_DUELS_ACTIVE_TOWER_POWERS : DUELS_ACTIVE_TOWER_POWERS).map(card => card.id);
     }
-    const duelPlayerLevel = 11;
+    const duelPlayerLevel = isDuelsMaxedMode ? 12 : 11;
     const ptier = isFusedMode ? getFusedTier(player.fusedParts, duelPlayerLevel) : getHPTier(selectedBrawler, duelPlayerLevel);
     resetPlayerAmmoForBrawler(selectedBrawler, true);
     if (isFusedMode) player.speed = ptier.speed || 220;
     if (isTowerDuelEvent) {
         selectedStar = Math.random() > 0.5 ? 'slow' : 'long';
         selectedGadget = Math.random() > 0.5 ? 'g1' : 'g2';
+    }
+    // Maxed-out Duels (Anthony 2026-11-16): every fighter plays with a full
+    // loadout — the stored choice when the player has one, otherwise the
+    // defaults. Re-synced every round because the fighter changes per round.
+    if (isDuelsMaxedMode) {
+        const maxedProg = getOrCreateProgress(selectedBrawler);
+        selectedGadget = maxedProg.selectedGadget || 'g1';
+        selectedStar = maxedProg.selectedStar || 'slow';
+        if (selectedStar !== 'slow' && selectedStar !== 'long') selectedStar = 'slow';
     }
     player.hyperHpBoost = 0;
     player.maxHp = ptier.hp;
@@ -33179,7 +33215,7 @@ let heistFeverActive = false;
     bots.length = 0;
     const fusedBotParts = isFusedMode ? rollFusedParts() : null;
     const bBrawler = isFusedMode ? fusedBotParts[0] : botTeam[Math.floor(Math.random() * botTeam.length)];
-    const botLevel = isTowerDuelEvent ? 11 : getBotLevelNearPlayer();
+    const botLevel = isDuelsMaxedMode ? 12 : (isTowerDuelEvent ? 11 : getBotLevelNearPlayer());
     const btier = isFusedMode ? getFusedTier(fusedBotParts, botLevel) : getHPTier(bBrawler, botLevel);
     const unlocks = getUnlocksForLevel(botLevel);
     bots.push({
@@ -47309,6 +47345,7 @@ let heistFeverActive = false;
       ['brawe_ball', '⚽', 'Brawe Ball 3v3', '3v3 Soccer clash'],
       ['knockout_3v3', '🥊', 'Knockout 3v3', 'Best of 3 Rounds'],
       ['duels', '⚔️', 'Duels (First to 9)', 'Draft 1 to 4 brawlers'],
+    ['tower_duels', '🗼', 'Tower Duels', 'Draft 1 to 4 brawlers • ALL 8 Tower Powers'],
       ['fused', '🧬', 'Fused Duels', 'Two random brawlers fused — both attacks, both Supers'],
       ['brick_vault', '🔒', 'Vault Siege 3v3', 'Break the enemy core vault'],
       ['marked_mayhem', 'TR', 'Target Rush', 'Hunt marked targets for bonus points'],
@@ -47324,7 +47361,7 @@ let heistFeverActive = false;
   ];
   const HOME_MODE_DATA = Object.fromEntries(HOME_MODE_CARDS.map((entry) => [entry[0], entry]));
   const POWER_PLAY_BRAWLERS = new Set(['blinkeye', 'fuser', 'rocketeer', 'bouncin_balls', 'echo', 'orbo', 'decayer', 'money_and_tax', 'ramage']);
-  const HOME_PERMANENT_MODE_IDS = ['blink_eye_dodge', 'headless_boss_s4', 'tombstone_boss', 'orbo_boss', 'ramage_boss', 'weefee_boss', 'demon_villains_boss', 'custom_clash', 'brawe_ball', 'knockout_3v3', 'duels', 'fused', 'power_play_showdown', 'corrupted_showdown', 'slop_sushi', 'slop_sushi_gauntlet', 'chaos_crown', 'arena_forge', 'arena_forge_overclocked', 'tug_zone', 'construction', 'knock_donate', 'damage_filler', 'capture_turkey', 'prop_hunt'];
+  const HOME_PERMANENT_MODE_IDS = ['blink_eye_dodge', 'headless_boss_s4', 'tombstone_boss', 'orbo_boss', 'ramage_boss', 'weefee_boss', 'demon_villains_boss', 'custom_clash', 'brawe_ball', 'knockout_3v3', 'duels', 'tower_duels', 'fused', 'power_play_showdown', 'corrupted_showdown', 'slop_sushi', 'slop_sushi_gauntlet', 'chaos_crown', 'arena_forge', 'arena_forge_overclocked', 'tug_zone', 'construction', 'knock_donate', 'damage_filler', 'capture_turkey', 'prop_hunt'];
   HOME_PERMANENT_MODE_IDS.push('arena_forge_minion_surge');
   HOME_PERMANENT_MODE_IDS.push('arena_forge_hyper');
   // BUILDER PICK (flagged): Super Showdown is always available during the
@@ -47334,7 +47371,7 @@ let heistFeverActive = false;
   const HOME_ROTATING_MODE_IDS = ['marked_mayhem', 'objective', 'brick_vault', 'mirror', 'power_gods', 'solo_td', 'impossible'];
   const HOME_POPULAR_MODE_IDS = ['solo', 'super_showdown', 'duo', 'trio',
     'arena_forge', 'arena_forge_overclocked', 'arena_forge_minion_surge', 'arena_forge_hyper',
-    'brawe_ball', 'knockout_3v3', 'duels', 'fused',
+    'brawe_ball', 'knockout_3v3', 'duels', 'tower_duels', 'fused',
     'tug_zone', 'construction', 'knock_donate', 'damage_filler',
     'capture_turkey', 'tower_defense', 'custom_clash'];
   const HOME_DAILY_ROTATION_POOL = ['blink_eye_dodge', 'orbo_boss', 'ramage_boss',
@@ -47474,7 +47511,8 @@ let heistFeverActive = false;
       custom_clash: ['Pick ANY mode and map', 'Select up to 3 active mutators'],
       brawe_ball: ['3v3 Soccer clash', 'Score 2 goals to win'],
       knockout_3v3: ['Best of 3 Rounds', 'No respawns during rounds'],
-      duels: ['Draft 1 to 4 brawlers', 'First to win 9 rounds', 'Level 11 stats', '5 Tower Powers', 'Poison storm disabled'],
+      duels: ['Draft 1 to 4 brawlers', 'First to win 9 rounds', 'Level 12 stats', 'All gadgets, star powers & Hypercharge', '5 Tower Powers', 'Poison storm disabled'],
+      tower_duels: ['Draft 1 to 4 brawlers', 'First to win 9 rounds', 'Level 12 stats', 'All gadgets, star powers & Hypercharge', 'ALL 8 Tower Powers', 'Poison storm disabled'],
       power_play_showdown: ['12-player Solo Battle Royale with Power Cubes', 'Every fighter wields 3 simultaneous custom superpowers', 'Curated roster: BlinkEye, Fuser, Rocketeer, Bouncin\' Balls, Echo, Orbo, Decayer, Money & Tax, Ramage'],
       tower_duels_weekend: ['Five complete Duels matches', 'Each floor rolls a fresh random trio of Power 11 guest brawlers', 'Complete Floor 5 to unlock the exclusive TOWER DUELAR title'],
       solo: ['20-player free-for-all', 'No respawns', 'Rare Nova Boxes grant +2 Power, shield and charge'],
@@ -50616,6 +50654,7 @@ let heistFeverActive = false;
           orbo_boss: '#8c75df',
           blink_eye_dodge: '#a855f7',
           tower_duels_weekend: '#67e8ff',
+      tower_duels: '#38bdf8',
           demon_villains_boss: '#d44763',
           ramage_boss: '#c0392b',
           weefee_boss: '#00f5d4',
@@ -50650,7 +50689,7 @@ let heistFeverActive = false;
           else if (id === 'trio') tag = 'QUAD';
           else if (id === 'orbo_boss' || id === 'ramage_boss' || id === 'demon_villains_boss' || id === 'weefee_boss' || id === 'blink_eye_dodge' || id === 'power_gods' || id === 'damage_filler' || id === 'solo_td' || id === 'tombstone_boss' || id === 'megastein_boss' || id === 'tower_defense') tag = 'SOLO';
           else if (id === 'beast_boss_god_mode') tag = '5V1';
-          else if (id === 'duels' || id === 'impossible') tag = '1V1';
+          else if (id === 'duels' || id === 'tower_duels' || id === 'impossible') tag = '1V1';
           else if (id === 'arena_forge') tag = '3V3';
           else if (id === 'marked_mayhem') tag = '3V3';
           else if (id === 'mirror') tag = '4V4';
@@ -52823,6 +52862,8 @@ let heistFeverActive = false;
           startBtn.textContent = event.completed ? 'TOWER DUELAR EARNED' : `Start Tower Duels - Floor ${event.floor}/5`;
       } else if (showdownMode === 'slop_sushi_plus' && startBtn) {
           startBtn.textContent = '🗼 Start Tower Fusion Lab • Pick 7';
+      } else if (showdownMode === 'tower_duels' && startBtn) {
+          startBtn.textContent = '🗼 Start Tower Duels • ALL 8 Powers';
       } else if (hasHourlySushiModifier(showdownMode) && startBtn) {
           startBtn.textContent = `🍣 ${startBtn.textContent}`;
       }
@@ -52907,6 +52948,8 @@ let heistFeverActive = false;
       isFusedMode = false;
       player.fusedParts = null;
       isTowerDuelEvent = false;
+      isTowerDuelsMode = false;
+      isDuelsMaxedMode = false;
       isWarperEvent = false;
       isTowerPowerVaultWeekendMatch = TOWER_POWER_SYSTEM_ENABLED && showdownMode === 'brick_vault' && isTowerPowerVaultWeekendActive();
       if (isTowerPowerVaultWeekendMatch) {
@@ -53331,6 +53374,8 @@ let heistFeverActive = false;
       isTraining = false;
       isDuels = true;
       isTowerDuelEvent = true;
+      isTowerDuelsMode = false;
+      isDuelsMaxedMode = false;
       isSlopSushiMode = true;
       sushiMatchArmed = true;
       clearShowdownModifier();
@@ -53375,6 +53420,8 @@ let heistFeverActive = false;
       isDuels = true;
       isFusedMode = true;
       isTowerDuelEvent = false;
+      isTowerDuelsMode = false;
+      isDuelsMaxedMode = false;
       isSlopSushiMode = false;
       sushiMatchArmed = false;
       clearShowdownModifier();
@@ -53482,6 +53529,7 @@ let heistFeverActive = false;
           }
           if (showdownMode === 'chaos_crown') prepareChaosCrownRun();
           else if (showdownMode === 'tower_duels_weekend') launchTowerDuelsWeekendFloor();
+          else if (showdownMode === 'tower_duels') { openTowerDuelsDraft(); return; }
           else if (showdownMode === 'slop_sushi' || showdownMode === 'slop_sushi_gauntlet' || showdownMode === 'slop_sushi_plus' || hasHourlySushiModifier(showdownMode)) prepareSlopSushiMatch();
           else { sushiMatchArmed = false; slopSushiActiveCards = []; launchShowdownMatch(); }
       });
@@ -53496,7 +53544,10 @@ let heistFeverActive = false;
     if(homeActionRow) homeActionRow.appendChild(duelsBtn);
     else if(startBtn) startBtn.parentNode.appendChild(duelsBtn);
 
-  duelsBtn.addEventListener('click', ()=>{
+  // Tower Duels shares the Duels draft overlay: same 1–4 draft, but every
+  // fighter gets ALL 8 Tower Powers, the format is fixed at first to 9,
+  // and brawlers play maxed (Power 12 + full loadout).
+  function openDuelsDraftOverlay(isTowerDuels) {
       const overlay = document.createElement('div');
       overlay.style.position = 'fixed'; overlay.style.inset = '0';
       overlay.style.background = 'rgba(8, 17, 31, 0.95)'; overlay.style.zIndex = '100';
@@ -53507,10 +53558,10 @@ let heistFeverActive = false;
       overlay.style.overflowY = 'auto';
       
       const title = document.createElement('h1');
-      title.textContent = 'Draft 1–4 Brawlers for Duels!';
+      title.textContent = isTowerDuels ? 'Draft 1–4 Brawlers for Tower Duels!' : 'Draft 1–4 Brawlers for Duels!';
       overlay.appendChild(title);
       const draftHint = document.createElement('div');
-      draftHint.textContent = 'Choose 1–4 fighters, then pick a format and LAUNCH.';
+      draftHint.textContent = isTowerDuels ? 'Choose 1–4 fighters — ALL 8 Tower Powers active for every fighter. First to 9 rounds.' : 'Choose 1–4 fighters, then pick a format and LAUNCH.';
       draftHint.style.fontSize = '14px';
       draftHint.style.color = '#a8c8ef';
       draftHint.style.marginTop = '8px';
@@ -53528,6 +53579,7 @@ let heistFeverActive = false;
       draftDisplay.style.color = '#5df2c2'; draftDisplay.style.marginTop = '30px';
       draftDisplay.textContent = `Drafted: ${drafted.length}/${DUELS_MAX_FIGHTERS}`;
       const formatRow = document.createElement('div');
+      if (isTowerDuels) formatRow.style.display = 'none';
       formatRow.style.display = 'flex'; formatRow.style.gap = '10px'; formatRow.style.marginTop = '20px';
       const formatBtns = [];
       for (const wins of DUELS_ROUND_OPTIONS) {
@@ -53543,7 +53595,7 @@ let heistFeverActive = false;
       }
       formatBtns.forEach((b, i) => { b.style.outline = DUELS_ROUND_OPTIONS[i] === duelsTargetWins ? '3px solid #ffd44f' : 'none'; });
       const launchBtn = document.createElement('button');
-      launchBtn.textContent = 'LAUNCH DUELS';
+      launchBtn.textContent = isTowerDuels ? 'LAUNCH TOWER DUELS' : 'LAUNCH DUELS';
       launchBtn.style.padding = '12px 24px'; launchBtn.style.borderRadius = '12px'; launchBtn.style.marginTop = '16px'; launchBtn.style.cursor = 'pointer';
       launchBtn.disabled = true;
       function updateLaunchBtn() { launchBtn.disabled = drafted.length < 1; }
@@ -53568,10 +53620,13 @@ let heistFeverActive = false;
           isImpossibleMode = false;
           isDuels = true;
           isTowerDuelEvent = false;
+          isTowerDuelsMode = isTowerDuels;
+          isDuelsMaxedMode = true;
+          if (isTowerDuels) duelsTargetWins = 9;
           isSlopSushiMode = true;
           sushiMatchArmed = true;
           clearShowdownModifier();
-          if (document.getElementById('topbar')) document.getElementById('topbar').textContent = 'Arena Forge - Duels • Tower Power';
+          if (document.getElementById('topbar')) document.getElementById('topbar').textContent = isTowerDuels ? 'Arena Forge - Tower Duels • ALL 8 Tower Powers' : 'Arena Forge - Duels • Tower Power';
           playerScore = 0;
           botScore = 0;
           WORLD_W = 1000; WORLD_H = 1000;
@@ -53618,7 +53673,9 @@ let heistFeverActive = false;
       overlay.appendChild(formatRow);
       overlay.appendChild(launchBtn);
       document.body.appendChild(overlay);
-  });
+  }
+  function openTowerDuelsDraft() { openDuelsDraftOverlay(true); }
+  duelsBtn.addEventListener('click', () => openDuelsDraftOverlay(false));
 
         // Add Training UI Button
   const brawlerLabChargeReport = [];
@@ -54621,6 +54678,8 @@ isBrawlerLabMode = false;
       isFusedMode = false;
       player.fusedParts = null;
       isTowerDuelEvent = false;
+      isTowerDuelsMode = false;
+      isDuelsMaxedMode = false;
       isWarperEvent = false;
       isObjectiveMode = false;
       isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; freezeonPendingCones = []; isPropHuntMode = false; propHuntState = null;
@@ -54767,6 +54826,8 @@ isBrawlerLabMode = false;
       isDuels = false;
       isFusedMode = false;
       player.fusedParts = null;
+      isTowerDuelsMode = false;
+      isDuelsMaxedMode = false;
       isWarperEvent = false;
       isObjectiveMode = false;
       isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; freezeonPendingCones = []; isPropHuntMode = false; propHuntState = null;
