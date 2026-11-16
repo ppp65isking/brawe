@@ -117,8 +117,8 @@ try {
 try {
   const sandbox = {
     Math,
-    allBrawlers: ['mallow', 'nightshade', 'aegis', 'robber'],
-    disabledBrawlers: new Set(['robber']),
+    allBrawlers: ['mallow', 'nightshade', 'aegis', 'outlit'],
+    disabledBrawlers: new Set(['outlit']),
   };
   vm.createContext(sandbox);
   vm.runInContext(extractFn(game, 'rollFusedParts'), sandbox);
@@ -129,7 +129,7 @@ try {
     if (!Array.isArray(parts) || parts.length !== 2) ok = false;
     if (parts[0] === parts[1]) ok = false;
     for (const p of parts) {
-      if (p === 'robber') ok = false;
+      if (p === 'outlit') ok = false;
       if (!['mallow', 'nightshade', 'aegis'].includes(p)) ok = false;
       seen.add(p);
     }

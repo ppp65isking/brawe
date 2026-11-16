@@ -12,7 +12,7 @@ const ids = rosterFiles.flatMap(file => {
 });
 
 assert.equal(new Set(ids).size, ids.length, 'roster ids must be unique');
-assert.equal(ids.length, 76, 'expected complete 76-fighter roster');
+assert.equal(ids.length, 74, 'expected complete 74-fighter roster');
 
 for (const id of ids) {
   assert.match(game, new RegExp(`['"]${id}['"]\\s*:\\s*\\{`), `${id}: missing kit metadata`);
@@ -20,10 +20,8 @@ for (const id of ids) {
 }
 
 for (const token of [
-  'activateRecoveryGadget', 'castRecoverySuper', 'spawnRecoverySkeleton',
-  'swimmerStartingBlockArmed', 'boomerPowderVolleyArmed', 'daggershardSharpResetArmed',
-  'adlofForcedMarchArmed', 'clusterTightPackingArmed', 'witchCursedGroundArmed',
-  'bladeVaneSharpenedArmed', 'duckBuffetArmed', 'overlordArcBurstArmed',
+  'activateRecoveryGadget', 'castRecoverySuper',
+  'duckBuffetArmed', 'overlordArcBurstArmed',
   'beastRendingArmed', 'chickpigSunnyArmed', 'upiedownFreshArmed'
 ]) assert.ok(game.includes(token), `missing recovery hook: ${token}`);
 

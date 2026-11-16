@@ -165,9 +165,9 @@ if (gss) {
   check(`vm entities untouched: all ${entityIds.length} non-roster ids match the original additive stats at L1/5/8/11/12`, entBad.length === 0);
   if (entBad.length) failures.push('entity mismatch: ' + entBad.slice(0, 10).join(', '));
   // The point of the rebuild: kills get FASTER at low levels now (HP down, dmg same).
-  check('vm time-to-kill improves at P1 (Adlof: 6000/1600 = 4 hits -> 4400/1600 = 3 hits)',
-    Math.ceil(gss('adlof', 1).hp / gss('adlof', 1).dmg) < Math.ceil(6000 / 1600)
-    && gss('adlof', 1).hp === 4400 && gss('adlof', 1).dmg === 1600);
+  check('vm time-to-kill improves at P1 (Forest: 6000/1600 = 4 hits -> 4400/1600 = 3 hits)',
+    Math.ceil(gss('forest', 1).hp / gss('forest', 1).dmg) < Math.ceil(6000 / 1600)
+    && gss('forest', 1).hp === 4400 && gss('forest', 1).dmg === 1600);
 }
 
 console.log(`hp-curve-only: ${passed} passed, ${failed} failed`);

@@ -110,8 +110,8 @@ const ctx = {
   player: { x: 0, y: 0, vx: 0, vy: 0, hp: 5000, maxHp: 5000, id: 1 },
   isTraining: true,
   isTutorialMode: false,
-  allBrawlers: ['king', 'outlit', 'fuser', 'robber'],
-  disabledBrawlers: new Set(['robber']),
+  allBrawlers: ['king', 'outlit', 'fuser', 'mallow'],
+  disabledBrawlers: new Set(['mallow']),
   brawlerData: {
     king: { name: 'King', role: 'Tank' },
     outlit: { name: 'Outlit', role: 'Damage Dealer' },
@@ -170,7 +170,7 @@ function run(code) { return vm.runInContext(code, ctx); }
 }
 // Invalid picks are refused.
 {
-  run('startTrainingSparring("robber")');
+  run('startTrainingSparring("mallow")');
   check('disabled brawler pick is refused', ctx.trainingSparringOpponentId === 'outlit');
   run('startTrainingSparring("nope")');
   check('unknown brawler pick is refused', ctx.trainingSparringOpponentId === 'outlit');

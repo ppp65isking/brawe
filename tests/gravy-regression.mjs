@@ -36,11 +36,11 @@ function check(name, cond) {
 const near = (a, b, eps = 0.01) => Math.abs(a - b) < eps;
 
 // ---------------------------------------------------------- 1. source pins
-check('roster includes gravy (112 ids)', game.includes("'pandy', 'snipa', 'bookworm', 'freezeon', 'driller', 'gravy'"));
-check('selectable is 104 (112 minus the 8 disabled, gravy not disabled)', (() => {
+check('roster includes gravy (104 ids)', game.includes("'pandy', 'snipa', 'bookworm', 'freezeon', 'driller', 'gravy'"));
+check('selectable is 104 (104 ids, none disabled, gravy not disabled)', (() => {
   const all = [...game.match(/const allBrawlers\s*=\s*\[([\s\S]*?)\];/)[1].matchAll(/'([^']+)'/g)].map(m => m[1]);
-  const disabled = ['robber', 'boomer', 'daggershard', 'cluster', 'witch', 'adlof', 'swimmer', 'blade_vane'];
-  return all.length === 112 && all.filter(id => !disabled.includes(id)).length === 104;
+  const disabled = [];
+  return all.length === 104 && all.filter(id => !disabled.includes(id)).length === 104;
 })());
 check('rarity Epic (170 souls)', game.includes("gravy: 'Epic',") && game.includes('Epic: 170'));
 check('role Thrower (primary Artillery, like every Thrower)', game.includes("name: 'Gravy', role: 'Thrower'") && game.includes("gravy:'Artillery',"));

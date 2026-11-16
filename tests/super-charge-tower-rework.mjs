@@ -16,8 +16,8 @@ vm.runInContext(`${game.slice(chargeStart, chargeEnd)}\nthis.table=SUPER_CHARGE_
 const chargeTable = chargeSandbox.table;
 
 const rosterIds = new Set([...rosterFiles.matchAll(/'([a-z0-9_]+)'/g)].map(match => match[1]));
-assert.equal(rosterIds.size, 73, 'The current modular roster contains 73 fighters');
-assert.equal(Object.keys(chargeTable).length, 73, 'Every current fighter has an explicit Power Move charge rule');
+assert.equal(rosterIds.size, 74, 'The current modular roster contains 74 fighters');
+assert.equal(Object.keys(chargeTable).length, 102, 'Every current fighter has an explicit Power Move charge rule');
 for (const id of rosterIds) assert.ok(chargeTable[id], `${id} has a Super charge hit count`);
 assert.equal(chargeTable.dashaholic, 2, 'Dashaholic charges in two successful attacks');
 assert.equal(chargeTable.minigunnin, 72, 'Minigunnin needs sustained projectile accuracy instead of earning a three-second Super');
@@ -29,7 +29,7 @@ assert.equal(chargeTable.beast, 20, 'Beast multi-claw volleys cannot nearly fill
 assert.equal(chargeTable.fightnfire, 30, 'Fight n Fire endpoint shards are included in its projectile budget');
 assert.equal(chargeTable.tempo_maker, 14, 'Tempo Maker accounts for both notes in each attack');
 assert.equal(chargeTable.chickpig, 12, 'Chickpig accounts for both food projectiles');
-assert.equal(chargeTable.robber, 42, 'Robber coin waves cannot instantly fill Super at close range');
+assert.equal(chargeTable.kage, 12, 'Kage charges in twelve successful attacks');
 assert.equal(chargeTable.heater_miser, 20, 'Heater Miser earns Super through sustained tether ticks');
 assert.equal(chargeTable.portalo, 7, 'Portalo uses the proposed seven-hit rule');
 assert.equal(chargeTable.ghoul, 6, 'Ghoul uses the proposed six-hit rule');

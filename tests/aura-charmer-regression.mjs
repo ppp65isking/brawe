@@ -20,13 +20,13 @@ check('power scaling mirrors (HP curve): P1 2560/578, P11 6400/1050, P12 6784/10
   const hpScale = (lv) => 0.40 + (lv - 1) * 0.06;
   return Math.round(6400 * hpScale(1)) === 2560 && Math.round(1050 * scale(1)) === 578 && Math.round(6400 * hpScale(11)) === 6400 && Math.round(1050 * scale(11)) === 1050 && Math.round(6400 * hpScale(12)) === 6784 && Math.round(1050 * scale(12)) === 1097;
 })());
-check('allBrawlers has aura_charmer; 112 ids total (103 + Voltastein + Staticstein + Healnstein + Voodoyou + Pandy + Snipa + Bookworm + FreeZeon + Driller + Gravy)', (() => {
+check('allBrawlers has aura_charmer; 104 ids total', (() => {
   const all = [...game.match(/const allBrawlers\s*=\s*\[([\s\S]*?)\];/)[1].matchAll(/'([^']+)'/g)].map(m => m[1]);
-  return all.includes('aura_charmer') && all.length === 112;
+  return all.includes('aura_charmer') && all.length === 104;
 })());
-check('selectable is 104 (112 minus the 8 disabled, aura_charmer not disabled)', (() => {
+check('selectable is 104 (104 ids, none disabled, aura_charmer not disabled)', (() => {
   const all = [...game.match(/const allBrawlers\s*=\s*\[([\s\S]*?)\];/)[1].matchAll(/'([^']+)'/g)].map(m => m[1]);
-  const disabled = ['robber', 'boomer', 'daggershard', 'cluster', 'witch', 'adlof', 'swimmer', 'blade_vane'];
+  const disabled = [];
   return all.filter(id => !disabled.includes(id)).length === 104 && !game.match(/const disabledBrawlers = new Set\(\[([\s\S]*?)\]\)/)[1].includes('aura_charmer');
 })());
 check('rarity map aura_charmer Mythic (270 souls)', game.includes("aura_charmer: 'Mythic'") && game.includes('Mythic: 270'));

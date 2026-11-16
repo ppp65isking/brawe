@@ -21,7 +21,6 @@ assert.match(game, /ATTACK TO RETURN/, 'HUD must show the RETURN state');
 assert.match(game, /SPIKEBALLS RELOADING/, 'HUD must show the reloading state');
 // Immunity exemption points (Anthony's explicit rule, 2026-10-23):
 assert.match(game, /function stealAmmo\(target, ownerId, amount\) \{\s*\/\/ Spikey immunity[\s\S]*?if \(isSpikeyEntity\(target\)\) return;/, 'stealAmmo must exempt Spikey');
-assert.match(game, /if \(isSpikeyEntity\(target\)\) return 0;/, 'stealAmmoForRobber must exempt Spikey');
 assert.match(game, /if\(!isSpikeyEntity\(target\)\) \{\s*if\(target\.id===player\.id\)ammo=Math\.max\(0,ammo-1\)/, 'Boom-Arang Super drain must exempt Spikey');
 assert.match(game, /if \(!isSpikeyEntity\(target\)\) target\.reloadDebuffUntil = performance\.now\(\) \+ 3000;/, 'Tax Note reload debuff must exempt Spikey');
 assert.match(game, /if \(!isSpikeyEntity\(target\)\) target\.reloadDebuffUntil = now \+ 3000;/, 'Sticky-note reload debuff must exempt Spikey');

@@ -21,8 +21,8 @@ for (const b of ['echo', 'cheseypuff', 'unopcoloco', 'minigunnin', 'bowlin_rida'
     assert.match(game, new RegExp(`${b}:\\s*'Rare'`), `${b} is Rare`);
 }
 
-// Epic (31)
-for (const b of ['trapper', 'heater_miser', 'money_and_tax', 'hunter', 'bouncin_balls', 'fightnfire', 'splitter', 'scuba_diver', 'hoop', 'beam', 'teether', 'warrior', 'peter_pickle', 'ramage', 'blinkeye', 'badbat', 'looma', 'magnatar', 'fastpass', 'homer', 'ice_cream', 'swimmer', 'boomer', 'blade_vane', 'daggershard', 'cluster', 'witch', 'predator', 'draflygon', 'duck', 'unhitabble']) {
+// Epic (25)
+for (const b of ['trapper', 'heater_miser', 'money_and_tax', 'hunter', 'bouncin_balls', 'fightnfire', 'splitter', 'scuba_diver', 'hoop', 'beam', 'teether', 'warrior', 'peter_pickle', 'ramage', 'blinkeye', 'badbat', 'looma', 'magnatar', 'fastpass', 'homer', 'ice_cream', 'predator', 'draflygon', 'duck', 'unhitabble']) {
     assert.match(game, new RegExp(`${b}:\\s*'Epic'`), `${b} is Epic`);
 }
 
@@ -36,8 +36,8 @@ for (const b of ['copyphase', 'snapper', 'portalo', 'ghoul', 'jacktrade', 'magen
     assert.match(game, new RegExp(`${b}:\\s*'Exotic'`), `${b} is Exotic`);
 }
 
-// Unique (19)
-for (const b of ['decayer', 'hyperorigin', 'overlord', 'beast', 'hope', 'screener', 'kage', 'malakor', 'paradox', 'sera_eclipse', 'xray', 'angel', 'demon', 'relay', 'robber', 'unstable', 'orbo', 'adlof', 'king']) {
+// Unique (17)
+for (const b of ['decayer', 'hyperorigin', 'overlord', 'beast', 'hope', 'screener', 'kage', 'malakor', 'paradox', 'sera_eclipse', 'xray', 'angel', 'demon', 'relay', 'unstable', 'orbo', 'king']) {
     assert.match(game, new RegExp(`${b}:\\s*'Unique'`), `${b} is Unique`);
 }
 

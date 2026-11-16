@@ -29,7 +29,7 @@ check('all 14 icons present', ['beam', 'sera_eclipse', 'boom_arang', 'teether', 
 check('selectable-minus-icons is empty', (() => {
   const all = [...game.match(/const allBrawlers\s*=\s*\[([\s\S]*?)\];/)[1].matchAll(/'([^']+)'/g)].map(m => m[1]);
   const icons = game.match(/const brawlerPortraitIcons = \{([\s\S]*?)\n    \};/)[1];
-  const disabled = ['robber', 'boomer', 'daggershard', 'cluster', 'witch', 'adlof', 'swimmer', 'blade_vane'];
+  const disabled = [];
   return all.filter(id => !disabled.includes(id)).every(id => new RegExp(`${id}:`).test(icons));
 })());
 check('aegis icon is shield, sir_cheeseburger untouched', game.includes("aegis: '🛡️'") && game.includes("sir_cheeseburger: '🛡️'"));
