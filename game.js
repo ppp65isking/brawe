@@ -25647,20 +25647,25 @@ let heistFeverActive = false;
     }
 
     // ===== FreeZeon systems (Lou copy, Anthony's twists) =====
-    // Main: 4 snow cones in a straight line (Lou: 3, straight line);
+    // Main: 4 snow cones in a straight line (Lou: 3, straight line),
+    // fired SEQUENTIALLY one every 90ms (changes round 2 — Lou-style,
+    // so the volley reads cone-by-cone instead of all at once);
     // cones leave a 1s slip zone where they land, and every cone hit
     // builds the freeze meter (+0.5s per hit, 4 hits freeze).
     // Super: Ice Rink — lobbed throwable; the rink can arcs to the target,
     // bursts on impact (800 dmg), then stays as a patch (30/s DoT).
     // Hyper Super: freeze builds 2x faster + 150/s damage-over-time inside.
-    // Hyper main: every cone hit schedules a brain-freeze shatter 0.6s later.
+    // Hyper main: every cone hit schedules a brain-freeze shatter 0.6s
+    // later — 90px radius, 600 damage, with a REAL ice-crystal visual
+    // (purple when the owner is Hypercharged at detonation, drawn from
+    // the real hyper state — Snipa lesson, never a faked flag).
     // Freeze completion fires a real ice-explosion visual (purple when the
     // owner is Hypercharged) — drawn from the real frozen/hyper state.
     const FREEZEON_CONE_COUNT = 4; // Anthony's twist: Lou fires 3, FreeZeon fires 4
     const FREEZEON_CONE_SPEED = 780; // px/s
     const FREEZEON_CONE_RANGE = 700; // px
     const FREEZEON_CONE_DMG = 500; // P11 base cone damage (see getScaledStats 'freezeon'.dmg)
-    const FREEZEON_CONE_STAGGER = 18; // px trail spacing: cones follow each other in a straight line (Lou)
+    const FREEZEON_CONE_FIRE_DELAY_MS = 90; // ms between cones: the volley fires sequentially, one cone every 90ms (Lou-style) — changes round 2
     const FREEZEON_SLIP_RADIUS = 72; // px — changes round 1: slip zone -40% (was 120)
     const FREEZEON_SLIP_DURATION_MS = 1000; // slip zone lasts 1s (Anthony's spec)
     const FREEZEON_SLIP_DRIFT_MULT = 1.6; // slide amplifies the enemy's own movement
@@ -25683,7 +25688,7 @@ let heistFeverActive = false;
     const FREEZEON_SUPER_THROW_SPEED = 1100; // px/s lobbed flight speed (changes round 1)
     const FREEZEON_SUPER_ARC_HEIGHT = 80; // arc peak px (jackTrade pattern)
     const FREEZEON_SHATTER_DELAY_MS = 600; // brain-freeze shatter delay after a cone hit
-    const FREEZEON_SHATTER_RADIUS = 150; // px
+    const FREEZEON_SHATTER_RADIUS = 90; // px — changes round 2: brain-freeze size -40% (was 150)
     const FREEZEON_SHATTER_DMG = 600; // P11 shatter damage
     const FREEZEON_MAX_SLIP_ZONES_PER_OWNER = 4; // oldest slip zone expires when capped
     const FREEZEON_MAX_PATCHES_PER_OWNER = 2; // oldest patch expires when capped
@@ -25695,6 +25700,7 @@ let heistFeverActive = false;
     let freezeonSlipZones = []; // {x, y, radius, until, ownerId} — 1s slippery slush
     let freezeonShatters = []; // {x, y, at, ownerId, targetId} — pending brain-freeze shatters
     let freezeonThrownRinks = []; // {startX, startY, targetX, targetY, createdAt, impactAt, ownerId, hyper} — lobbed rink cans in flight
+    let freezeonPendingCones = []; // {at, ownerId, ang, hyper, dmg} — volley cones waiting their 90ms turn (changes round 2)
     let freezeonVoicePrevPlaying = false;
     let freezeonVoicePrevGameOver = false;
     let freezeonVoiceMatchEndPlayed = false;
@@ -25764,18 +25770,33 @@ let heistFeverActive = false;
     }
 
     // Main: hurl 4 snow cones in a straight line (6 with Extra Scoop
-    // armed) — like real Lou. Cones trail each other along the aim
-    // direction so they read as a line, not a fan.
+    // armed) — like real Lou. Cones fire SEQUENTIALLY, one every 90ms,
+    // so the volley reads cone-by-cone instead of all at once
+    // (changes round 2 — Anthony: "Why is there no delay between
+    // bullets"). Each cone spawns at the owner's current spot along
+    // the aim direction at its turn, so the line trails naturally
+    // (90ms at 780 px/s puts each cone ~70px behind the last).
     function fireFreezeonMain(fromEntity, targetX, targetY, isBot) {
         const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
         const stats = getScaledStats('freezeon', fromEntity === player ? getSelectedBrawlerLevel() : (fromEntity.level || 11));
         const count = fromEntity.freezeonExtraScoopArmed ? 6 : FREEZEON_CONE_COUNT;
         fromEntity.freezeonExtraScoopArmed = false;
         const ang = Math.atan2(targetY - fromEntity.y, targetX - fromEntity.x);
+        const now = performance.now();
         for (let i = 0; i < count; i++) {
-            const trail = i * FREEZEON_CONE_STAGGER;
-            bullets.push({ ownerBrawler: 'freezeon', isFreezeonCone: true, ownerId: fromEntity.id, x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 8) - Math.cos(ang) * trail, y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 8) - Math.sin(ang) * trail, vx: Math.cos(ang) * FREEZEON_CONE_SPEED, vy: Math.sin(ang) * FREEZEON_CONE_SPEED, life: 0, maxLife: FREEZEON_CONE_RANGE / FREEZEON_CONE_SPEED, damage: stats.dmg, pierce: false, hitIds: {}, hitboxMod: 1.4, hyperVisual: hyper });
+            freezeonPendingCones.push({ at: now + i * FREEZEON_CONE_FIRE_DELAY_MS, ownerId: fromEntity.id, ang, hyper, dmg: stats.dmg });
         }
+        return true;
+    }
+
+    // A queued cone's turn has come: spawn it at the owner's current
+    // spot along the volley angle (dropped silently if the owner died
+    // mid-volley — no cone from a dead brawler).
+    function freezeonFirePendingCone(entry) {
+        const owner = getEntityById(entry.ownerId);
+        if (!owner || owner.hp <= 0) return false;
+        const ang = entry.ang;
+        bullets.push({ ownerBrawler: 'freezeon', isFreezeonCone: true, ownerId: owner.id, x: owner.x + Math.cos(ang) * (owner.radius + 8), y: owner.y + Math.sin(ang) * (owner.radius + 8), vx: Math.cos(ang) * FREEZEON_CONE_SPEED, vy: Math.sin(ang) * FREEZEON_CONE_SPEED, life: 0, maxLife: FREEZEON_CONE_RANGE / FREEZEON_CONE_SPEED, damage: entry.dmg, pierce: false, hitIds: {}, hitboxMod: 1.4, hyperVisual: entry.hyper });
         return true;
     }
 
@@ -25831,7 +25852,13 @@ let heistFeverActive = false;
         const target = s.targetId ? getEntityById(s.targetId) : null;
         const cx = (target && target.hp > 0) ? target.x : s.x;
         const cy = (target && target.hp > 0) ? target.y : s.y;
-        explosions.push({ x: cx, y: cy, radius: FREEZEON_SHATTER_RADIUS, life: 0, maxLife: .4, color: 'rgba(186,230,253,.85)', legendary: true, fxKind: 'freezeonShatter' });
+        // The shatter visual carries the owner's REAL Hyper state at the
+        // moment of detonation — purple ice-crystal burst when
+        // Hypercharged, ice-blue otherwise (Snipa lesson: never a faked
+        // flag). The shatter was scheduled by a Hyper cone hit, but the
+        // owner may have dropped out of Hyper during the 0.6s delay.
+        const shatterHyper = owner.id === player.id ? !!isHypercharged : !!owner.isHypercharged;
+        explosions.push({ x: cx, y: cy, radius: FREEZEON_SHATTER_RADIUS, life: 0, maxLife: .4, color: shatterHyper ? 'rgba(192,132,252,.85)' : 'rgba(186,230,253,.85)', legendary: true, fxKind: 'freezeonShatter', hyper: shatterHyper });
         spawnFloatingText(cx, cy - 40, '❄️ BRAIN FREEZE!', '#e0f2fe');
         for (const e of [player, ...bots]) {
             if (!e || e.hp <= 0 || e.id === owner.id || areAlliedEntities(owner, e)) continue;
@@ -25883,6 +25910,13 @@ let heistFeverActive = false;
         // Slip zones expire after 1s; patches expire after 6s.
         freezeonSlipZones = freezeonSlipZones.filter((z) => now < z.until);
         freezeonPatches = freezeonPatches.filter((p) => now < p.until);
+        // Volley cones fire one at a time, 90ms apart (changes round 2).
+        for (let i = freezeonPendingCones.length - 1; i >= 0; i--) {
+            const c = freezeonPendingCones[i];
+            if (now < c.at) continue;
+            freezeonPendingCones.splice(i, 1);
+            freezeonFirePendingCone(c);
+        }
         // Shatters detonate 0.6s after the cone hit.
         for (let i = freezeonShatters.length - 1; i >= 0; i--) {
             const s = freezeonShatters[i];
@@ -32394,7 +32428,7 @@ let heistFeverActive = false;
   function startDuelsRound() {
     outlitWallChains.length = 0;
     bullets.length = 0; ragerWarTotems.length = 0;
-    bolznstienPendingStrikes.length = 0; bolznstienShockTrails.length = 0; bolznstienChainArcs.length = 0; chocolatePuddles.length = 0; magnatarVortices.length = 0; oilMakerPuddles.length = 0; oilMakerBarrels.length = 0; oilMakerPendingPuddles.length = 0; steamerPoles.length = 0; weefeePoles.length = 0; chickpigEggZones.length = 0; rings.length = 0; cheeseFields.length = 0; healingPods.length = 0; explosions.length = 0; pendingClones.length = 0; destructibleWalls.length = 0; floatingTexts.length = 0; stickyNotes.length = 0; amplifierToolboxes.length = 0; amplifierScrewZones.length = 0; skeleParachutes.length = 0; skelePortals.length = 0; malakorHellZones.length = 0; malakorHands.length = 0; relativityZones.length = 0; packetTimeFields.length = 0; packetTelegraphs.length = 0; fastpassCheckpoints.length = 0; freestyleMicrophones.length = 0; portaloPortalPairs.length = 0; portaloPrisons.length = 0; portaloShockTimers.length = 0; ghoulHaunts.length = 0; darkenerClouds.length = 0; darkagons.length = 0; cursedStorms.length = 0; cursedHyperClouds.length = 0; antiRoyalMortarShells.length = 0; antiRoyalMortarZones.length = 0; jackTradeVolleys.length = 0; jackTradeThrownEffects.length = 0; jackTradeZones.length = 0; jackTradeEndpointShots.length = 0; badbatSwarm.length = 0; badbatShieldOrbs.length = 0; loomaThreads.length = 0; loomaWeaves.length = 0; feathersWindZones.length = 0; feathersStorms.length = 0; spikeyParkedBalls.length = 0; spikeyMegaBalls.length = 0; spikeyPendingSlams.length = 0; electricRealms.length = 0; electrostienPendingStrikes.length = 0; freezeonPatches.length = 0; freezeonSlipZones.length = 0; freezeonShatters.length = 0; freezeonThrownRinks.length = 0;
+    bolznstienPendingStrikes.length = 0; bolznstienShockTrails.length = 0; bolznstienChainArcs.length = 0; chocolatePuddles.length = 0; magnatarVortices.length = 0; oilMakerPuddles.length = 0; oilMakerBarrels.length = 0; oilMakerPendingPuddles.length = 0; steamerPoles.length = 0; weefeePoles.length = 0; chickpigEggZones.length = 0; rings.length = 0; cheeseFields.length = 0; healingPods.length = 0; explosions.length = 0; pendingClones.length = 0; destructibleWalls.length = 0; floatingTexts.length = 0; stickyNotes.length = 0; amplifierToolboxes.length = 0; amplifierScrewZones.length = 0; skeleParachutes.length = 0; skelePortals.length = 0; malakorHellZones.length = 0; malakorHands.length = 0; relativityZones.length = 0; packetTimeFields.length = 0; packetTelegraphs.length = 0; fastpassCheckpoints.length = 0; freestyleMicrophones.length = 0; portaloPortalPairs.length = 0; portaloPrisons.length = 0; portaloShockTimers.length = 0; ghoulHaunts.length = 0; darkenerClouds.length = 0; darkagons.length = 0; cursedStorms.length = 0; cursedHyperClouds.length = 0; antiRoyalMortarShells.length = 0; antiRoyalMortarZones.length = 0; jackTradeVolleys.length = 0; jackTradeThrownEffects.length = 0; jackTradeZones.length = 0; jackTradeEndpointShots.length = 0; badbatSwarm.length = 0; badbatShieldOrbs.length = 0; loomaThreads.length = 0; loomaWeaves.length = 0; feathersWindZones.length = 0; feathersStorms.length = 0; spikeyParkedBalls.length = 0; spikeyMegaBalls.length = 0; spikeyPendingSlams.length = 0; electricRealms.length = 0; electrostienPendingStrikes.length = 0; freezeonPatches.length = 0; freezeonSlipZones.length = 0; freezeonShatters.length = 0; freezeonThrownRinks.length = 0; freezeonPendingCones.length = 0;
     snapperWaves.length = 0;
     rocketeerFireZones.length = 0;
     jetpackFireZones.length = 0;
@@ -52149,7 +52183,7 @@ let heistFeverActive = false;
       isMegasteinBossEvent = showdownMode === 'megastein_boss';
       isBossFight = isLavaBossEvent || isBouncinBossEvent || isHeadlessBossEvent || isTombstoneBossEvent || isMegasteinBossEvent || isBeastBossEvent;
       activeSkinTrial = null; // real matches never use trial skins
-      feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = [];
+      feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; freezeonPendingCones = [];
       if (isBouncinBossEvent) {
           initBouncinBossMatch();
       }
@@ -52582,7 +52616,7 @@ let heistFeverActive = false;
       isMirrorMode = false;
       isImpossibleMode = false;
       isObjectiveMode = false;
-      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; isPropHuntMode = false; propHuntState = null;
+      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; freezeonPendingCones = []; isPropHuntMode = false; propHuntState = null;
       isTraining = false;
       isDuels = true;
       isTowerDuelEvent = true;
@@ -52625,7 +52659,7 @@ let heistFeverActive = false;
       isMirrorMode = false;
       isImpossibleMode = false;
       isObjectiveMode = false;
-      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; isPropHuntMode = false; propHuntState = null;
+      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; freezeonPendingCones = []; isPropHuntMode = false; propHuntState = null;
       isTraining = false;
       isDuels = true;
       isFusedMode = true;
@@ -53878,7 +53912,7 @@ isBrawlerLabMode = false;
       isTowerDuelEvent = false;
       isWarperEvent = false;
       isObjectiveMode = false;
-      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; isPropHuntMode = false; propHuntState = null;
+      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; freezeonPendingCones = []; isPropHuntMode = false; propHuntState = null;
       soloTrialWave = 0;
       soloTrialPending = false;
       playing = true;
@@ -54024,7 +54058,7 @@ isBrawlerLabMode = false;
       player.fusedParts = null;
       isWarperEvent = false;
       isObjectiveMode = false;
-      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; isPropHuntMode = false; propHuntState = null;
+      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; freezeonPendingCones = []; isPropHuntMode = false; propHuntState = null;
     isConstructionMode = false;
       if (document.getElementById('topbar')) document.getElementById('topbar').textContent = 'Arena Forge - Rookie Course';
       playing = true;
@@ -83737,6 +83771,47 @@ function checkHit(target, b, i){
             ctx.strokeStyle = ringColor; ctx.lineWidth = 3;
             ctx.beginPath(); ctx.arc(ex.x, ex.y, fR, 0, Math.PI * 2); ctx.stroke();
             // White flash core.
+            ctx.fillStyle = `rgba(255,255,255,${0.9 * fAlpha})`;
+            ctx.beginPath(); ctx.arc(ex.x, ex.y, 10 * fAlpha + 4, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+            continue;
+        }
+        if (ex.fxKind === 'freezeonShatter') {
+            // FreeZeon brain-freeze shatter: real ice-crystal burst + flash
+            // + expanding rings. Purple when the owner was Hypercharged at
+            // detonation, ice-blue otherwise — ex.hyper is the owner's
+            // real Hyper state, never a faked flag (Snipa lesson). Ten
+            // shards + a second ring make it read apart from the freeze
+            // explosion (8 shards, one ring).
+            const fAlpha = Math.max(0, 1 - ex.life / ex.maxLife);
+            const progress = clamp(ex.life / ex.maxLife, 0, 1);
+            const fR = (ex.radius || 90) * (0.35 + 0.65 * progress);
+            const shard = ex.hyper ? '#e9d5ff' : '#bae6fd';
+            const shardCore = ex.hyper ? '#c084fc' : '#38bdf8';
+            const ringColor = ex.hyper ? '#a855f7' : '#7dd3fc';
+            const shardCount = 10;
+            ctx.save();
+            ctx.globalAlpha = fAlpha;
+            ctx.shadowColor = shardCore; ctx.shadowBlur = 18;
+            // Ice shards: 10 jagged shards radiating from the burst center.
+            ctx.strokeStyle = shard; ctx.lineWidth = 4; ctx.lineCap = 'round';
+            for (let s = 0; s < shardCount; s++) {
+                const a = (s / shardCount) * Math.PI * 2 + (ex.life * 2);
+                const r1 = fR * 0.3, r2 = fR;
+                ctx.beginPath();
+                ctx.moveTo(ex.x + Math.cos(a) * r1, ex.y + Math.sin(a) * r1);
+                ctx.lineTo(ex.x + Math.cos(a + 0.12) * fR * 0.72, ex.y + Math.sin(a + 0.12) * fR * 0.72);
+                ctx.lineTo(ex.x + Math.cos(a) * r2, ex.y + Math.sin(a) * r2);
+                ctx.stroke();
+            }
+            ctx.shadowBlur = 0;
+            // Expanding rings (outer + fainter inner).
+            ctx.strokeStyle = ringColor; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.arc(ex.x, ex.y, fR, 0, Math.PI * 2); ctx.stroke();
+            ctx.globalAlpha = fAlpha * 0.5; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(ex.x, ex.y, fR * 0.6, 0, Math.PI * 2); ctx.stroke();
+            // White flash core.
+            ctx.globalAlpha = fAlpha;
             ctx.fillStyle = `rgba(255,255,255,${0.9 * fAlpha})`;
             ctx.beginPath(); ctx.arc(ex.x, ex.y, 10 * fAlpha + 4, 0, Math.PI * 2); ctx.fill();
             ctx.restore();
