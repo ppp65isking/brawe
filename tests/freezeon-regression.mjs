@@ -31,7 +31,7 @@
 // enemies stay frozen 0.5s longer (1.5s). SP2 Hypothermia: enemies in the
 // rink deal 25% less damage. Voice lines are flavor-only (RULE ONE) and
 // silent until Anthony picks a voice. Roster: FreeZeon makes 110 ids / 102
-// selectable (109/101 + 1). Slip/freeze affect brawlers only, never
+// selectable (109/101 + 1). Driller (2026-11-16) now makes 111 ids / 103 selectable. Slip/freeze affect brawlers only, never
 // structures. Known limitation (flagged, not a spec deviation): in Fused
 // mode the component fires the normal main attack instead (no fused
 // override — the fire() branch runs for the fused part as normal).
@@ -51,11 +51,11 @@ function check(name, cond) {
 const near = (a, b, eps = 0.01) => Math.abs(a - b) < eps;
 
 // ---------------------------------------------------------- 1. source pins
-check('roster includes freezeon (110 ids)', game.includes("'pandy', 'snipa', 'bookworm', 'freezeon'"));
-check('selectable is 102 (110 minus the 8 disabled, freezeon not disabled)', (() => {
+check('roster includes freezeon (111 ids with Driller)', game.includes("'pandy', 'snipa', 'bookworm', 'freezeon'"));
+check('selectable is 103 (111 minus the 8 disabled, freezeon not disabled)', (() => {
   const all = [...game.match(/const allBrawlers\s*=\s*\[([\s\S]*?)\];/)[1].matchAll(/'([^']+)'/g)].map(m => m[1]);
   const disabled = ['robber', 'boomer', 'daggershard', 'cluster', 'witch', 'adlof', 'swimmer', 'blade_vane'];
-  return all.length === 110 && all.filter(id => !disabled.includes(id)).length === 102;
+  return all.length === 111 && all.filter(id => !disabled.includes(id)).length === 103;
 })());
 check('rarity Epic (170 souls)', game.includes("freezeon: 'Epic',") && game.includes('Epic: 170'));
 check('role Controller', game.includes("freezeon:'Controller',"));

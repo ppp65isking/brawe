@@ -339,6 +339,11 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             const hpScale = getLevelHpScale(level);
             return { hp: Math.round(5200 * hpScale), dmg: Math.round(500 * scale), speed: 270 };
         }
+        if (brawlerId === 'driller') {
+            const scale = 0.55 + (level - 1) * 0.045;
+            const hpScale = getLevelHpScale(level);
+            return { hp: Math.round(5200 * hpScale), dmg: Math.round(800 * scale), speed: 270 };
+        }
         if (brawlerId === 'looma') {
             const scale = 0.55 + (level - 1) * 0.045;
             const hpScale = getLevelHpScale(level);
@@ -927,6 +932,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             if (selectedBrawler === 'bookworm') { try { window.BraweBookwormVoice?.play('kill'); } catch (e) {} }
             // FreeZeon voice: player kill line.
             if (selectedBrawler === 'freezeon') { try { window.BraweFreezeonVoice?.play('kill'); } catch (e) {} }
+            // Driller voice: player kill line.
+            if (selectedBrawler === 'driller') { try { window.BraweDrillerVoice?.play('kill'); } catch (e) {} }
         }
         if (target && target.hp <= 0 && hasTrinket(owner, 'fresh_magazine')) {
             if (now - (target.trinketFreshMagazineKillAt || 0) > 1000) {
@@ -5147,6 +5154,7 @@ const bolznstienPendingStrikes = [];
             snipa: 1600,
             bookworm: 1700,
             freezeon: 1600,
+            driller: 1600,
             carmela_fudge: 1400,
             oil_maker: 90,
             magnatar: 1450,
@@ -5219,6 +5227,7 @@ const bolznstienPendingStrikes = [];
             snipa: 300,
             bookworm: 300,
             freezeon: 300,
+            driller: 300,
             carmela_fudge: 180,
             oil_maker: 112,
             magnatar: 200,
@@ -5312,6 +5321,7 @@ const bolznstienPendingStrikes = [];
         if (now < (entity.voodoyouPatchSlowUntil || 0)) baseSlow = Math.min(baseSlow, VOODOOYOU_PATCH_SLOW_MULT);
         if (now < (entity.pandyTrapSlowUntil || 0)) baseSlow = Math.min(baseSlow, PANDY_TRAP_SLOW_MULT);
         if (now < (entity.snipaPurpleSlowUntil || 0)) baseSlow = Math.min(baseSlow, Number(entity.snipaPurpleSlowMult) || 1); // Snipa rework patch #3: Hyper aura purple slow, 10%->70% by mark (mult 0.90->0.30, refreshed each aura tick)
+        if (now < (entity.drillerSlowUntil || 0)) baseSlow = Math.min(baseSlow, DRILLER_G1_SLOW_MULT); // Driller G1 Mud Trap: 40% slow for 2s
         if (now < (entity.runnerSlowUntil || 0)) baseSlow = Math.min(baseSlow, RUNNER_TRAIL_SLOW_MULT);
         if (now < (entity.auraCharmerSlowUntil || 0)) baseSlow = Math.min(baseSlow, AURA_CHARMER_G1_SLOW_MULT);
         if (entity.powerOutageUntil && now < entity.powerOutageUntil) baseSlow = Math.min(baseSlow, getPowerOutageSlowMult(entity, now));
@@ -5518,7 +5528,7 @@ const bolznstienPendingStrikes = [];
         'boom_arang', 'teether', 'fuel', 'xray', 'angel', 'demon', 'warrior', 'relay',
         'upiedown', 'chickpig', 'jetpack', 'snapper', 'robber', 'rocketeer',
         'carmela_fudge', 'peter_pickle', 'unstable', 'homer', 'orbo', 'predator', 'fastpass', 'freestyle', 'portalo', 'ghoul', 'jacktrade', 'darkener', 'awakenator', 'adlof', 'cluster', 'witch', 'boomer', 'blade_vane', 'daggershard', 'ice_cream', 'swimmer', 'kage', 'drainbow', 'draflygon', 'axeywaxy', 'trampaheal', 'mageny', 'ramage', 'upgradart', 'cinderion', 'cursed', 'king', 'anti_royal', 'sir_cheeseburger', 'weefee', 'blinkeye', 'bolznstien', 'magnatar', 'oil_maker', 'rager', 'badbat', 'looma',
-        'feathers', 'spikey', 'electrostien', 'mallow', 'nightshade', 'aegis', 'runner', 'aura_charmer', 'voltastein', 'staticstein', 'healnstein', 'voodoyou', 'pandy', 'snipa', 'bookworm', 'freezeon'
+        'feathers', 'spikey', 'electrostien', 'mallow', 'nightshade', 'aegis', 'runner', 'aura_charmer', 'voltastein', 'staticstein', 'healnstein', 'voodoyou', 'pandy', 'snipa', 'bookworm', 'freezeon', 'driller'
     ];
     const registeredBrawlerModules = window.ArenaForgeModules?.brawlers || Object.create(null);
     for (const moduleId of Object.keys(registeredBrawlerModules)) {
@@ -5611,6 +5621,7 @@ const bolznstienPendingStrikes = [];
             snipa: 'Epic',
             bookworm: 'Epic',
             freezeon: 'Epic',
+            driller: 'Epic',
 
             // Mythic (13)
             dashaholic: 'Mythic',
@@ -10572,6 +10583,17 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           g2: 'Extra Scoop (Next attack fires 6 cones instead of 4)',
           sp1: 'Supercool (Enemies frozen by your rink stay frozen 0.5 seconds longer)',
           sp2: 'Hypothermia (Enemies standing in your rink deal 25% less damage)'
+      },
+      'driller': {
+          name: 'Driller', role: 'Damage Dealer', rarity: 'Epic', color: '#a16207',
+          desc: 'A dirt-bomb slinger who digs in deep. His bombs spin dirt out in a cone as they fly, and his drill form chews through anyone dumb enough to stand in front of him.',
+          attack: 'Dirt Bomb', attackDesc: 'Driller hurls a dirt bomb that spins dirt clods out in a cone as it travels — and still hits hard on its own.',
+          super: 'Drill Form', superDesc: 'Driller transforms into drill form for 8 seconds: one long ammo bar, short-range forward drill attacks that hit harder the longer you drill the same enemy.',
+          hyper: 'Weakening Dirt: Hyper dirt bombs and their spin clods make enemies deal up to 90% less damage for 0.7 seconds, and Drill Form fires 3 drill bits in a cone at 50% damage with extra range.',
+          g1: 'Mud Trap (Next dirt bomb slows enemies it hits by 40% for 2 seconds)',
+          g2: 'Wallbreaker Drill (In drill mode, fire a big drill that breaks walls)',
+          sp1: 'Spin Cycle (Dirt bombs spin out 4 extra projectiles in a wider cone)',
+          sp2: 'Jump Start (Drill form heals 3400 HP when you start it)'
       }
   };
 
@@ -10597,7 +10619,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
 
     // V4 standardized primary-role organization: exactly one gameplay role per brawler.
     const PRIMARY_ROLE_BY_BRAWLER = {
-        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank', rager:'Controller', looma:'Controller', feathers:'Controller', spikey:'Damage Dealer', electrostien:'Assassin', mallow:'Controller', nightshade:'Assassin', runner:'Controller', aura_charmer:'Support', voltastein:'Artillery', staticstein:'Damage Dealer', healnstein:'Support', voodoyou:'Controller', pandy:'Damage Dealer', bookworm:'Controller', freezeon:'Controller',
+        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank', rager:'Controller', looma:'Controller', feathers:'Controller', spikey:'Damage Dealer', electrostien:'Assassin', mallow:'Controller', nightshade:'Assassin', runner:'Controller', aura_charmer:'Support', voltastein:'Artillery', staticstein:'Damage Dealer', healnstein:'Support', voodoyou:'Controller', pandy:'Damage Dealer', bookworm:'Controller', freezeon:'Controller', driller:'Damage Dealer',
     carmela_fudge:'Damage Dealer', bolznstien:'Damage Dealer', badbat:'Damage Dealer', magnatar:'Controller', oil_maker:'Controller', sir_cheeseburger:'Tank',
         blade_vane:'Assassin', kage:'Assassin', drainbow:'Controller', bowlin_rida:'Assassin', dashaholic:'Assassin', demon:'Assassin', jetpack:'Assassin', malakor:'Assassin', predator:'Assassin', swimmer:'Assassin', teether:'Assassin',
         boom_arang:'Marksman', cheseypuff:'Marksman', crystila:'Marksman', homer:'Marksman', hunter:'Marksman', orbo:'Marksman', snapper:'Marksman', xray:'Marksman', snipa:'Marksman',
@@ -10631,6 +10653,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
             snipa: '🎯',
             bookworm: '🐛',
             freezeon: '⛄',
+            driller: '⛏️',
     looma: '🪡🧵',
         sir_cheeseburger: '🛡️',
         anti_royal: '🏴‍☠️',
@@ -11791,6 +11814,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
       snipa: { g1: 14000, g2: 16000 },
       bookworm: { g1: 14000, g2: 16000 },
       freezeon: { g1: 14000, g2: 16000 },
+      driller: { g1: 14000, g2: 16000 },
       carmela_fudge: { g1: 8000, g2: 8000 },
       bolznstien: { g1: 14000, g2: 15000 },
       sir_cheeseburger: { g1: 13000, g2: 14000 },
@@ -26157,6 +26181,457 @@ let heistFeverActive = false;
     }
 
 
+
+    // ===== Driller systems (Anthony's kit, 2026-11-16) =====
+    // Main: Dirt Bomb — a dirt projectile that spins dirt clods out in a
+    // spreading cone as it travels (Firecracker-style shed) but keeps its
+    // own direct-hit damage.
+    // Super: Drill Form — 8s form, one long ammo bar; short-range forward
+    // drill attack whose damage ramps on the SAME enemy:
+    // 100 > 200 > 300 > 500 > 1000 > 2000 (Anthony's 10>20>30>50>100>200,
+    // scaled x10 to P11-meaningful values — FLAGGED, he may correct it).
+    // Hyper main: Weakening Dirt — enemies hit by a Hyper dirt bomb or one
+    // of its spin clods deal 30% less damage per hit, stacking to 90%,
+    // for 0.7s.
+    // Hyper Super: Triple Drill — each drill attack fires 3 drill bits in
+    // a cone, +20% range, each dealing 50% of the ramped damage.
+    // G1 Mud Trap: next dirt bomb slows enemies it hits (40%, 2s).
+    // G2 Wallbreaker Drill: in drill mode, fire a big drill that breaks walls.
+    // SP1 Spin Cycle: +4 extra spin projectiles in a wider cone.
+    // SP2 Jump Start: drill form heals 3400 HP on activation.
+    // Dirt/slow/debuff effects affect brawlers only, never structures.
+    const DRILLER_BOMB_SPEED = 700;
+    const DRILLER_BOMB_RANGE = 700;
+    const DRILLER_CLOD_DMG = 150; // P11, level-scaled at shed time
+    const DRILLER_CLOD_SPEED = 520;
+    const DRILLER_CLOD_RANGE = 220;
+    const DRILLER_SHED_EVERY_PX = 110; // a clod spins out every ~110px traveled
+    const DRILLER_SHED_EVERY_PX_SP1 = 65; // SP1: clods shed every 65px, so all 10 fit inside the 700px flight
+    const DRILLER_CLOD_MAX = 6;
+    const DRILLER_CLOD_MAX_SP1 = 10; // SP1 Spin Cycle: +4 extra spin projectiles, shed faster in a wider cone
+    // Shed offsets (radians off the bomb's flight angle): the cone fans
+    // wider the farther the bomb flies — narrow clods first, wide last.
+    const DRILLER_CLOD_OFFSETS = [0.18, -0.18, 0.38, -0.38, 0.55, -0.55, 0.70, -0.70, 0.85, -0.85];
+    const DRILLER_SUPER_FORM_DURATION_MS = 8000;
+    const DRILLER_DRILL_RANGE = 260;
+    const DRILLER_DRILL_RANGE_HYPER = 312; // +20% range in Hyper drill form
+    const DRILLER_DRILL_INTERVAL_MS = 250; // one drill attack every 0.25s
+    const DRILLER_RAMP = [100, 200, 300, 500, 1000, 2000]; // Anthony's 10>20>30>50>100>200, scaled x10 — FLAGGED
+    const DRILLER_RAMP_RESET_MS = 1500; // ramp resets after 1.5s without hitting that enemy
+    const DRILLER_RAMP_ARC = 0.6; // drill swipe hits in a forward arc (radians each side)
+    const DRILLER_BIT_SPEED = 900;
+    const DRILLER_HYPER_WEAKEN_PER_HIT = 0.30;
+    const DRILLER_HYPER_WEAKEN_MAX_STACKS = 3; // max 90% damage reduction
+    const DRILLER_HYPER_WEAKEN_DURATION_MS = 700;
+    const DRILLER_G1_SLOW_MULT = 0.60; // 40% slow
+    const DRILLER_G1_SLOW_DURATION_MS = 2000;
+    const DRILLER_G2_DMG = 1200;
+    const DRILLER_G2_SPEED = 900;
+    const DRILLER_G2_RANGE = 700;
+    const DRILLER_SP2_HEAL = 3400;
+    const DRILLER_SUPER_CHARGE_HITS = 7;
+    let drillerVoicePrevPlaying = false;
+    let drillerVoicePrevGameOver = false;
+    let drillerVoiceMatchEndPlayed = false;
+    let drillerVoiceLastHp = null;
+    let drillerVoiceLastActionAt = 0;
+    let drillerVoiceLastIdleAt = 0;
+
+    function drillerLevelScale(entity) {
+        const lvl = entity === player ? getSelectedBrawlerLevel() : (entity.level || 11);
+        return 0.55 + (lvl - 1) * 0.045;
+    }
+    function drillerStarChoice(entity) { return getEntityStarChoice(entity); }
+    function drillerHasSP1(entity) { return drillerStarChoice(entity) === 'slow'; }
+    function drillerHasSP2(entity) { return drillerStarChoice(entity) === 'long'; }
+    function isDrillerFormActive(entity) { return !!entity && !!entity.drillerFormActive && performance.now() < (entity.drillerFormUntil || 0); }
+
+    // Main: hurl a dirt bomb. As it travels it spins dirt clods out in a
+    // spreading cone (Firecracker-style) — but the bomb itself keeps going
+    // and still deals its direct-hit damage. G1 Mud Trap arms the bomb
+    // (and its clods) to slow enemies it hits.
+    function fireDrillerMain(fromEntity, targetX, targetY, isBot) {
+        const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
+        const stats = getScaledStats('driller', fromEntity === player ? getSelectedBrawlerLevel() : (fromEntity.level || 11));
+        const ang = Math.atan2(targetY - fromEntity.y, targetX - fromEntity.x);
+        const mudTrap = !!fromEntity.drillerMudTrapArmed;
+        fromEntity.drillerMudTrapArmed = false;
+        bullets.push({ ownerBrawler: 'driller', isDrillerBomb: true, ownerId: fromEntity.id, x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 8), y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 8), vx: Math.cos(ang) * DRILLER_BOMB_SPEED, vy: Math.sin(ang) * DRILLER_BOMB_SPEED, life: 0, maxLife: DRILLER_BOMB_RANGE / DRILLER_BOMB_SPEED, damage: stats.dmg, pierce: false, hitIds: {}, hitboxMod: 1.2, hyperVisual: hyper, drillerMudTrap: mudTrap, drillerShedCount: 0, drillerShedMax: drillerHasSP1(fromEntity) ? DRILLER_CLOD_MAX_SP1 : DRILLER_CLOD_MAX });
+        return true;
+    }
+
+    // A flying dirt bomb spins a clod out every ~110px traveled, fanning
+    // wider as it goes (SP1: +4 clods, out to a wider cone).
+    function drillerShedClods(b, dt) {
+        if (!b || b._drillerShedDone) return;
+        const speed = Math.hypot(b.vx, b.vy) || DRILLER_BOMB_SPEED;
+        const dist = (b.life || 0) * speed;
+        const max = b.drillerShedMax || DRILLER_CLOD_MAX;
+        const every = max > DRILLER_CLOD_MAX ? DRILLER_SHED_EVERY_PX_SP1 : DRILLER_SHED_EVERY_PX;
+        const owner = getEntityById(b.ownerId);
+        const scale = owner ? drillerLevelScale(owner) : 1;
+        while ((b.drillerShedCount || 0) < max && dist >= ((b.drillerShedCount || 0) + 1) * every) {
+            const i = b.drillerShedCount;
+            b.drillerShedCount = i + 1;
+            const ang = Math.atan2(b.vy, b.vx) + (DRILLER_CLOD_OFFSETS[i] || 0);
+            bullets.push({ ownerBrawler: 'driller', isDrillerClod: true, ownerId: b.ownerId, x: b.x, y: b.y, vx: Math.cos(ang) * DRILLER_CLOD_SPEED, vy: Math.sin(ang) * DRILLER_CLOD_SPEED, life: 0, maxLife: DRILLER_CLOD_RANGE / DRILLER_CLOD_SPEED, damage: Math.round(DRILLER_CLOD_DMG * scale), pierce: false, hitIds: {}, hitboxMod: 1.0, hyperVisual: !!b.hyperVisual, drillerMudTrap: !!b.drillerMudTrap });
+        }
+        if ((b.drillerShedCount || 0) >= max) b._drillerShedDone = true;
+    }
+
+    // Hyper main: an enemy hit by a Hyper dirt bomb or one of its spin
+    // clods deals less damage — 30% per hit, stacking to 90%, for 0.7s.
+    // Stacks reset if the debuff expired; brawlers only, never structures.
+    function drillerApplyWeaken(owner, target) {
+        if (!owner || !target || target.hp <= 0) return;
+        if (target.isStructure || target.isPet) return;
+        if (areAlliedEntities(owner, target)) return;
+        const now = performance.now();
+        if (now > (target.drillerWeakenUntil || 0)) target.drillerWeakenStacks = 0;
+        target.drillerWeakenStacks = Math.min(DRILLER_HYPER_WEAKEN_MAX_STACKS, (target.drillerWeakenStacks || 0) + 1);
+        target.drillerWeakenUntil = now + DRILLER_HYPER_WEAKEN_DURATION_MS;
+    }
+
+    // G1 Mud Trap: the armed dirt bomb (or one of its clods) slows enemies
+    // it hits (40%, 2s). Brawlers only, never structures.
+    function drillerApplyMudSlow(owner, target) {
+        if (!owner || !target || target.hp <= 0) return;
+        if (target.isStructure || target.isPet) return;
+        if (areAlliedEntities(owner, target)) return;
+        target.drillerSlowUntil = Math.max(target.drillerSlowUntil || 0, performance.now() + DRILLER_G1_SLOW_DURATION_MS);
+    }
+
+    // Super "Drill Form": transform — the main attack becomes a short-range
+    // forward drill (one long ammo bar = the 8s form timer) until the form
+    // runs out. SP2 Jump Start heals 3400 HP on activation.
+    function castDrillerSuper(entity, hyper, targetX, targetY) {
+        if (!entity || entity.hp <= 0) return false;
+        const now = performance.now();
+        entity.drillerFormActive = true;
+        entity.drillerFormUntil = now + DRILLER_SUPER_FORM_DURATION_MS;
+        entity.drillerFormHyper = !!hyper;
+        entity.drillerRampTargetId = null;
+        entity.drillerRampIndex = 0;
+        entity.drillerRampLastHitAt = 0;
+        entity.drillerLastDrillAt = 0;
+        if (drillerHasSP2(entity)) {
+            entity.hp = Math.min(entity.maxHp, entity.hp + DRILLER_SP2_HEAL);
+            entity.healFlashUntil = now + 400;
+            spawnFloatingText(entity.x, entity.y - 60, '+3400 HP', '#86efac');
+        }
+        if (entity.id === player.id) { try { window.BraweDrillerVoice?.play('super'); } catch (e) {} }
+        spawnFloatingText(entity.x, entity.y - 46, hyper ? '⛏️ TRIPLE DRILL!' : '⛏️ DRILL FORM!', '#d97706');
+        return true;
+    }
+
+    // Drill ramp: damage climbs while you keep drilling the SAME enemy
+    // (100 > 200 > 300 > 500 > 1000 > 2000) and resets when you hit a
+    // different enemy or go 1.5s without hitting that enemy. A whiff
+    // doesn't change the ramp.
+    function drillerRampDamage(entity, target, now) {
+        if (!entity || !target) return DRILLER_RAMP[0];
+        if (entity.drillerRampTargetId === target.id && now - (entity.drillerRampLastHitAt || 0) < DRILLER_RAMP_RESET_MS) {
+            entity.drillerRampIndex = Math.min(DRILLER_RAMP.length - 1, (entity.drillerRampIndex || 0) + 1);
+        } else {
+            entity.drillerRampTargetId = target.id;
+            entity.drillerRampIndex = 0;
+        }
+        entity.drillerRampLastHitAt = now;
+        return Math.round(DRILLER_RAMP[entity.drillerRampIndex] * drillerLevelScale(entity));
+    }
+
+    // Drill attack: one short-range forward swipe every 0.25s. The ramp
+    // tracks the nearest enemy in the forward arc; every enemy in the arc
+    // takes the ramp damage. Hyper form fires 3 drill bits in a cone
+    // instead (+20% range, each 50% of the ramped damage).
+    function drillerDoDrillAttack(entity, targetX, targetY) {
+        if (!entity || entity.hp <= 0) return false;
+        const now = performance.now();
+        if (now - (entity.drillerLastDrillAt || 0) < DRILLER_DRILL_INTERVAL_MS) return false;
+        entity.drillerLastDrillAt = now;
+        const hyper = !!entity.drillerFormHyper;
+        const range = hyper ? DRILLER_DRILL_RANGE_HYPER : DRILLER_DRILL_RANGE;
+        const ang = Math.atan2(targetY - entity.y, targetX - entity.x);
+        // Primary target: nearest enemy in the forward arc — the ramp
+        // tracks whoever you keep hitting.
+        let primary = null, primaryDist = Infinity;
+        for (const e of [player, ...bots]) {
+            if (!e || e.hp <= 0 || e.id === entity.id || areAlliedEntities(entity, e)) continue;
+            if (e.isStructure || e.isPet) continue;
+            const d = Math.hypot(e.x - entity.x, e.y - entity.y) - (e.radius || 14);
+            if (d > range) continue;
+            const a = Math.atan2(e.y - entity.y, e.x - entity.x);
+            let diff = Math.abs(a - ang); if (diff > Math.PI) diff = Math.PI * 2 - diff;
+            if (diff > DRILLER_RAMP_ARC) continue;
+            if (d < primaryDist) { primaryDist = d; primary = e; }
+        }
+        const rampDmg = primary ? drillerRampDamage(entity, primary, now) : Math.round(DRILLER_RAMP[0] * drillerLevelScale(entity));
+        const rampIndex = entity.drillerRampIndex || 0;
+        // Swipe visual: dirt burst in front, color escalates with the ramp.
+        const rampColors = ['#d97706', '#ea580c', '#dc2626', '#9333ea', '#c026d3', '#a855f7'];
+        explosions.push({ x: entity.x + Math.cos(ang) * range * 0.55, y: entity.y + Math.sin(ang) * range * 0.55, radius: range * 0.5, life: 0, maxLife: .25, color: rampColors[rampIndex], legendary: false, fxKind: 'drillerSwipe', hyper: hyper, rampIndex: rampIndex });
+        if (hyper) {
+            // Triple Drill: 3 drill bits in a cone, 50% of ramp damage each.
+            for (const off of [-0.3, 0, 0.3]) {
+                const a = ang + off;
+                bullets.push({ ownerBrawler: 'driller', isDrillerBit: true, ownerId: entity.id, x: entity.x + Math.cos(a) * (entity.radius + 8), y: entity.y + Math.sin(a) * (entity.radius + 8), vx: Math.cos(a) * DRILLER_BIT_SPEED, vy: Math.sin(a) * DRILLER_BIT_SPEED, life: 0, maxLife: range / DRILLER_BIT_SPEED, damage: Math.round(rampDmg * 0.5), pierce: false, hitIds: {}, hitboxMod: 1.2, hyperVisual: true });
+            }
+            if (primary) spawnFloatingText(primary.x, primary.y - 46, rampIndex > 0 ? '⛏️ x' + (rampIndex + 1) : '⛏️ DRILL!', '#c084fc');
+            return true;
+        }
+        // Normal form: melee swipe — every enemy in the arc takes the ramp damage.
+        for (const e of [player, ...bots]) {
+            if (!e || e.hp <= 0 || e.id === entity.id || areAlliedEntities(entity, e)) continue;
+            if (e.isStructure || e.isPet) continue;
+            const d = Math.hypot(e.x - entity.x, e.y - entity.y) - (e.radius || 14);
+            if (d > range) continue;
+            const a = Math.atan2(e.y - entity.y, e.x - entity.x);
+            let diff = Math.abs(a - ang); if (diff > Math.PI) diff = Math.PI * 2 - diff;
+            if (diff > DRILLER_RAMP_ARC) continue;
+            checkHit(e, { ownerBrawler: 'driller', ownerId: entity.id, damage: rampDmg, pierce: true, super: true, hitIds: {}, isDrillerDrill: true }, -1);
+        }
+        if (primary) spawnFloatingText(primary.x, primary.y - 46, rampIndex > 0 ? '⛏️ x' + (rampIndex + 1) : '⛏️ DRILL!', '#fbbf24');
+        return true;
+    }
+
+    // Gadgets: G1 Mud Trap (next dirt bomb slows enemies it hits, 40% for
+    // 2s), G2 Wallbreaker Drill (in drill mode, fire a big drill that
+    // breaks walls, 1200 dmg). G2 outside drill form does nothing.
+    function executeDrillerGadget(entity, gadget, isBot, targetX, targetY) {
+        if (!entity) return false;
+        if (gadget === 'g1') {
+            entity.drillerMudTrapArmed = true;
+            spawnFloatingText(entity.x, entity.y - 40, '🪱 MUD TRAP!', '#a16207');
+            return true;
+        }
+        if (gadget === 'g2') {
+            if (!isDrillerFormActive(entity)) return false;
+            const ang = Math.atan2((targetY ?? entity.y) - entity.y, (targetX ?? entity.x + 1) - entity.x);
+            bullets.push({ ownerBrawler: 'driller', isDrillerWallbreaker: true, ownerId: entity.id, x: entity.x + Math.cos(ang) * (entity.radius + 10), y: entity.y + Math.sin(ang) * (entity.radius + 10), vx: Math.cos(ang) * DRILLER_G2_SPEED, vy: Math.sin(ang) * DRILLER_G2_SPEED, life: 0, maxLife: DRILLER_G2_RANGE / DRILLER_G2_SPEED, damage: DRILLER_G2_DMG, pierce: true, pierceWalls: true, breakWallsInstantly: true, hitIds: {}, hitboxMod: 1.6, hyperVisual: !!entity.drillerFormHyper });
+            spawnFloatingText(entity.x, entity.y - 40, '🧱 WALLBREAKER!', '#a16207');
+            return true;
+        }
+        return false;
+    }
+
+    // Per-frame Driller maintenance: drill-form expiry, ramp decay, and
+    // clearing armed flags on death. No global arrays (state lives on
+    // entities), so no mode-start reset sites are needed.
+    function updateDrillerSystems(dt) {
+        const now = performance.now();
+        for (const e of [player, ...bots]) {
+            if (!e) continue;
+            if (e.hp <= 0) { e.drillerMudTrapArmed = false; e.drillerFormActive = false; continue; }
+            if (e.drillerFormActive && now >= (e.drillerFormUntil || 0)) e.drillerFormActive = false;
+            if ((e.drillerRampLastHitAt || 0) > 0 && now - e.drillerRampLastHitAt > DRILLER_RAMP_RESET_MS) { e.drillerRampTargetId = null; e.drillerRampIndex = 0; e.drillerRampLastHitAt = 0; }
+            if ((e.drillerWeakenUntil || 0) > 0 && now > e.drillerWeakenUntil) { e.drillerWeakenStacks = 0; e.drillerWeakenUntil = 0; }
+        }
+    }
+
+    // Render Driller effects: dirt-bomb shed-cone telegraph, weakened and
+    // mud-slowed enemy rings, drill-form visual + the long ammo bar (the
+    // 8s form timer) with ramp pips. All keyed off real state — never a
+    // faked flag (Snipa lesson).
+    function renderDrillerEffects() {
+        const now = performance.now();
+        // Dirt-bomb shed cone telegraph: a faint brown cone along each
+        // live bomb's flight path, showing where the clods fan out.
+        for (const b of bullets) {
+            if (!b || !b.isDrillerBomb) continue;
+            const a = Math.atan2(b.vy, b.vx);
+            ctx.save();
+            ctx.translate(b.x, b.y);
+            ctx.rotate(a);
+            ctx.globalAlpha = 0.18;
+            ctx.fillStyle = '#a16207';
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(DRILLER_BOMB_RANGE * 0.6, -DRILLER_BOMB_RANGE * 0.22);
+            ctx.lineTo(DRILLER_BOMB_RANGE * 0.6, DRILLER_BOMB_RANGE * 0.22);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+        }
+        for (const e of [player, ...bots]) {
+            if (!e || e.hp <= 0) continue;
+            // Weakened enemies (Hyper debuff): dark purple dashed ring + stacks.
+            if ((e.drillerWeakenUntil || 0) > now) {
+                ctx.save();
+                ctx.globalAlpha = 0.85;
+                ctx.strokeStyle = '#7c3aed';
+                ctx.lineWidth = 3;
+                ctx.setLineDash([6, 5]);
+                ctx.beginPath(); ctx.arc(e.x, e.y, (e.radius || 14) + 8, 0, Math.PI * 2); ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.fillStyle = '#c4b5fd';
+                ctx.font = 'bold 11px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('WEAK -' + (30 * (e.drillerWeakenStacks || 1)) + '%', e.x, e.y - (e.radius || 14) - 30);
+                ctx.restore();
+            }
+            // Mud-slowed enemies: brown ring.
+            if ((e.drillerSlowUntil || 0) > now) {
+                ctx.save();
+                ctx.globalAlpha = 0.7;
+                ctx.strokeStyle = '#92400e';
+                ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(e.x, e.y, (e.radius || 14) + 5, 0, Math.PI * 2); ctx.stroke();
+                ctx.restore();
+            }
+            // Drill form: spinning drill bit in front + the long ammo bar.
+            if (!isDrillerFormActive(e)) continue;
+            const hyper = !!e.drillerFormHyper;
+            const remain = clamp(((e.drillerFormUntil || 0) - now) / DRILLER_SUPER_FORM_DURATION_MS, 0, 1);
+            ctx.save();
+            // Hyper purple aura (Pandy/Snipa pattern).
+            if (hyper) {
+                ctx.globalAlpha = 0.9;
+                ctx.strokeStyle = 'rgba(192,132,252,0.9)';
+                ctx.lineWidth = 5;
+                ctx.shadowColor = '#a855f7';
+                ctx.shadowBlur = 28;
+                ctx.beginPath(); ctx.arc(e.x, e.y, (e.radius || 14) + 20 + Math.sin(now / 200) * 3, 0, Math.PI * 2); ctx.stroke();
+                ctx.shadowBlur = 0;
+            }
+            // Long ammo bar above the brawler (the 8s form timer).
+            const bw = 64, bh = 7;
+            const bx = e.x - bw / 2, by = e.y - (e.radius || 14) - 34;
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = 'rgba(0,0,0,0.45)';
+            ctx.fillRect(bx - 1, by - 1, bw + 2, bh + 2);
+            ctx.fillStyle = hyper ? '#c084fc' : '#d97706';
+            ctx.fillRect(bx, by, bw * remain, bh);
+            // Ramp pips: one pip per ramp step, lit as the ramp climbs.
+            const rampIndex = e.drillerRampIndex || 0;
+            for (let p = 0; p < DRILLER_RAMP.length; p++) {
+                ctx.fillStyle = p <= rampIndex ? (p >= 4 ? '#a855f7' : p >= 2 ? '#dc2626' : '#f59e0b') : 'rgba(255,255,255,0.25)';
+                ctx.fillRect(bx + p * (bw / DRILLER_RAMP.length) + 1, by + bh + 3, bw / DRILLER_RAMP.length - 2, 4);
+            }
+            ctx.restore();
+        }
+    }
+
+    // Draw one Driller dirt bomb: brown bomb + spinning dirt trail.
+    function drawDrillerBomb(ctx, b) {
+        const a = Math.atan2(b.vy, b.vx);
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        ctx.rotate(a);
+        ctx.shadowColor = b.hyperVisual ? '#c084fc' : '#a16207';
+        ctx.shadowBlur = 14;
+        // Dirt trail puffs behind the bomb.
+        ctx.fillStyle = 'rgba(161,98,7,0.55)';
+        for (let i = 1; i <= 3; i++) {
+            ctx.beginPath(); ctx.arc(-10 - i * 8, Math.sin(performance.now() / 90 + i * 2) * 4, 5 - i, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.fillStyle = '#78350f';
+        ctx.beginPath(); ctx.arc(0, 0, 11, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#a16207';
+        ctx.beginPath(); ctx.arc(2, -2, 7, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#fbbf24';
+        ctx.beginPath(); ctx.arc(-4, 3, 2.5, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+    }
+
+    // Draw one shed dirt clod: small spinning dirt chunk.
+    function drawDrillerClod(ctx, b) {
+        const a = Math.atan2(b.vy, b.vx);
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        ctx.rotate(a + performance.now() / 120);
+        ctx.fillStyle = b.hyperVisual ? '#c084fc' : '#92400e';
+        ctx.beginPath(); ctx.rect(-5, -5, 10, 10); ctx.fill();
+        ctx.fillStyle = '#d97706';
+        ctx.beginPath(); ctx.rect(-2, -2, 4, 4); ctx.fill();
+        ctx.restore();
+    }
+
+    // Draw one Hyper triple-drill bit: spinning drill bit.
+    function drawDrillerBit(ctx, b) {
+        const a = Math.atan2(b.vy, b.vx);
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        ctx.rotate(a);
+        ctx.shadowColor = '#c084fc';
+        ctx.shadowBlur = 14;
+        ctx.fillStyle = '#a855f7';
+        ctx.beginPath();
+        ctx.moveTo(12, 0); ctx.lineTo(-6, -6); ctx.lineTo(-10, 0); ctx.lineTo(-6, 6); ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#e9d5ff';
+        ctx.beginPath(); ctx.arc(8, 0, 3, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+    }
+
+    // Draw the G2 wallbreaker drill: big spinning drill.
+    function drawDrillerWallbreaker(ctx, b) {
+        const a = Math.atan2(b.vy, b.vx);
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        ctx.rotate(a);
+        ctx.shadowColor = b.hyperVisual ? '#c084fc' : '#d97706';
+        ctx.shadowBlur = 18;
+        ctx.fillStyle = '#78350f';
+        ctx.beginPath(); ctx.arc(0, 0, 14, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#d97706';
+        ctx.beginPath();
+        ctx.moveTo(18, 0); ctx.lineTo(-8, -9); ctx.lineTo(-14, 0); ctx.lineTo(-8, 9); ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#fbbf24';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(18, 0); ctx.lineTo(-14, 0); ctx.stroke();
+        ctx.restore();
+    }
+
+    // Driller voice watcher: spawn / win / death / hurt / idle (freezeon pattern).
+    function updateDrillerVoiceState() {
+        try {
+            if (typeof selectedBrawler === 'undefined' || !player) return;
+            const now = performance.now();
+            const isDrill = selectedBrawler === 'driller';
+            if (playing && !drillerVoicePrevPlaying) {
+                drillerVoiceMatchEndPlayed = false;
+                drillerVoiceLastHp = player.hp;
+                drillerVoiceLastActionAt = now;
+                drillerVoiceLastIdleAt = 0;
+                player.drillerWinAt = 0;
+                player.drillerDeathAt = 0;
+                if (isDrill) window.BraweDrillerVoice?.play('spawn');
+            }
+            if (gameOver && !drillerVoicePrevGameOver && !drillerVoiceMatchEndPlayed) {
+                drillerVoiceMatchEndPlayed = true;
+                if (isDrill) {
+                    if (player.hp > 0) {
+                        player.drillerWinAt = now;
+                        window.BraweDrillerVoice?.play('win');
+                    } else {
+                        player.drillerDeathAt = now;
+                        window.BraweDrillerVoice?.play('death');
+                        explosions.push({ x: player.x, y: player.y, radius: 60, life: 0, maxLife: .8, color: 'rgba(161,98,7,.55)' });
+                        spawnFloatingText(player.x, player.y - 46, '⛏️ BURIED!', '#d97706');
+                    }
+                }
+            }
+            if (playing && !gameOver && isDrill && player.hp > 0 && drillerVoiceLastHp !== null && player.hp < drillerVoiceLastHp) {
+                drillerVoiceLastActionAt = now;
+                window.BraweDrillerVoice?.play('hurt');
+            }
+            if (player) drillerVoiceLastHp = player.hp;
+            if (playing && !gameOver && isDrill && player.hp > 0) {
+                const moved = Math.hypot((player.x || 0) - (player.drillerVoicePrevX ?? player.x ?? 0), (player.y || 0) - (player.drillerVoicePrevY ?? player.y ?? 0)) > 4;
+                if (moved || (player.lastAttackAt || 0) > drillerVoiceLastActionAt) drillerVoiceLastActionAt = now;
+                player.drillerVoicePrevX = player.x;
+                player.drillerVoicePrevY = player.y;
+                if (now - drillerVoiceLastActionAt > 20000 && now - drillerVoiceLastIdleAt > 25000) {
+                    drillerVoiceLastIdleAt = now;
+                    window.BraweDrillerVoice?.play('idle');
+                }
+            }
+            drillerVoicePrevPlaying = playing;
+            drillerVoicePrevGameOver = gameOver;
+        } catch (e) {}
+    }
+
     // ===== Christmas Showdown buffs (Season 6: Xplodemis) =====
     let christmasBuffTimer = 0;
     function isChristmasShowdownMatch() { return showdownMode === 'christmas_showdown' && !isTraining; }
@@ -29680,6 +30155,7 @@ let heistFeverActive = false;
         if (bot.brawler === 'snipa') return distance < SNIPA_SUPER_AURA_RADIUS; // headshot aura range
         if (bot.brawler === 'bookworm') return distance < 550; // Worm Leap jump 2 reaches 600px
         if (bot.brawler === 'freezeon') return distance < FREEZEON_SUPER_THROW_RANGE; // ice rink throw range
+        if (bot.brawler === 'driller') return distance < DRILLER_DRILL_RANGE + 60; // drill form: get close, then drill
         const targetHpPct = target.hp ? target.hp / Math.max(1, target.maxHp || target.hp) : 1;
         const clustered = getBotLivingEnemies(bot).filter((enemy) => Math.hypot(enemy.x - target.x, enemy.y - target.y) < 190).length;
         const objectiveFight = (isObjectiveMode || isTugZoneMode) && Math.hypot(target.x - (objectiveZone?.x || WORLD_W*0.5), target.y - (objectiveZone?.y || WORLD_H*0.5)) < (objectiveZone?.r || 240) + 80;
@@ -31979,7 +32455,7 @@ let heistFeverActive = false;
       beam:8, fuser:24, heater_miser:20, minigunnin:72, money_and_tax:24, outlit:30, steamer:8,
       bouncin_balls:6, chickpig:12, classy:6, copyphase:6, goonbob:6, hoop:5, hyperorigin:5, robber:42,
       portalo:7, ghoul:6, jacktrade:18, darkener:6, awakenator:8, trampaheal:6, axeywaxy:6, mageny:6, draflygon:6, ramage:6, upgradart:10, cinderion:10, cursed:7, king:6, anti_royal:6, weefee:6, rager:4,
-    carmela_fudge:5, bolznstien:5, sir_cheeseburger:4, blinkeye:4, magnatar:6, oil_maker:16, badbat:5, looma:7, feathers:5, spikey:6, electrostien:14, mallow:12, nightshade: 6, runner: 6, aura_charmer: 6, voltastein: 6, staticstein: 6, healnstein: 6, voodoyou: 6, pandy: 6, snipa: 6, bookworm: 7, freezeon: 7
+    carmela_fudge:5, bolznstien:5, sir_cheeseburger:4, blinkeye:4, magnatar:6, oil_maker:16, badbat:5, looma:7, feathers:5, spikey:6, electrostien:14, mallow:12, nightshade: 6, runner: 6, aura_charmer: 6, voltastein: 6, staticstein: 6, healnstein: 6, voodoyou: 6, pandy: 6, snipa: 6, bookworm: 7, freezeon: 7, driller: 7
   });
   let nextMainAttackActivationId = 1;
   function getSuperChargeHitsForBrawler(brawler) {
@@ -34663,6 +35139,7 @@ let heistFeverActive = false;
       let mult = 1;
       if ((entity.prismDampenedUntil || 0) > now) mult *= 0.82; // Drainbow SP2: 18% damage reduction
       if ((entity.freezeonHypothermiaUntil || 0) > now) mult *= 0.75; // FreeZeon SP2 Hypothermia: 25% less damage inside his rink
+      if ((entity.drillerWeakenUntil || 0) > now) mult *= Math.max(0.10, 1 - DRILLER_HYPER_WEAKEN_PER_HIT * (entity.drillerWeakenStacks || 1)); // Driller Hyper main: weakened enemies deal up to 90% less damage (30% per hit, max 3 stacks, 0.7s)
       if ((entity.awakenatorSleepUntil || 0) > now) mult *= (entity.awakenatorDeepSleep ? 0.70 : 0.80);
       if ((entity.awakenatorCorruptFriendlyUntil || 0) > now) mult *= 0.30;
       if ((entity.amplifierDamageBuffUntil || 0) > now) mult *= (entity.amplifierDamageBuffMult || AMPLIFIER_DAMAGE_BUFF_MULT);
@@ -37532,6 +38009,13 @@ let heistFeverActive = false;
         }
         fromEntity.bookwormBook = null; // stale ref
     }
+    // Driller: while Drill Form is active the attack button drills (one
+    // attack every 0.25s, gated inside drillerDoDrillAttack). Fused mode
+    // skips the form — the fused component fires the normal main instead.
+    if (brawler === 'driller' && !fromEntity.fusedPartCall && !isFusedEntity(fromEntity) && isDrillerFormActive(fromEntity)) {
+        drillerDoDrillAttack(fromEntity, targetX, targetY);
+        return;
+    }
         // Fused mode: one press fires both components. The outer call runs the
         // per-press gates once; the two inner calls (fusedPartCall set) skip
         // them and run only the per-component gates/branch.
@@ -37733,6 +38217,8 @@ let heistFeverActive = false;
     // Bookworm voice: player attack line (throttled inside the voice module).
     if (!isBot && fromEntity === player && (fromEntity.fusedPartCall || selectedBrawler) === 'bookworm') { try { window.BraweBookwormVoice?.play('attack'); } catch (e) {} }
         if (!isBot && fromEntity === player && (fromEntity.fusedPartCall || selectedBrawler) === 'freezeon') { try { window.BraweFreezeonVoice?.play('attack'); } catch (e) {} }
+    // Driller voice: player attack line (throttled inside the voice module).
+    if (!isBot && fromEntity === player && (fromEntity.fusedPartCall || selectedBrawler) === 'driller') { try { window.BraweDrillerVoice?.play('attack'); } catch (e) {} }
 
     fireArenaForgeCapturedHyperAttacks(fromEntity, ang, now);
 
@@ -40506,6 +40992,9 @@ let heistFeverActive = false;
     } else if (brawler === 'freezeon') {
         fireFreezeonMain(fromEntity, targetX, targetY, isBot);
         return;
+    } else if (brawler === 'driller') {
+        fireDrillerMain(fromEntity, targetX, targetY, isBot);
+        return;
     } else if (brawler === 'nightshade') {
         fireNightshadeMain(fromEntity, ang, targetX, targetY, { isBot, now, damageMult: 1, hitboxMult: 1, donorMode: false });
         return;
@@ -42878,6 +43367,7 @@ let heistFeverActive = false;
     if (combatBrawler === 'snipa') { castSnipaSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'bookworm') { castBookwormSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'freezeon') { castFreezeonSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
+    if (combatBrawler === 'driller') { castDrillerSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'nightshade') { castNightshadeSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'aegis') { castAegisSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'runner') { castRunnerSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
@@ -44212,6 +44702,10 @@ let heistFeverActive = false;
       executeFreezeonGadget(bot, 'g1', true);
     } else if (bot.brawler === 'freezeon' && g === 'g2') {
       executeFreezeonGadget(bot, 'g2', true);
+    } else if (bot.brawler === 'driller' && g === 'g1') {
+      executeDrillerGadget(bot, 'g1', true);
+    } else if (bot.brawler === 'driller' && g === 'g2') {
+      executeDrillerGadget(bot, 'g2', true, target?.x ?? (bot.x + Math.cos(ang) * 200), target?.y ?? (bot.y + Math.sin(ang) * 200));
     } else if (bot.brawler === 'nightshade' && g === 'g1') {
       executeNightshadeG1(bot, target?.x ?? (bot.x + Math.cos(ang) * 200), target?.y ?? (bot.y + Math.sin(ang) * 200));
     } else if (bot.brawler === 'nightshade' && g === 'g2') {
@@ -44777,6 +45271,7 @@ let heistFeverActive = false;
     if (botCombatBrawler === 'snipa') { castSnipaSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'bookworm') { castBookwormSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'freezeon') { castFreezeonSuper(bot, isHyper, targetX, targetY); return; }
+    if (botCombatBrawler === 'driller') { castDrillerSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'nightshade') { castNightshadeSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'aegis') { castAegisSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'runner') { castRunnerSuper(bot, isHyper, targetX, targetY); return; }
@@ -46407,6 +46902,18 @@ let heistFeverActive = false;
         return;
     } else if (curBrawler === 'freezeon' && curGadget === 'g2') {
         executeFreezeonGadget(player, 'g2', false);
+        gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
+        setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
+        updateGadgetButton();
+        return;
+    } else if (curBrawler === 'driller' && curGadget === 'g1') {
+        executeDrillerGadget(player, 'g1', false);
+        gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
+        setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
+        updateGadgetButton();
+        return;
+    } else if (curBrawler === 'driller' && curGadget === 'g2') {
+        executeDrillerGadget(player, 'g2', false, gadgetWorld.x, gadgetWorld.y);
         gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
         setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
         updateGadgetButton();
@@ -56687,6 +57194,18 @@ function checkHit(target, b, i){
             }
         }
 
+        // Driller: a Hyper dirt bomb or one of its spin clods weakens the
+        // enemy it hits (30% less damage per hit, stacking to 90%, 0.7s);
+        // a Mud-Trap-armed bomb or clod slows them (40%, 2s). Brawlers
+        // only — never structures or pets.
+        if (b && b.ownerBrawler === 'driller' && (b.isDrillerBomb || b.isDrillerClod) && target && target.hp > 0) {
+            const drillerOwner = getEntityById(b.ownerId);
+            if (drillerOwner && !target.isStructure && !target.isPet && !areAlliedEntities(drillerOwner, target)) {
+                if (b.hyperVisual) drillerApplyWeaken(drillerOwner, target);
+                if (b.drillerMudTrap) drillerApplyMudSlow(drillerOwner, target);
+            }
+        }
+
         // Snipa Longshot: each main-attack hit on an enemy brawler stretches
         // her range +0.5 tiles (SP1 Eagle Eye: +0.75), stacking to +3 tiles.
         // Deadeye (G1) doubles the bonus on the flagged shot.
@@ -59820,6 +60339,7 @@ function checkHit(target, b, i){
     if (playing && !gameOver) updateSnipaSystems(dt);
     if (playing && !gameOver) updateBookwormSystems(dt);
     if (playing && !gameOver) updateFreezeonSystems(dt);
+    if (playing && !gameOver) updateDrillerSystems(dt);
     if (playing && !gameOver) updatePropPads();
     if (playing && !gameOver) updateChristmasShowdown(dt);
     if (playing && !gameOver) updatePropHuntMode(dt, now);
@@ -63690,6 +64210,8 @@ function checkHit(target, b, i){
       }
       // FreeZeon: a cone that runs out of range leaves slush where it lands.
       if (b.isFreezeonCone && b.life >= b.maxLife) freezeonConeLanded(b);
+      // Driller: a flying dirt bomb spins dirt clods out in a cone as it travels.
+      if (b.isDrillerBomb) drillerShedClods(b, dt);
       if (b.isSpikeyThrow && b.life >= b.maxLife) {
           parkSpikeyBall(b);
       }
@@ -70049,6 +70571,36 @@ function checkHit(target, b, i){
                 ctx.fill();
                 ctx.restore();
             }
+            if (brawlerId === 'driller') {
+                ctx.save();
+                ctx.shadowColor = '#a16207';
+                ctx.shadowBlur = 8;
+                // Brown overalls body.
+                ctx.fillStyle = '#78350f';
+                ctx.strokeStyle = '#451a03';
+                ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(entity.x, drawY + size * 0.16, size * 0.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                // Head.
+                ctx.fillStyle = '#fcd9b8';
+                ctx.beginPath(); ctx.arc(entity.x, drawY - size * 0.08, size * 0.15, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                // Yellow hard hat.
+                ctx.fillStyle = '#facc15';
+                ctx.beginPath(); ctx.arc(entity.x, drawY - size * 0.1, size * 0.15, Math.PI, 0); ctx.fill();
+                ctx.fillRect(entity.x - size * 0.17, drawY - size * 0.1, size * 0.34, size * 0.04);
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = '#0f172a';
+                ctx.beginPath();
+                ctx.arc(entity.x - size * 0.05, drawY - size * 0.08, size * 0.02, 0, Math.PI * 2);
+                ctx.arc(entity.x + size * 0.05, drawY - size * 0.08, size * 0.02, 0, Math.PI * 2);
+                ctx.fill();
+                // Drill bit held up.
+                ctx.strokeStyle = '#9ca3af';
+                ctx.lineWidth = 3;
+                ctx.beginPath(); ctx.moveTo(entity.x + size * 0.2, drawY + size * 0.05); ctx.lineTo(entity.x + size * 0.3, drawY - size * 0.25); ctx.stroke();
+                ctx.fillStyle = '#d97706';
+                ctx.beginPath(); ctx.moveTo(entity.x + size * 0.3, drawY - size * 0.3); ctx.lineTo(entity.x + size * 0.26, drawY - size * 0.2); ctx.lineTo(entity.x + size * 0.34, drawY - size * 0.2); ctx.closePath(); ctx.fill();
+                ctx.restore();
+            }
             ctx.textAlign = 'left';
             ctx.textBaseline = 'alphabetic';
     }
@@ -70589,6 +71141,7 @@ function checkHit(target, b, i){
     renderSnipaEffects();
     renderBookwormEffects();
     renderFreezeonEffects();
+    renderDrillerEffects();
     renderNightshadeEffects();
     renderRunnerEffects(ctx);
     if (typeof renderBouncinBossEvent === 'function') renderBouncinBossEvent('ground');
@@ -77905,6 +78458,22 @@ function checkHit(target, b, i){
         drawFreezeonCone(ctx, b);
         continue;
       }
+      if (b.isDrillerBomb) {
+        drawDrillerBomb(ctx, b);
+        continue;
+      }
+      if (b.isDrillerClod) {
+        drawDrillerClod(ctx, b);
+        continue;
+      }
+      if (b.isDrillerBit) {
+        drawDrillerBit(ctx, b);
+        continue;
+      }
+      if (b.isDrillerWallbreaker) {
+        drawDrillerWallbreaker(ctx, b);
+        continue;
+      }
       const earlyProjectileBrawler = b.ownerBrawler || (b.ownerId === player.id ? selectedBrawler : '');
       const earlyProjectileSkin = getActiveSkinForBrawler(earlyProjectileBrawler);
       if (renderUniversalSkinProjectile(b, earlyProjectileSkin)) continue;
@@ -83817,6 +84386,27 @@ function checkHit(target, b, i){
             ctx.restore();
             continue;
         }
+        if (ex.fxKind === 'drillerSwipe') {
+            // Driller drill swipe: dirt burst in front of the brawler.
+            // Color escalates with the ramp (brown -> orange -> red ->
+            // purple) and ex.hyper is the owner's real Hyper state at the
+            // moment of the swipe (Snipa lesson: never a faked flag).
+            const dAlpha = Math.max(0, 1 - ex.life / ex.maxLife);
+            const progress = clamp(ex.life / ex.maxLife, 0, 1);
+            const dR = (ex.radius || 130) * (0.4 + 0.6 * progress);
+            ctx.save();
+            ctx.globalAlpha = dAlpha;
+            ctx.fillStyle = ex.color || '#d97706';
+            for (let s = 0; s < 6; s++) {
+                const a = (s / 6) * Math.PI * 2 + ex.life * 3;
+                ctx.beginPath(); ctx.arc(ex.x + Math.cos(a) * dR * 0.7, ex.y + Math.sin(a) * dR * 0.7, 5 + 4 * (1 - progress), 0, Math.PI * 2); ctx.fill();
+            }
+            ctx.strokeStyle = ex.hyper ? '#c084fc' : (ex.color || '#d97706');
+            ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.arc(ex.x, ex.y, dR, 0, Math.PI * 2); ctx.stroke();
+            ctx.restore();
+            continue;
+        }
         if (ex.fxKind === 'rankedRocketeerBurst') {
             const progress = clamp(ex.life / ex.maxLife, 0, 1);
             const burst = 1 - Math.pow(1 - progress, 3);
@@ -86867,6 +87457,7 @@ function checkHit(target, b, i){
         updateSnipaVoiceState();
         updateBookwormVoiceState();
         updateFreezeonVoiceState();
+        updateDrillerVoiceState();
         const homeVisible = homeScreen && homeScreen.style.display !== 'none';
         if (playing || !homeVisible) render();
     } catch (err) {
