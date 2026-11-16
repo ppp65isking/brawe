@@ -334,6 +334,11 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             const hpScale = getLevelHpScale(level);
             return { hp: Math.round(5000 * hpScale), dmg: Math.round(800 * scale), speed: 270 };
         }
+        if (brawlerId === 'freezeon') {
+            const scale = 0.55 + (level - 1) * 0.045;
+            const hpScale = getLevelHpScale(level);
+            return { hp: Math.round(5200 * hpScale), dmg: Math.round(500 * scale), speed: 270 };
+        }
         if (brawlerId === 'looma') {
             const scale = 0.55 + (level - 1) * 0.045;
             const hpScale = getLevelHpScale(level);
@@ -920,6 +925,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             if (selectedBrawler === 'snipa') { try { window.BraweSnipaVoice?.play('kill'); } catch (e) {} }
             // Bookworm voice: player kill line.
             if (selectedBrawler === 'bookworm') { try { window.BraweBookwormVoice?.play('kill'); } catch (e) {} }
+            // FreeZeon voice: player kill line.
+            if (selectedBrawler === 'freezeon') { try { window.BraweFreezeonVoice?.play('kill'); } catch (e) {} }
         }
         if (target && target.hp <= 0 && hasTrinket(owner, 'fresh_magazine')) {
             if (now - (target.trinketFreshMagazineKillAt || 0) > 1000) {
@@ -5139,6 +5146,7 @@ const bolznstienPendingStrikes = [];
             pandy: 1900,
             snipa: 1600,
             bookworm: 1700,
+            freezeon: 1600,
             carmela_fudge: 1400,
             oil_maker: 90,
             magnatar: 1450,
@@ -5210,6 +5218,7 @@ const bolznstienPendingStrikes = [];
             pandy: 350,
             snipa: 300,
             bookworm: 300,
+            freezeon: 300,
             carmela_fudge: 180,
             oil_maker: 112,
             magnatar: 200,
@@ -5509,7 +5518,7 @@ const bolznstienPendingStrikes = [];
         'boom_arang', 'teether', 'fuel', 'xray', 'angel', 'demon', 'warrior', 'relay',
         'upiedown', 'chickpig', 'jetpack', 'snapper', 'robber', 'rocketeer',
         'carmela_fudge', 'peter_pickle', 'unstable', 'homer', 'orbo', 'predator', 'fastpass', 'freestyle', 'portalo', 'ghoul', 'jacktrade', 'darkener', 'awakenator', 'adlof', 'cluster', 'witch', 'boomer', 'blade_vane', 'daggershard', 'ice_cream', 'swimmer', 'kage', 'drainbow', 'draflygon', 'axeywaxy', 'trampaheal', 'mageny', 'ramage', 'upgradart', 'cinderion', 'cursed', 'king', 'anti_royal', 'sir_cheeseburger', 'weefee', 'blinkeye', 'bolznstien', 'magnatar', 'oil_maker', 'rager', 'badbat', 'looma',
-        'feathers', 'spikey', 'electrostien', 'mallow', 'nightshade', 'aegis', 'runner', 'aura_charmer', 'voltastein', 'staticstein', 'healnstein', 'voodoyou', 'pandy', 'snipa', 'bookworm'
+        'feathers', 'spikey', 'electrostien', 'mallow', 'nightshade', 'aegis', 'runner', 'aura_charmer', 'voltastein', 'staticstein', 'healnstein', 'voodoyou', 'pandy', 'snipa', 'bookworm', 'freezeon'
     ];
     const registeredBrawlerModules = window.ArenaForgeModules?.brawlers || Object.create(null);
     for (const moduleId of Object.keys(registeredBrawlerModules)) {
@@ -5601,6 +5610,7 @@ const bolznstienPendingStrikes = [];
             pandy: 'Epic',
             snipa: 'Epic',
             bookworm: 'Epic',
+            freezeon: 'Epic',
 
             // Mythic (13)
             dashaholic: 'Mythic',
@@ -10551,6 +10561,17 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           g2: 'Wormhole (Teleport to your flying book)',
           sp1: 'Voracious Reader (Worm stacks last 50% longer before fading)',
           sp2: 'Cliffhanger (Root lasts 1.75 seconds instead of 1)'
+      },
+      'freezeon': {
+          name: 'FreeZeon', role: 'Controller', rarity: 'Epic', color: '#38bdf8',
+          desc: 'A snow-cone slinger who turns the arena into an ice rink. His cones leave slippery slush where they land, and his rink freezes anyone who stands in it.',
+          attack: 'Snow Cones', attackDesc: 'FreeZeon hurls 4 snow cones that leave a slippery patch where they land.',
+          super: 'Ice Rink', superDesc: 'FreeZeon hurls a frozen rink that bursts on impact, leaving a slippery ice patch that freezes anyone standing in it.',
+          hyper: 'Deep Freeze: the rink freezes twice as fast and melts enemies over time, and cone hits burst into a brain-freeze shatter.',
+          g1: 'Cryo Syrup (Instantly freeze everyone standing in your rink)',
+          g2: 'Extra Scoop (Next attack fires 6 cones instead of 4)',
+          sp1: 'Supercool (Enemies frozen by your rink stay frozen 0.5 seconds longer)',
+          sp2: 'Hypothermia (Enemies standing in your rink deal 25% less damage)'
       }
   };
 
@@ -10576,7 +10597,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
 
     // V4 standardized primary-role organization: exactly one gameplay role per brawler.
     const PRIMARY_ROLE_BY_BRAWLER = {
-        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank', rager:'Controller', looma:'Controller', feathers:'Controller', spikey:'Damage Dealer', electrostien:'Assassin', mallow:'Controller', nightshade:'Assassin', runner:'Controller', aura_charmer:'Support', voltastein:'Artillery', staticstein:'Damage Dealer', healnstein:'Support', voodoyou:'Controller', pandy:'Damage Dealer', bookworm:'Controller',
+        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank', rager:'Controller', looma:'Controller', feathers:'Controller', spikey:'Damage Dealer', electrostien:'Assassin', mallow:'Controller', nightshade:'Assassin', runner:'Controller', aura_charmer:'Support', voltastein:'Artillery', staticstein:'Damage Dealer', healnstein:'Support', voodoyou:'Controller', pandy:'Damage Dealer', bookworm:'Controller', freezeon:'Controller',
     carmela_fudge:'Damage Dealer', bolznstien:'Damage Dealer', badbat:'Damage Dealer', magnatar:'Controller', oil_maker:'Controller', sir_cheeseburger:'Tank',
         blade_vane:'Assassin', kage:'Assassin', drainbow:'Controller', bowlin_rida:'Assassin', dashaholic:'Assassin', demon:'Assassin', jetpack:'Assassin', malakor:'Assassin', predator:'Assassin', swimmer:'Assassin', teether:'Assassin',
         boom_arang:'Marksman', cheseypuff:'Marksman', crystila:'Marksman', homer:'Marksman', hunter:'Marksman', orbo:'Marksman', snapper:'Marksman', xray:'Marksman', snipa:'Marksman',
@@ -10609,6 +10630,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
             pandy: '🍬',
             snipa: '🎯',
             bookworm: '🐛',
+            freezeon: '⛄',
     looma: '🪡🧵',
         sir_cheeseburger: '🛡️',
         anti_royal: '🏴‍☠️',
@@ -11768,6 +11790,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
       pandy: { g1: 14000, g2: 16000 },
       snipa: { g1: 14000, g2: 16000 },
       bookworm: { g1: 14000, g2: 16000 },
+      freezeon: { g1: 14000, g2: 16000 },
       carmela_fudge: { g1: 8000, g2: 8000 },
       bolznstien: { g1: 14000, g2: 15000 },
       sir_cheeseburger: { g1: 13000, g2: 14000 },
@@ -25623,6 +25646,411 @@ let heistFeverActive = false;
       } catch (e) {}
     }
 
+    // ===== FreeZeon systems (Lou copy, Anthony's twists) =====
+    // Main: 4 snow cones (Lou: 3); cones leave a 1s slip zone where they land.
+    // Super: Ice Rink — ice patch that also does impact damage on landing.
+    // Hyper Super: freeze builds 2x faster + 150/s damage-over-time inside.
+    // Hyper main: every cone hit schedules a brain-freeze shatter 0.6s later.
+    const FREEZEON_CONE_COUNT = 4; // Anthony's twist: Lou fires 3, FreeZeon fires 4
+    const FREEZEON_CONE_SPEED = 780; // px/s
+    const FREEZEON_CONE_RANGE = 700; // px
+    const FREEZEON_CONE_DMG = 500; // P11 base cone damage (see getScaledStats 'freezeon'.dmg)
+    const FREEZEON_CONE_SPREAD = 0.42; // total spread radians across the volley
+    const FREEZEON_SLIP_RADIUS = 120; // px
+    const FREEZEON_SLIP_DURATION_MS = 1000; // slip zone lasts 1s (Anthony's spec)
+    const FREEZEON_SLIP_DRIFT_MULT = 1.6; // slide amplifies the enemy's own movement
+    const FREEZEON_SUPER_RADIUS = 260; // px
+    const FREEZEON_SUPER_DURATION_MS = 6000; // patch lasts 6s
+    const FREEZEON_SUPER_THROW_RANGE = 560; // px
+    const FREEZEON_SUPER_IMPACT_DMG = 800; // P11 impact damage on landing
+    const FREEZEON_SUPER_CHARGE_HITS = 7; // 7 main-attack hits to charge
+    const FREEZEON_FREEZE_TICK_MS = 250; // patch freeze-buildup tick (ice_cream pattern)
+    const FREEZEON_FREEZE_PER_TICK = 12.5; // 100 in 2s standing in the patch
+    const FREEZEON_FREEZE_PER_TICK_HYPER = 25; // Hyper: 100 in 1s standing
+    const FREEZEON_FREEZE_DURATION_MS = 1000; // frozen 1s, then progress resets
+    const FREEZEON_SP1_FREEZE_DURATION_MS = 1500; // Supercool: frozen 0.5s longer
+    const FREEZEON_FREEZE_IMMUNE_MS = 2500; // post-freeze immunity (ice_cream pattern)
+    const FREEZEON_FREEZE_DECAY_DELAY_MS = 2000; // buildup starts decaying 2s after last tick
+    const FREEZEON_FREEZE_DECAY_PER_S = 24; // buildup decay per second
+    const FREEZEON_HYPER_DOT_PER_S = 150; // Hyper Super damage-over-time inside the patch
+    const FREEZEON_SHATTER_DELAY_MS = 600; // brain-freeze shatter delay after a cone hit
+    const FREEZEON_SHATTER_RADIUS = 150; // px
+    const FREEZEON_SHATTER_DMG = 600; // P11 shatter damage
+    const FREEZEON_MAX_SLIP_ZONES_PER_OWNER = 4; // oldest slip zone expires when capped
+    const FREEZEON_MAX_PATCHES_PER_OWNER = 2; // oldest patch expires when capped
+    const FREEZEON_HYPER_AURA_RADIUS_BONUS = 20; // Hyper aura ring radius bonus (Pandy/Snipa pattern)
+    const FREEZEON_HYPER_AURA_LINE_WIDTH = 5;
+    const FREEZEON_HYPER_AURA_STROKE_ALPHA = 0.9;
+    const FREEZEON_HYPER_AURA_SHADOW_BLUR = 28;
+    let freezeonPatches = []; // {x, y, radius, until, nextTickAt, ownerId, hyper} — ice rink patches
+    let freezeonSlipZones = []; // {x, y, radius, until, ownerId} — 1s slippery slush
+    let freezeonShatters = []; // {x, y, at, ownerId, targetId} — pending brain-freeze shatters
+    let freezeonVoicePrevPlaying = false;
+    let freezeonVoicePrevGameOver = false;
+    let freezeonVoiceMatchEndPlayed = false;
+    let freezeonVoiceLastHp = null;
+    let freezeonVoiceLastActionAt = 0;
+    let freezeonVoiceLastIdleAt = 0;
+    function freezeonStarChoice(entity) { return getEntityStarChoice(entity); }
+    function freezeonHasSP1(entity) { return freezeonStarChoice(entity) === 'slow'; }
+    function freezeonHasSP2(entity) { return freezeonStarChoice(entity) === 'long'; }
+    function isFreezeon(entity) { return !!entity && (entity.brawler === 'freezeon' || (entity.id === player.id && selectedBrawler === 'freezeon')); }
+    function freezeonFreezeDurationMs(entity) { return freezeonHasSP1(entity) ? FREEZEON_SP1_FREEZE_DURATION_MS : FREEZEON_FREEZE_DURATION_MS; }
+    function freezeonFindOwner(ownerId) { if (player && player.id === ownerId) return player; return bots.find((b) => b && b.id === ownerId) || null; }
+
+    // Freeze the target solid (stun) for the freeze duration, then grant immunity.
+    function freezeonFreezeTarget(owner, target) {
+        if (!owner || !target || target.hp <= 0 || areAlliedEntities(owner, target)) return false;
+        const now = performance.now();
+        if (now < (target.freezeonFreezeImmuneUntil || 0)) return false;
+        target.freezeonFreeze = 0;
+        target.stunUntil = Math.max(target.stunUntil || 0, now + freezeonFreezeDurationMs(owner));
+        target.freezeonFreezeImmuneUntil = now + FREEZEON_FREEZE_IMMUNE_MS;
+        explosions.push({ x: target.x, y: target.y, radius: 72, life: 0, maxLife: .36, color: 'rgba(56,189,248,.82)', legendary: true, fxKind: 'freezeonFreeze' });
+        spawnFloatingText(target.x, target.y - 50, 'FROZEN!', '#e0f2fe');
+        // Ranked 'crowd_uncontrol': crowd control reflects back (ice_cream precedent).
+        if ((isRankedMatch || isCustomMutatorMatch) && (activeRankedModifier === 'crowd_uncontrol' || activeRankedModifierSecondary === 'crowd_uncontrol' || activeRankedModifierTertiary === 'crowd_uncontrol') && owner && owner !== target && !owner._ccReflecting) {
+            owner._ccReflecting = true;
+            try {
+                owner.stunUntil = Math.max(owner.stunUntil || 0, now + freezeonFreezeDurationMs(owner));
+                owner.freezeonFreezeImmuneUntil = now + FREEZEON_FREEZE_IMMUNE_MS;
+                spawnFloatingText(owner.x, owner.y - 50, '↩ FROZEN!', '#ff88ff');
+            } finally { owner._ccReflecting = false; }
+        }
+        return true;
+    }
+
+    // Build freeze progress on the target; freeze solid at 100.
+    function freezeonApplyFreezeBuild(owner, target, amount) {
+        if (!owner || !target || target.hp <= 0 || areAlliedEntities(owner, target)) return false;
+        const now = performance.now();
+        if (now < (target.freezeonFreezeImmuneUntil || 0)) return false;
+        target.freezeonFreeze = Math.min(100, (target.freezeonFreeze || 0) + Math.max(0, amount));
+        target.freezeonFreezeLastHitAt = now;
+        target.freezeonFreezeOwnerId = owner.id;
+        if (target.freezeonFreeze < 100) return false;
+        return freezeonFreezeTarget(owner, target);
+    }
+
+    // Drop a 1-second slip zone where a cone landed (capped per owner).
+    function freezeonSpawnSlipZone(owner, x, y) {
+        if (!owner) return;
+        const now = performance.now();
+        freezeonSlipZones.push({ x: clamp(x, 28, WORLD_W - 28), y: clamp(y, 28, WORLD_H - 28), radius: FREEZEON_SLIP_RADIUS, until: now + FREEZEON_SLIP_DURATION_MS, ownerId: owner.id });
+        const mine = freezeonSlipZones.filter((z) => z.ownerId === owner.id);
+        if (mine.length > FREEZEON_MAX_SLIP_ZONES_PER_OWNER) freezeonSlipZones.splice(freezeonSlipZones.indexOf(mine[0]), 1);
+    }
+
+    // A cone ended (hit an enemy, hit a wall, or ran out of range): leave slush.
+    function freezeonConeLanded(b) {
+        if (!b || b._freezeonSlipped) return;
+        b._freezeonSlipped = true;
+        const owner = getEntityById(b.ownerId);
+        if (owner) freezeonSpawnSlipZone(owner, b.x, b.y);
+    }
+
+    // Main: hurl 4 snow cones in a spread (6 with Extra Scoop armed).
+    function fireFreezeonMain(fromEntity, targetX, targetY, isBot) {
+        const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
+        const stats = getScaledStats('freezeon', fromEntity === player ? getSelectedBrawlerLevel() : (fromEntity.level || 11));
+        const count = fromEntity.freezeonExtraScoopArmed ? 6 : FREEZEON_CONE_COUNT;
+        fromEntity.freezeonExtraScoopArmed = false;
+        const ang = Math.atan2(targetY - fromEntity.y, targetX - fromEntity.x);
+        for (let i = 0; i < count; i++) {
+            const lane = count === 1 ? 0 : (i / (count - 1) - .5);
+            const a = ang + lane * FREEZEON_CONE_SPREAD;
+            bullets.push({ ownerBrawler: 'freezeon', isFreezeonCone: true, ownerId: fromEntity.id, x: fromEntity.x + Math.cos(a) * (fromEntity.radius + 8), y: fromEntity.y + Math.sin(a) * (fromEntity.radius + 8), vx: Math.cos(a) * FREEZEON_CONE_SPEED, vy: Math.sin(a) * FREEZEON_CONE_SPEED, life: 0, maxLife: FREEZEON_CONE_RANGE / FREEZEON_CONE_SPEED, damage: stats.dmg, pierce: false, hitIds: {}, hitboxMod: 1.4, hyperVisual: hyper });
+        }
+        return true;
+    }
+
+    // Super: hurl an ice rink that bursts on impact, then stays as a patch.
+    function castFreezeonSuper(entity, hyper, targetX, targetY) {
+        if (!entity) return false;
+        const now = performance.now();
+        const ang = Math.atan2(targetY - entity.y, targetX - entity.x);
+        const dist = clamp(Math.hypot(targetX - entity.x, targetY - entity.y) || 0, 0, FREEZEON_SUPER_THROW_RANGE);
+        const x = clamp(entity.x + Math.cos(ang) * dist, 40, WORLD_W - 40);
+        const y = clamp(entity.y + Math.sin(ang) * dist, 40, WORLD_H - 40);
+        // Impact damage on landing (brawlers only, never structures).
+        for (const target of [player, ...bots]) {
+            if (!target || target.hp <= 0 || target.id === entity.id || areAlliedEntities(entity, target)) continue;
+            if (target.isStructure || target.isPet) continue;
+            if (Math.hypot(target.x - x, target.y - y) <= FREEZEON_SUPER_RADIUS + (target.radius || 14)) {
+                checkHit(target, { ownerBrawler: 'freezeon', ownerId: entity.id, damage: FREEZEON_SUPER_IMPACT_DMG, pierce: true, super: true, hitIds: {}, isFreezeonSuperImpact: true }, -1);
+            }
+        }
+        freezeonPatches.push({ x, y, radius: FREEZEON_SUPER_RADIUS, until: now + FREEZEON_SUPER_DURATION_MS, nextTickAt: now, ownerId: entity.id, hyper: !!hyper });
+        const mine = freezeonPatches.filter((p) => p.ownerId === entity.id);
+        if (mine.length > FREEZEON_MAX_PATCHES_PER_OWNER) freezeonPatches.splice(freezeonPatches.indexOf(mine[0]), 1);
+        explosions.push({ x, y, radius: FREEZEON_SUPER_RADIUS, life: 0, maxLife: .4, color: hyper ? 'rgba(192,132,252,.55)' : 'rgba(56,189,248,.55)', legendary: true, fxKind: 'freezeonSuperSpawn' });
+        spawnFloatingText(x, y - 40, hyper ? '❄️ DEEP FREEZE!' : '❄️ ICE RINK!', hyper ? '#e9d5ff' : '#bae6fd');
+        if (entity.id === player.id) { try { window.BraweFreezeonVoice?.play('super'); } catch (e) {} }
+        return true;
+    }
+
+    // Hyper main: schedule a brain-freeze shatter 0.6s after a cone hit.
+    function freezeonScheduleShatter(owner, target) {
+        if (!owner || !target || target.hp <= 0) return;
+        const now = performance.now();
+        freezeonShatters.push({ x: target.x, y: target.y, at: now + FREEZEON_SHATTER_DELAY_MS, ownerId: owner.id, targetId: target.id });
+    }
+
+    // Detonate a pending shatter around the hit enemy's current spot.
+    function freezeonDetonateShatter(owner, s) {
+        const target = s.targetId ? getEntityById(s.targetId) : null;
+        const cx = (target && target.hp > 0) ? target.x : s.x;
+        const cy = (target && target.hp > 0) ? target.y : s.y;
+        explosions.push({ x: cx, y: cy, radius: FREEZEON_SHATTER_RADIUS, life: 0, maxLife: .4, color: 'rgba(186,230,253,.85)', legendary: true, fxKind: 'freezeonShatter' });
+        spawnFloatingText(cx, cy - 40, '❄️ BRAIN FREEZE!', '#e0f2fe');
+        for (const e of [player, ...bots]) {
+            if (!e || e.hp <= 0 || e.id === owner.id || areAlliedEntities(owner, e)) continue;
+            if (e.isStructure || e.isPet) continue;
+            if (Math.hypot(e.x - cx, e.y - cy) <= FREEZEON_SHATTER_RADIUS + (e.radius || 14)) {
+                checkHit(e, { ownerBrawler: 'freezeon', ownerId: owner.id, damage: FREEZEON_SHATTER_DMG, pierce: true, hitIds: {}, isFreezeonShatter: true }, -1);
+            }
+        }
+    }
+
+    // Gadgets: G1 Cryo Syrup (freeze everyone in your rink), G2 Extra Scoop (next main fires 6 cones).
+    function executeFreezeonGadget(entity, gadget, isBot) {
+        if (!entity) return false;
+        if (gadget === 'g1') {
+            let froze = 0;
+            for (const p of freezeonPatches) {
+                if (p.ownerId !== entity.id) continue;
+                for (const target of [player, ...bots]) {
+                    if (!target || target.hp <= 0 || target.id === entity.id || areAlliedEntities(entity, target)) continue;
+                    if (target.isStructure || target.isPet) continue;
+                    if (Math.hypot(target.x - p.x, target.y - p.y) > p.radius + (target.radius || 14)) continue;
+                    if (freezeonFreezeTarget(entity, target)) froze++;
+                }
+            }
+            spawnFloatingText(entity.x, entity.y - 40, '🧪 CRYO SYRUP!', '#bae6fd');
+            return true;
+        }
+        if (gadget === 'g2') {
+            entity.freezeonExtraScoopArmed = true;
+            spawnFloatingText(entity.x, entity.y - 40, '🍦 EXTRA SCOOP!', '#bae6fd');
+            return true;
+        }
+        return false;
+    }
+
+    // Per-frame FreeZeon maintenance: freeze decay, patch/slip expiry,
+    // shatter detonation, patch ticks (freeze buildup + Hyper DoT + SP2 mark),
+    // and sliding enemies in slip zones / patches.
+    function updateFreezeonSystems(dt) {
+        const now = performance.now();
+        // Freeze buildup decays after 2s without a new tick.
+        for (const e of [player, ...bots]) {
+            if (!e) continue;
+            if ((e.freezeonFreeze || 0) > 0 && now > (e.freezeonFreezeLastHitAt || 0) + FREEZEON_FREEZE_DECAY_DELAY_MS) {
+                e.freezeonFreeze = Math.max(0, e.freezeonFreeze - FREEZEON_FREEZE_DECAY_PER_S * dt);
+            }
+            if (e.hp <= 0) e.freezeonExtraScoopArmed = false;
+        }
+        // Slip zones expire after 1s; patches expire after 6s.
+        freezeonSlipZones = freezeonSlipZones.filter((z) => now < z.until);
+        freezeonPatches = freezeonPatches.filter((p) => now < p.until);
+        // Shatters detonate 0.6s after the cone hit.
+        for (let i = freezeonShatters.length - 1; i >= 0; i--) {
+            const s = freezeonShatters[i];
+            if (now < s.at) continue;
+            freezeonShatters.splice(i, 1);
+            const owner = getEntityById(s.ownerId);
+            if (!owner || owner.hp <= 0) continue;
+            freezeonDetonateShatter(owner, s);
+        }
+        // Patch ticks (250ms): freeze buildup + Hyper DoT + Hypothermia mark.
+        const entities = [player, ...bots].filter((e) => e && e.hp > 0);
+        for (const p of freezeonPatches) {
+            const owner = freezeonFindOwner(p.ownerId);
+            if (!owner) continue;
+            const sp2 = freezeonHasSP2(owner);
+            if (now >= (p.nextTickAt || 0)) {
+                p.nextTickAt = now + FREEZEON_FREEZE_TICK_MS;
+                for (const target of entities) {
+                    if (target.id === owner.id || areAlliedEntities(owner, target)) continue;
+                    if (target.isStructure || target.isPet) continue;
+                    if (Math.hypot(target.x - p.x, target.y - p.y) > p.radius + (target.radius || 14)) continue;
+                    freezeonApplyFreezeBuild(owner, target, p.hyper ? FREEZEON_FREEZE_PER_TICK_HYPER : FREEZEON_FREEZE_PER_TICK);
+                    if (p.hyper) {
+                        checkHit(target, { ownerBrawler: 'freezeon', ownerId: owner.id, damage: Math.round(FREEZEON_HYPER_DOT_PER_S * FREEZEON_FREEZE_TICK_MS / 1000), pierce: true, super: true, hitIds: {}, isFreezeonPatchDot: true }, -1);
+                    }
+                    if (sp2) target.freezeonHypothermiaUntil = Math.max(target.freezeonHypothermiaUntil || 0, now + 400);
+                }
+            }
+        }
+        // Slip: enemies in a slip zone (or a patch) keep sliding in the
+        // direction they were moving (Feathers wind-zone pattern).
+        const slipZones = [];
+        for (const z of freezeonSlipZones) slipZones.push({ x: z.x, y: z.y, radius: z.radius, ownerId: z.ownerId });
+        for (const p of freezeonPatches) slipZones.push({ x: p.x, y: p.y, radius: p.radius, ownerId: p.ownerId });
+        const inSlip = new Set();
+        for (const z of slipZones) {
+            const zoneOwner = freezeonFindOwner(z.ownerId);
+            if (!zoneOwner) continue;
+            for (const e of entities) {
+                if (e.id === zoneOwner.id || areAlliedEntities(zoneOwner, e)) continue;
+                if (e.isStructure || e.isPet) continue;
+                if (Math.hypot(e.x - z.x, e.y - z.y) > z.radius + (e.radius || 14)) continue;
+                inSlip.add(e.id);
+                e._freezeonSlipVx = (e._freezeonSlipVx || 0) + (((e.vx || 0) * FREEZEON_SLIP_DRIFT_MULT) - (e._freezeonSlipVx || 0)) * Math.min(1, dt * 5);
+                e._freezeonSlipVy = (e._freezeonSlipVy || 0) + (((e.vy || 0) * FREEZEON_SLIP_DRIFT_MULT) - (e._freezeonSlipVy || 0)) * Math.min(1, dt * 5);
+            }
+        }
+        for (const e of entities) {
+            if (!e._freezeonSlipVx && !e._freezeonSlipVy) continue;
+            e.x = clamp(e.x + e._freezeonSlipVx * dt * 0.55, e.radius || 14, WORLD_W - (e.radius || 14));
+            e.y = clamp(e.y + e._freezeonSlipVy * dt * 0.55, e.radius || 14, WORLD_H - (e.radius || 14));
+            if (!inSlip.has(e.id)) {
+                const decay = Math.pow(0.004, dt);
+                e._freezeonSlipVx *= decay; e._freezeonSlipVy *= decay;
+                if (Math.abs(e._freezeonSlipVx) < 4) e._freezeonSlipVx = 0;
+                if (Math.abs(e._freezeonSlipVy) < 4) e._freezeonSlipVy = 0;
+            }
+        }
+    }
+
+    // Render FreeZeon effects: slip zones, ice patches, freeze bars, Hyper aura.
+    function renderFreezeonEffects() {
+        const now = performance.now();
+        for (const z of freezeonSlipZones) {
+            ctx.save();
+            ctx.translate(z.x, z.y);
+            ctx.globalAlpha = 0.35;
+            ctx.fillStyle = '#bae6fd';
+            ctx.beginPath(); ctx.arc(0, 0, z.radius, 0, Math.PI * 2); ctx.fill();
+            ctx.globalAlpha = 0.5;
+            ctx.strokeStyle = '#e0f2fe';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 3; i++) {
+                ctx.beginPath();
+                ctx.arc(0, 0, z.radius * (0.4 + i * 0.25), now / 400 + i * 2.1, now / 400 + i * 2.1 + 2.4);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+        for (const p of freezeonPatches) {
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            const grad = ctx.createRadialGradient(0, 0, p.radius * 0.15, 0, 0, p.radius);
+            grad.addColorStop(0, p.hyper ? 'rgba(192,132,252,0.5)' : 'rgba(186,230,253,0.5)');
+            grad.addColorStop(1, p.hyper ? 'rgba(192,132,252,0.12)' : 'rgba(186,230,253,0.12)');
+            ctx.fillStyle = grad;
+            ctx.beginPath(); ctx.arc(0, 0, p.radius, 0, Math.PI * 2); ctx.fill();
+            ctx.globalAlpha = 0.8;
+            ctx.strokeStyle = p.hyper ? '#c084fc' : '#38bdf8';
+            ctx.lineWidth = 4;
+            ctx.setLineDash([14, 10]);
+            ctx.beginPath(); ctx.arc(0, 0, p.radius, now / 600, now / 600 + Math.PI * 2); ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.restore();
+        }
+        // Freeze buildup bar above enemies (ice-blue).
+        for (const e of [player, ...bots]) {
+            if (!e || e.hp <= 0 || (e.freezeonFreeze || 0) <= 0) continue;
+            const w = 36, h = 6;
+            const x = e.x - w / 2, y = e.y - (e.radius || 14) - 22;
+            ctx.save();
+            ctx.fillStyle = 'rgba(56,189,248,0.25)';
+            ctx.fillRect(x, y, w, h);
+            ctx.fillStyle = '#38bdf8';
+            ctx.fillRect(x, y, w * Math.min(1, e.freezeonFreeze / 100), h);
+            ctx.restore();
+        }
+        // Hyper aura ring around FreeZeon (Pandy/Snipa pattern).
+        for (const e of [player, ...bots]) {
+            if (!e || e.hp <= 0 || !isFreezeon(e)) continue;
+            const hyper = e.id === player.id ? !!isHypercharged : !!e.isHypercharged;
+            if (!hyper) continue;
+            ctx.save();
+            ctx.globalAlpha = FREEZEON_HYPER_AURA_STROKE_ALPHA;
+            ctx.strokeStyle = `rgba(192,132,252,${FREEZEON_HYPER_AURA_STROKE_ALPHA})`;
+            ctx.lineWidth = FREEZEON_HYPER_AURA_LINE_WIDTH;
+            ctx.shadowColor = '#a855f7';
+            ctx.shadowBlur = FREEZEON_HYPER_AURA_SHADOW_BLUR;
+            ctx.beginPath();
+            ctx.arc(e.x, e.y, (e.radius || 14) + FREEZEON_HYPER_AURA_RADIUS_BONUS + Math.sin(now / 200) * 3, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+        }
+    }
+
+    // Draw one FreeZeon snow cone: tan cone + ice scoop (purple when hyper).
+    function drawFreezeonCone(ctx, b) {
+        const a = Math.atan2(b.vy, b.vx);
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        ctx.rotate(a);
+        ctx.shadowColor = b.hyperVisual ? '#c084fc' : '#38bdf8';
+        ctx.shadowBlur = 14;
+        ctx.fillStyle = '#d97706';
+        ctx.beginPath();
+        ctx.moveTo(-10, -7); ctx.lineTo(10, 0); ctx.lineTo(-10, 7); ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = b.hyperVisual ? '#c084fc' : '#7dd3fc';
+        ctx.beginPath();
+        ctx.arc(8, 0, 8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(6, -3, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    // FreeZeon voice watcher: spawn / win / death / hurt / idle (bookworm pattern).
+    function updateFreezeonVoiceState() {
+        try {
+            if (typeof selectedBrawler === 'undefined' || !player) return;
+            const now = performance.now();
+            const isFreeze = selectedBrawler === 'freezeon';
+            if (playing && !freezeonVoicePrevPlaying) {
+                freezeonVoiceMatchEndPlayed = false;
+                freezeonVoiceLastHp = player.hp;
+                freezeonVoiceLastActionAt = now;
+                freezeonVoiceLastIdleAt = 0;
+                player.freezeonWinAt = 0;
+                player.freezeonDeathAt = 0;
+                if (isFreeze) window.BraweFreezeonVoice?.play('spawn');
+            }
+            if (gameOver && !freezeonVoicePrevGameOver && !freezeonVoiceMatchEndPlayed) {
+                freezeonVoiceMatchEndPlayed = true;
+                if (isFreeze) {
+                    if (player.hp > 0) {
+                        player.freezeonWinAt = now;
+                        window.BraweFreezeonVoice?.play('win');
+                    } else {
+                        player.freezeonDeathAt = now;
+                        window.BraweFreezeonVoice?.play('death');
+                        explosions.push({ x: player.x, y: player.y, radius: 60, life: 0, maxLife: .8, color: 'rgba(56,189,248,.55)', fxKind: 'freezeonDeathBurst' });
+                        spawnFloatingText(player.x, player.y - 46, '⛄ MELTED!', '#bae6fd');
+                    }
+                }
+            }
+            if (playing && !gameOver && isFreeze && player.hp > 0 && freezeonVoiceLastHp !== null && player.hp < freezeonVoiceLastHp) {
+                freezeonVoiceLastActionAt = now;
+                window.BraweFreezeonVoice?.play('hurt');
+            }
+            if (player) freezeonVoiceLastHp = player.hp;
+            if (playing && !gameOver && isFreeze && player.hp > 0) {
+                const moved = Math.hypot((player.x || 0) - (player.freezeonVoicePrevX ?? player.x ?? 0), (player.y || 0) - (player.freezeonVoicePrevY ?? player.y ?? 0)) > 4;
+                if (moved || (player.lastAttackAt || 0) > freezeonVoiceLastActionAt) freezeonVoiceLastActionAt = now;
+                player.freezeonVoicePrevX = player.x;
+                player.freezeonVoicePrevY = player.y;
+                if (now - freezeonVoiceLastActionAt > 20000 && now - freezeonVoiceLastIdleAt > 25000) {
+                    freezeonVoiceLastIdleAt = now;
+                    window.BraweFreezeonVoice?.play('idle');
+                }
+            }
+            freezeonVoicePrevPlaying = playing;
+            freezeonVoicePrevGameOver = gameOver;
+        } catch (e) {}
+    }
+
+
     // ===== Christmas Showdown buffs (Season 6: Xplodemis) =====
     let christmasBuffTimer = 0;
     function isChristmasShowdownMatch() { return showdownMode === 'christmas_showdown' && !isTraining; }
@@ -29145,6 +29573,7 @@ let heistFeverActive = false;
         if (bot.brawler === 'pandy') return distance < PANDY_SUPER_RANGE; // candy shell range
         if (bot.brawler === 'snipa') return distance < SNIPA_SUPER_AURA_RADIUS; // headshot aura range
         if (bot.brawler === 'bookworm') return distance < 550; // Worm Leap jump 2 reaches 600px
+        if (bot.brawler === 'freezeon') return distance < FREEZEON_SUPER_THROW_RANGE; // ice rink throw range
         const targetHpPct = target.hp ? target.hp / Math.max(1, target.maxHp || target.hp) : 1;
         const clustered = getBotLivingEnemies(bot).filter((enemy) => Math.hypot(enemy.x - target.x, enemy.y - target.y) < 190).length;
         const objectiveFight = (isObjectiveMode || isTugZoneMode) && Math.hypot(target.x - (objectiveZone?.x || WORLD_W*0.5), target.y - (objectiveZone?.y || WORLD_H*0.5)) < (objectiveZone?.r || 240) + 80;
@@ -31444,7 +31873,7 @@ let heistFeverActive = false;
       beam:8, fuser:24, heater_miser:20, minigunnin:72, money_and_tax:24, outlit:30, steamer:8,
       bouncin_balls:6, chickpig:12, classy:6, copyphase:6, goonbob:6, hoop:5, hyperorigin:5, robber:42,
       portalo:7, ghoul:6, jacktrade:18, darkener:6, awakenator:8, trampaheal:6, axeywaxy:6, mageny:6, draflygon:6, ramage:6, upgradart:10, cinderion:10, cursed:7, king:6, anti_royal:6, weefee:6, rager:4,
-    carmela_fudge:5, bolznstien:5, sir_cheeseburger:4, blinkeye:4, magnatar:6, oil_maker:16, badbat:5, looma:7, feathers:5, spikey:6, electrostien:14, mallow:12, nightshade: 6, runner: 6, aura_charmer: 6, voltastein: 6, staticstein: 6, healnstein: 6, voodoyou: 6, pandy: 6, snipa: 6, bookworm: 7
+    carmela_fudge:5, bolznstien:5, sir_cheeseburger:4, blinkeye:4, magnatar:6, oil_maker:16, badbat:5, looma:7, feathers:5, spikey:6, electrostien:14, mallow:12, nightshade: 6, runner: 6, aura_charmer: 6, voltastein: 6, staticstein: 6, healnstein: 6, voodoyou: 6, pandy: 6, snipa: 6, bookworm: 7, freezeon: 7
   });
   let nextMainAttackActivationId = 1;
   function getSuperChargeHitsForBrawler(brawler) {
@@ -31893,7 +32322,7 @@ let heistFeverActive = false;
   function startDuelsRound() {
     outlitWallChains.length = 0;
     bullets.length = 0; ragerWarTotems.length = 0;
-    bolznstienPendingStrikes.length = 0; bolznstienShockTrails.length = 0; bolznstienChainArcs.length = 0; chocolatePuddles.length = 0; magnatarVortices.length = 0; oilMakerPuddles.length = 0; oilMakerBarrels.length = 0; oilMakerPendingPuddles.length = 0; steamerPoles.length = 0; weefeePoles.length = 0; chickpigEggZones.length = 0; rings.length = 0; cheeseFields.length = 0; healingPods.length = 0; explosions.length = 0; pendingClones.length = 0; destructibleWalls.length = 0; floatingTexts.length = 0; stickyNotes.length = 0; amplifierToolboxes.length = 0; amplifierScrewZones.length = 0; skeleParachutes.length = 0; skelePortals.length = 0; malakorHellZones.length = 0; malakorHands.length = 0; relativityZones.length = 0; packetTimeFields.length = 0; packetTelegraphs.length = 0; fastpassCheckpoints.length = 0; freestyleMicrophones.length = 0; portaloPortalPairs.length = 0; portaloPrisons.length = 0; portaloShockTimers.length = 0; ghoulHaunts.length = 0; darkenerClouds.length = 0; darkagons.length = 0; cursedStorms.length = 0; cursedHyperClouds.length = 0; antiRoyalMortarShells.length = 0; antiRoyalMortarZones.length = 0; jackTradeVolleys.length = 0; jackTradeThrownEffects.length = 0; jackTradeZones.length = 0; jackTradeEndpointShots.length = 0; badbatSwarm.length = 0; badbatShieldOrbs.length = 0; loomaThreads.length = 0; loomaWeaves.length = 0; feathersWindZones.length = 0; feathersStorms.length = 0; spikeyParkedBalls.length = 0; spikeyMegaBalls.length = 0; spikeyPendingSlams.length = 0; electricRealms.length = 0; electrostienPendingStrikes.length = 0;
+    bolznstienPendingStrikes.length = 0; bolznstienShockTrails.length = 0; bolznstienChainArcs.length = 0; chocolatePuddles.length = 0; magnatarVortices.length = 0; oilMakerPuddles.length = 0; oilMakerBarrels.length = 0; oilMakerPendingPuddles.length = 0; steamerPoles.length = 0; weefeePoles.length = 0; chickpigEggZones.length = 0; rings.length = 0; cheeseFields.length = 0; healingPods.length = 0; explosions.length = 0; pendingClones.length = 0; destructibleWalls.length = 0; floatingTexts.length = 0; stickyNotes.length = 0; amplifierToolboxes.length = 0; amplifierScrewZones.length = 0; skeleParachutes.length = 0; skelePortals.length = 0; malakorHellZones.length = 0; malakorHands.length = 0; relativityZones.length = 0; packetTimeFields.length = 0; packetTelegraphs.length = 0; fastpassCheckpoints.length = 0; freestyleMicrophones.length = 0; portaloPortalPairs.length = 0; portaloPrisons.length = 0; portaloShockTimers.length = 0; ghoulHaunts.length = 0; darkenerClouds.length = 0; darkagons.length = 0; cursedStorms.length = 0; cursedHyperClouds.length = 0; antiRoyalMortarShells.length = 0; antiRoyalMortarZones.length = 0; jackTradeVolleys.length = 0; jackTradeThrownEffects.length = 0; jackTradeZones.length = 0; jackTradeEndpointShots.length = 0; badbatSwarm.length = 0; badbatShieldOrbs.length = 0; loomaThreads.length = 0; loomaWeaves.length = 0; feathersWindZones.length = 0; feathersStorms.length = 0; spikeyParkedBalls.length = 0; spikeyMegaBalls.length = 0; spikeyPendingSlams.length = 0; electricRealms.length = 0; electrostienPendingStrikes.length = 0; freezeonPatches.length = 0; freezeonSlipZones.length = 0; freezeonShatters.length = 0;
     snapperWaves.length = 0;
     rocketeerFireZones.length = 0;
     jetpackFireZones.length = 0;
@@ -34127,6 +34556,7 @@ let heistFeverActive = false;
       if (!entity) return 1;
       let mult = 1;
       if ((entity.prismDampenedUntil || 0) > now) mult *= 0.82; // Drainbow SP2: 18% damage reduction
+      if ((entity.freezeonHypothermiaUntil || 0) > now) mult *= 0.75; // FreeZeon SP2 Hypothermia: 25% less damage inside his rink
       if ((entity.awakenatorSleepUntil || 0) > now) mult *= (entity.awakenatorDeepSleep ? 0.70 : 0.80);
       if ((entity.awakenatorCorruptFriendlyUntil || 0) > now) mult *= 0.30;
       if ((entity.amplifierDamageBuffUntil || 0) > now) mult *= (entity.amplifierDamageBuffMult || AMPLIFIER_DAMAGE_BUFF_MULT);
@@ -37196,6 +37626,7 @@ let heistFeverActive = false;
     if (!isBot && fromEntity === player && (fromEntity.fusedPartCall || selectedBrawler) === 'snipa') { try { window.BraweSnipaVoice?.play('attack'); } catch (e) {} }
     // Bookworm voice: player attack line (throttled inside the voice module).
     if (!isBot && fromEntity === player && (fromEntity.fusedPartCall || selectedBrawler) === 'bookworm') { try { window.BraweBookwormVoice?.play('attack'); } catch (e) {} }
+        if (!isBot && fromEntity === player && (fromEntity.fusedPartCall || selectedBrawler) === 'freezeon') { try { window.BraweFreezeonVoice?.play('attack'); } catch (e) {} }
 
     fireArenaForgeCapturedHyperAttacks(fromEntity, ang, now);
 
@@ -39966,6 +40397,9 @@ let heistFeverActive = false;
     } else if (brawler === 'bookworm') {
         fireBookwormMain(fromEntity, targetX, targetY, isBot);
         return;
+    } else if (brawler === 'freezeon') {
+        fireFreezeonMain(fromEntity, targetX, targetY, isBot);
+        return;
     } else if (brawler === 'nightshade') {
         fireNightshadeMain(fromEntity, ang, targetX, targetY, { isBot, now, damageMult: 1, hitboxMult: 1, donorMode: false });
         return;
@@ -42337,6 +42771,7 @@ let heistFeverActive = false;
     if (combatBrawler === 'pandy') { castPandySuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'snipa') { castSnipaSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'bookworm') { castBookwormSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
+    if (combatBrawler === 'freezeon') { castFreezeonSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'nightshade') { castNightshadeSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'aegis') { castAegisSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'runner') { castRunnerSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
@@ -43667,6 +44102,10 @@ let heistFeverActive = false;
       executeBookwormGadget(bot, 'g1', true);
     } else if (bot.brawler === 'bookworm' && g === 'g2') {
       executeBookwormGadget(bot, 'g2', true);
+    } else if (bot.brawler === 'freezeon' && g === 'g1') {
+      executeFreezeonGadget(bot, 'g1', true);
+    } else if (bot.brawler === 'freezeon' && g === 'g2') {
+      executeFreezeonGadget(bot, 'g2', true);
     } else if (bot.brawler === 'nightshade' && g === 'g1') {
       executeNightshadeG1(bot, target?.x ?? (bot.x + Math.cos(ang) * 200), target?.y ?? (bot.y + Math.sin(ang) * 200));
     } else if (bot.brawler === 'nightshade' && g === 'g2') {
@@ -44231,6 +44670,7 @@ let heistFeverActive = false;
     if (botCombatBrawler === 'pandy') { castPandySuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'snipa') { castSnipaSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'bookworm') { castBookwormSuper(bot, isHyper, targetX, targetY); return; }
+    if (botCombatBrawler === 'freezeon') { castFreezeonSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'nightshade') { castNightshadeSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'aegis') { castAegisSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'runner') { castRunnerSuper(bot, isHyper, targetX, targetY); return; }
@@ -45849,6 +46289,18 @@ let heistFeverActive = false;
         return;
     } else if (curBrawler === 'bookworm' && curGadget === 'g2') {
         executeBookwormGadget(player, 'g2', false);
+        gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
+        setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
+        updateGadgetButton();
+        return;
+    } else if (curBrawler === 'freezeon' && curGadget === 'g1') {
+        executeFreezeonGadget(player, 'g1', false);
+        gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
+        setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
+        updateGadgetButton();
+        return;
+    } else if (curBrawler === 'freezeon' && curGadget === 'g2') {
+        executeFreezeonGadget(player, 'g2', false);
         gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
         setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
         updateGadgetButton();
@@ -51625,7 +52077,7 @@ let heistFeverActive = false;
       isMegasteinBossEvent = showdownMode === 'megastein_boss';
       isBossFight = isLavaBossEvent || isBouncinBossEvent || isHeadlessBossEvent || isTombstoneBossEvent || isMegasteinBossEvent || isBeastBossEvent;
       activeSkinTrial = null; // real matches never use trial skins
-      feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = [];
+      feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = [];
       if (isBouncinBossEvent) {
           initBouncinBossMatch();
       }
@@ -52058,7 +52510,7 @@ let heistFeverActive = false;
       isMirrorMode = false;
       isImpossibleMode = false;
       isObjectiveMode = false;
-      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; isPropHuntMode = false; propHuntState = null;
+      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; isPropHuntMode = false; propHuntState = null;
       isTraining = false;
       isDuels = true;
       isTowerDuelEvent = true;
@@ -52101,7 +52553,7 @@ let heistFeverActive = false;
       isMirrorMode = false;
       isImpossibleMode = false;
       isObjectiveMode = false;
-      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; isPropHuntMode = false; propHuntState = null;
+      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; isPropHuntMode = false; propHuntState = null;
       isTraining = false;
       isDuels = true;
       isFusedMode = true;
@@ -53354,7 +53806,7 @@ isBrawlerLabMode = false;
       isTowerDuelEvent = false;
       isWarperEvent = false;
       isObjectiveMode = false;
-      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; isPropHuntMode = false; propHuntState = null;
+      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; isPropHuntMode = false; propHuntState = null;
       soloTrialWave = 0;
       soloTrialPending = false;
       playing = true;
@@ -53500,7 +53952,7 @@ isBrawlerLabMode = false;
       player.fusedParts = null;
       isWarperEvent = false;
       isObjectiveMode = false;
-      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; isPropHuntMode = false; propHuntState = null;
+      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; isPropHuntMode = false; propHuntState = null;
     isConstructionMode = false;
       if (document.getElementById('topbar')) document.getElementById('topbar').textContent = 'Arena Forge - Rookie Course';
       playing = true;
@@ -56116,6 +56568,15 @@ function checkHit(target, b, i){
         if (b && (b.isBookwormWorm || b.isBookwormSideWorm) && target && target.hp > 0) {
             const bookwormOwner = getEntityById(b.ownerId);
             if (bookwormOwner) bookwormApplyWormStack(bookwormOwner, target);
+        }
+        // FreeZeon: a cone that hits an enemy leaves slush where it landed,
+        // and a Hyper cone hit schedules a brain-freeze shatter.
+        if (b && b.ownerBrawler === 'freezeon' && b.isFreezeonCone && target && target.hp > 0) {
+            freezeonConeLanded(b);
+            if (b.hyperVisual) {
+                const freezeonOwner = getEntityById(b.ownerId);
+                if (freezeonOwner) freezeonScheduleShatter(freezeonOwner, target);
+            }
         }
 
         // Snipa Longshot: each main-attack hit on an enemy brawler stretches
@@ -59250,6 +59711,7 @@ function checkHit(target, b, i){
     if (playing && !gameOver) updatePandySystems(dt);
     if (playing && !gameOver) updateSnipaSystems(dt);
     if (playing && !gameOver) updateBookwormSystems(dt);
+    if (playing && !gameOver) updateFreezeonSystems(dt);
     if (playing && !gameOver) updatePropPads();
     if (playing && !gameOver) updateChristmasShowdown(dt);
     if (playing && !gameOver) updatePropHuntMode(dt, now);
@@ -63118,6 +63580,8 @@ function checkHit(target, b, i){
       if (b.isBookwormBook && b.life >= b.maxLife) {
           bookwormEndBook(b);
       }
+      // FreeZeon: a cone that runs out of range leaves slush where it lands.
+      if (b.isFreezeonCone && b.life >= b.maxLife) freezeonConeLanded(b);
       if (b.isSpikeyThrow && b.life >= b.maxLife) {
           parkSpikeyBall(b);
       }
@@ -63755,6 +64219,13 @@ function checkHit(target, b, i){
            // enemies, not walls) — the worm comes out, then the book dies.
            if (b.isBookwormBook) {
                bookwormEndBook(b);
+               bullets.splice(i, 1);
+               i--;
+               continue;
+           }
+           // FreeZeon: a cone that hits a wall leaves slush, then dies.
+           if (b.isFreezeonCone) {
+               freezeonConeLanded(b);
                bullets.splice(i, 1);
                i--;
                continue;
@@ -69436,6 +69907,40 @@ function checkHit(target, b, i){
                 ctx.fill();
                 ctx.restore();
             }
+            if (brawlerId === 'freezeon') {
+                ctx.save();
+                ctx.shadowColor = '#38bdf8';
+                ctx.shadowBlur = 8;
+                ctx.fillStyle = '#e0f2fe';
+                ctx.strokeStyle = '#0ea5e9';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(entity.x, drawY + size * 0.16, size * 0.2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(entity.x, drawY - size * 0.08, size * 0.15, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(entity.x, drawY - size * 0.28, size * 0.11, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = '#0f172a';
+                ctx.beginPath();
+                ctx.arc(entity.x - size * 0.04, drawY - size * 0.3, size * 0.02, 0, Math.PI * 2);
+                ctx.arc(entity.x + size * 0.04, drawY - size * 0.3, size * 0.02, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#f97316';
+                ctx.beginPath();
+                ctx.moveTo(entity.x, drawY - size * 0.26);
+                ctx.lineTo(entity.x + size * 0.12, drawY - size * 0.24);
+                ctx.lineTo(entity.x, drawY - size * 0.22);
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+            }
             ctx.textAlign = 'left';
             ctx.textBaseline = 'alphabetic';
     }
@@ -69975,6 +70480,7 @@ function checkHit(target, b, i){
     renderPandyEffects();
     renderSnipaEffects();
     renderBookwormEffects();
+    renderFreezeonEffects();
     renderNightshadeEffects();
     renderRunnerEffects(ctx);
     if (typeof renderBouncinBossEvent === 'function') renderBouncinBossEvent('ground');
@@ -77285,6 +77791,10 @@ function checkHit(target, b, i){
       }
       if (b.isBookwormWorm || b.isBookwormSideWorm) {
         drawBookwormWorm(ctx, b);
+        continue;
+      }
+      if (b.isFreezeonCone) {
+        drawFreezeonCone(ctx, b);
         continue;
       }
       const earlyProjectileBrawler = b.ownerBrawler || (b.ownerId === player.id ? selectedBrawler : '');
@@ -86172,6 +86682,7 @@ function checkHit(target, b, i){
         updatePandyVoiceState();
         updateSnipaVoiceState();
         updateBookwormVoiceState();
+        updateFreezeonVoiceState();
         const homeVisible = homeScreen && homeScreen.style.display !== 'none';
         if (playing || !homeVisible) render();
     } catch (err) {
