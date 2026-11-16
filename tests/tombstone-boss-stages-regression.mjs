@@ -125,7 +125,7 @@ function makeAttacksSandbox(boss, rt) {
     explosions: [],
     tombstoneBossRuntime: rt,
     activeTombstoneBossDifficulty: 'normal',
-    AOEDamage: (x, y, radius, damage) => { aoeCalls.push({ x, y, radius, damage }); },
+    AOEDamage: (x, y, radius, damage, ownerId) => { aoeCalls.push({ x, y, radius, damage, ownerId }); },
     checkHit: (entity, info) => { hitCalls.push({ entity, info }); },
     areAlliedEntities: (a, b) => a.team === b.team,
     spawnFloatingText: (x, y, text, color) => { floatTexts.push({ text, color }); },
@@ -275,6 +275,110 @@ try {
   check('render: rain zone circle', calls.some((c) => c.m === 'arc' && c.args[2] === 170));
   check('render: slam ring arc keeps its gap', calls.some((c) => c.m === 'arc' && c.args[2] === 100 && Math.abs(c.args[3] - 0.5) < 0.01));
 } catch (e) { failures.push('render vm block threw: ' + e.message); }
+
+// --- source pins: Thanksgiving rework reconciliation (fixes, 2026-11-16) ---
+check('eruption zone count uses effective stage (frenzy = phase 3)', game.includes('Math.max(boss.bossStage||1,rt.frenzyEarly?3:1)>=3?3:2'));
+check('no double frenzy buff at 33% on Impossible', game.includes('!(t.isTombstoneBoss && tombstoneBossRuntime && tombstoneBossRuntime.frenzyEarly)'));
+check('reward branch pays per-difficulty coins (current line)', game.includes('(isTombstoneBossEvent ? getTombstoneBossDifficulty(tombstoneBossRuntime?.difficulty).rewardCoins : (isMegasteinBossEvent ? MEGASTEIN_BOSS_REWARD_COINS : 100))'));
+check('slam only ever targets player + bots (brawlers)', game.includes('for(const entity of [player,...bots]){'));
+try {
+  const atk = extractFn(game, 'updateTombstoneBossAttacks');
+  check('attack engine never touches towers/structures', !atk.toLowerCase().includes('tower') && !atk.includes('hp +=') && !atk.includes('hp+='));
+} catch (e) { failures.push('attack-engine tower check threw: ' + e.message); }
+
+// --- executed: tier table — rewards, minion pace, Normal-as-shipped, fallback ---
+try {
+  const boss = { id: 5, x: 1200, y: 800, hp: 90000, maxHp: 90000, bossStage: 1, speed: 140, team: 'tombstone_enemy' };
+  const rt = baseRt('normal');
+  const { sandbox } = makeAttacksSandbox(boss, rt);
+  const g = sandbox.getTombstoneBossDifficulty;
+  const expected = {
+    normal: { hp: 90000, reward: 60, mi: 8000, cap: 6 },
+    hard: { hp: 135000, reward: 120, mi: 8000, cap: 6 },
+    extreme: { hp: 200000, reward: 200, mi: 5000, cap: 8 },
+    impossible: { hp: 300000, reward: 350, mi: 5000, cap: 8 },
+  };
+  for (const [id, e] of Object.entries(expected)) {
+    const c = g(id);
+    check(`rewards: ${id} pays +${e.reward}`, c.rewardCoins === e.reward);
+    check(`minions: ${id} pace ${e.mi}ms cap ${e.cap}`, c.minionIntervalMs === e.mi && c.minionCap === e.cap);
+    check(`hp: ${id} maxHp ${e.hp}`, c.maxHp === e.hp);
+  }
+  const n = g('normal');
+  check('normal-as-shipped: HP/reward/minions equal PR #55 consts', n.maxHp === sandbox.TOMBSTONE_BOSS_HP && n.rewardCoins === sandbox.TOMBSTONE_BOSS_REWARD_COINS && n.minionIntervalMs === sandbox.TOMBSTONE_MINION_SUMMON_INTERVAL_MS && n.minionCap === sandbox.TOMBSTONE_MINION_CAP);
+  check('unknown tier falls back to Normal', g('bogus').id === 'normal' && g('bogus').rewardCoins === 60);
+  check('rewards strictly increase with tier', g('normal').rewardCoins < g('hard').rewardCoins && g('hard').rewardCoins < g('extreme').rewardCoins && g('extreme').rewardCoins < g('impossible').rewardCoins);
+} catch (e) { failures.push('tier-table vm block threw: ' + e.message); }
+
+// --- executed: Impossible frenzy boundary — exactly 50% fires, just above does not ---
+try {
+  const mk = (hp) => {
+    const boss = { id: 5, x: 1200, y: 800, hp, maxHp: 300000, bossStage: 2, speed: 140, team: 'tombstone_enemy' };
+    const rt = baseRt('impossible');
+    const s = makeAttacksSandbox(boss, rt);
+    return { boss, rt, ...s };
+  };
+  const at = mk(150000);
+  at.sandbox.updateTombstoneBossAttacks(at.rt, at.boss, at.sandbox.getTombstoneBossDifficulty('impossible'), 1000);
+  check('frenzy: triggers at exactly 50% HP', at.rt.frenzyEarly === true && at.boss.speed === 175);
+  const above = mk(150001);
+  above.sandbox.updateTombstoneBossAttacks(above.rt, above.boss, above.sandbox.getTombstoneBossDifficulty('impossible'), 1000);
+  check('frenzy: does not trigger at 50% + 1 HP', above.rt.frenzyEarly === false && above.boss.speed === 140);
+} catch (e) { failures.push('frenzy-boundary vm block threw: ' + e.message); }
+
+// --- executed: telegraphs are placed at your feet (dodge counterplay) + AOE is boss-attributed ---
+try {
+  const boss = { id: 5, x: 1200, y: 800, hp: 135000, maxHp: 135000, bossStage: 1, speed: 140, team: 'tombstone_enemy' };
+  const rt = baseRt('hard');
+  rt.nextEruptionAt = 1000;
+  const { sandbox, aoeCalls } = makeAttacksSandbox(boss, rt);
+  sandbox.player.x = 1000; sandbox.player.y = 1000;
+  const cfg = sandbox.getTombstoneBossDifficulty('hard');
+  sandbox.updateTombstoneBossAttacks(rt, boss, cfg, 1000);
+  check('eruption zones cluster at your feet (within 110px)', rt.telegraphs.length === 2 && rt.telegraphs.every((t) => Math.abs(t.x - 1000) <= 110 && Math.abs(t.y - 1000) <= 110));
+  sandbox.updateTombstoneBossAttacks(rt, boss, cfg, 1900);
+  check('eruption AOE is attributed to the boss brawler', aoeCalls.length === 2 && aoeCalls.every((c) => c.ownerId === 5 && c.damage === 800));
+} catch (e) { failures.push('eruption-placement vm block threw: ' + e.message); }
+try {
+  const boss = { id: 5, x: 1200, y: 800, hp: 200000, maxHp: 200000, bossStage: 2, speed: 140, team: 'tombstone_enemy' };
+  const rt = baseRt('extreme');
+  rt.nextRainAt = 1000;
+  const { sandbox } = makeAttacksSandbox(boss, rt);
+  sandbox.player.x = 777; sandbox.player.y = 888;
+  sandbox.updateTombstoneBossAttacks(rt, boss, sandbox.getTombstoneBossDifficulty('extreme'), 1000);
+  check('rain telegraph centered exactly on player', rt.telegraphs.length === 1 && rt.telegraphs[0].kind === 'rain' && rt.telegraphs[0].x === 777 && rt.telegraphs[0].y === 888);
+} catch (e) { failures.push('rain-placement vm block threw: ' + e.message); }
+
+// --- executed: slam safe-gap edge — just outside the gap gets hit, just inside does not ---
+try {
+  const mk = (ang) => {
+    const boss = { id: 5, x: 1200, y: 400, hp: 300000, maxHp: 300000, bossStage: 2, speed: 140, team: 'tombstone_enemy' };
+    const rt = baseRt('impossible');
+    rt.frenzyEarly = true;
+    rt.telegraphs = [{ kind: 'slam', x: 1200, y: 400, radius: 60, explodeAt: 1000, safeAngle: 0 }];
+    const s = makeAttacksSandbox(boss, rt);
+    s.sandbox.player.x = 1200 + 235 * Math.cos(ang); s.sandbox.player.y = 400 + 235 * Math.sin(ang);
+    return { boss, rt, ...s };
+  };
+  const outside = mk(0.6);
+  outside.sandbox.updateTombstoneBossAttacks(outside.rt, outside.boss, outside.sandbox.getTombstoneBossDifficulty('impossible'), 1000);
+  outside.sandbox.updateTombstoneBossAttacks(outside.rt, outside.boss, outside.sandbox.getTombstoneBossDifficulty('impossible'), 1500);
+  check('slam: 0.6 rad off the safe angle gets hit', outside.hitCalls.length === 1 && outside.hitCalls[0].info.damage === 1000);
+  const inside = mk(0.4);
+  inside.sandbox.updateTombstoneBossAttacks(inside.rt, inside.boss, inside.sandbox.getTombstoneBossDifficulty('impossible'), 1000);
+  inside.sandbox.updateTombstoneBossAttacks(inside.rt, inside.boss, inside.sandbox.getTombstoneBossDifficulty('impossible'), 1500);
+  check('slam: 0.4 rad off the safe angle is safe', inside.hitCalls.length === 0);
+} catch (e) { failures.push('slam-gap-edge vm block threw: ' + e.message); }
+
+// --- executed: Impossible frenzy counts as phase 3 for eruption zones (fix 2026-11-16) ---
+try {
+  const boss = { id: 5, x: 1200, y: 800, hp: 150000, maxHp: 300000, bossStage: 2, speed: 175, team: 'tombstone_enemy' };
+  const rt = baseRt('impossible');
+  rt.frenzyEarly = true; rt.nextEruptionAt = 1000;
+  const { sandbox } = makeAttacksSandbox(boss, rt);
+  sandbox.updateTombstoneBossAttacks(rt, boss, sandbox.getTombstoneBossDifficulty('impossible'), 1000);
+  check('frenzy counts as phase 3: 3 eruption zones at raw stage 2', rt.telegraphs.length === 3 && rt.telegraphs.every((t) => t.kind === 'eruption'));
+} catch (e) { failures.push('frenzy-zone-count vm block threw: ' + e.message); }
 
 console.log(`tombstone-boss-stages-regression: ${passed} passed, ${failures.length} failed`);
 if (failures.length) { console.log('FAILURES:'); for (const f of failures) console.log(' - ' + f); }

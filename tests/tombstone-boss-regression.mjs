@@ -31,21 +31,21 @@ check('mode card promises up to +350 on win', game.includes('up to +350 Coins'))
 check('permanent mode list', game.includes("'headless_boss_s4', 'tombstone_boss', 'orbo_boss'"));
 check('mode rules entry', game.includes("tombstone_boss: ['Solo Boss Battle: 1 vs Tombstone Tycoon!'"));
 check('mode color grave-green', game.includes("tombstone_boss: '#7dffb0',"));
-check('card tag SOLO', game.includes("|| id === 'tombstone_boss') tag = 'SOLO';"));
+check('card tag SOLO', game.includes("id === 'tombstone_boss' || id === 'megastein_boss' || id === 'tower_defense') tag = 'SOLO';"));
 check('all-events filter respects kill switch', game.includes("&& (id !== 'tombstone_boss' || TOMBSTONE_BOSS_ENABLED));"));
 check('match setup flag', game.includes("isTombstoneBossEvent = showdownMode === 'tombstone_boss';"));
-check('boss-fight membership', game.includes('isHeadlessBossEvent || isTombstoneBossEvent;'));
+check('boss-fight membership', game.includes('isHeadlessBossEvent || isTombstoneBossEvent || isMegasteinBossEvent || isBeastBossEvent;'));
 check('kill-switch fallback to solo', game.includes("if (isTombstoneBossEvent && !TOMBSTONE_BOSS_ENABLED) { showdownMode = 'solo'; isTombstoneBossEvent = false; isBossFight = false; }"));
-check('boss arena size shared with Headless', game.includes('if (isLavaBossEvent || isHeadlessBossEvent || isTombstoneBossEvent) {'));
+check('boss arena size shared with Headless', game.includes('if (isLavaBossEvent || isHeadlessBossEvent || isTombstoneBossEvent || isMegasteinBossEvent || isTowerDefenseEvent) {'));
 check('init call', game.includes('if (isTombstoneBossEvent) initTombstoneBossMatch();'));
 check('updater call', game.includes('updateTombstoneBossEvent(now,dt);'));
 check('renderer call', game.includes('renderTombstoneBossEvent();'));
 check('cleanup resets flag (3 sites)', (game.match(/isTombstoneBossEvent = false;/g) || []).length >= 3);
 check('end screen win text', game.includes("matchText=won?'TOMBSTONE TYCOON DEFEATED!':'THE GRAVEYARD CLAIMS YOU — TRY AGAIN!';"));
 check('end screen rank text', game.includes("rankText='Solo Boss Fight';"));
-check('generic end text does not overwrite tombstone', game.includes('if(!isLavaBossEvent&&!isHeadlessBossEvent&&!isTombstoneBossEvent)matchText'));
-check('reward branch uses per-difficulty coins', game.includes('(isTombstoneBossEvent ? getTombstoneBossDifficulty(tombstoneBossRuntime?.difficulty).rewardCoins : 100);'));
-check('HUD banner color', game.includes("isTombstoneBossEvent ? '#7dffb0' : '#ff6bb2';"));
+check('generic end text does not overwrite tombstone', game.includes('if(!isLavaBossEvent&&!isHeadlessBossEvent&&!isTombstoneBossEvent&&!isMegasteinBossEvent)matchText'));
+check('reward branch uses per-difficulty coins', game.includes('(isTombstoneBossEvent ? getTombstoneBossDifficulty(tombstoneBossRuntime?.difficulty).rewardCoins : (isMegasteinBossEvent ? MEGASTEIN_BOSS_REWARD_COINS : 100))'));
+check('HUD banner color', game.includes("isTombstoneBossEvent ? '#7dffb0' : isMegasteinBossEvent ? '#c084fc' : '#ff6bb2';"));
 check('HUD banner text shows difficulty', game.includes('TOMBSTONE TYCOON • ${getTombstoneBossDifficulty(tombstoneBossRuntime?.difficulty).name} • SOLO BOSS'));
 check('tombstone prop def', game.includes("tombstone:   { w: 48, h: 48, hp: 2400, blocksMove: true,  blocksShots: true  },"));
 check('tombstone prop painter', game.includes("} else if (dw.propType === 'tombstone') {"));
@@ -59,7 +59,9 @@ check('super gate: radial boomerangs phase 2+', game.includes('(bot.isTombstoneB
 check('boss functions exist', game.includes('function initTombstoneBossMatch(){') && game.includes('function spawnTombstoneMinion(boss, x, y){') && game.includes('function spawnTombstoneShieldRing(boss){') && game.includes('function updateTombstoneBossEvent(now, dt){') && game.includes('function renderTombstoneBossEvent(){'));
 check('init places 8 tombstone covers', (game.match(/placeProp\('tombstone',/g) || []).length === 8);
 check('init lose-on-death: bossLives 1', game.includes('player.bossLives=1;'));
-check('normal money_and_tax kit untouched (bot coin dmg)', game.includes('empoweredCenter ? (isBot ? 150 : 338)'));
+// Pin updated 2026-11-16: the kit was rebalanced after PR #55 (bot center coin
+// 150/338 -> 127/287, non-center 101/228); the check now pins current values.
+check('money_and_tax bot coin dmg (current balance)', game.includes('empoweredCenter ? (isBot ? 127 : 287)*(1+centerDamage) : (isBot ? 101 : 228)'));
 check('no new currency or token', !game.includes('tombstoneBossToken') && !game.includes('tombstoneToken'));
 
 function extractFn(src, name) {
