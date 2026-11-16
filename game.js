@@ -6905,6 +6905,53 @@ const bolznstienPendingStrikes = [];
         chargeFill: '#8a2be2',
         barBack: '#2a1a47'
     };
+
+    // UI Refresh Part 1 (Phase 7A/7E): Brawl-style canvas tokens + chunky panel
+    // helper. One shared painter for the HUD panels so the top-left Attack/Super
+    // cards, the minimap frame, the Super/Hyper bar backdrops, the bottom-left
+    // kit panel, the ranked-modifier badge and the mode-banner panels all share
+    // one outline/radius/slab language. Geometry and colours at each call site
+    // are unchanged — only the painter is shared. No HUD information is added
+    // or removed here. (CSS mirror: --af-hud-panel / --af-hud-stroke.)
+    const UI_HUD_TOKENS = {
+        panelFill: 'rgba(4, 8, 16, 0.56)',
+        panelStroke: 'rgba(255, 255, 255, 0.08)',
+        barBackdropFill: 'rgba(0, 0, 0, 0.45)',
+        barBackdropStroke: 'rgba(255, 255, 255, 0.14)',
+        minimapFill: 'rgba(4, 8, 16, 0.6)',
+        minimapStroke: 'rgba(255, 255, 255, 0.2)',
+        slabFill: 'rgba(2, 9, 22, 0.8)',
+        slabOffset: 4,
+        radius: 10
+    };
+    function drawChunkyPanel(ctx, x, y, w, h, opts) {
+        const o = opts || {};
+        const radius = o.radius == null ? UI_HUD_TOKENS.radius : o.radius;
+        const fill = o.fill == null ? UI_HUD_TOKENS.panelFill : o.fill;
+        const stroke = o.stroke === undefined ? UI_HUD_TOKENS.panelStroke : o.stroke;
+        const lineWidth = o.lineWidth == null ? 1 : o.lineWidth;
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,0,0,0)';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+        if (o.slab) {
+            ctx.fillStyle = o.slabFill || UI_HUD_TOKENS.slabFill;
+            ctx.beginPath();
+            ctx.roundRect(x, y + (o.slabOffset == null ? UI_HUD_TOKENS.slabOffset : o.slabOffset), w, h, radius);
+            ctx.fill();
+        }
+        ctx.fillStyle = fill;
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, radius);
+        ctx.fill();
+        if (stroke) {
+            ctx.strokeStyle = stroke;
+            ctx.lineWidth = lineWidth;
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
   
     // Utility: deterministic color from string
     function colorFromId(id) {
@@ -86601,13 +86648,7 @@ function checkHit(target, b, i){
             const panelH = 168;
             const panelX = (innerWidth - panelW) / 2;
             const panelY = Math.max(78, innerHeight * 0.2);
-            ctx.fillStyle = 'rgba(6, 16, 34, 0.92)';
-            ctx.strokeStyle = '#ffca57';
-            ctx.lineWidth = 4;
-            ctx.beginPath();
-            ctx.roundRect(panelX, panelY, panelW, panelH, 22);
-            ctx.fill();
-            ctx.stroke();
+            drawChunkyPanel(ctx, panelX, panelY, panelW, panelH, { radius: 22, fill: 'rgba(6, 16, 34, 0.92)', stroke: '#ffca57', lineWidth: 4, slab: true });
             ctx.fillStyle = '#ffdc72';
             ctx.font = '900 30px sans-serif';
             ctx.fillText(`PREPARE ${prepLeft}`, innerWidth / 2, panelY + 42);
@@ -86677,13 +86718,7 @@ function checkHit(target, b, i){
         const respawnGradient = ctx.createLinearGradient(panelX, panelY, panelX + panelW, panelY + 92);
         respawnGradient.addColorStop(0, 'rgba(8,24,47,.94)');
         respawnGradient.addColorStop(1, 'rgba(18,52,77,.94)');
-        ctx.fillStyle = respawnGradient;
-        ctx.strokeStyle = '#69f5dd';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.roundRect(panelX, panelY, panelW, 92, 18);
-        ctx.fill();
-        ctx.stroke();
+        drawChunkyPanel(ctx, panelX, panelY, panelW, 92, { radius: 18, fill: respawnGradient, stroke: '#69f5dd', lineWidth: 3, slab: true });
         ctx.textAlign = 'center';
         ctx.fillStyle = '#f4fbff';
         ctx.font = '900 21px sans-serif';
@@ -87105,14 +87140,17 @@ function checkHit(target, b, i){
         const color = dmgInfo.isHyper ? '#e768ff' : (isAttack ? '#ffd166' : dmgInfo.superColor);
         const isSuperReady = !isAttack && (superCharge >= 100);
 
-        // Glassmorphic Card Surface
-        ctx.fillStyle = 'rgba(6, 12, 24, 0.90)';
-        ctx.strokeStyle = isSuperReady ? (0.8 + Math.sin(hudNow * 0.008) * 0.2 > 0.85 ? '#ffd32a' : color) : color;
-        ctx.lineWidth = dmgInfo.isHyper ? 2.5 : (isSuperReady ? 2.2 : 1.6);
-        ctx.beginPath();
-        ctx.roundRect(x, readY, cardW, readH, 10);
-        ctx.fill();
-        ctx.stroke();
+        // Chunky Brawl-style card surface (UI Refresh Part 1): same geometry and
+        // colours as the old glass card, now drawn by the shared panel helper
+        // with a 4px slab shadow underneath. Labels, values and bars below are
+        // untouched.
+        drawChunkyPanel(ctx, x, readY, cardW, readH, {
+            radius: 10,
+            fill: 'rgba(6, 12, 24, 0.90)',
+            stroke: isSuperReady ? (0.8 + Math.sin(hudNow * 0.008) * 0.2 > 0.85 ? '#ffd32a' : color) : color,
+            lineWidth: dmgInfo.isHyper ? 2.5 : (isSuperReady ? 2.2 : 1.6),
+            slab: true
+        });
 
         // Top Header Row (Icon + Type Tag + Status Badge)
         ctx.fillStyle = color;
@@ -87195,8 +87233,7 @@ function checkHit(target, b, i){
 
     ctx.save();
     ctx.translate(mapX, mapY);
-    ctx.fillStyle = 'rgba(4,8,16,0.6)'; ctx.fillRect(0,0,mapW,mapH);
-    ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth=2; ctx.strokeRect(0,0,mapW,mapH);
+    drawChunkyPanel(ctx, 0, 0, mapW, mapH, { radius: 8, fill: UI_HUD_TOKENS.minimapFill, stroke: UI_HUD_TOKENS.minimapStroke, lineWidth: 2 });
     const scX = mapW / WORLD_W; const scY = mapH / WORLD_H;
     for(const z of waterZones){ ctx.fillStyle = 'rgba(86,170,255,0.28)'; ctx.fillRect(z.x*scX, z.y*scY, z.w*scX, z.h*scY); }
     for(const z of bushZones){ ctx.fillStyle = 'rgba(95,196,124,0.26)'; ctx.fillRect(z.x*scX, z.y*scY, z.w*scX, z.h*scY); }
@@ -87264,7 +87301,7 @@ function checkHit(target, b, i){
 
     // super charge bar
     const barW = 220; const barH = 14; const bx = innerWidth - barW - 24; const by = innerHeight - 34;
-    ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(bx-6, by-6, barW+12, barH+12);
+    drawChunkyPanel(ctx, bx-6, by-6, barW+12, barH+12, { radius: 8, fill: UI_HUD_TOKENS.barBackdropFill, stroke: UI_HUD_TOKENS.barBackdropStroke, lineWidth: 1 });
     ctx.fillStyle = '#223a47'; ctx.fillRect(bx, by, barW, barH);
     ctx.fillStyle = '#f4a261'; ctx.fillRect(bx, by, barW * (superCharge/100), barH);
     const hudIsMulti = selectedBrawler === 'dashaholic' || selectedBrawler === 'mallow';
@@ -87274,7 +87311,7 @@ function checkHit(target, b, i){
 
     // hypercharge bar
     const hy = by - 36;
-    ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(bx-6, hy-6, barW+12, barH+12);
+    drawChunkyPanel(ctx, bx-6, hy-6, barW+12, barH+12, { radius: 8, fill: UI_HUD_TOKENS.barBackdropFill, stroke: UI_HUD_TOKENS.barBackdropStroke, lineWidth: 1 });
     ctx.fillStyle = HYPER_VISUALS.barBack; ctx.fillRect(bx, hy, barW, barH);
     ctx.fillStyle = isHypercharged ? HYPER_VISUALS.activeFill : HYPER_VISUALS.chargeFill;
     ctx.fillRect(bx, hy, barW * (isHypercharged ? (hyperchargeUntil - performance.now())/5000 : hyperChargeCharge/100), barH);
@@ -87340,21 +87377,17 @@ function checkHit(target, b, i){
             ctx.shadowOffsetY = 0;
         }
         
-        ctx.fillStyle = 'rgba(4, 8, 16, 0.56)';
-        ctx.fillRect(hudX, hudY, hudW, hudH);
-        
-        if (isHyperGlow) {
-            ctx.strokeStyle = `rgba(224, 0, 255, ${0.8 + Math.sin(performance.now() / 150) * 0.2})`;
-            ctx.shadowColor = HYPER_VISUALS.panelGlowSoft;
-            ctx.shadowBlur = 15;
-        } else {
-            ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-            ctx.shadowColor = 'rgba(0,0,0,0)';
-        }
-        ctx.lineWidth = isHyperGlow ? 2.5 : 1;
-        ctx.strokeRect(hudX + 0.5, hudY + 0.5, hudW - 1, hudH - 1);
-        ctx.shadowColor = 'rgba(0,0,0,0)';
-        ctx.shadowBlur = 0;
+        // Chunky panel (UI Refresh Part 1): same geometry, fill and hyper-glow
+        // stroke as before, now via the shared helper (adds a 4px slab shadow).
+        // NOTE: the old stroke-level shadowBlur(15) is dropped — the outer
+        // hyper-glow rect above still provides the glow.
+        drawChunkyPanel(ctx, hudX, hudY, hudW, hudH, {
+            radius: 10,
+            fill: 'rgba(4, 8, 16, 0.56)',
+            stroke: isHyperGlow ? `rgba(224, 0, 255, ${0.8 + Math.sin(performance.now() / 150) * 0.2})` : 'rgba(255,255,255,0.08)',
+            lineWidth: isHyperGlow ? 2.5 : 1,
+            slab: true
+        });
 
         ctx.fillStyle = isHyperGlow ? HYPER_VISUALS.textPrimary : '#cfeef7';
         ctx.font = '12px sans-serif';
@@ -87420,12 +87453,7 @@ function checkHit(target, b, i){
                         const completed = getTutorialCompletedCount();
                         const panelW = Math.min(620, innerWidth - 28);
                         const panelX = (innerWidth - panelW) / 2;
-                        ctx.fillStyle = 'rgba(5,14,29,.90)';
-                        ctx.strokeStyle = 'rgba(125,211,252,.72)';
-                        ctx.lineWidth = 2;
-                        ctx.beginPath();
-                        ctx.roundRect(panelX, 22, panelW, 92, 16);
-                        ctx.fill(); ctx.stroke();
+                        drawChunkyPanel(ctx, panelX, 22, panelW, 92, { radius: 16, fill: 'rgba(5,14,29,.90)', stroke: 'rgba(125,211,252,.72)', lineWidth: 2, slab: true });
                         ctx.fillStyle = '#8fd8ff';
                         ctx.font = '900 15px sans-serif';
                         ctx.fillText(`ROOKIE COURSE  •  STEP ${Math.min(completed + 1, TUTORIAL_GUIDE_STEPS.length)}/${TUTORIAL_GUIDE_STEPS.length}`, innerWidth/2, 47);
@@ -87496,13 +87524,7 @@ function checkHit(target, b, i){
         const dodges = impossibleBot?.impossibleDodges || 0;
         const reads = impossibleBot?.impossibleReads || 0;
         const adaptation = Math.round(impossibleBot?.impossibleAdaptation || 0);
-        ctx.fillStyle = 'rgba(18, 5, 29, 0.84)';
-        ctx.strokeStyle = '#ff4dba';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.roundRect(innerWidth / 2 - 250, 26, 500, 48, 14);
-        ctx.fill();
-        ctx.stroke();
+        drawChunkyPanel(ctx, innerWidth / 2 - 250, 26, 500, 48, { radius: 14, fill: 'rgba(18, 5, 29, 0.84)', stroke: '#ff4dba', lineWidth: 2, slab: true });
         ctx.fillStyle = '#ffd5f4';
         ctx.font = 'bold 14px sans-serif';
         ctx.textAlign = 'center';
@@ -92086,13 +92108,7 @@ function renderRankedModifierHUD(ctx) {
     const badgeY = 78;
 
     ctx.save();
-    ctx.fillStyle = 'rgba(10, 20, 36, 0.92)';
-    ctx.strokeStyle = mod3 ? '#00f5d4' : (mod2 ? '#ff9ff3' : (mod1?.color || '#ffd166'));
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 8);
-    ctx.fill();
-    ctx.stroke();
+    drawChunkyPanel(ctx, badgeX, badgeY, badgeW, badgeH, { radius: 8, fill: 'rgba(10, 20, 36, 0.92)', stroke: mod3 ? '#00f5d4' : (mod2 ? '#ff9ff3' : (mod1?.color || '#ffd166')), lineWidth: 1.5 });
 
     ctx.font = 'bold 11px sans-serif';
     ctx.textAlign = 'center';
