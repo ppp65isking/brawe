@@ -344,6 +344,11 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             const hpScale = getLevelHpScale(level);
             return { hp: Math.round(5200 * hpScale), dmg: Math.round(720 * scale), speed: 270 }; // CHANGES ROUND 3: main +80% (was 400 — the round-2 nerf made him awful)
         }
+        if (brawlerId === 'gravy') {
+            const scale = 0.55 + (level - 1) * 0.045;
+            const hpScale = getLevelHpScale(level);
+            return { hp: Math.round(5200 * hpScale), dmg: Math.round(650 * scale), speed: 270 };
+        }
         if (brawlerId === 'looma') {
             const scale = 0.55 + (level - 1) * 0.045;
             const hpScale = getLevelHpScale(level);
@@ -940,6 +945,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             if (selectedBrawler === 'freezeon') { try { window.BraweFreezeonVoice?.play('kill'); } catch (e) {} }
             // Driller voice: player kill line.
             if (selectedBrawler === 'driller') { try { window.BraweDrillerVoice?.play('kill'); } catch (e) {} }
+            // Gravy voice: player kill line.
+            if (selectedBrawler === 'gravy') { try { window.BraweGravyVoice?.play('kill'); } catch (e) {} }
         }
         if (target && target.hp <= 0 && hasTrinket(owner, 'fresh_magazine')) {
             if (now - (target.trinketFreshMagazineKillAt || 0) > 1000) {
@@ -5168,6 +5175,7 @@ const bolznstienPendingStrikes = [];
             bookworm: 1700,
             freezeon: 1600,
             driller: 1600,
+            gravy: 1600,
             carmela_fudge: 1400,
             oil_maker: 90,
             magnatar: 1450,
@@ -5241,6 +5249,7 @@ const bolznstienPendingStrikes = [];
             bookworm: 300,
             freezeon: 300,
             driller: 300,
+            gravy: 300,
             carmela_fudge: 180,
             oil_maker: 112,
             magnatar: 200,
@@ -5335,6 +5344,8 @@ const bolznstienPendingStrikes = [];
         if (now < (entity.pandyTrapSlowUntil || 0)) baseSlow = Math.min(baseSlow, PANDY_TRAP_SLOW_MULT);
         if (now < (entity.snipaPurpleSlowUntil || 0)) baseSlow = Math.min(baseSlow, Number(entity.snipaPurpleSlowMult) || 1); // Snipa rework patch #3: Hyper aura purple slow, 10%->70% by mark (mult 0.90->0.30, refreshed each aura tick)
         if (now < (entity.drillerSlowUntil || 0)) baseSlow = Math.min(baseSlow, DRILLER_G1_SLOW_MULT); // Driller G1 Mud Trap: 40% slow for 2s
+        if (now < (entity.gravySlowUntil || 0)) baseSlow = Math.min(baseSlow, GRAVY_POOL_SLOW_MULT); // Gravy pool: 35% slow while standing in a pool (+0.75s linger)
+        if (now < (entity.gravySuperSlowUntil || 0)) baseSlow = Math.min(baseSlow, GRAVY_SUPER_SLOW_MULT); // Gravy Boat wave: 50% slow for 1.5s
         if (now < (entity.runnerSlowUntil || 0)) baseSlow = Math.min(baseSlow, RUNNER_TRAIL_SLOW_MULT);
         if (now < (entity.auraCharmerSlowUntil || 0)) baseSlow = Math.min(baseSlow, AURA_CHARMER_G1_SLOW_MULT);
         if (entity.powerOutageUntil && now < entity.powerOutageUntil) baseSlow = Math.min(baseSlow, getPowerOutageSlowMult(entity, now));
@@ -5541,7 +5552,7 @@ const bolznstienPendingStrikes = [];
         'boom_arang', 'teether', 'fuel', 'xray', 'angel', 'demon', 'warrior', 'relay',
         'upiedown', 'chickpig', 'jetpack', 'snapper', 'robber', 'rocketeer',
         'carmela_fudge', 'peter_pickle', 'unstable', 'homer', 'orbo', 'predator', 'fastpass', 'freestyle', 'portalo', 'ghoul', 'jacktrade', 'darkener', 'awakenator', 'adlof', 'cluster', 'witch', 'boomer', 'blade_vane', 'daggershard', 'ice_cream', 'swimmer', 'kage', 'drainbow', 'draflygon', 'axeywaxy', 'trampaheal', 'mageny', 'ramage', 'upgradart', 'cinderion', 'cursed', 'king', 'anti_royal', 'sir_cheeseburger', 'weefee', 'blinkeye', 'bolznstien', 'magnatar', 'oil_maker', 'rager', 'badbat', 'looma',
-        'feathers', 'spikey', 'electrostien', 'mallow', 'nightshade', 'aegis', 'runner', 'aura_charmer', 'voltastein', 'staticstein', 'healnstein', 'voodoyou', 'pandy', 'snipa', 'bookworm', 'freezeon', 'driller'
+        'feathers', 'spikey', 'electrostien', 'mallow', 'nightshade', 'aegis', 'runner', 'aura_charmer', 'voltastein', 'staticstein', 'healnstein', 'voodoyou', 'pandy', 'snipa', 'bookworm', 'freezeon', 'driller', 'gravy'
     ];
     const registeredBrawlerModules = window.ArenaForgeModules?.brawlers || Object.create(null);
     for (const moduleId of Object.keys(registeredBrawlerModules)) {
@@ -5635,6 +5646,7 @@ const bolznstienPendingStrikes = [];
             bookworm: 'Epic',
             freezeon: 'Epic',
             driller: 'Epic',
+            gravy: 'Epic',
 
             // Mythic (13)
             dashaholic: 'Mythic',
@@ -10626,6 +10638,17 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           g2: 'Wallbreaker Drill (In drill mode, fire a big drill that breaks walls)',
           sp1: 'Spin Cycle (Dirt bombs spin out 4 extra projectiles in a wider cone)',
           sp2: 'Jump Start (Drill form heals 3400 HP when you start it)'
+      },
+      'gravy': {
+          name: 'Gravy', role: 'Thrower', rarity: 'Epic', color: '#b45309',
+          desc: 'A Thanksgiving chef who ladles gravy over everything. His globs splash into slowing pools, and his Gravy Boat floods the whole table.',
+          attack: 'Gravy Glob', attackDesc: 'Gravy lobs a glob in an arc over walls. On landing it splashes for damage and leaves a slowing gravy pool.',
+          super: 'Gravy Boat', superDesc: 'Gravy sends a big gravy wave flooding forward: it damages and pushes enemies it passes through and leaves a trail of gravy pools behind it.',
+          hyper: 'Bigger pools: Hyper globs splash bigger pools that last longer, and the main lobs an extra glob. The Gravy Boat wave is wider, hits harder, and leaves bigger trail pools.',
+          g1: 'Extra Thick (Next glob splashes a bigger pool that lasts longer)',
+          g2: 'Gravy Ladle (Instantly splash a gravy pool at your feet that damages nearby enemies)',
+          sp1: 'Rich & Savory (Enemies standing in your gravy pools take damage over time)',
+          sp2: 'Seconds, Please (Standing in your own gravy pool heals you)'
       }
   };
 
@@ -10651,7 +10674,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
 
     // V4 standardized primary-role organization: exactly one gameplay role per brawler.
     const PRIMARY_ROLE_BY_BRAWLER = {
-        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank', rager:'Controller', looma:'Controller', feathers:'Controller', spikey:'Damage Dealer', electrostien:'Assassin', mallow:'Controller', nightshade:'Assassin', runner:'Controller', aura_charmer:'Support', voltastein:'Artillery', staticstein:'Damage Dealer', healnstein:'Support', voodoyou:'Controller', pandy:'Damage Dealer', bookworm:'Controller', freezeon:'Controller', driller:'Damage Dealer',
+        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank', rager:'Controller', looma:'Controller', feathers:'Controller', spikey:'Damage Dealer', electrostien:'Assassin', mallow:'Controller', nightshade:'Assassin', runner:'Controller', aura_charmer:'Support', voltastein:'Artillery', staticstein:'Damage Dealer', healnstein:'Support', voodoyou:'Controller', pandy:'Damage Dealer', bookworm:'Controller', freezeon:'Controller', driller:'Damage Dealer', gravy:'Artillery',
     carmela_fudge:'Damage Dealer', bolznstien:'Damage Dealer', badbat:'Damage Dealer', magnatar:'Controller', oil_maker:'Controller', sir_cheeseburger:'Tank',
         blade_vane:'Assassin', kage:'Assassin', drainbow:'Controller', bowlin_rida:'Assassin', dashaholic:'Assassin', demon:'Assassin', jetpack:'Assassin', malakor:'Assassin', predator:'Assassin', swimmer:'Assassin', teether:'Assassin',
         boom_arang:'Marksman', cheseypuff:'Marksman', crystila:'Marksman', homer:'Marksman', hunter:'Marksman', orbo:'Marksman', snapper:'Marksman', xray:'Marksman', snipa:'Marksman',
@@ -10686,6 +10709,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
             bookworm: '🐛',
             freezeon: '⛄',
             driller: '⛏️',
+            gravy: '🫕',
     looma: '🪡🧵',
         sir_cheeseburger: '🛡️',
         anti_royal: '🏴‍☠️',
@@ -11847,6 +11871,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
       bookworm: { g1: 14000, g2: 16000 },
       freezeon: { g1: 14000, g2: 16000 },
       driller: { g1: 14000, g2: 16000 },
+      gravy: { g1: 14000, g2: 16000 },
       carmela_fudge: { g1: 8000, g2: 8000 },
       bolznstien: { g1: 14000, g2: 15000 },
       sir_cheeseburger: { g1: 13000, g2: 14000 },
@@ -26911,6 +26936,437 @@ let heistFeverActive = false;
         } catch (e) {}
     }
 
+
+    // ===== Gravy systems (Thanksgiving Surprise Update, 2026-11-16) =====
+    // Main: Gravy Glob — a lobbed glob in an arc (FreeZeon rink-can
+    // pattern: a thrown object, not a bullet, so it arcs OVER walls) that
+    // splashes on landing: 650 dmg in a 110px radius, then leaves a
+    // slowing gravy pool.
+    // Pool: 95px radius, 4s, max 3 per owner; enemies standing in one are
+    // slowed 35% (0.75s linger after stepping out). Brawlers only.
+    // Super: Gravy Boat — a big gravy wave floods 700px forward at
+    // 800 px/s, 190px wide; each enemy it passes through takes 900 dmg
+    // once, is slowed 50% for 1.5s, and is pushed 140px forward; the wave
+    // leaves small trail pools (60px, 2.5s) every 120px traveled.
+    // Hyper main: pools are bigger (+40% radius) and last longer (6s),
+    // AND the main lobs an extra glob (2nd glob lands 80px to the side).
+    // Hyper Super: wave wider (240px), +25% damage (1125), bigger trail
+    // pools (85px).
+    // G1 Extra Thick: next glob splashes a bigger pool (+60% radius, +2s).
+    // G2 Gravy Ladle: instantly splash a pool at your feet (+300 dmg).
+    // SP1 Rich & Savory: enemies standing in your pools take 40 dmg/s.
+    // SP2 Seconds, Please: standing in your own pool heals you 150 HP/s.
+    // Pools slow/damage/heal brawlers only — never structures, and towers
+    // can NEVER gain HP (PR #42).
+    const GRAVY_GLOB_SPEED = 1100; // px/s lobbed flight speed (FreeZeon rink pattern)
+    const GRAVY_GLOB_THROW_RANGE = 620; // px
+    const GRAVY_GLOB_SPLASH_RADIUS = 110; // px
+    const GRAVY_GLOB_DMG = 650; // P11 splash damage (see getScaledStats 'gravy'.dmg)
+    const GRAVY_GLOB_ARC_HEIGHT = 80; // arc peak px (jackTrade pattern)
+    const GRAVY_POOL_RADIUS = 95; // px
+    const GRAVY_POOL_RADIUS_HYPER = 133; // +40% radius when Hyper
+    const GRAVY_POOL_DURATION_MS = 4000; // pool lasts 4s
+    const GRAVY_POOL_DURATION_HYPER_MS = 6000; // Hyper pool lasts 6s
+    const GRAVY_POOL_SLOW_MULT = 0.65; // 35% slow while standing in a pool
+    const GRAVY_POOL_SLOW_LINGER_MS = 750; // slow lingers 0.75s after stepping out
+    const GRAVY_MAX_POOLS_PER_OWNER = 3; // oldest pool expires when capped
+    const GRAVY_POOL_TICK_MS = 250; // pool tick (SP1 DoT / SP2 heal / slow refresh)
+    const GRAVY_SUPER_RANGE = 700; // px the wave travels
+    const GRAVY_SUPER_SPEED = 800; // px/s wave speed
+    const GRAVY_SUPER_WIDTH = 190; // px wave width
+    const GRAVY_SUPER_WIDTH_HYPER = 240; // Hyper wave width
+    const GRAVY_SUPER_DMG = 900; // P11 wave damage
+    const GRAVY_SUPER_DMG_HYPER = 1125; // Hyper wave damage (+25%)
+    const GRAVY_SUPER_SLOW_MULT = 0.50; // 50% slow from the wave
+    const GRAVY_SUPER_SLOW_DURATION_MS = 1500; // wave slow lasts 1.5s
+    const GRAVY_SUPER_PUSH = 140; // px the wave pushes enemies forward
+    const GRAVY_SUPER_TRAIL_EVERY_PX = 120; // trail pool every 120px traveled
+    const GRAVY_SUPER_TRAIL_RADIUS = 60; // px trail pool radius
+    const GRAVY_SUPER_TRAIL_RADIUS_HYPER = 85; // Hyper trail pool radius
+    const GRAVY_SUPER_TRAIL_DURATION_MS = 2500; // trail pool lasts 2.5s
+    const GRAVY_G1_POOL_RADIUS_MULT = 1.6; // Extra Thick: +60% pool radius
+    const GRAVY_G1_POOL_DURATION_BONUS_MS = 2000; // Extra Thick: +2s pool duration
+    const GRAVY_G2_DMG = 300; // P11 ladle damage
+    const GRAVY_SP1_POOL_DOT_PER_S = 40; // Rich & Savory: 40 dmg/s in pools
+    const GRAVY_SP2_POOL_HEAL_PER_S = 150; // Seconds, Please: 150 HP/s in own pool
+    const GRAVY_SUPER_CHARGE_HITS = 7; // 7 main-attack hits to charge
+    const GRAVY_HYPER_EXTRA_GLOB_OFFSET = 80; // Hyper extra glob lands 80px to the side
+    let gravyPools = []; // {x, y, radius, until, nextTickAt, ownerId, hyper} — slowing gravy pools
+    let gravyWaves = []; // {x, y, ang, traveled, ownerId, hyper, hitIds, lastTrailAt} — Gravy Boat waves
+    let gravyThrownGlobs = []; // {startX, startY, targetX, targetY, createdAt, impactAt, ownerId, hyper, thickArmed} — lobbed globs in flight
+    let gravyVoicePrevPlaying = false;
+    let gravyVoicePrevGameOver = false;
+    let gravyVoiceMatchEndPlayed = false;
+    let gravyVoiceLastHp = null;
+    let gravyVoiceLastActionAt = 0;
+    let gravyVoiceLastIdleAt = 0;
+    function gravyLevelScale(entity) {
+        const lvl = entity === player ? getSelectedBrawlerLevel() : (entity.level || 11);
+        return 0.55 + (lvl - 1) * 0.045;
+    }
+    function gravyStarChoice(entity) { return getEntityStarChoice(entity); }
+    function gravyHasSP1(entity) { return gravyStarChoice(entity) === 'slow'; }
+    function gravyHasSP2(entity) { return gravyStarChoice(entity) === 'long'; }
+    function isGravy(entity) { return !!entity && (entity.brawler === 'gravy' || (entity.id === player.id && selectedBrawler === 'gravy')); }
+    function gravyFindOwner(ownerId) { if (player && player.id === ownerId) return player; return bots.find((b) => b && b.id === ownerId) || null; }
+
+    // Drop a slowing gravy pool (capped per owner, oldest expires).
+    function gravySpawnPool(owner, x, y, radius, durationMs, hyper) {
+        if (!owner) return null;
+        const now = performance.now();
+        const pool = { x: clamp(x, 28, WORLD_W - 28), y: clamp(y, 28, WORLD_H - 28), radius: radius, until: now + durationMs, nextTickAt: now, ownerId: owner.id, hyper: !!hyper };
+        gravyPools.push(pool);
+        const mine = gravyPools.filter((p) => p.ownerId === owner.id);
+        if (mine.length > GRAVY_MAX_POOLS_PER_OWNER) gravyPools.splice(gravyPools.indexOf(mine[0]), 1);
+        return pool;
+    }
+
+    // Main: lob a gravy glob in an arc to the aimed point (FreeZeon
+    // rink-can pattern — a thrown object, so it arcs over walls). Hyper
+    // lobs an extra glob that lands 80px to the side. G1 Extra Thick arms
+    // the glob for a bigger pool; the flag is consumed on fire.
+    function fireGravyMain(fromEntity, targetX, targetY, isBot) {
+        const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
+        const ang = Math.atan2(targetY - fromEntity.y, targetX - fromEntity.x);
+        const dist = clamp(Math.hypot(targetX - fromEntity.x, targetY - fromEntity.y) || 0, 0, GRAVY_GLOB_THROW_RANGE);
+        const x = clamp(fromEntity.x + Math.cos(ang) * dist, 40, WORLD_W - 40);
+        const y = clamp(fromEntity.y + Math.sin(ang) * dist, 40, WORLD_H - 40);
+        const now = performance.now();
+        const flightMs = clamp(Math.hypot(x - fromEntity.x, y - fromEntity.y) / GRAVY_GLOB_SPEED * 1000, 150, 600);
+        const thick = !!fromEntity.gravyThickArmed;
+        fromEntity.gravyThickArmed = false;
+        gravyThrownGlobs.push({ startX: fromEntity.x, startY: fromEntity.y, targetX: x, targetY: y, createdAt: now, impactAt: now + flightMs, ownerId: fromEntity.id, hyper: hyper, thickArmed: thick });
+        if (hyper) {
+            // Extra glob: same flight, lands 80px to the side (perpendicular).
+            const px = -Math.sin(ang) * GRAVY_HYPER_EXTRA_GLOB_OFFSET;
+            const py = Math.cos(ang) * GRAVY_HYPER_EXTRA_GLOB_OFFSET;
+            gravyThrownGlobs.push({ startX: fromEntity.x, startY: fromEntity.y, targetX: clamp(x + px, 40, WORLD_W - 40), targetY: clamp(y + py, 40, WORLD_H - 40), createdAt: now, impactAt: now + flightMs, ownerId: fromEntity.id, hyper: true, thickArmed: thick });
+        }
+        return true;
+    }
+
+    // A lobbed glob landed: splash damage (brawlers only), then the pool
+    // forms. The splash visual carries the glob's REAL Hyper state
+    // (Snipa lesson: never a faked flag).
+    function gravyLandGlob(glob) {
+        const now = performance.now();
+        let owner = gravyFindOwner(glob.ownerId);
+        // If the owner died mid-flight we skip damage and the pool (the
+        // splash itself still shows) — FreeZeon rink precedent.
+        if (owner && owner.hp <= 0) owner = null;
+        const x = glob.targetX, y = glob.targetY, hyper = !!glob.hyper;
+        const dmg = owner ? Math.round(GRAVY_GLOB_DMG * gravyLevelScale(owner)) : GRAVY_GLOB_DMG;
+        if (owner) {
+            for (const target of [player, ...bots]) {
+                if (!target || target.hp <= 0 || target.id === owner.id || areAlliedEntities(owner, target)) continue;
+                if (target.isStructure || target.isPet) continue;
+                if (Math.hypot(target.x - x, target.y - y) <= GRAVY_GLOB_SPLASH_RADIUS + (target.radius || 14)) {
+                    checkHit(target, { ownerBrawler: 'gravy', ownerId: owner.id, damage: dmg, pierce: true, hitIds: {}, isGravyGlobSplash: true }, -1);
+                }
+            }
+        }
+        let radius = hyper ? GRAVY_POOL_RADIUS_HYPER : GRAVY_POOL_RADIUS;
+        let durationMs = hyper ? GRAVY_POOL_DURATION_HYPER_MS : GRAVY_POOL_DURATION_MS;
+        if (glob.thickArmed) {
+            radius = Math.round(radius * GRAVY_G1_POOL_RADIUS_MULT);
+            durationMs += GRAVY_G1_POOL_DURATION_BONUS_MS;
+        }
+        if (owner) gravySpawnPool(owner, x, y, radius, durationMs, hyper);
+        explosions.push({ x: x, y: y, radius: GRAVY_GLOB_SPLASH_RADIUS, life: 0, maxLife: .4, color: hyper ? 'rgba(192,132,252,.55)' : 'rgba(180,83,9,.55)', legendary: true, fxKind: 'gravySplash', hyper: hyper });
+        spawnFloatingText(x, y - 40, hyper ? '🫕 RICH GRAVY!' : '🫕 GRAVY!', hyper ? '#e9d5ff' : '#fde68a');
+        return true;
+    }
+
+    // Super: send a Gravy Boat wave flooding forward in the aimed
+    // direction. The wave itself is a traveling object (moved in
+    // updateGravySystems); it damages + slows + pushes each enemy once
+    // and leaves trail pools behind it.
+    function castGravySuper(entity, hyper, targetX, targetY) {
+        if (!entity || entity.hp <= 0) return false;
+        const ang = Math.atan2(targetY - entity.y, targetX - entity.x);
+        gravyWaves.push({ x: entity.x, y: entity.y, ang: ang, traveled: 0, ownerId: entity.id, hyper: !!hyper, hitIds: {}, lastTrailAt: 0 });
+        if (entity.id === player.id) { try { window.BraweGravyVoice?.play('super'); } catch (e) {} }
+        spawnFloatingText(entity.x, entity.y - 46, hyper ? '🫕 GRAVY BOAT!' : '🫕 GRAVY BOAT!', hyper ? '#e9d5ff' : '#fde68a');
+        return true;
+    }
+
+    // Gadgets: G1 Extra Thick (next glob splashes a bigger pool, +60%
+    // radius, +2s), G2 Gravy Ladle (instantly splash a pool at your feet
+    // that damages nearby enemies, 300 dmg).
+    function executeGravyGadget(entity, gadget, isBot) {
+        if (!entity) return false;
+        if (gadget === 'g1') {
+            entity.gravyThickArmed = true;
+            spawnFloatingText(entity.x, entity.y - 40, '🍖 EXTRA THICK!', '#fde68a');
+            return true;
+        }
+        if (gadget === 'g2') {
+            const now = performance.now();
+            const dmg = Math.round(GRAVY_G2_DMG * gravyLevelScale(entity));
+            for (const target of [player, ...bots]) {
+                if (!target || target.hp <= 0 || target.id === entity.id || areAlliedEntities(entity, target)) continue;
+                if (target.isStructure || target.isPet) continue;
+                if (Math.hypot(target.x - entity.x, target.y - entity.y) <= GRAVY_POOL_RADIUS + (target.radius || 14)) {
+                    checkHit(target, { ownerBrawler: 'gravy', ownerId: entity.id, damage: dmg, pierce: true, hitIds: {}, isGravyLadle: true }, -1);
+                }
+            }
+            gravySpawnPool(entity, entity.x, entity.y, GRAVY_POOL_RADIUS, GRAVY_POOL_DURATION_MS, false);
+            explosions.push({ x: entity.x, y: entity.y, radius: GRAVY_GLOB_SPLASH_RADIUS, life: 0, maxLife: .4, color: 'rgba(180,83,9,.55)', legendary: true, fxKind: 'gravySplash', hyper: false });
+            spawnFloatingText(entity.x, entity.y - 40, '🥄 GRAVY LADLE!', '#fde68a');
+            return true;
+        }
+        return false;
+    }
+
+    // Per-frame Gravy maintenance: glob landings, wave travel + hits +
+    // trail pools, pool expiry, pool ticks (slow refresh + SP1 DoT +
+    // SP2 self-heal). Pools affect brawlers only, never structures.
+    function updateGravySystems(dt) {
+        const now = performance.now();
+        for (const e of [player, ...bots]) {
+            if (!e) continue;
+            if (e.hp <= 0) { e.gravyThickArmed = false; continue; }
+        }
+        // Pools expire after their duration.
+        gravyPools = gravyPools.filter((p) => now < p.until);
+        // Lobbed globs fly in an arc, then splash (FreeZeon rink pattern).
+        for (let i = gravyThrownGlobs.length - 1; i >= 0; i--) {
+            const g = gravyThrownGlobs[i];
+            if (now < g.impactAt) continue;
+            gravyThrownGlobs.splice(i, 1);
+            gravyLandGlob(g);
+        }
+        // Gravy Boat waves flood forward, hit each enemy once, and leave
+        // trail pools behind them.
+        for (let i = gravyWaves.length - 1; i >= 0; i--) {
+            const w = gravyWaves[i];
+            const step = GRAVY_SUPER_SPEED * dt;
+            w.x += Math.cos(w.ang) * step;
+            w.y += Math.sin(w.ang) * step;
+            w.traveled += step;
+            if (w.traveled - (w.lastTrailAt || 0) >= GRAVY_SUPER_TRAIL_EVERY_PX) {
+                w.lastTrailAt = w.traveled;
+                const trailOwner = gravyFindOwner(w.ownerId);
+                if (trailOwner) gravySpawnPool(trailOwner, w.x, w.y, w.hyper ? GRAVY_SUPER_TRAIL_RADIUS_HYPER : GRAVY_SUPER_TRAIL_RADIUS, GRAVY_SUPER_TRAIL_DURATION_MS, w.hyper);
+            }
+            const owner = gravyFindOwner(w.ownerId);
+            if (owner) {
+                const width = w.hyper ? GRAVY_SUPER_WIDTH_HYPER : GRAVY_SUPER_WIDTH;
+                const dmg = Math.round((w.hyper ? GRAVY_SUPER_DMG_HYPER : GRAVY_SUPER_DMG) * gravyLevelScale(owner));
+                for (const target of [player, ...bots]) {
+                    if (!target || target.hp <= 0 || target.id === owner.id || areAlliedEntities(owner, target)) continue;
+                    if (target.isStructure || target.isPet) continue;
+                    if (w.hitIds[target.id]) continue;
+                    if (Math.hypot(target.x - w.x, target.y - w.y) > width / 2 + (target.radius || 14)) continue;
+                    w.hitIds[target.id] = true;
+                    checkHit(target, { ownerBrawler: 'gravy', ownerId: owner.id, damage: dmg, pierce: true, super: true, hitIds: {}, isGravyWave: true }, -1);
+                    target.gravySuperSlowUntil = Math.max(target.gravySuperSlowUntil || 0, now + GRAVY_SUPER_SLOW_DURATION_MS);
+                    applyKnockback(target, w.x - Math.cos(w.ang) * 100, w.y - Math.sin(w.ang) * 100, GRAVY_SUPER_PUSH, now);
+                }
+            }
+            if (w.traveled >= GRAVY_SUPER_RANGE) gravyWaves.splice(i, 1);
+        }
+        // Pool ticks (250ms): refresh the pool slow on enemies standing
+        // in a pool, SP1 DoT on enemies, SP2 self-heal on the owner.
+        const entities = [player, ...bots].filter((e) => e && e.hp > 0);
+        for (const p of gravyPools) {
+            const owner = gravyFindOwner(p.ownerId);
+            if (!owner) continue;
+            if (now < (p.nextTickAt || 0)) continue;
+            p.nextTickAt = now + GRAVY_POOL_TICK_MS;
+            const sp1 = gravyHasSP1(owner);
+            const sp2 = gravyHasSP2(owner);
+            for (const target of entities) {
+                if (Math.hypot(target.x - p.x, target.y - p.y) > p.radius + (target.radius || 14)) continue;
+                if (target.isStructure || target.isPet) continue;
+                if (target.id === owner.id) {
+                    // SP2: standing in your own pool heals you (brawler
+                    // only — never structures/towers, PR #42).
+                    if (sp2) target.hp = Math.min(target.maxHp, target.hp + Math.round(GRAVY_SP2_POOL_HEAL_PER_S * GRAVY_POOL_TICK_MS / 1000));
+                    continue;
+                }
+                if (areAlliedEntities(owner, target)) continue;
+                target.gravySlowUntil = Math.max(target.gravySlowUntil || 0, now + GRAVY_POOL_SLOW_LINGER_MS);
+                if (sp1) {
+                    checkHit(target, { ownerBrawler: 'gravy', ownerId: owner.id, damage: Math.round(GRAVY_SP1_POOL_DOT_PER_S * GRAVY_POOL_TICK_MS / 1000), pierce: true, hitIds: {}, isGravyPoolDot: true }, -1);
+                }
+            }
+        }
+    }
+
+    // Render Gravy effects: pools, globs in flight, waves, slowed-enemy
+    // rings, Hyper aura. All keyed off real state — never a faked flag
+    // (Snipa lesson).
+    function renderGravyEffects() {
+        const now = performance.now();
+        for (const p of gravyPools) {
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            const wobble = 1 + 0.03 * Math.sin(now / 300 + p.x * 0.01);
+            const grad = ctx.createRadialGradient(0, 0, p.radius * 0.1, 0, 0, p.radius * wobble);
+            grad.addColorStop(0, p.hyper ? 'rgba(192,132,252,0.5)' : 'rgba(217,119,6,0.55)');
+            grad.addColorStop(1, p.hyper ? 'rgba(192,132,252,0.12)' : 'rgba(180,83,9,0.15)');
+            ctx.fillStyle = grad;
+            ctx.beginPath(); ctx.arc(0, 0, p.radius * wobble, 0, Math.PI * 2); ctx.fill();
+            ctx.globalAlpha = 0.8;
+            ctx.strokeStyle = p.hyper ? '#c084fc' : '#b45309';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([12, 8]);
+            ctx.beginPath(); ctx.arc(0, 0, p.radius * wobble, now / 600, now / 600 + Math.PI * 2); ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.globalAlpha = 0.5;
+            ctx.fillStyle = p.hyper ? '#e9d5ff' : '#fbbf24';
+            for (let d = 0; d < 3; d++) {
+                const da = now / 900 + d * 2.1;
+                ctx.beginPath(); ctx.arc(Math.cos(da) * p.radius * 0.5, Math.sin(da) * p.radius * 0.5, 4, 0, Math.PI * 2); ctx.fill();
+            }
+            ctx.restore();
+        }
+        // Lobbed globs in flight: spinning gravy glob on its arc + a
+        // dashed landing marker on the ground (jackTrade pattern).
+        for (const g of gravyThrownGlobs) {
+            const progress = clamp((now - g.createdAt) / Math.max(1, g.impactAt - g.createdAt), 0, 1);
+            const arc = Math.sin(progress * Math.PI) * GRAVY_GLOB_ARC_HEIGHT;
+            const gx = g.startX + (g.targetX - g.startX) * progress;
+            const gy = g.startY + (g.targetY - g.startY) * progress;
+            ctx.save();
+            // Landing marker (the real splash radius).
+            ctx.globalAlpha = 0.5;
+            ctx.strokeStyle = g.hyper ? '#c084fc' : '#b45309';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([10, 8]);
+            ctx.beginPath(); ctx.arc(g.targetX, g.targetY, GRAVY_GLOB_SPLASH_RADIUS, 0, Math.PI * 2); ctx.stroke();
+            ctx.setLineDash([]);
+            // Ground shadow under the glob.
+            ctx.globalAlpha = 0.3;
+            ctx.fillStyle = '#451a03';
+            ctx.beginPath(); ctx.ellipse(gx, gy, 16 * (1 - progress * 0.3), 7, 0, 0, Math.PI * 2); ctx.fill();
+            // The glob itself, riding the arc.
+            ctx.translate(gx, gy - arc);
+            ctx.globalAlpha = 0.95;
+            ctx.shadowColor = g.hyper ? '#c084fc' : '#b45309';
+            ctx.shadowBlur = 16;
+            ctx.fillStyle = g.hyper ? '#c084fc' : '#b45309';
+            ctx.beginPath(); ctx.arc(0, 0, 13, 0, Math.PI * 2); ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#fde68a';
+            ctx.beginPath(); ctx.arc(-3, -4, 4, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#92400e';
+            ctx.beginPath(); ctx.arc(5, 5, 3, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+        }
+        // Gravy Boat waves: a wide brown-gold flood band with a bright
+        // leading edge, in the wave's real direction.
+        for (const w of gravyWaves) {
+            const width = w.hyper ? GRAVY_SUPER_WIDTH_HYPER : GRAVY_SUPER_WIDTH;
+            ctx.save();
+            ctx.translate(w.x, w.y);
+            ctx.rotate(w.ang);
+            ctx.globalAlpha = 0.75;
+            const grad = ctx.createLinearGradient(-140, 0, 10, 0);
+            grad.addColorStop(0, 'rgba(180,83,9,0.05)');
+            grad.addColorStop(1, w.hyper ? 'rgba(192,132,252,0.7)' : 'rgba(217,119,6,0.7)');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.moveTo(-140, -width / 2);
+            ctx.lineTo(0, -width / 2);
+            ctx.arc(0, 0, width / 2, -Math.PI / 2, Math.PI / 2);
+            ctx.lineTo(-140, width / 2);
+            ctx.closePath();
+            ctx.fill();
+            ctx.globalAlpha = 0.9;
+            ctx.strokeStyle = w.hyper ? '#c084fc' : '#fbbf24';
+            ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.arc(0, 0, width / 2, -Math.PI / 2, Math.PI / 2); ctx.stroke();
+            ctx.restore();
+        }
+        // Slowed enemies: brown ring (pool slow) / amber ring (wave slow).
+        for (const e of [player, ...bots]) {
+            if (!e || e.hp <= 0) continue;
+            if ((e.gravySlowUntil || 0) > now) {
+                ctx.save();
+                ctx.globalAlpha = 0.7;
+                ctx.strokeStyle = '#92400e';
+                ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(e.x, e.y, (e.radius || 14) + 5, 0, Math.PI * 2); ctx.stroke();
+                ctx.restore();
+            }
+            if ((e.gravySuperSlowUntil || 0) > now) {
+                ctx.save();
+                ctx.globalAlpha = 0.7;
+                ctx.strokeStyle = '#f59e0b';
+                ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(e.x, e.y, (e.radius || 14) + 8, 0, Math.PI * 2); ctx.stroke();
+                ctx.restore();
+            }
+        }
+        // Hyper aura ring around Gravy (Pandy/Snipa pattern).
+        for (const e of [player, ...bots]) {
+            if (!e || e.hp <= 0 || !isGravy(e)) continue;
+            const hyper = e.id === player.id ? !!isHypercharged : !!e.isHypercharged;
+            if (!hyper) continue;
+            ctx.save();
+            ctx.globalAlpha = 0.9;
+            ctx.strokeStyle = 'rgba(192,132,252,0.9)';
+            ctx.lineWidth = 5;
+            ctx.shadowColor = '#a855f7';
+            ctx.shadowBlur = 28;
+            ctx.beginPath();
+            ctx.arc(e.x, e.y, (e.radius || 14) + 20 + Math.sin(now / 200) * 3, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+        }
+    }
+
+    // Gravy voice watcher: spawn / win / death / hurt / idle (freezeon pattern).
+    function updateGravyVoiceState() {
+        try {
+            if (typeof selectedBrawler === 'undefined' || !player) return;
+            const now = performance.now();
+            const isGravyBrawler = selectedBrawler === 'gravy';
+            if (playing && !gravyVoicePrevPlaying) {
+                gravyVoiceMatchEndPlayed = false;
+                gravyVoiceLastHp = player.hp;
+                gravyVoiceLastActionAt = now;
+                gravyVoiceLastIdleAt = 0;
+                player.gravyWinAt = 0;
+                player.gravyDeathAt = 0;
+                if (isGravyBrawler) window.BraweGravyVoice?.play('spawn');
+            }
+            if (gameOver && !gravyVoicePrevGameOver && !gravyVoiceMatchEndPlayed) {
+                gravyVoiceMatchEndPlayed = true;
+                if (isGravyBrawler) {
+                    if (player.hp > 0) {
+                        player.gravyWinAt = now;
+                        window.BraweGravyVoice?.play('win');
+                    } else {
+                        player.gravyDeathAt = now;
+                        window.BraweGravyVoice?.play('death');
+                        explosions.push({ x: player.x, y: player.y, radius: 60, life: 0, maxLife: .8, color: 'rgba(180,83,9,.55)' });
+                        spawnFloatingText(player.x, player.y - 46, '🫕 SPILLED!', '#b45309');
+                    }
+                }
+            }
+            if (playing && !gameOver && isGravyBrawler && player.hp > 0 && gravyVoiceLastHp !== null && player.hp < gravyVoiceLastHp) {
+                gravyVoiceLastActionAt = now;
+                window.BraweGravyVoice?.play('hurt');
+            }
+            if (player) gravyVoiceLastHp = player.hp;
+            if (playing && !gameOver && isGravyBrawler && player.hp > 0) {
+                const moved = Math.hypot((player.x || 0) - (player.gravyVoicePrevX ?? player.x ?? 0), (player.y || 0) - (player.gravyVoicePrevY ?? player.y ?? 0)) > 4;
+                if (moved || (player.lastAttackAt || 0) > gravyVoiceLastActionAt) gravyVoiceLastActionAt = now;
+                player.gravyVoicePrevX = player.x;
+                player.gravyVoicePrevY = player.y;
+                if (now - gravyVoiceLastActionAt > 20000 && now - gravyVoiceLastIdleAt > 25000) {
+                    gravyVoiceLastIdleAt = now;
+                    window.BraweGravyVoice?.play('idle');
+                }
+            }
+            gravyVoicePrevPlaying = playing;
+            gravyVoicePrevGameOver = gameOver;
+        } catch (e) {}
+    }
+
     // ===== Christmas Showdown buffs (Season 6: Xplodemis) =====
     let christmasBuffTimer = 0;
     function isChristmasShowdownMatch() { return showdownMode === 'christmas_showdown' && !isTraining; }
@@ -30435,6 +30891,7 @@ let heistFeverActive = false;
         if (bot.brawler === 'bookworm') return distance < 550; // Worm Leap jump 2 reaches 600px
         if (bot.brawler === 'freezeon') return distance < FREEZEON_SUPER_THROW_RANGE; // ice rink throw range
         if (bot.brawler === 'driller') return distance < DRILLER_DRILL_RANGE + 60; // drill form: get close, then drive into them
+        if (bot.brawler === 'gravy') return distance < GRAVY_SUPER_RANGE; // Gravy Boat wave reach
         const targetHpPct = target.hp ? target.hp / Math.max(1, target.maxHp || target.hp) : 1;
         const clustered = getBotLivingEnemies(bot).filter((enemy) => Math.hypot(enemy.x - target.x, enemy.y - target.y) < 190).length;
         const objectiveFight = (isObjectiveMode || isTugZoneMode) && Math.hypot(target.x - (objectiveZone?.x || WORLD_W*0.5), target.y - (objectiveZone?.y || WORLD_H*0.5)) < (objectiveZone?.r || 240) + 80;
@@ -32737,7 +33194,7 @@ let heistFeverActive = false;
       beam:8, fuser:24, heater_miser:20, minigunnin:72, money_and_tax:24, outlit:30, steamer:8,
       bouncin_balls:6, chickpig:12, classy:6, copyphase:6, goonbob:6, hoop:5, hyperorigin:5, robber:42,
       portalo:7, ghoul:6, jacktrade:18, darkener:6, awakenator:8, trampaheal:6, axeywaxy:6, mageny:6, draflygon:6, ramage:6, upgradart:10, cinderion:10, cursed:7, king:6, anti_royal:6, weefee:6, rager:4,
-    carmela_fudge:5, bolznstien:5, sir_cheeseburger:4, blinkeye:4, magnatar:6, oil_maker:16, badbat:5, looma:7, feathers:5, spikey:6, electrostien:14, mallow:12, nightshade: 6, runner: 6, aura_charmer: 6, voltastein: 6, staticstein: 6, healnstein: 6, voodoyou: 6, pandy: 6, snipa: 6, bookworm: 7, freezeon: 7, driller: 7
+    carmela_fudge:5, bolznstien:5, sir_cheeseburger:4, blinkeye:4, magnatar:6, oil_maker:16, badbat:5, looma:7, feathers:5, spikey:6, electrostien:14, mallow:12, nightshade: 6, runner: 6, aura_charmer: 6, voltastein: 6, staticstein: 6, healnstein: 6, voodoyou: 6, pandy: 6, snipa: 6, bookworm: 7, freezeon: 7, driller: 7, gravy: 7
   });
   let nextMainAttackActivationId = 1;
   function getSuperChargeHitsForBrawler(brawler) {
@@ -33186,7 +33643,7 @@ let heistFeverActive = false;
   function startDuelsRound() {
     outlitWallChains.length = 0;
     bullets.length = 0; ragerWarTotems.length = 0;
-    bolznstienPendingStrikes.length = 0; bolznstienShockTrails.length = 0; bolznstienChainArcs.length = 0; chocolatePuddles.length = 0; magnatarVortices.length = 0; oilMakerPuddles.length = 0; oilMakerBarrels.length = 0; oilMakerPendingPuddles.length = 0; steamerPoles.length = 0; weefeePoles.length = 0; chickpigEggZones.length = 0; rings.length = 0; cheeseFields.length = 0; healingPods.length = 0; explosions.length = 0; pendingClones.length = 0; destructibleWalls.length = 0; floatingTexts.length = 0; stickyNotes.length = 0; amplifierToolboxes.length = 0; amplifierScrewZones.length = 0; skeleParachutes.length = 0; skelePortals.length = 0; malakorHellZones.length = 0; malakorHands.length = 0; relativityZones.length = 0; packetTimeFields.length = 0; packetTelegraphs.length = 0; fastpassCheckpoints.length = 0; freestyleMicrophones.length = 0; portaloPortalPairs.length = 0; portaloPrisons.length = 0; portaloShockTimers.length = 0; ghoulHaunts.length = 0; darkenerClouds.length = 0; darkagons.length = 0; cursedStorms.length = 0; cursedHyperClouds.length = 0; antiRoyalMortarShells.length = 0; antiRoyalMortarZones.length = 0; jackTradeVolleys.length = 0; jackTradeThrownEffects.length = 0; jackTradeZones.length = 0; jackTradeEndpointShots.length = 0; badbatSwarm.length = 0; badbatShieldOrbs.length = 0; loomaThreads.length = 0; loomaWeaves.length = 0; feathersWindZones.length = 0; feathersStorms.length = 0; spikeyParkedBalls.length = 0; spikeyMegaBalls.length = 0; spikeyPendingSlams.length = 0; electricRealms.length = 0; electrostienPendingStrikes.length = 0; freezeonPatches.length = 0; freezeonSlipZones.length = 0; freezeonShatters.length = 0; freezeonThrownRinks.length = 0; freezeonPendingCones.length = 0;
+    bolznstienPendingStrikes.length = 0; bolznstienShockTrails.length = 0; bolznstienChainArcs.length = 0; chocolatePuddles.length = 0; magnatarVortices.length = 0; oilMakerPuddles.length = 0; oilMakerBarrels.length = 0; oilMakerPendingPuddles.length = 0; steamerPoles.length = 0; weefeePoles.length = 0; chickpigEggZones.length = 0; rings.length = 0; cheeseFields.length = 0; healingPods.length = 0; explosions.length = 0; pendingClones.length = 0; destructibleWalls.length = 0; floatingTexts.length = 0; stickyNotes.length = 0; amplifierToolboxes.length = 0; amplifierScrewZones.length = 0; skeleParachutes.length = 0; skelePortals.length = 0; malakorHellZones.length = 0; malakorHands.length = 0; relativityZones.length = 0; packetTimeFields.length = 0; packetTelegraphs.length = 0; fastpassCheckpoints.length = 0; freestyleMicrophones.length = 0; portaloPortalPairs.length = 0; portaloPrisons.length = 0; portaloShockTimers.length = 0; ghoulHaunts.length = 0; darkenerClouds.length = 0; darkagons.length = 0; cursedStorms.length = 0; cursedHyperClouds.length = 0; antiRoyalMortarShells.length = 0; antiRoyalMortarZones.length = 0; jackTradeVolleys.length = 0; jackTradeThrownEffects.length = 0; jackTradeZones.length = 0; jackTradeEndpointShots.length = 0; badbatSwarm.length = 0; badbatShieldOrbs.length = 0; loomaThreads.length = 0; loomaWeaves.length = 0; feathersWindZones.length = 0; feathersStorms.length = 0; spikeyParkedBalls.length = 0; spikeyMegaBalls.length = 0; spikeyPendingSlams.length = 0; electricRealms.length = 0; electrostienPendingStrikes.length = 0; freezeonPatches.length = 0; freezeonSlipZones.length = 0; freezeonShatters.length = 0; freezeonThrownRinks.length = 0; freezeonPendingCones.length = 0; gravyPools.length = 0; gravyWaves.length = 0; gravyThrownGlobs.length = 0;
     snapperWaves.length = 0;
     rocketeerFireZones.length = 0;
     jetpackFireZones.length = 0;
@@ -38510,6 +38967,8 @@ let heistFeverActive = false;
         if (!isBot && fromEntity === player && (fromEntity.fusedPartCall || selectedBrawler) === 'freezeon') { try { window.BraweFreezeonVoice?.play('attack'); } catch (e) {} }
     // Driller voice: player attack line (throttled inside the voice module).
     if (!isBot && fromEntity === player && (fromEntity.fusedPartCall || selectedBrawler) === 'driller') { try { window.BraweDrillerVoice?.play('attack'); } catch (e) {} }
+    // Gravy voice: player attack line (throttled inside the voice module).
+    if (!isBot && fromEntity === player && (fromEntity.fusedPartCall || selectedBrawler) === 'gravy') { try { window.BraweGravyVoice?.play('attack'); } catch (e) {} }
 
     fireArenaForgeCapturedHyperAttacks(fromEntity, ang, now);
 
@@ -41286,6 +41745,9 @@ let heistFeverActive = false;
     } else if (brawler === 'driller') {
         fireDrillerMain(fromEntity, targetX, targetY, isBot);
         return;
+    } else if (brawler === 'gravy') {
+        fireGravyMain(fromEntity, targetX, targetY, isBot);
+        return;
     } else if (brawler === 'nightshade') {
         fireNightshadeMain(fromEntity, ang, targetX, targetY, { isBot, now, damageMult: 1, hitboxMult: 1, donorMode: false });
         return;
@@ -43659,6 +44121,7 @@ let heistFeverActive = false;
     if (combatBrawler === 'bookworm') { castBookwormSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'freezeon') { castFreezeonSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'driller') { castDrillerSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
+    if (combatBrawler === 'gravy') { castGravySuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'nightshade') { castNightshadeSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'aegis') { castAegisSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'runner') { castRunnerSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
@@ -44997,6 +45460,10 @@ let heistFeverActive = false;
       executeDrillerGadget(bot, 'g1', true);
     } else if (bot.brawler === 'driller' && g === 'g2') {
       executeDrillerGadget(bot, 'g2', true, target?.x ?? (bot.x + Math.cos(ang) * 200), target?.y ?? (bot.y + Math.sin(ang) * 200));
+    } else if (bot.brawler === 'gravy' && g === 'g1') {
+      executeGravyGadget(bot, 'g1', true);
+    } else if (bot.brawler === 'gravy' && g === 'g2') {
+      executeGravyGadget(bot, 'g2', true);
     } else if (bot.brawler === 'nightshade' && g === 'g1') {
       executeNightshadeG1(bot, target?.x ?? (bot.x + Math.cos(ang) * 200), target?.y ?? (bot.y + Math.sin(ang) * 200));
     } else if (bot.brawler === 'nightshade' && g === 'g2') {
@@ -45563,6 +46030,7 @@ let heistFeverActive = false;
     if (botCombatBrawler === 'bookworm') { castBookwormSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'freezeon') { castFreezeonSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'driller') { castDrillerSuper(bot, isHyper, targetX, targetY); return; }
+    if (botCombatBrawler === 'gravy') { castGravySuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'nightshade') { castNightshadeSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'aegis') { castAegisSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'runner') { castRunnerSuper(bot, isHyper, targetX, targetY); return; }
@@ -47205,6 +47673,18 @@ let heistFeverActive = false;
         return;
     } else if (curBrawler === 'driller' && curGadget === 'g2') {
         executeDrillerGadget(player, 'g2', false, gadgetWorld.x, gadgetWorld.y);
+        gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
+        setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
+        updateGadgetButton();
+        return;
+    } else if (curBrawler === 'gravy' && curGadget === 'g1') {
+        executeGravyGadget(player, 'g1', false);
+        gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
+        setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
+        updateGadgetButton();
+        return;
+    } else if (curBrawler === 'gravy' && curGadget === 'g2') {
+        executeGravyGadget(player, 'g2', false);
         gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
         setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
         updateGadgetButton();
@@ -53166,7 +53646,7 @@ let heistFeverActive = false;
       isMegasteinBossEvent = showdownMode === 'megastein_boss';
       isBossFight = isLavaBossEvent || isBouncinBossEvent || isHeadlessBossEvent || isTombstoneBossEvent || isMegasteinBossEvent || isBeastBossEvent;
       activeSkinTrial = null; // real matches never use trial skins
-      feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; freezeonPendingCones = [];
+      feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; freezeonPendingCones = []; gravyPools = []; gravyWaves = []; gravyThrownGlobs = [];
       if (isBouncinBossEvent) {
           initBouncinBossMatch();
       }
@@ -53608,7 +54088,7 @@ let heistFeverActive = false;
       isMirrorMode = false;
       isImpossibleMode = false;
       isObjectiveMode = false;
-      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; freezeonPendingCones = []; isPropHuntMode = false; propHuntState = null;
+      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; freezeonPendingCones = []; gravyPools = []; gravyWaves = []; gravyThrownGlobs = []; isPropHuntMode = false; propHuntState = null;
       isTraining = false;
       isDuels = true;
       isTowerDuelEvent = true;
@@ -53653,7 +54133,7 @@ let heistFeverActive = false;
       isMirrorMode = false;
       isImpossibleMode = false;
       isObjectiveMode = false;
-      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; freezeonPendingCones = []; isPropHuntMode = false; propHuntState = null;
+      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; freezeonPendingCones = []; gravyPools = []; gravyWaves = []; gravyThrownGlobs = []; isPropHuntMode = false; propHuntState = null;
       isTraining = false;
       isDuels = true;
       isFusedMode = true;
@@ -54920,7 +55400,7 @@ isBrawlerLabMode = false;
       isDuelsMaxedMode = false;
       isWarperEvent = false;
       isObjectiveMode = false;
-      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; freezeonPendingCones = []; isPropHuntMode = false; propHuntState = null;
+      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; freezeonPendingCones = []; gravyPools = []; gravyWaves = []; gravyThrownGlobs = []; isPropHuntMode = false; propHuntState = null;
       soloTrialWave = 0;
       soloTrialPending = false;
       playing = true;
@@ -55068,7 +55548,7 @@ isBrawlerLabMode = false;
       isDuelsMaxedMode = false;
       isWarperEvent = false;
       isObjectiveMode = false;
-      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; freezeonPendingCones = []; isPropHuntMode = false; propHuntState = null;
+      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; freezeonPendingCones = []; gravyPools = []; gravyWaves = []; gravyThrownGlobs = []; isPropHuntMode = false; propHuntState = null;
     isConstructionMode = false;
       if (document.getElementById('topbar')) document.getElementById('topbar').textContent = 'Arena Forge - Rookie Course';
       playing = true;
@@ -60843,6 +61323,7 @@ function checkHit(target, b, i){
     if (playing && !gameOver) updateSnipaSystems(dt);
     if (playing && !gameOver) updateBookwormSystems(dt);
     if (playing && !gameOver) updateFreezeonSystems(dt);
+    if (playing && !gameOver) updateGravySystems(dt);
     if (playing && !gameOver) updateDrillerSystems(dt);
     if (playing && !gameOver) updatePropPads();
     if (playing && !gameOver) updateChristmasShowdown(dt);
@@ -71124,6 +71605,35 @@ function checkHit(target, b, i){
                 ctx.beginPath(); ctx.moveTo(entity.x + size * 0.3, drawY - size * 0.3); ctx.lineTo(entity.x + size * 0.26, drawY - size * 0.2); ctx.lineTo(entity.x + size * 0.34, drawY - size * 0.2); ctx.closePath(); ctx.fill();
                 ctx.restore();
             }
+            if (brawlerId === 'gravy') {
+                ctx.save();
+                ctx.shadowColor = '#b45309';
+                ctx.shadowBlur = 8;
+                // Brown apron body.
+                ctx.fillStyle = '#92400e';
+                ctx.strokeStyle = '#451a03';
+                ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(entity.x, drawY + size * 0.16, size * 0.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                // Head.
+                ctx.fillStyle = '#fcd9b8';
+                ctx.beginPath(); ctx.arc(entity.x, drawY - size * 0.08, size * 0.15, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                // White chef hat.
+                ctx.fillStyle = '#fff';
+                ctx.beginPath(); ctx.arc(entity.x, drawY - size * 0.13, size * 0.13, Math.PI, 0); ctx.fill();
+                ctx.fillRect(entity.x - size * 0.15, drawY - size * 0.13, size * 0.3, size * 0.04);
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = '#0f172a';
+                ctx.beginPath();
+                ctx.arc(entity.x - size * 0.05, drawY - size * 0.08, size * 0.02, 0, Math.PI * 2);
+                ctx.arc(entity.x + size * 0.05, drawY - size * 0.08, size * 0.02, 0, Math.PI * 2);
+                ctx.fill();
+                // Gravy boat held up (brown-gold pitcher).
+                ctx.fillStyle = '#b45309';
+                ctx.beginPath(); ctx.ellipse(entity.x + size * 0.26, drawY - size * 0.05, size * 0.09, size * 0.06, -0.4, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#fbbf24';
+                ctx.beginPath(); ctx.arc(entity.x + size * 0.26, drawY - size * 0.08, size * 0.03, 0, Math.PI * 2); ctx.fill();
+                ctx.restore();
+            }
             ctx.textAlign = 'left';
             ctx.textBaseline = 'alphabetic';
     }
@@ -71664,6 +72174,7 @@ function checkHit(target, b, i){
     renderSnipaEffects();
     renderBookwormEffects();
     renderFreezeonEffects();
+    renderGravyEffects();
     renderDrillerEffects();
     renderNightshadeEffects();
     renderRunnerEffects(ctx);
@@ -85036,6 +85547,27 @@ function checkHit(target, b, i){
             ctx.restore();
             continue;
         }
+        if (ex.fxKind === 'gravySplash') {
+            // Gravy splash: brown-gold pool flash with droplets. The ring
+            // keys off the splash's REAL Hyper state at landing (purple
+            // when Hyper) — never a faked flag (Snipa lesson).
+            const gAlpha = Math.max(0, 1 - ex.life / ex.maxLife);
+            const progress = clamp(ex.life / ex.maxLife, 0, 1);
+            const gR = (ex.radius || 110) * (0.5 + 0.5 * progress);
+            ctx.save();
+            ctx.globalAlpha = gAlpha;
+            ctx.fillStyle = ex.hyper ? 'rgba(192,132,252,0.55)' : 'rgba(180,83,9,0.55)';
+            ctx.beginPath(); ctx.arc(ex.x, ex.y, gR, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = ex.hyper ? '#c084fc' : '#fbbf24';
+            ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.arc(ex.x, ex.y, gR, 0, Math.PI * 2); ctx.stroke();
+            for (let s = 0; s < 5; s++) {
+                const a = (s / 5) * Math.PI * 2 + ex.life * 2;
+                ctx.beginPath(); ctx.arc(ex.x + Math.cos(a) * gR * 0.8, ex.y + Math.sin(a) * gR * 0.8, 4, 0, Math.PI * 2); ctx.fill();
+            }
+            ctx.restore();
+            continue;
+        }
         if (ex.fxKind === 'rankedRocketeerBurst') {
             const progress = clamp(ex.life / ex.maxLife, 0, 1);
             const burst = 1 - Math.pow(1 - progress, 3);
@@ -88110,6 +88642,7 @@ function checkHit(target, b, i){
         updateSnipaVoiceState();
         updateBookwormVoiceState();
         updateFreezeonVoiceState();
+        updateGravyVoiceState();
         updateDrillerVoiceState();
         const homeVisible = homeScreen && homeScreen.style.display !== 'none';
         if (playing || !homeVisible) render();
