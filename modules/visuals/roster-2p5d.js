@@ -54,7 +54,11 @@
     'reactor-decayer':['hazmat','#27382f','#a8ff3e'],
     'aura-farmer-aura-charmer':['farmer','#f5c542','#7ec850'],
     'aura-farmer-hyper-aura-charmer':['sovereign','#a855f7','#e9d5ff'],
-    'prism-seraph-angel':['seraph','#fff2b8','#79e9ff']
+    'prism-seraph-angel':['seraph','#fff2b8','#79e9ff'],
+    // Thanksgiving Surprise Update (FREE skin): dark volcanic-rock coat with
+    // a lava-orange chair — drives the card portrait AND the in-match
+    // fighter via BraweRosterVisuals.draw/portrait (visualSkin).
+    'molten-rock-chaird':['chair','#2b2b2e','#ff6b2d']
   };
   // Every fighter owns a visual identity assembled from kit-specific geometry.
   // The four fields are head feature, held weapon/prop, chest mark and build.
