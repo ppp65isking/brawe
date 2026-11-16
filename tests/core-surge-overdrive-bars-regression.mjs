@@ -38,6 +38,8 @@ function load() {
         let playerData = {};
         let isTraining = false;
         let isTutorialMode = false;
+        // Friendly Battles (Phase 8): recordOverdriveActivation reads this.
+        let isFriendlyBattle = false;
         let saves = 0;
         function saveProgress() { saves++; }
         ${block}

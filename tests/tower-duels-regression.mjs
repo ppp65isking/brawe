@@ -174,6 +174,10 @@ const sandbox = {
   isDamageFillerMode: false,
   isMirrorMode: false,
   isRankedMatch: false,
+  // Friendly Battles (Phase 8): the level hooks read these, so the minimal
+  // sandbox must stub them like every other mode flag above.
+  isFriendlyBattle: false,
+  friendlyBattleConfig: { mode: 'solo', mapIndex: null, powerRule: 'mine', enemyPool: 'any', modifiers: [] },
   isTowerTroubleMode: false,
   isTowerDuelEvent: false,
   isTowerDuelsMode: false,

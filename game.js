@@ -544,7 +544,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
   let towerTroubleVariant = null;
   function getSelectedBrawlerLevel() {
     if (isDuelsMaxedMode) return 12;
-    if (isTraining || isDamageFillerMode || isMirrorMode || isRankedMatch || isTowerTroubleMode || isTowerDuelEvent) return 11;
+    if (isTraining || isDamageFillerMode || isMirrorMode || isRankedMatch || isTowerTroubleMode || isTowerDuelEvent || (isFriendlyBattle && friendlyBattleConfig.powerRule === 'max')) return 11;
     try {
             const liveLevel = playerData.brawlers?.[selectedBrawler]?.level;
             if (typeof liveLevel === 'number') return liveLevel;
@@ -603,6 +603,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     }
     function getBotLevelNearPlayer() {
         if (isDuelsMaxedMode) return 12;
+        if (isFriendlyBattle && friendlyBattleConfig.powerRule === 'max') return 11;
         if (isDamageFillerMode || isMirrorMode || isRankedMatch || isTowerTroubleMode || isTowerDuelEvent) return 11;
         return getBrickOpponentLevel(getSelectedProgress());
     }
@@ -702,7 +703,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     }
 
     function getShowdownModeLabel(mode) {
-        if (mode === 'custom_clash') return 'Custom Mutator Clash';
+        if (mode === 'custom_clash') return 'Friendly Battle';
         if (mode === 'brawe_ball') return 'Brawe Ball 3v3';
         if (mode === 'knockout_3v3') return 'Knockout 3v3';
         if (mode === 'construction') return 'Brick Run 3v3';
@@ -8157,6 +8158,8 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
       }
 
       function awardSeasonPassXp(amount = 0) {
+          // Friendly Battles pay no season progress of any kind.
+          if (isFriendlyBattle) return false;
           if (!ENABLE_SEASON_QUESTS) return false;
           if (!isSeason3PassActive()) return false;
           ensureSeasonPassState();
@@ -8167,6 +8170,9 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
       }
 
       function progressSeasonPassQuest(questKey, amount = 1) {
+          // Friendly Battles record no quest/season progress (this is one of
+          // the two central funnels — cube pickups call it directly).
+          if (isFriendlyBattle) return false;
           if (!ENABLE_SEASON_QUESTS) {
               return addDailyWeeklyQuestProgress(questKey, amount);
           }
@@ -8668,6 +8674,8 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           if (Date.now() - overdriveLastSaveAt > 5000) flushOverdriveProgress();
       }
       function recordOverdriveActivation(now = Date.now()) {
+          // Friendly Battles feed no community-event progress.
+          if (isFriendlyBattle) return false;
           if (isTraining || isTutorialMode || !isOverdriveActive(now)) return false;
           const od = ensureOverdriveState(now);
           od.mainTotal += 1;
@@ -12507,6 +12515,29 @@ function isPowerPlayModifierActive(entity = player) {
     let activeRankedModifierSecondary = null;
     let activeRankedModifierTertiary = null;
     let isCustomMutatorMatch = false;
+    // Friendly Battles (Thanksgiving Phase 8): an upgrade of Custom Mutator
+    // Clash, NOT a new mode — the home card keeps the `custom_clash` id. A
+    // Friendly Battle is a local match vs bots with NO rewards, NO quests,
+    // NO rank and NO season progress. `isFriendlyBattle` is only true between
+    // the picker launch and the results teardown: the results RETURN TO LOBBY
+    // button reloads the page, and clearRankedSessionState() resets it on any
+    // re-launch, so the flag can never leak into the next normal match.
+    let isFriendlyBattle = false;
+    // One-shot config armed by the picker (or armFriendlyBattle) and consumed
+    // by launchShowdownMatch. Arming without launching (e.g. closing the
+    // chained Prop Hunt role picker) clears it via the abort callback, so no
+    // other launch path can ever inherit a stale friendly setup.
+    let friendlyBattlePendingConfig = null;
+    function defaultFriendlyBattleConfig() {
+        return { mode: 'solo', mapIndex: null, powerRule: 'mine', enemyPool: 'any', modifiers: [] };
+    }
+    let friendlyBattleConfig = defaultFriendlyBattleConfig();
+    // Showdown layout names by showdownMapIndex, for the Friendly map picker.
+    // 0-3 are the handmade layout names; 4-9 match the theme names.
+    const FRIENDLY_BATTLE_MAPS = ['Crown Collapse', 'Tidal Lock', 'Four Corners', 'Neon Labyrinth', 'Frost Circuit', 'Sunset Quarry', 'Crownspire Keep', 'Gearfall Foundry', 'Stormglass Heights', 'Voidtower Ruins'];
+    // Only Showdown-family modes build from showdownMapIndex; every other mode
+    // brings a fixed/dedicated map, so the picker offers maps for these only.
+    const FRIENDLY_BATTLE_SHOWDOWN_MODES = ['solo', 'duo', 'trio'];
     let activeColossusMaxHp = null;
 
     function isFriendlyFirePlusActive() {
@@ -15417,6 +15448,8 @@ let heistFeverActive = false;
       }
   }
   function progressSeason3Quest(kind,amount=1,absolute=false){
+      // Friendly Battles record no season-quest progress.
+      if (isFriendlyBattle) return false;
       if(isTraining||isTutorialMode||!isSeason3PassActive())return false;ensureSeasonPassState();let changed=false;
       for(const q of Object.values(playerData.seasonPass.quests||{})){
           if(q.kind!==kind||q.completed)continue;const next=absolute?Math.max(q.progress||0,amount):(q.progress||0)+amount;q.progress=Math.min(q.target,next);changed=true;
@@ -19378,6 +19411,8 @@ let heistFeverActive = false;
   }
 
   function addSpecialQuestProgress(fighterId, kind, amount=1) {
+      // Friendly Battles record no quest progress.
+      if (isFriendlyBattle) return false;
       const quests = SPECIAL_BREAKTHROUGH_QUESTS[fighterId];
       if (!quests || !UNLEASH_POTENTIAL_FIGHTERS.includes(fighterId) || !isUnleashPotentialActive() || isTraining || isTutorialMode) return false;
       const state = ensureSpecialAbilityQuestState()[fighterId];
@@ -32085,7 +32120,10 @@ let heistFeverActive = false;
                     showdownEnemyTeamAnchors.set(Math.floor(i / squadSize), { x: bx, y: by });
                 }
             }
-    const brawlerPool = getBotBrawlerPool();
+    // Friendly Battles, enemy pool "Mirror my fighter": the enemy bot pool
+    // collapses to the player's selected brawler (Mirror precedent). Allies
+    // keep the normal pool — only enemies mirror.
+    const brawlerPool = (isFriendlyBattle && friendlyBattleConfig.enemyPool === 'same') ? [selectedBrawler] : getBotBrawlerPool();
     const brawler = isImpossibleMode
         ? selectedBrawler
         : (isMagnatarShowdownMode
@@ -47341,7 +47379,7 @@ let heistFeverActive = false;
       ['ramage_boss', '🥊', 'Boss Battle: 1 vs Ramage', 'Defeat the mega boss'],
       ['weefee_boss', '📶', 'Boss Battle: 1 vs Mega WeeFee', 'Defeat the mega boss'],
       ['demon_villains_boss', '😈', 'Boss Battle: Possessed Villains', 'Defeat the villains'],
-      ['custom_clash', '🧪', 'Custom Mutator Clash', 'Pick ANY mode and map • select up to 3 mutators'],
+      ['custom_clash', '🤝', 'Friendly Battle', 'Friendly Battle — pick mode, map & up to 3 mutators • vs bots • no rewards'],
       ['brawe_ball', '⚽', 'Brawe Ball 3v3', '3v3 Soccer clash'],
       ['knockout_3v3', '🥊', 'Knockout 3v3', 'Best of 3 Rounds'],
       ['duels', '⚔️', 'Duels (First to 9)', 'Draft 1 to 4 brawlers'],
@@ -47508,7 +47546,7 @@ let heistFeverActive = false;
       ramage_boss: ['5-Stage Boss Battle: 1 vs Mega Boss Ramage!', 'Zero Power Cubes — Pure skill showdown', 'Survive escalating damage ramps up to 10.0x Overdrive across 5 Stages!'],
       weefee_boss: ['1-Player Boss Battle: 1 vs Mega WeeFee!', 'UNLIMITED signal poles', 'Destroy signal poles (1500 HP)'],
       demon_villains_boss: ['Story Boss Battle: Demon has possessed the 6 Villains!', 'Animated Storytelling Cutscenes', 'Face 4 Waves'],
-      custom_clash: ['Pick ANY mode and map', 'Select up to 3 active mutators'],
+      custom_clash: ['Pick ANY mode and map', 'Select up to 3 active mutators', 'Friendly Battle — no rewards, no quests, no rank', 'Local match vs bots • power rule & enemy pool are your call'],
       brawe_ball: ['3v3 Soccer clash', 'Score 2 goals to win'],
       knockout_3v3: ['Best of 3 Rounds', 'No respawns during rounds'],
       duels: ['Draft 1 to 4 brawlers', 'First to win 9 rounds', 'Level 12 stats', 'All gadgets, star powers & Hypercharge', '5 Tower Powers', 'Poison storm disabled'],
@@ -50899,6 +50937,11 @@ let heistFeverActive = false;
         activeRankedModifierSecondary = null;
         activeRankedModifierTertiary = null;
         isCustomMutatorMatch = false;
+        // Friendly Battles: a stale friendly flag/config must never leak into
+        // the next launch from any path, so the session reset clears it all.
+        isFriendlyBattle = false;
+        friendlyBattlePendingConfig = null;
+        friendlyBattleConfig = defaultFriendlyBattleConfig();
         activeColossusMaxHp = null;
     }
 
@@ -52199,8 +52242,10 @@ let heistFeverActive = false;
 
     // Prop Hunt v2: pre-match role picker. The choice is session-only
     // (propHuntSelectedRole) and is consumed by spawnPropHuntBots /
-    // initPropHuntMatch when the match launches.
-    function openPropHuntRolePickerUI() {
+    // initPropHuntMatch when the match launches. `onAbort` runs when the
+    // picker is closed without PLAY — the Friendly Battles chain passes one
+    // that drops its armed (not yet launched) config.
+    function openPropHuntRolePickerUI(onAbort) {
         const overlay = document.createElement('div');
         overlay.style.position = 'fixed';
         overlay.style.inset = '0';
@@ -52242,7 +52287,7 @@ let heistFeverActive = false;
         closeBtn.style.padding = '6px 12px';
         closeBtn.style.fontSize = '16px';
         closeBtn.style.cursor = 'pointer';
-        closeBtn.onclick = () => overlay.remove();
+        closeBtn.onclick = () => { overlay.remove(); if (typeof onAbort === 'function') onAbort(); };
         header.appendChild(titleBox);
         header.appendChild(closeBtn);
         panel.appendChild(header);
@@ -52301,6 +52346,38 @@ let heistFeverActive = false;
     }
 
 
+    // Friendly Battles (Thanksgiving Phase 8): arm a one-shot friendly config
+    // (validated + normalised) without launching. The launch consumes it at
+    // the top of launchShowdownMatch, which is the single place
+    // `isFriendlyBattle` is set — so no other launch path can inherit it.
+    function armFriendlyBattle(config) {
+        const cfg = (config && typeof config === 'object') ? config : {};
+        const mode = typeof cfg.mode === 'string' && cfg.mode ? cfg.mode : 'solo';
+        const modifiers = Array.isArray(cfg.modifiers) ? cfg.modifiers.filter(m => typeof m === 'string').slice(0, 3) : [];
+        clearRankedSessionState();
+        isCustomMutatorMatch = true;
+        isRankedMatch = false;
+        showdownMode = mode;
+        activeRankedModifier = modifiers[0] || 'classic';
+        activeRankedModifierSecondary = modifiers[1] || null;
+        activeRankedModifierTertiary = modifiers[2] || null;
+        friendlyBattlePendingConfig = {
+            mode,
+            mapIndex: Number.isInteger(cfg.mapIndex) ? cfg.mapIndex : null,
+            powerRule: cfg.powerRule === 'max' ? 'max' : 'mine',
+            enemyPool: cfg.enemyPool === 'same' ? 'same' : 'any',
+            modifiers
+        };
+        updateShowdownModeUI();
+        return friendlyBattlePendingConfig;
+    }
+
+    // Arm a Friendly Battle and launch it immediately.
+    function launchFriendlyBattle(config) {
+        armFriendlyBattle(config);
+        launchShowdownMatch();
+    }
+
     function openCustomMutatorPickerUI() {
         const overlay = document.createElement('div');
         overlay.style.position = 'fixed';
@@ -52333,8 +52410,9 @@ let heistFeverActive = false;
         header.style.marginBottom = '16px';
 
         const titleBox = document.createElement('div');
-        titleBox.innerHTML = '<h2 style="margin:0;font-size:22px;color:#00f5d4;display:flex;align-items:center;gap:8px;">🧪 Custom Mutator Clash</h2>' +
-            '<p style="margin:4px 0 0 0;font-size:13px;color:#a9cce3;">Pick ANY game mode & choose up to 3 mutators active simultaneously!</p>';
+        titleBox.innerHTML = '<h2 style="margin:0;font-size:22px;color:#00f5d4;display:flex;align-items:center;gap:8px;">🤝 Friendly Battle</h2>' +
+            '<p style="margin:4px 0 0 0;font-size:13px;color:#a9cce3;">Friendly Battle — no rewards, no quests, no rank</p>' +
+            '<p style="margin:2px 0 0 0;font-size:13px;color:#a9cce3;">Pick mode, map & up to 3 mutators • local match vs bots</p>';
 
         const closeBtn = document.createElement('button');
         closeBtn.textContent = '✕';
@@ -52373,7 +52451,8 @@ let heistFeverActive = false;
             { id: 'ramage_boss', name: '🥊 Boss Battle: Ramage' },
             { id: 'weefee_boss', name: '📶 Boss Battle: Mega WeeFee' },
             { id: 'blink_eye_dodge', name: '👁️ Boss Battle: BlinkEye' },
-            { id: 'demon_villains_boss', name: '😈 Boss Battle: Possessed Villains' }
+            { id: 'demon_villains_boss', name: '😈 Boss Battle: Possessed Villains' },
+            { id: 'prop_hunt', name: '🫣 Prop Hunt' }
         ];
 
         let selectedMode = 'brawe_ball';
@@ -52410,12 +52489,137 @@ let heistFeverActive = false;
             btn.onclick = () => {
                 selectedMode = m.id;
                 modeBtns.forEach(fn => fn());
+                refreshMapSection();
             };
             modeBtns.push(updateModeBtnStyle);
             updateModeBtnStyle();
             modeGrid.appendChild(btn);
         });
         panel.appendChild(modeGrid);
+
+        // Step 2 — Map: only Showdown-family modes build from showdownMapIndex,
+        // so only Solo/Duo/Quad offer a pick. Any other mode brings a fixed
+        // arena. null = normal rotation; a pick applies to this match only.
+        const mapTitle = document.createElement('div');
+        mapTitle.innerHTML = '<strong style="font-size:14px;color:#ffd166;">2. Pick a Map (Showdown modes)</strong>';
+        mapTitle.style.marginBottom = '8px';
+        panel.appendChild(mapTitle);
+
+        let selectedMapIndex = null;
+        const rotationMapIndex = getRotatingShowdownMapIndex();
+        const mapGrid = document.createElement('div');
+        mapGrid.style.display = 'grid';
+        mapGrid.style.gridTemplateColumns = 'repeat(auto-fit, minmax(140px, 1fr))';
+        mapGrid.style.gap = '8px';
+        mapGrid.style.marginBottom = '8px';
+        const mapNote = document.createElement('div');
+        mapNote.style.fontSize = '12px';
+        mapNote.style.color = '#a9cce3';
+        mapNote.style.marginBottom = '20px';
+
+        const mapBtns = [];
+        FRIENDLY_BATTLE_MAPS.forEach((mapName, idx) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.textContent = mapName + (idx === rotationMapIndex ? ' • rotation' : '');
+            btn.style.padding = '10px 8px';
+            btn.style.borderRadius = '10px';
+            btn.style.fontSize = '12px';
+            btn.style.fontWeight = '700';
+            btn.style.cursor = 'pointer';
+            btn.style.textAlign = 'center';
+            const updateMapBtnStyle = () => {
+                const enabled = FRIENDLY_BATTLE_SHOWDOWN_MODES.includes(selectedMode);
+                btn.disabled = !enabled;
+                if (selectedMapIndex === idx) {
+                    btn.style.background = 'rgba(0, 245, 212, 0.22)';
+                    btn.style.border = '2px solid #00f5d4';
+                    btn.style.color = '#00f5d4';
+                } else {
+                    btn.style.background = 'rgba(15, 25, 45, 0.7)';
+                    btn.style.border = '1px solid rgba(120, 160, 220, 0.25)';
+                    btn.style.color = enabled ? '#c0d4ec' : '#5a718c';
+                }
+                btn.style.cursor = enabled ? 'pointer' : 'not-allowed';
+            };
+            btn.onclick = () => {
+                if (!FRIENDLY_BATTLE_SHOWDOWN_MODES.includes(selectedMode)) return;
+                selectedMapIndex = selectedMapIndex === idx ? null : idx;
+                refreshMapSection();
+            };
+            mapBtns.push(updateMapBtnStyle);
+            updateMapBtnStyle();
+            mapGrid.appendChild(btn);
+        });
+        const refreshMapSection = () => {
+            const isShowdown = FRIENDLY_BATTLE_SHOWDOWN_MODES.includes(selectedMode);
+            if (!isShowdown) selectedMapIndex = null;
+            mapTitle.style.opacity = isShowdown ? '1' : '0.55';
+            mapGrid.style.opacity = isShowdown ? '1' : '0.55';
+            mapNote.textContent = isShowdown
+                ? (selectedMapIndex === null
+                    ? 'No map picked — uses the normal map rotation.'
+                    : `Map: ${FRIENDLY_BATTLE_MAPS[selectedMapIndex]} — applies to this Friendly Battle only.`)
+                : 'Fixed map — this mode brings its own arena.';
+            mapBtns.forEach(fn => fn());
+        };
+        panel.appendChild(mapGrid);
+        panel.appendChild(mapNote);
+        refreshMapSection();
+
+        // Step 3 — Battle rules: power rule + enemy pool.
+        const rulesTitle = document.createElement('div');
+        rulesTitle.innerHTML = '<strong style="font-size:14px;color:#ffd166;">3. Battle Rules</strong>';
+        rulesTitle.style.marginBottom = '8px';
+        panel.appendChild(rulesTitle);
+
+        let selectedPowerRule = 'mine';
+        let selectedEnemyPool = 'any';
+        const makeRuleRow = (label, choices, getSelected, setSelected) => {
+            const row = document.createElement('div');
+            row.style.display = 'flex';
+            row.style.alignItems = 'center';
+            row.style.gap = '8px';
+            row.style.marginBottom = '10px';
+            const lab = document.createElement('div');
+            lab.style.fontSize = '12px';
+            lab.style.fontWeight = '800';
+            lab.style.color = '#c0d4ec';
+            lab.style.minWidth = '86px';
+            lab.textContent = label;
+            row.appendChild(lab);
+            const rowBtns = [];
+            choices.forEach(c => {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.textContent = c.name;
+                b.style.padding = '8px 10px';
+                b.style.borderRadius = '10px';
+                b.style.fontSize = '12px';
+                b.style.fontWeight = '700';
+                b.style.cursor = 'pointer';
+                b.style.flex = '1';
+                const paint = () => {
+                    const active = getSelected() === c.id;
+                    b.style.background = active ? 'rgba(0, 245, 212, 0.22)' : 'rgba(15, 25, 45, 0.7)';
+                    b.style.border = active ? '2px solid #00f5d4' : '1px solid rgba(120, 160, 220, 0.25)';
+                    b.style.color = active ? '#00f5d4' : '#c0d4ec';
+                };
+                b.onclick = () => { setSelected(c.id); rowBtns.forEach(fn => fn()); };
+                rowBtns.push(paint);
+                paint();
+                row.appendChild(b);
+            });
+            return row;
+        };
+        panel.appendChild(makeRuleRow('Power', [{ id: 'mine', name: '💪 My power' }, { id: 'max', name: '⚡ Everyone max' }], () => selectedPowerRule, v => { selectedPowerRule = v; }));
+        panel.appendChild(makeRuleRow('Enemies', [{ id: 'any', name: '🎲 Any fighters' }, { id: 'same', name: '🪞 Mirror my fighter' }], () => selectedEnemyPool, v => { selectedEnemyPool = v; }));
+        const rulesNote = document.createElement('div');
+        rulesNote.style.fontSize = '12px';
+        rulesNote.style.color = '#a9cce3';
+        rulesNote.style.marginBottom = '20px';
+        rulesNote.textContent = 'Everyone max = you and every bot play at Power 11. Mirror my fighter = every enemy bot uses your fighter.';
+        panel.appendChild(rulesNote);
 
         const mutators = [
             { id: 'friendly_fire_plus', name: 'Friendly Fire+', icon: '⚠️⚡', color: '#00f5d4', desc: 'Allied hits grant Super and Hypercharge!' },
@@ -52442,7 +52646,7 @@ let heistFeverActive = false;
         const modTitle = document.createElement('strong');
         modTitle.style.fontSize = '14px';
         modTitle.style.color = '#ffd166';
-        modTitle.textContent = '2. Pick Up to 3 Modifiers';
+        modTitle.textContent = '4. Pick Up to 3 Mutators';
 
         const counterLabel = document.createElement('span');
         counterLabel.style.fontSize = '12px';
@@ -52512,7 +52716,7 @@ let heistFeverActive = false;
         const launchBtn = document.createElement('button');
         launchBtn.type = 'button';
         launchBtn.id = 'customMutatorLaunchBtn';
-        launchBtn.innerHTML = '🚀 LAUNCH CUSTOM MUTATOR BATTLE';
+        launchBtn.innerHTML = '🤝 LAUNCH FRIENDLY BATTLE';
         launchBtn.style.width = '100%';
         launchBtn.style.padding = '14px';
         launchBtn.style.background = 'linear-gradient(135deg, #00f5d4 0%, #0abde3 100%)';
@@ -52528,15 +52732,15 @@ let heistFeverActive = false;
 
         launchBtn.onclick = () => {
             overlay.remove();
-            clearRankedSessionState();
-            isCustomMutatorMatch = true;
-            isRankedMatch = false;
-            showdownMode = selectedMode;
-            activeRankedModifier = selectedModifiers[0] || 'classic';
-            activeRankedModifierSecondary = selectedModifiers[1] || null;
-            activeRankedModifierTertiary = selectedModifiers[2] || null;
-            updateShowdownModeUI();
-            launchShowdownMatch();
+            const cfg = { mode: selectedMode, mapIndex: selectedMapIndex, powerRule: selectedPowerRule, enemyPool: selectedEnemyPool, modifiers: [...selectedModifiers] };
+            if (selectedMode === 'prop_hunt') {
+                // Chain the Phase 1 role picker: its PLAY launches the armed
+                // friendly match; closing it aborts the friendly setup.
+                armFriendlyBattle(cfg);
+                openPropHuntRolePickerUI(() => { friendlyBattlePendingConfig = null; });
+                return;
+            }
+            launchFriendlyBattle(cfg);
         };
 
         panel.appendChild(launchBtn);
@@ -52895,6 +53099,20 @@ let heistFeverActive = false;
   updateShowdownModeUI();
 
   function launchShowdownMatch() {
+      // Friendly Battles (Phase 8): the picker arms a one-shot config and the
+      // launch consumes it here, so no other launch path can inherit a stale
+      // friendly flag. clearRankedSessionState / the role-picker abort clear it.
+      if (friendlyBattlePendingConfig) {
+          isFriendlyBattle = true;
+          friendlyBattleConfig = friendlyBattlePendingConfig;
+          friendlyBattlePendingConfig = null;
+          isCustomMutatorMatch = true;
+          isRankedMatch = false;
+          showdownMode = friendlyBattleConfig.mode;
+          activeRankedModifier = friendlyBattleConfig.modifiers[0] || 'classic';
+          activeRankedModifierSecondary = friendlyBattleConfig.modifiers[1] || null;
+          activeRankedModifierTertiary = friendlyBattleConfig.modifiers[2] || null;
+      }
       try { console.log('[GAME] Start showdown', { showdownMode, selectedBrawler }); } catch(e) {}
       if (showdownMode === 'splitter_powered') showdownMode = 'power_gods';
       if(isRetiredTowerMode(showdownMode)){
@@ -52924,7 +53142,7 @@ let heistFeverActive = false;
       }
       const brickGate = getSelectedBrickPowerGate();
       if (brickGate.locked) { updateBrickPowerGateUI(); return; }
-      matchHomeEventReward = isRankedMatch ? null : getHomeEventRewardForMode(showdownMode);
+      matchHomeEventReward = (isRankedMatch || isFriendlyBattle) ? null : getHomeEventRewardForMode(showdownMode);
       isBossFight = false;
       isBeastBossEvent = showdownMode === 'beast_boss_god_mode';
       isTowerDefenseEvent = showdownMode === 'tower_defense';
@@ -53097,6 +53315,7 @@ let heistFeverActive = false;
           else if (isLavaBossEvent) baseTitle = `Arena Forge - Lava Villain Boss • ${getLavaBossDifficulty().name}`;
           if (isSlopSushiMode && showdownMode !== 'slop_sushi' && showdownMode !== 'slop_sushi_plus') baseTitle += ' 🗼 Tower Transformations';
           if (isRankedMatch) baseTitle = `[RANKED] ${baseTitle}`;
+          if (isFriendlyBattle) baseTitle = `[FRIENDLY] ${baseTitle}`;
           document.getElementById('topbar').textContent = `${baseTitle} | ${activeShowdownModifierLabel}`;
       }
 
@@ -53106,6 +53325,12 @@ let heistFeverActive = false;
       currentMapOverride = null;
             showdownMapIndex = getRotatingShowdownMapIndex();
       if (isPropHuntMode) showdownMapIndex = 0; // Crown Collapse: all four morph prop types are placed here
+      // Friendly Battles: the picked map applies ONLY to this friendly match.
+      // It is never written to currentMapOverride, and the config is cleared
+      // on exit (clearRankedSessionState), so the next normal match rotates.
+      if (isFriendlyBattle && Number.isInteger(friendlyBattleConfig.mapIndex) && FRIENDLY_BATTLE_SHOWDOWN_MODES.includes(showdownMode)) {
+          showdownMapIndex = Math.max(0, Math.min(SHOWDOWN_MAP_THEMES.length - 1, friendlyBattleConfig.mapIndex));
+      }
       if(isTowerTroubleMode){
           const gauntlet=towerTroubleVariant==='gauntlet',chaos=towerTroubleVariant==='chaos',run=gauntlet?playerData.slopSushi?.gauntletRun:(chaos?playerData.slopSushi?.chaosRun:playerData.slopSushi?.run);
           const floor=Math.max(1,Math.min(gauntlet?TOWER_GAUNTLET_FLOORS:(chaos?CHAOS_CROWN_FLOORS:TOWER_TROUBLE_FLOORS),run?.floor||1));
@@ -86659,12 +86884,12 @@ function checkHit(target, b, i){
                 if (isLavaBossEvent) {
                     const cfg=getLavaBossDifficulty(lavaBossRuntime?.difficulty||activeLavaBossDifficulty);
                     rankText=`Difficulty: ${cfg.name}`;
-                    if(won)rankText+=` • ${completeLavaBossDifficulty(cfg.id)}`;
+                    if(won && !isFriendlyBattle)rankText+=` • ${completeLavaBossDifficulty(cfg.id)}`;
                     matchText=won?'LAVA VILLAIN DEFEATED!':'THE CORE OVERHEATED — TRY AGAIN!';
                 } else if (isHeadlessBossEvent) {
                     const cfg=getHeadlessBossDifficulty(headlessBossRuntime?.difficulty||activeHeadlessBossDifficulty);
                     rankText=`Difficulty: ${cfg.name}`;
-                    if(won)rankText+=` • ${completeHeadlessBossDifficulty(cfg.id)}`;
+                    if(won && !isFriendlyBattle)rankText+=` • ${completeHeadlessBossDifficulty(cfg.id)}`;
                     matchText=won?'HEADLESS BOLZNSTIEN DEFEATED!':'THE HEADLESS ONE PREVAILS — TRY AGAIN!';
                 } else if (isTombstoneBossEvent) {
                     rankText='Solo Boss Fight';
@@ -87033,7 +87258,7 @@ function checkHit(target, b, i){
                 }
             }
 
-            if (isMegasteinBossEvent && won) {
+            if (isMegasteinBossEvent && won && !isFriendlyBattle) {
                 const mgReward = grantMegasteinBossRewards();
                 rankText += ' • +' + MEGASTEIN_BOSS_REWARD_SOULS + ' Souls' + (mgReward.firstWin ? ' • FIRST WIN: +' + MEGASTEIN_BOSS_FIRST_WIN_GEMS + ' Gems & +' + MEGASTEIN_BOSS_FIRST_WIN_CORE_PIECES + ' Core Pieces' : '');
             }
@@ -87043,9 +87268,10 @@ function checkHit(target, b, i){
             const brickRushMultiplier = getDailyBrickRushMultiplier(brickRewardNow, playerData.winStreak || 0);
             const normalBrickReward = getBrickDeltaForPlacement(placement);
             const brickRushBonusCapped = normalBrickReward > 0 && (normalBrickReward * brickRushMultiplier - normalBrickReward) > DAILY_BRICK_RUSH_BONUS_CAP;
-            const brickDelta = isDuels
+            // Friendly Battles pay no Bricks either — skip the award entirely.
+            const brickDelta = isFriendlyBattle ? 0 : (isDuels
                 ? awardBricksAcrossTeam(playerTeam, placement, brickRushMultiplier)
-                : awardBricksForPlacement(endProgress, placement, brickRushMultiplier);
+                : awardBricksForPlacement(endProgress, placement, brickRushMultiplier));
             if (isDuels && isTowerDuelEvent) {
                 ensureSlopSushiState();
                 const event = playerData.slopSushi.towerDuelWeekend;
@@ -87072,6 +87298,8 @@ function checkHit(target, b, i){
                 isTowerDuelEvent = false;
             }
             let soulReward = getSoulsForPlacement(placement);
+            // Friendly Battles: no placement coins/souls, no event reward.
+            if (isFriendlyBattle) { rewardCoins = 0; soulReward = 0; }
             const rotationReward = matchHomeEventReward;
             if (rotationReward?.type === 'coins') rewardCoins += rotationReward.amount;
             if (rotationReward?.type === 'souls') soulReward += rotationReward.amount;
@@ -87155,6 +87383,8 @@ function checkHit(target, b, i){
             }
 
             let earnedDropCount = 0;
+            // Friendly Battles earn no Starr Drops of any kind.
+            if (!isFriendlyBattle) {
             if ((playerData.starrDropsToday || 0) < 12) {
                 earnedDropCount += 1;
                 playerData.starrDrops = (playerData.starrDrops || 0) + 1;
@@ -87175,18 +87405,23 @@ function checkHit(target, b, i){
                 ensureSlopSushiState();
                 playerData.slopSushi.tappers = (playerData.slopSushi.tappers || 0) + rotationReward.amount;
             }
-            const goldEventReward = commitGoldEventMatch(won);
+            }
+            const goldEventReward = isFriendlyBattle ? 0 : commitGoldEventMatch(won);
             flushOverdriveProgress();
             // This is the existing once-only, non-training match reward settlement.
-            awardSeasonPassXp(won ? 25 : 15);
+            // Friendly Battles settle nothing: no Pass XP, no gold-event coins,
+            // no quest/season progress, no daily-played mark.
+            if (!isFriendlyBattle) awardSeasonPassXp(won ? 25 : 15);
             if (goldEventReward > 0) rewardCoins += goldEventReward;
             playerData.coins += rewardCoins;
             addSouls(soulReward);
             if (rankedPromotionSouls > 0) addSouls(rankedPromotionSouls);
             if (rankedPromotionGems > 0) playerData.gems = (playerData.gems || 0) + rankedPromotionGems;
-            addEventQuestProgress('play_match');
-            progressSeasonPassQuest('play_match');
-            markXplodemisDailyPlayed();
+            if (!isFriendlyBattle) {
+                addEventQuestProgress('play_match');
+                progressSeasonPassQuest('play_match');
+                markXplodemisDailyPlayed();
+            }
             if (showdownMode === 'christmas_showdown') {
                 progressSeasonPassQuest('christmas_showdown_matches');
                 if (won) progressSeasonPassQuest('christmas_showdown_wins');
@@ -87194,8 +87429,8 @@ function checkHit(target, b, i){
             if (UNLEASH_POTENTIAL_FIGHTERS.includes(completedMatchFighter)) {
                 addSpecialQuestProgress(completedMatchFighter, 'play_match', 1);
             }
-            // Progress event quests on wins
-            if (won) {
+            // Progress event quests on wins (never in a Friendly Battle).
+            if (won && !isFriendlyBattle) {
                 addEventQuestProgress('win_match');
                 progressSeasonPassQuest('win_match');
                 if (isRankedMatch) {
@@ -87242,11 +87477,24 @@ function checkHit(target, b, i){
             subTitle.textContent = rankText;
             subTitle.className = 'match-results-subtitle';
 
+            // Friendly Battles say so on the results screen, right under the
+            // headline — no rewards, no quests, no rank.
+            let friendlyNote = null;
+            if (isFriendlyBattle) {
+                friendlyNote = document.createElement('div');
+                friendlyNote.textContent = '🤝 Friendly Battle — no rewards, no quests, no rank';
+                friendlyNote.className = 'match-results-friendly-note';
+                friendlyNote.style.fontSize = '16px';
+                friendlyNote.style.fontWeight = '800';
+                friendlyNote.style.color = '#00f5d4';
+                friendlyNote.style.marginTop = '6px';
+            }
+
             const rewardsBox = document.createElement('div');
             rewardsBox.className = 'match-results-rewards';
 
             const rword = document.createElement('h3');
-            rword.textContent = 'BATTLE PAYOUT';
+            rword.textContent = isFriendlyBattle ? 'FRIENDLY BATTLE — NO PAYOUT' : 'BATTLE PAYOUT';
             rword.className = 'match-results-rewards-title';
 
             const coinsDiv = document.createElement('div');
@@ -87381,6 +87629,7 @@ function checkHit(target, b, i){
             headline.appendChild(resultKicker);
             headline.appendChild(title);
             if(rankText) headline.appendChild(subTitle);
+            if (friendlyNote) headline.appendChild(friendlyNote);
             hero.appendChild(portrait);
             hero.appendChild(headline);
             resultCard.appendChild(hero);
@@ -87789,6 +88038,10 @@ function checkHit(target, b, i){
   }
 
   function addEventQuestProgress(questKey, amount = 1) {
+      // Friendly Battles record no quest progress (this is one of the two
+      // central funnels — cube pickups call it directly). Gating here, not at
+      // the call sites, so no scattered progress call can leak.
+      if (isFriendlyBattle) return false;
       addMegaAndBrawlerQuestProgress(questKey, amount);
       if (!ENABLE_EVENT_HUB) {
           const base = addDailyWeeklyQuestProgress(questKey, amount);
@@ -94980,6 +95233,25 @@ function renderBouncinBossEvent(phase) {
     set activeRankedModifierTertiary(v) { activeRankedModifierTertiary = v; },
     get isCustomMutatorMatch() { return isCustomMutatorMatch; },
     set isCustomMutatorMatch(v) { isCustomMutatorMatch = v; },
+    get isFriendlyBattle() { return isFriendlyBattle; },
+    set isFriendlyBattle(v) { isFriendlyBattle = !!v; },
+    get friendlyBattleConfig() { return friendlyBattleConfig; },
+    set friendlyBattleConfig(v) { if (v && typeof v === 'object') friendlyBattleConfig = v; },
+    get friendlyBattlePendingConfig() { return friendlyBattlePendingConfig; },
+    set friendlyBattlePendingConfig(v) { friendlyBattlePendingConfig = v; },
+    get FRIENDLY_BATTLE_MAPS() { return FRIENDLY_BATTLE_MAPS; },
+    get FRIENDLY_BATTLE_SHOWDOWN_MODES() { return FRIENDLY_BATTLE_SHOWDOWN_MODES; },
+    get showdownMapIndex() { return showdownMapIndex; },
+    get getRotatingShowdownMapIndex() { return getRotatingShowdownMapIndex; },
+    get getSelectedBrawlerLevel() { return getSelectedBrawlerLevel; },
+    get getBotLevelNearPlayer() { return getBotLevelNearPlayer; },
+    get matchHomeEventReward() { return matchHomeEventReward; },
+    get addEventQuestProgress() { return addEventQuestProgress; },
+    get progressSeasonPassQuest() { return progressSeasonPassQuest; },
+    get progressSeason3Quest() { return progressSeason3Quest; },
+    get clearRankedSessionState() { return clearRankedSessionState; },
+    armFriendlyBattle,
+    launchFriendlyBattle,
     get isFriendlyFirePlusActive() { return isFriendlyFirePlusActive; },
     get isSuperRate90Active() { return isSuperRate90Active; },
     get grantFriendlyFirePlusBonus() { return grantFriendlyFirePlusBonus; },
@@ -95090,6 +95362,7 @@ function renderBouncinBossEvent(phase) {
     get showdownMode() { return showdownMode; },
     set showdownMode(v) { showdownMode = v; },
     update,
+    render,
     restoreRespawningEntity,
     launchShowdownMatch,
     openRankedQueueUI,
