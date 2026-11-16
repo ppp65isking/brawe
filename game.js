@@ -5750,6 +5750,7 @@ const bolznstienPendingStrikes = [];
                 if (!playerData.brawlers.rager.selectedGadget) playerData.brawlers.rager.selectedGadget = 'g1';
                 if (!playerData.brawlers.rager.selectedStar || playerData.brawlers.rager.selectedStar === 'none') playerData.brawlers.rager.selectedStar = 'slow';
             }
+            grantFreeThanksgivingSkins();
         }
 
         function isFavoriteBrawler(id) {
@@ -6457,15 +6458,16 @@ const bolznstienPendingStrikes = [];
             name: 'Molten Rock Chaird',
             brawler: 'chaird',
             rarity: 'mythic',
-            set: 'Lava Stones',
+            set: 'Thanksgiving Surprise',
             price: 0,
-            currency: 'battlepass',
-            description: 'A mythic lava skin for Chaird. Chair throws erupt with molten sparks, and the super leaves a lava wake.',
+            currency: 'gems',
+            description: 'FREE Thanksgiving skin! Chaird\'s chair is carved from solid volcanic rock, split by glowing lava cracks and wreathed in ember light. Chair throws erupt with molten sparks, and the super leaves a lava wake.',
+            _displayColor: '#ff6b2d',
+            icon: '🌋',
+            isAlwaysAvailable: true,
             attackEffect: { type: 'lavaChair', color: '#ff6b2d', glow: true },
             superEffect: { type: 'moltenSpin', color: '#ff9b42', glow: true },
-            takedownEffect: { type: 'lavaBurst', color: '#ffb15a', glow: true },
-            battlePassRewardTier: 10,
-            battlePassRewardSeason: 'lava-stones-2026-05'
+            takedownEffect: { type: 'lavaBurst', color: '#ffb15a', glow: true }
         },
         'electified-forest': {
             id: 'electified-forest',
@@ -6910,6 +6912,16 @@ const bolznstienPendingStrikes = [];
             }
     }
     ensureSkinVisuals();
+
+    // Thanksgiving Surprise Update: Molten Rock Chaird is FREE for everyone.
+    // No cost, no paywall, no battle-pass tier — every save owns it, so it
+    // shows up in the brawler-select skin list and the shop as EQUIP, never
+    // as a purchase. Idempotent: safe to run on every load.
+    function grantFreeThanksgivingSkins() {
+        if (!playerData.ownedSkins) playerData.ownedSkins = {};
+        if (!playerData.ownedSkins.chaird) playerData.ownedSkins.chaird = [];
+        if (!playerData.ownedSkins.chaird.includes('molten-rock-chaird')) playerData.ownedSkins.chaird.push('molten-rock-chaird');
+    }
 
     const SKIN_RARITY_META = {
         'super-rare': { label: 'Super Rare', border: '#5df2c2', glow: '#5df2c2', effects: 'Custom attack effects only' },
@@ -17195,6 +17207,7 @@ let heistFeverActive = false;
           normalizeSelectedBrawler();
           ensureDailyWeeklyQuestData();
           refreshDailyWeeklyQuests();
+          grantFreeThanksgivingSkins();
       } catch(e) {
           console.error('Failed to load progress safely:', e);
       }
@@ -73064,7 +73077,40 @@ function checkHit(target, b, i){
               });
           }
       }
-      
+      if (activeSkinId === 'molten-rock-chaird') {
+          // Molten Rock Chaird: ember-glow ring + lava cracks over the fighter.
+          // RENDER ONLY — no HP, damage, speed or hitbox change (PR #42: skins
+          // never touch tower HP or any combat stat).
+          const moltenPulse = 0.85 + Math.sin(performance.now() / 160) * 0.15;
+          ctx.strokeStyle = 'rgba(255, 107, 45, 0.55)';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(t.x, drawY, t.radius + 6 * moltenPulse, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.strokeStyle = 'rgba(255, 177, 90, 0.9)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(t.x - t.radius * 0.5, drawY - t.radius * 0.3);
+          ctx.lineTo(t.x - t.radius * 0.1, drawY + t.radius * 0.1);
+          ctx.lineTo(t.x + t.radius * 0.3, drawY - t.radius * 0.2);
+          ctx.moveTo(t.x + t.radius * 0.1, drawY + t.radius * 0.4);
+          ctx.lineTo(t.x + t.radius * 0.5, drawY + t.radius * 0.1);
+          ctx.stroke();
+          if (Math.random() < 0.05) {
+              explosions.push({
+                  x: t.x + (Math.random() - 0.5) * t.radius * 2,
+                  y: drawY - t.radius * 0.5,
+                  vx: (Math.random() - 0.5) * 10,
+                  vy: -25 - Math.random() * 20,
+                  radius: 1.5 + Math.random() * 2,
+                  life: 0,
+                  maxLife: 0.6 + Math.random() * 0.3,
+                  color: Math.random() < 0.5 ? '#ffb15a' : '#ff6b2d',
+                  isParticle: true
+              });
+          }
+      }
+
       if(t.shield > 0){
         ctx.beginPath(); ctx.fillStyle = 'rgba(123, 224, 255, 0.25)'; ctx.arc(t.x, drawY, t.radius + 6, 0, Math.PI*2); ctx.fill();
         ctx.strokeStyle = 'rgba(123, 224, 255, 0.6)'; ctx.lineWidth = 2; ctx.stroke();
@@ -73601,6 +73647,39 @@ function checkHit(target, b, i){
                   life: 0,
                   maxLife: 0.5 + Math.random() * 0.3,
                   color: Math.random() < 0.5 ? '#00ffff' : '#ffffff',
+                  isParticle: true
+              });
+          }
+      }
+      if (activeSkinId === 'molten-rock-chaird') {
+          // Molten Rock Chaird: ember-glow ring + lava cracks over the fighter.
+          // RENDER ONLY — no HP, damage, speed or hitbox change (PR #42: skins
+          // never touch tower HP or any combat stat).
+          const moltenPulse = 0.85 + Math.sin(performance.now() / 160) * 0.15;
+          ctx.strokeStyle = 'rgba(255, 107, 45, 0.55)';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(t.x, drawY, t.radius + 6 * moltenPulse, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.strokeStyle = 'rgba(255, 177, 90, 0.9)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(t.x - t.radius * 0.5, drawY - t.radius * 0.3);
+          ctx.lineTo(t.x - t.radius * 0.1, drawY + t.radius * 0.1);
+          ctx.lineTo(t.x + t.radius * 0.3, drawY - t.radius * 0.2);
+          ctx.moveTo(t.x + t.radius * 0.1, drawY + t.radius * 0.4);
+          ctx.lineTo(t.x + t.radius * 0.5, drawY + t.radius * 0.1);
+          ctx.stroke();
+          if (Math.random() < 0.05) {
+              explosions.push({
+                  x: t.x + (Math.random() - 0.5) * t.radius * 2,
+                  y: drawY - t.radius * 0.5,
+                  vx: (Math.random() - 0.5) * 10,
+                  vy: -25 - Math.random() * 20,
+                  radius: 1.5 + Math.random() * 2,
+                  life: 0,
+                  maxLife: 0.6 + Math.random() * 0.3,
+                  color: Math.random() < 0.5 ? '#ffb15a' : '#ff6b2d',
                   isParticle: true
               });
           }
@@ -83913,23 +83992,34 @@ function checkHit(target, b, i){
             const isHc = (t.id === player.id) ? isHypercharged : t.isHypercharged;
             const numChairs = isHc ? 4 : 2;
             
+            // Molten Rock Chaird: the spinning chairs are molten rock with a
+            // lava glow (RENDER ONLY — chair count, damage and pull are untouched).
+            const spinSkinId = getActiveSkinForBrawler(t.brawler || (t === player ? selectedBrawler : ''))?.id;
+            const isMoltenSpin = spinSkinId === 'molten-rock-chaird';
             for(let i=0; i<numChairs; i++) {
                 const ang = baseAng + (i / numChairs) * Math.PI * 2;
                 ctx.save();
                 ctx.translate(t.x + Math.cos(ang) * 55, t.y + Math.sin(ang) * 55);
                 ctx.rotate(ang + Math.PI/2 + (performance.now()/200));
-                ctx.fillStyle = isHc ? '#e0f' : '#8B4513';
+                if (isMoltenSpin) { ctx.shadowColor = '#ff6b2d'; ctx.shadowBlur = 14; }
+                ctx.fillStyle = isMoltenSpin ? '#ff6b2d' : (isHc ? '#e0f' : '#8B4513');
                 ctx.fillRect(-8, -8, 16, 16);
-                ctx.strokeStyle = isHc ? '#ba00d6' : '#5A2D0C'; ctx.lineWidth = 2; ctx.strokeRect(-8, -8, 16, 16);
+                ctx.strokeStyle = isMoltenSpin ? '#ffb15a' : (isHc ? '#ba00d6' : '#5A2D0C'); ctx.lineWidth = 2; ctx.strokeRect(-8, -8, 16, 16);
+                if (isMoltenSpin) {
+                    ctx.fillStyle = '#2b2b2e';
+                    ctx.fillRect(-8, -3, 16, 6);
+                    ctx.fillStyle = '#ffb15a';
+                    ctx.fillRect(-2, -8, 4, 16);
+                }
                 ctx.restore();
             }
-            
+
             // Visual for the damage AOE
             ctx.beginPath();
-            ctx.fillStyle = isHc ? 'rgba(238, 0, 255, 0.15)' : 'rgba(139, 69, 19, 0.15)';
+            ctx.fillStyle = isMoltenSpin ? 'rgba(255, 107, 45, 0.15)' : (isHc ? 'rgba(238, 0, 255, 0.15)' : 'rgba(139, 69, 19, 0.15)');
             ctx.arc(t.x, t.y, t.radius + 40, 0, Math.PI * 2);
             ctx.fill();
-            ctx.strokeStyle = isHc ? 'rgba(238, 0, 255, 0.5)' : 'rgba(139, 69, 19, 0.5)';
+            ctx.strokeStyle = isMoltenSpin ? 'rgba(255, 177, 90, 0.5)' : (isHc ? 'rgba(238, 0, 255, 0.5)' : 'rgba(139, 69, 19, 0.5)');
             ctx.lineWidth = 2;
             ctx.stroke();
         }
