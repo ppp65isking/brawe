@@ -17,8 +17,8 @@ function check(name, cond) {
 
 // ---------------------------------------------------------- 1. source pins
 check('mode card exists', game.includes("['fused', '🧬', 'Fused Duels', 'Two random brawlers fused — both attacks, both Supers']"));
-check('fused is a permanent mode', game.includes("'brawe_ball', 'knockout_3v3', 'duels', 'fused', 'power_play_showdown'"));
-check('fused is a popular mode', game.includes("'brawe_ball', 'knockout_3v3', 'duels', 'fused',"));
+check('fused is a permanent mode', game.includes("'brawe_ball', 'knockout_3v3', 'duels', 'tower_duels', 'fused', 'power_play_showdown'"));
+check('fused is a popular mode', game.includes("'brawe_ball', 'knockout_3v3', 'duels', 'tower_duels', 'fused',"));
 check('isFusedMode flag declared', game.includes('let isFusedMode = false;'));
 check('isFusedMode reset in match launches', (game.match(/isFusedMode = false;/g) || []).length >= 3);
 check('helpers exist',
