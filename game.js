@@ -342,7 +342,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         if (brawlerId === 'driller') {
             const scale = 0.55 + (level - 1) * 0.045;
             const hpScale = getLevelHpScale(level);
-            return { hp: Math.round(5200 * hpScale), dmg: Math.round(400 * scale), speed: 270 };
+            return { hp: Math.round(5200 * hpScale), dmg: Math.round(720 * scale), speed: 270 }; // CHANGES ROUND 3: main +80% (was 400 — the round-2 nerf made him awful)
         }
         if (brawlerId === 'looma') {
             const scale = 0.55 + (level - 1) * 0.045;
@@ -26209,28 +26209,35 @@ let heistFeverActive = false;
     // Dirt/slow/debuff effects affect brawlers only, never structures.
     const DRILLER_BOMB_SPEED = 700;
     const DRILLER_BOMB_RANGE = 700;
-    const DRILLER_CLOD_DMG = 75; // P11, level-scaled at shed time (CHANGES ROUND 2: -50%, was 150)
+    const DRILLER_CLOD_DMG = 113; // P11, level-scaled at shed time (CHANGES ROUND 3: +50%, was 75 — 112.5 rounded up)
     const DRILLER_CLOD_SPEED = 520;
     const DRILLER_CLOD_RANGE = 220;
     const DRILLER_SHED_EVERY_PX = 110; // a clod spins out every ~110px traveled
     const DRILLER_SHED_EVERY_PX_SP1 = 65; // SP1: clods shed every 65px, so all 10 fit inside the 700px flight
+    const DRILLER_SHED_EVERY_PX_HYPER = 50; // CHANGES ROUND 3: SP1+Hyper sheds 13 clods — 50px spacing so all 13 fit (13 x 50 = 650 < 700)
     const DRILLER_CLOD_MAX = 6;
+    const DRILLER_CLOD_MAX_HYPER = 9; // CHANGES ROUND 3: Hyper bombs shed +3 extra clods (SP1+Hyper: 10 + 3 = 13)
     const DRILLER_CLOD_MAX_SP1 = 10; // SP1 Spin Cycle: +4 extra spin projectiles, shed faster in a wider cone
     // Shed offsets (radians off the bomb's flight angle): the cone fans
     // wider the farther the bomb flies — narrow clods first, wide last.
-    const DRILLER_CLOD_OFFSETS = [0.18, -0.18, 0.38, -0.38, 0.55, -0.55, 0.70, -0.70, 0.85, -0.85];
+    const DRILLER_CLOD_OFFSETS = [0.18, -0.18, 0.38, -0.38, 0.55, -0.55, 0.70, -0.70, 0.85, -0.85, 1.00, -1.00, 1.15]; // 13 slots: base 6, SP1 10, Hyper +3, SP1+Hyper 13
     const DRILLER_BURST_CLOD_COUNT = 5; // CHANGES ROUND 2: impact burst fires 5 clods in a fan
+    const DRILLER_BURST_CLOD_COUNT_HYPER = 7; // CHANGES ROUND 3: Hyper burst fan grows 5 -> 7 clods
+    const DRILLER_BURST_CLOD_OFFSETS_HYPER = [-0.5, -0.33, -0.17, 0, 0.17, 0.33, 0.5]; // wider fan for the 7-clod Hyper burst
     const DRILLER_BURST_CLOD_OFFSETS = [-0.4, -0.2, 0, 0.2, 0.4]; // fan spread off the bomb's flight angle
     const DRILLER_SUPER_FORM_DURATION_MS = 8000;
     const DRILLER_DRILL_RANGE = 260; // bot super pop gate (DRILLER_DRILL_RANGE + 60)
-    const DRILLER_HYPER_CONE_RANGE = 390; // Hyper cone bits fly 390px (CHANGES ROUND 2: +25%, was 312)
+    const DRILLER_HYPER_CONE_RANGE = 527; // Hyper cone bits fly 527px (CHANGES ROUND 3: +35% on 390 — 390 x 1.35 = 526.5)
     const DRILLER_CONTACT_GATE_MS = 250; // max one ramp step per enemy per 0.25s of contact
     const DRILLER_CONTACT_MARGIN = 6; // contact counts when the enemy's edge is within 6px of the driver's edge
-    const DRILLER_CONTACT_RADIUS_MULT = 1.25; // CHANGES ROUND 2: contact radius +25% (balance — "a little more")
+    const DRILLER_CONTACT_RADIUS_MULT = 1.6875; // CHANGES ROUND 3: ANOTHER +35% compounding on round 2's +25% (1.25 x 1.35) — FLAGGED
     const DRILLER_FORM_SPEED_MULT = 1.35; // Moe-style driving: +35% move speed in drill form
     const DRILLER_HYPER_CONE_INTERVAL_MS = 500; // Hyper form fires its 3-bit cone every 0.5s while driving
     const DRILLER_WALL_BREAK_MARGIN = 6; // walls within 6px of the driver's edge get smashed while driving
     const DRILLER_DUST_INTERVAL_MS = 120; // dust puff behind the drill machine every 120ms
+    const DRILLER_MACHINE_HALF_W = 30; // CHANGES ROUND 3 (visual fix): machine overlay semi-width — wider than the ~34px brawler portrait (half 16.8), so it can't hide under it
+    const DRILLER_MACHINE_HALF_H = 22; // machine overlay semi-height
+    const DRILLER_MACHINE_BIT_X = 36; // spinning bit sits 36px ahead of the brawler, clear of the portrait
     const DRILLER_RAMP = [50, 100, 150, 250, 500, 1000]; // Anthony's 10>20>30>50>100>200, scaled x10, then -50% in CHANGES ROUND 2 — FLAGGED
     const DRILLER_RAMP_RESET_MS = 1500; // ramp resets after 1.5s without hitting that enemy
     const DRILLER_BIT_SPEED = 900;
@@ -26270,7 +26277,7 @@ let heistFeverActive = false;
         const ang = Math.atan2(targetY - fromEntity.y, targetX - fromEntity.x);
         const mudTrap = !!fromEntity.drillerMudTrapArmed;
         fromEntity.drillerMudTrapArmed = false;
-        bullets.push({ ownerBrawler: 'driller', isDrillerBomb: true, ownerId: fromEntity.id, x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 8), y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 8), vx: Math.cos(ang) * DRILLER_BOMB_SPEED, vy: Math.sin(ang) * DRILLER_BOMB_SPEED, life: 0, maxLife: DRILLER_BOMB_RANGE / DRILLER_BOMB_SPEED, damage: stats.dmg, pierce: false, hitIds: {}, hitboxMod: 1.2, hyperVisual: hyper, drillerMudTrap: mudTrap, drillerShedCount: 0, drillerShedMax: drillerHasSP1(fromEntity) ? DRILLER_CLOD_MAX_SP1 : DRILLER_CLOD_MAX });
+        bullets.push({ ownerBrawler: 'driller', isDrillerBomb: true, ownerId: fromEntity.id, x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 8), y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 8), vx: Math.cos(ang) * DRILLER_BOMB_SPEED, vy: Math.sin(ang) * DRILLER_BOMB_SPEED, life: 0, maxLife: DRILLER_BOMB_RANGE / DRILLER_BOMB_SPEED, damage: stats.dmg, pierce: false, hitIds: {}, hitboxMod: 1.2, hyperVisual: hyper, drillerMudTrap: mudTrap, drillerShedCount: 0, drillerShedMax: (drillerHasSP1(fromEntity) ? DRILLER_CLOD_MAX_SP1 : DRILLER_CLOD_MAX) + (hyper ? 3 : 0) }); // CHANGES ROUND 3: Hyper bombs shed +3 extra clods
         return true;
     }
 
@@ -26281,7 +26288,7 @@ let heistFeverActive = false;
         const speed = Math.hypot(b.vx, b.vy) || DRILLER_BOMB_SPEED;
         const dist = (b.life || 0) * speed;
         const max = b.drillerShedMax || DRILLER_CLOD_MAX;
-        const every = max > DRILLER_CLOD_MAX ? DRILLER_SHED_EVERY_PX_SP1 : DRILLER_SHED_EVERY_PX;
+        const every = max > DRILLER_CLOD_MAX_SP1 ? DRILLER_SHED_EVERY_PX_HYPER : (max > DRILLER_CLOD_MAX ? DRILLER_SHED_EVERY_PX_SP1 : DRILLER_SHED_EVERY_PX); // CHANGES ROUND 3: 13-clod SP1+Hyper volleys need 50px spacing
         const owner = getEntityById(b.ownerId);
         const scale = owner ? drillerLevelScale(owner) : 1;
         while ((b.drillerShedCount || 0) < max && dist >= ((b.drillerShedCount || 0) + 1) * every) {
@@ -26307,7 +26314,8 @@ let heistFeverActive = false;
         const baseAng = Math.atan2(b.vy, b.vx);
         const owner = getEntityById(b.ownerId);
         const scale = owner ? drillerLevelScale(owner) : 1;
-        for (const off of DRILLER_BURST_CLOD_OFFSETS) {
+        const burstOffsets = b.hyperVisual ? DRILLER_BURST_CLOD_OFFSETS_HYPER : DRILLER_BURST_CLOD_OFFSETS; // CHANGES ROUND 3: Hyper burst fan grows 5 -> 7 clods
+        for (const off of burstOffsets) {
             const a = baseAng + off;
             bullets.push({ ownerBrawler: 'driller', isDrillerClod: true, isDrillerBurstClod: true, ownerId: b.ownerId, x: b.x, y: b.y, vx: Math.cos(a) * DRILLER_CLOD_SPEED, vy: Math.sin(a) * DRILLER_CLOD_SPEED, life: 0, maxLife: DRILLER_CLOD_RANGE / DRILLER_CLOD_SPEED, damage: Math.round(DRILLER_CLOD_DMG * scale), pierce: true, pierceWalls: false, hitIds: { ...(b.hitIds || {}) }, hitboxMod: 1.0, hyperVisual: !!b.hyperVisual, drillerMudTrap: !!b.drillerMudTrap });
         }
@@ -26626,7 +26634,7 @@ let heistFeverActive = false;
                 ctx.shadowBlur = 0;
             }
             // Long ammo bar above the brawler (the 8s form timer).
-            const bw = 64, bh = 7;
+            const bw = 64, bh = 9; // CHANGES ROUND 3: taller bar — the 7px strip was easy to miss
             const bx = e.x - bw / 2, by = e.y - (e.radius || 14) - 34;
             ctx.globalAlpha = 1;
             ctx.fillStyle = 'rgba(0,0,0,0.45)';
@@ -26639,42 +26647,72 @@ let heistFeverActive = false;
                 ctx.fillStyle = p <= rampIndex ? (p >= 4 ? '#a855f7' : p >= 2 ? '#dc2626' : '#f59e0b') : 'rgba(255,255,255,0.25)';
                 ctx.fillRect(bx + p * (bw / DRILLER_RAMP.length) + 1, by + bh + 3, bw / DRILLER_RAMP.length - 2, 4);
             }
-            // Moe-style drill machine: Driller rides the machine while in
-            // form — steel body + spinning bit up front, oriented by
-            // movement (or aim when standing still). This render runs
-            // before entities are drawn, so the brawler sits on top of it.
-            const mvx = e.vx || 0, mvy = e.vy || 0;
-            const faceAng = (Math.hypot(mvx, mvy) > 20) ? Math.atan2(mvy, mvx) : (Number.isFinite(e.visualAimAngle) ? e.visualAimAngle : 0);
-            ctx.save();
-            ctx.translate(e.x, e.y);
-            ctx.rotate(faceAng);
-            ctx.globalAlpha = 1;
-            ctx.fillStyle = hyper ? '#7e22ce' : '#57534e';
-            ctx.beginPath(); ctx.ellipse(0, 0, 24, 16, 0, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = hyper ? '#a855f7' : '#78716c';
-            ctx.beginPath(); ctx.ellipse(-2, 0, 18, 11, 0, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = '#292524';
-            ctx.fillRect(-20, -17, 34, 5);
-            ctx.fillRect(-20, 12, 34, 5);
-            // Spinning drill bit up front.
-            ctx.save();
-            ctx.translate(24, 0);
-            ctx.rotate(now / 60);
-            ctx.fillStyle = '#d97706';
-            ctx.beginPath(); ctx.moveTo(12, 0); ctx.lineTo(-6, -7); ctx.lineTo(-10, 0); ctx.lineTo(-6, 7); ctx.closePath(); ctx.fill();
-            ctx.restore();
-            ctx.restore();
+            // CHANGES ROUND 3 — VISUAL FIX: the drill machine used to be drawn
+            // HERE, before entities are drawn — but the brawler portrait is a
+            // ~34px rounded square centered on the entity while the machine
+            // ellipse was only 24x16px, so the portrait covered ~85% of it
+            // and Anthony saw NO super visual on device. The machine now
+            // draws in drawDrillerFormMachine(), called AFTER
+            // drawBrawlerPortrait for the player and for bots (see the call
+            // sites in render()), so it sits ON TOP of the portrait.
             // Contact-radius ring telegraph: what the drill touches, it hits.
+            // CHANGES ROUND 3: thicker + brighter + a filled aura, so the
+            // form reads at a glance on a phone — the old 2px / 0.5-alpha
+            // dashed ring was too subtle next to the hidden machine.
             ctx.save();
-            ctx.globalAlpha = 0.5;
+            ctx.globalAlpha = 0.12;
+            ctx.fillStyle = hyper ? '#c084fc' : '#d97706';
+            ctx.beginPath(); ctx.arc(e.x, e.y, ((e.radius || 14) + DRILLER_CONTACT_MARGIN) * DRILLER_CONTACT_RADIUS_MULT + 14, 0, Math.PI * 2); ctx.fill();
+            ctx.globalAlpha = 0.85;
             ctx.strokeStyle = hyper ? '#c084fc' : '#d97706';
-            ctx.lineWidth = 2;
+            ctx.lineWidth = 4;
             ctx.setLineDash([8, 6]);
             ctx.beginPath(); ctx.arc(e.x, e.y, ((e.radius || 14) + DRILLER_CONTACT_MARGIN) * DRILLER_CONTACT_RADIUS_MULT + 14, 0, Math.PI * 2); ctx.stroke();
             ctx.setLineDash([]);
             ctx.restore();
             ctx.restore();
         }
+    }
+
+    // CHANGES ROUND 3 — VISUAL FIX: the Drill Form machine, drawn AFTER
+    // drawBrawlerPortrait (see the call sites in render() for the player
+    // and for bots), so it sits ON TOP of the portrait instead of hiding
+    // under it. The body is a stroked steel frame (open middle, so the
+    // brawler still shows through) wider than the ~34px portrait, with
+    // side tracks and the spinning bit clear out front. All keyed off the
+    // real form state — never a faked flag (Snipa lesson). Draws nothing
+    // when the form is not active.
+    function drawDrillerFormMachine(ctx, entity, drawY) {
+        if (!entity || entity.hp <= 0) return;
+        if (!isDrillerFormActive(entity)) return;
+        const now = performance.now();
+        const hyper = !!entity.drillerFormHyper;
+        const ey = Number.isFinite(drawY) ? drawY : entity.y;
+        const mvx = entity.vx || 0, mvy = entity.vy || 0;
+        const faceAng = (Math.hypot(mvx, mvy) > 20) ? Math.atan2(mvy, mvx) : (Number.isFinite(entity.visualAimAngle) ? entity.visualAimAngle : 0);
+        ctx.save();
+        ctx.translate(entity.x, ey);
+        ctx.rotate(faceAng);
+        ctx.globalAlpha = 1;
+        // Steel frame around the brawler: stroked ellipse, open middle.
+        ctx.strokeStyle = hyper ? '#c084fc' : '#d6d3d1';
+        ctx.lineWidth = 6;
+        ctx.beginPath(); ctx.ellipse(0, 0, DRILLER_MACHINE_HALF_W, DRILLER_MACHINE_HALF_H, 0, 0, Math.PI * 2); ctx.stroke();
+        ctx.strokeStyle = hyper ? '#7e22ce' : '#57534e';
+        ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.ellipse(0, 0, DRILLER_MACHINE_HALF_W - 5, DRILLER_MACHINE_HALF_H - 5, 0, 0, Math.PI * 2); ctx.stroke();
+        // Side tracks, top and bottom.
+        ctx.fillStyle = '#292524';
+        ctx.fillRect(-DRILLER_MACHINE_HALF_W + 4, -DRILLER_MACHINE_HALF_H - 3, (DRILLER_MACHINE_HALF_W - 4) * 2, 5);
+        ctx.fillRect(-DRILLER_MACHINE_HALF_W + 4, DRILLER_MACHINE_HALF_H - 2, (DRILLER_MACHINE_HALF_W - 4) * 2, 5);
+        // Spinning drill bit up front, clear of the portrait.
+        ctx.save();
+        ctx.translate(DRILLER_MACHINE_BIT_X, 0);
+        ctx.rotate(now / 60);
+        ctx.fillStyle = '#d97706';
+        ctx.beginPath(); ctx.moveTo(16, 0); ctx.lineTo(-8, -9); ctx.lineTo(-13, 0); ctx.lineTo(-8, 9); ctx.closePath(); ctx.fill();
+        ctx.restore();
+        ctx.restore();
     }
 
     // Draw one Driller dirt bomb: brown bomb + spinning dirt trail.
@@ -72931,6 +72969,7 @@ function checkHit(target, b, i){
           ctx.fill();
       } else {
           drawBrawlerPortrait(t, drawY, false, botColor, !!t.isBoss);
+          if (isDrillerFormActive(t)) drawDrillerFormMachine(ctx, t, drawY); // CHANGES ROUND 3 (visual fix): machine AFTER the portrait, on top
           drawAntiRoyalFrontBlocker(t,drawY);
       }
 
@@ -73470,6 +73509,7 @@ function checkHit(target, b, i){
         ctx.beginPath(); ctx.arc(player.x, drawY, (player.radius + 18) * pulse, 0, Math.PI * 2); ctx.stroke(); ctx.shadowBlur = 0;
     }
     drawBrawlerPortrait(player, drawY, true, '#9ef6d6', false);
+    if (isDrillerFormActive(player)) drawDrillerFormMachine(ctx, player, drawY); // CHANGES ROUND 3 (visual fix): machine AFTER the portrait, on top
     drawAntiRoyalFrontBlocker(player,drawY);
 
     {
