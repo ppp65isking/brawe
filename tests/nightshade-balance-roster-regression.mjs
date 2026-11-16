@@ -127,7 +127,10 @@ if (sel) {
   check('static roster includes mallow + nightshade', opts.includes('mallow') && opts.includes('nightshade'));
   check('static roster ends looma, feathers, spikey, electrostien, mallow, nightshade, runner', opts.slice(-7).join(',') === 'looma,feathers,spikey,electrostien,mallow,nightshade,runner');
   check('dead static options removed (dr0ne, unhitabble not in allBrawlers)', !opts.includes('dr0ne') && !opts.includes('unhitabble'));
-  check('no disabled brawler in static roster', !opts.some((id) => ['robber', 'boomer', 'daggershard', 'cluster', 'witch', 'adlof', 'swimmer', 'blade_vane'].includes(id)));
+  check('every static option is in allBrawlers (no removed fighter lingers)', (() => {
+    const all = [...game.match(/const allBrawlers\s*=\s*\[([\s\S]*?)\];/)[1].matchAll(/'([^']+)'/g)].map((x) => x[1]);
+    return opts.every((id) => all.includes(id));
+  })());
 }
 
 // ---------------------------------------------------------- 5. vm: poison math

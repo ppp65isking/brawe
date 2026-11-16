@@ -17,9 +17,7 @@ assert.match(post, /"section": "Hypercharge"/);
 assert.match(post, /"section": "Special Abilities"/);
 assert.match(post, /"section": "Watchlist"/);
 
-for (const disabled of ['Robber', 'Boomer', 'Daggershard', 'Cluster', 'Witch', 'Adlof', 'Swimmer', 'Blade Vane']) {
-  assert.doesNotMatch(post, new RegExp(`"brawler": "${disabled}"`), `${disabled} stays out of the patch`);
-}
+assert.doesNotMatch(post, /remain disabled and unchanged/, 'the V6 disabled-brawlers sentence is gone with the deletion');
 
 const brawlers = [...post.matchAll(/"brawler": "([^"]+)"/g)].map((match) => match[1]);
 assert.equal(brawlers.length, 83, 'all active roster recommendations are included');

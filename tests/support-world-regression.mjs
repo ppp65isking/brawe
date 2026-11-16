@@ -4,9 +4,7 @@ import fs from 'node:fs';
 const game = fs.readFileSync(new URL('../game.js', import.meta.url), 'utf8');
 assert.match(game,/function applyOverlordBurnAt[\s\S]{0,260}const owner = ownerIsPlayer \? player : bots\.find\(bot => bot\.id === ownerId\)/,'Overlord burn resolves its owner before ally checks');
 
-for (const id of ['boomer','daggershard','cluster','witch','adlof','swimmer','blade_vane']) {
-  assert.match(game, new RegExp(`const disabledBrawlers = new Set\\(\\[[\\s\\S]{0,300}['"]${id}['"]`), `${id} is temporarily disabled without deleting its saved kit`);
-}
+assert.match(game, /const disabledBrawlers = new Set\(\[\]\);/, 'the disabled set is empty since the deletion (no temporarily disabled fighters remain)');
 assert.match(game, /function isBrawlerHidden[\s\S]{0,180}disabledBrawlers\.has\(brawlerId\)/, 'Disabled and data-hidden fighters share one visibility rule');
 assert.match(game, /const sortedIds = allBrawlers[\s\S]{0,180}!isBrawlerHidden\(id\)/, 'Hidden kits are removed from the compact selector');
 assert.match(game, /const visibleBrawlers = \[\.\.\.allBrawlers\][\s\S]{0,220}(?:isBrawlerHidden\(id\)|disabledBrawlers\.has\(id\))/, 'Hidden kits are removed from the brawler browser');

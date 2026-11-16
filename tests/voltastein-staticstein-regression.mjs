@@ -12,7 +12,7 @@ const num = (re) => { const m = game.match(re); return m ? Number(m[1]) : NaN; }
 const scale = (lv) => 0.55 + (lv - 1) * 0.045;
 const hpScale = (lv) => 0.40 + (lv - 1) * 0.06;
 const allBrawlers = () => [...game.match(/const allBrawlers\s*=\s*\[([\s\S]*?)\];/)[1].matchAll(/'([^']+)'/g)].map(m => m[1]);
-const DISABLED = ['robber', 'boomer', 'daggershard', 'cluster', 'witch', 'adlof', 'swimmer', 'blade_vane'];
+const DISABLED = [];
 
 // --- Registration: both brawlers ---
 check('brawlerData.voltastein exists, Anomaly Thrower, purple', game.includes("'voltastein': {") && game.includes("name: 'Voltastein', role: 'Thrower', rarity: 'Anomaly', color: '#a855f7'"));
@@ -28,8 +28,8 @@ check('getScaledStats staticstein branch: 6200 HP / 800 dmg / 290 speed', game.i
 check('power scaling mirrors (HP curve): Volta P1 2320/495, P12 6148/940; Static P1 2480/440, P12 6572/836',
   Math.round(5800 * hpScale(1)) === 2320 && Math.round(900 * scale(1)) === 495 && Math.round(5800 * hpScale(12)) === 6148 && Math.round(900 * scale(12)) === 940
   && Math.round(6200 * hpScale(1)) === 2480 && Math.round(800 * scale(1)) === 440 && Math.round(6200 * hpScale(12)) === 6572 && Math.round(800 * scale(12)) === 836);
-check('allBrawlers has both; 112 ids total (104 + Healnstein + Voodoyou + Pandy + Snipa + Bookworm + FreeZeon + Driller + Gravy)', (() => { const all = allBrawlers(); return all.includes('voltastein') && all.includes('staticstein') && all.length === 112; })());
-check('selectable is 104 (112 minus the 8 disabled, neither new brawler disabled)', (() => {
+check('allBrawlers has both; 104 ids total', (() => { const all = allBrawlers(); return all.includes('voltastein') && all.includes('staticstein') && all.length === 104; })());
+check('selectable is 104 (104 ids, none disabled, neither new brawler disabled)', (() => {
   const all = allBrawlers();
   return all.filter(id => !DISABLED.includes(id)).length === 104 && !game.match(/const disabledBrawlers = new Set\(\[([\s\S]*?)\]\)/)[1].includes('voltastein') && !game.match(/const disabledBrawlers = new Set\(\[([\s\S]*?)\]\)/)[1].includes('staticstein');
 })());
@@ -139,7 +139,7 @@ check('donor identity runner: real shoe, RUNNER_SHOE_SPEED/RANGE, wall-break + f
 check('donor identity nightshade: real 4-dagger fan, NIGHTSHADE_DAGGER_SPEED/RANGE', game.includes('function fireNightshadeMain(') && game.includes('isNightshadeDagger: true') && game.includes('vx: Math.cos(daggerAng) * NIGHTSHADE_DAGGER_SPEED') && game.includes('maxLife: NIGHTSHADE_DAGGER_RANGE / NIGHTSHADE_DAGGER_SPEED'));
 check('donor identity mallow: real 8-marshmallow volley, MALLOW_VOLLEY_SPEED/RANGE, slow-per-hit', game.includes('function fireMallowMain(') && game.includes('isMallow: true') && game.includes('vx: Math.cos(mallowAng) * MALLOW_VOLLEY_SPEED') && game.includes('maxLife: MALLOW_VOLLEY_RANGE / MALLOW_VOLLEY_SPEED') && game.includes('mallowSlowPerHit: mallowSlowPerHit'));
 check('donor identity evil_doctor: real syringe, 820*0.6 speed, poison ticks', game.includes('function fireEvilDoctorMain(') && game.includes('isEvilDoctorSyringe: true') && game.includes('vx: Math.cos(ang) * 820 * 0.6') && game.includes('evilDoctorPoisonTicks: poisonTicks'));
-check('donor identity rocketeer: real launchRocketeerMain rocket, 1400 base damage, cluster minis', game.includes('function fireRocketeerMain(') && game.includes('launchRocketeerMain(fromEntity, ang, hyperMain, damageMult') && game.includes('const damage=Math.round(1400*damageMult);') && game.includes('rocketeerMiniCount:'));
+check('donor identity rocketeer: real launchRocketeerMain rocket, 1400 base damage, split minis', game.includes('function fireRocketeerMain(') && game.includes('launchRocketeerMain(fromEntity, ang, hyperMain, damageMult') && game.includes('const damage=Math.round(1400*damageMult);') && game.includes('rocketeerMiniCount:'));
 check('donor identity scuba_diver: real 4-bubble submarine volley + rect-bubble mode, volley state machine', game.includes('function fireScubaDiverMain(') && game.includes('isScubaSubBubble: true') && game.includes('isScubaRectBubble: true') && game.includes('registerScubaDiverSubVolley(fromEntity.id, 4)') && game.includes('triggerScubaDiverMissEffect(state.ownerId)'));
 check('donor identity jetpack: thrown bomb lobs to the aim point (700px cap) and detonates with the real flight-bomb blast', game.includes('function fireJetpackDonorBomb(') && game.includes('isJetpackBomb: true, jetpackBombLob: true') && game.includes('const JETPACK_DONOR_BOMB_DAMAGE = 950;') && game.includes('const JETPACK_DONOR_BOMB_RADIUS = 66;') && game.includes('explodeJetpackBomb(b.jetpackBombLandX ?? b.x, b.jetpackBombLandY ?? b.y, bombOwner, b.jetpackBombDamage || JETPACK_DONOR_BOMB_DAMAGE, false, b.jetpackBombRadius || JETPACK_DONOR_BOMB_RADIUS)') && game.includes("if (b.isJetpackBomb && b.jetpackBombLob) {"));
 check('donor identity outlit: real pellet fan, 560*0.6 speed, 256.5 range, hyper glow', game.includes('function fireOutlitMain(') && game.includes("ownerBrawler: 'outlit'") && game.includes('const outlitProjectileSpeed = 560 * 0.6 * outlitVelocity') && game.includes('const outlitBaseRange = 256.5;') && game.includes('outlitHyperGlow: isHyper'));

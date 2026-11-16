@@ -335,7 +335,7 @@ try {
   sandbox.player.x = 1000; sandbox.player.y = 1000;
   const cfg = sandbox.getTombstoneBossDifficulty('hard');
   sandbox.updateTombstoneBossAttacks(rt, boss, cfg, 1000);
-  check('eruption zones cluster at your feet (within 110px)', rt.telegraphs.length === 2 && rt.telegraphs.every((t) => Math.abs(t.x - 1000) <= 110 && Math.abs(t.y - 1000) <= 110));
+  check('eruption zones gather at your feet (within 110px)', rt.telegraphs.length === 2 && rt.telegraphs.every((t) => Math.abs(t.x - 1000) <= 110 && Math.abs(t.y - 1000) <= 110));
   sandbox.updateTombstoneBossAttacks(rt, boss, cfg, 1900);
   check('eruption AOE is attributed to the boss brawler', aoeCalls.length === 2 && aoeCalls.every((c) => c.ownerId === 5 && c.damage === 800));
 } catch (e) { failures.push('eruption-placement vm block threw: ' + e.message); }

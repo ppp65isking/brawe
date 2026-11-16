@@ -13,7 +13,7 @@ const num = (re) => { const m = game.match(re); return m ? Number(m[1]) : NaN; }
 const scale = (lv) => 0.55 + (lv - 1) * 0.045;
 const hpScale = (lv) => 0.40 + (lv - 1) * 0.06;
 const allBrawlers = () => [...game.match(/const allBrawlers\s*=\s*\[([\s\S]*?)\];/)[1].matchAll(/'([^']+)'/g)].map(m => m[1]);
-const DISABLED = ['robber', 'boomer', 'daggershard', 'cluster', 'witch', 'adlof', 'swimmer', 'blade_vane'];
+const DISABLED = [];
 
 // --- Registration: Healnstein ---
 check('brawlerData.healnstein exists, Epic Support, green', game.includes("'healnstein': {") && game.includes("name: 'Healnstein', role: 'Support', rarity: 'Epic', color: '#4ade80'"));
@@ -23,8 +23,8 @@ check('kit copy is real (no coming-soon placeholders)', (() => {
 })());
 check('getScaledStats healnstein branch: 6200 HP / 750 dmg / 280 speed', game.includes("if (brawlerId === 'healnstein') {") && game.includes('hp: Math.round(6200 * hpScale), dmg: Math.round(750 * scale), speed: 280'));
 check('power scaling mirrors (HP curve): P1 2480/413, P12 6572/784', Math.round(6200 * hpScale(1)) === 2480 && Math.round(750 * scale(1)) === 413 && Math.round(6200 * hpScale(12)) === 6572 && Math.round(750 * scale(12)) === 784);
-check('allBrawlers has healnstein; 112 ids total', (() => { const all = allBrawlers(); return all.includes('healnstein') && all.length === 112; })());
-check('selectable is 104 (112 minus the 8 disabled, healnstein not disabled)', (() => {
+check('allBrawlers has healnstein; 104 ids total', (() => { const all = allBrawlers(); return all.includes('healnstein') && all.length === 104; })());
+check('selectable is 104 (104 ids, none disabled, healnstein not disabled)', (() => {
   const all = allBrawlers();
   return all.filter(id => !DISABLED.includes(id)).length === 104 && !game.match(/const disabledBrawlers = new Set\(([\s\S]*?)\)\)/)[1].includes('healnstein');
 })());
