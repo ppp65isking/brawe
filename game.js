@@ -12355,7 +12355,7 @@ function isPowerPlayModifierActive(entity = player) {
     // converts them into Charged boxes (HP refilled to the charged spec),
     // reusing POWER_BOX_TYPES and the explosion renderer for feedback.
     function initCoreInstability(){
-        if(activeShowdownModifier!=='core_instability'){coreInstabilityState=null;return;}
+        if(!isShowdownModifierActive('core_instability')){coreInstabilityState=null;return;}
         coreInstabilityState={nextSurgeAt:performance.now()+CORE_INSTABILITY_SURGE_INTERVAL_MS,surges:0,telegraphs:[]};
     }
     function convertPowerBoxToCharged(box){
@@ -12365,7 +12365,7 @@ function isPowerPlayModifierActive(entity = player) {
         delete box.coreInstabilityTelegraphed;
     }
     function updateCoreInstability(now=performance.now()){
-        const state=coreInstabilityState;if(activeShowdownModifier!=='core_instability'||!state||gameOver)return;
+        const state=coreInstabilityState;if(!isShowdownModifierActive('core_instability')||!state||gameOver)return;
         if(now>=state.nextSurgeAt){
             state.nextSurgeAt=now+CORE_INSTABILITY_SURGE_INTERVAL_MS;state.surges++;
             const liveBoxes=destructibleWalls.filter(w=>w&&w.isPowerBox&&w.powerBoxType&&w.hp>0&&!w.coreInstabilityTelegraphed);
@@ -12387,7 +12387,7 @@ function isPowerPlayModifierActive(entity = player) {
         }
     }
     function renderCoreInstability(){
-        const state=coreInstabilityState;if(activeShowdownModifier!=='core_instability'||!state)return;
+        const state=coreInstabilityState;if(!isShowdownModifierActive('core_instability')||!state)return;
         ctx.save();for(const t of state.telegraphs){ctx.fillStyle='rgba(125,69,232,.16)';ctx.strokeStyle='#d9b6ff';ctx.lineWidth=3;ctx.beginPath();ctx.arc(t.x,t.y,34,0,Math.PI*2);ctx.fill();ctx.stroke();}ctx.restore();
     }
 
@@ -14186,17 +14186,32 @@ function isPowerPlayModifierActive(entity = player) {
     // description from here, so what the player is told is what the code
     // does. Behaviour lives in the getters/effects keyed by these IDs, and
     // every entry is pinned by tests/showdown-modifiers-regression.mjs.
+    // Field set mirrors the Ranked/Custom mutator registry (id, name, icon,
+    // colour, description, testId) so the two families stay consistent;
+    // `label` is kept as the display-name alias the topbar/HUD already use.
     const SHOWDOWN_MODIFIER_DEFS = {
-            none: { label: 'No Modifier', icon: '—', description: '' },
-            heavy_storm: { label: 'Heavy Storm', icon: '⛈️', description: 'The storm closes in 90s and storm damage is ×1.35.' },
-            power_surge: { label: 'Power Surge', icon: '⚡', description: 'Attack hits charge Super ×1.2 and Core Surge ×1.2.' },
+            none: { label: 'No Modifier', id: 'none', name: 'No Modifier', icon: '—', colour: '#9aa3b2', description: '', testId: 'showdown-modifier-none' },
+            heavy_storm: { label: 'Heavy Storm', id: 'heavy_storm', name: 'Heavy Storm', icon: '⛈️', colour: '#7fb2ff', description: 'The storm closes in 90s and storm damage is ×1.35.', testId: 'showdown-modifier-heavy-storm' },
+            power_surge: { label: 'Power Surge', id: 'power_surge', name: 'Power Surge', icon: '⚡', colour: '#ffd166', description: 'Attack hits charge Super ×1.2 and Core Surge ×1.2.', testId: 'showdown-modifier-power-surge' },
             // ID kept for pool/save stability. The retired behaviour thinned
             // structural wall cubes (cover, not collectibles); the live
             // effect is Box Scarcity — fewer Power Boxes spawn instead.
-            no_free_cubes: { label: 'Box Scarcity', icon: '📦', description: '35% fewer Power Boxes spawn. Map cover is untouched.' },
-            core_instability: { label: 'Corrupted Packet Storm', icon: '🌀', description: 'Every 20s a corrupted surge converts 3 Power Boxes into Charged boxes.' }
+            no_free_cubes: { label: 'Box Scarcity', id: 'no_free_cubes', name: 'Box Scarcity', icon: '📦', colour: '#e08a3c', description: '35% fewer Power Boxes spawn. Map cover is untouched.', testId: 'showdown-modifier-no-free-cubes' },
+            core_instability: { label: 'Corrupted Packet Storm', id: 'core_instability', name: 'Corrupted Packet Storm', icon: '🌀', colour: '#e976ff', description: 'Every 20s a corrupted surge converts 3 Power Boxes into Charged boxes.', testId: 'showdown-modifier-core-instability' }
     };
     const SHOWDOWN_MODE_MODIFIER_META = Object.fromEntries(Object.entries(SHOWDOWN_MODIFIER_DEFS).map(([modifierId, modifierDef]) => [modifierId, { label: modifierDef.label }]));
+    // ONE active-check for this family (Thanksgiving big update Phase 4
+    // centralisation): every call site asks here instead of comparing
+    // activeShowdownModifier to a string ID. `null` (Tower gauntlet
+    // floors set no modifier) is active for nothing, including 'none'.
+    function isShowdownModifierActive(id) {
+        return activeShowdownModifier === id;
+    }
+    // Registry lookup with a safe fallback: an unknown ID (e.g. a stale
+    // Tower floor rule) reads as 'none' instead of crashing the HUD.
+    function getShowdownModifierDef(id) {
+        return SHOWDOWN_MODIFIER_DEFS[id] || SHOWDOWN_MODIFIER_DEFS.none;
+    }
     let activeShowdownModifier = 'none';
     let activeShowdownModifierLabel = 'No Modifier';
     // Debug/test hook (same precedent as currentMapOverride): when set,
@@ -15087,11 +15102,11 @@ let heistFeverActive = false;
       // BUILDER PICK (flagged): Super Showdown's storm lasts 380s so the
       // shrink speed matches the old map's pacing on the 10x world.
       if (showdownMode === 'super_showdown') return SUPER_SHOWDOWN_STORM_DURATION_S;
-      return activeShowdownModifier === 'heavy_storm' ? 90 : 120;
+      return isShowdownModifierActive('heavy_storm') ? 90 : 120;
   }
 
   function getModeStormDamageMultiplier() {
-      return activeShowdownModifier === 'heavy_storm' ? 1.35 : 1.0;
+      return isShowdownModifierActive('heavy_storm') ? 1.35 : 1.0;
   }
 
   function getModeSuperGainMultiplier() {
@@ -15099,7 +15114,7 @@ let heistFeverActive = false;
       // Overdrive bars farm noticeably faster; it overrides power_surge
       // rather than stacking with it.
       if (showdownMode === 'super_showdown') return 2.0;
-      return activeShowdownModifier === 'power_surge' ? 1.2 : 1.0;
+      return isShowdownModifierActive('power_surge') ? 1.2 : 1.0;
   }
 
   // Phase 4 power_surge widening: Core Surge (Hypercharge) gain has its own
@@ -15109,7 +15124,7 @@ let heistFeverActive = false;
       // BUILDER PICK (flagged): Super Showdown charges Core Surge
       // (Hypercharge) 3x; overrides power_surge rather than stacking.
       if (showdownMode === 'super_showdown') return 3.0;
-      return activeShowdownModifier === 'power_surge' ? 1.2 : 1.0;
+      return isShowdownModifierActive('power_surge') ? 1.2 : 1.0;
   }
 
   // Box Scarcity (modifier ID no_free_cubes): fraction of the normal Power
@@ -15117,7 +15132,7 @@ let heistFeverActive = false;
   // time and recomputed from the base count on every call, so repeat calls
   // in one launch can never compound the reduction.
   function getShowdownBoxScarcityMultiplier() {
-      return activeShowdownModifier === 'no_free_cubes' ? 0.65 : 1;
+      return isShowdownModifierActive('no_free_cubes') ? 0.65 : 1;
   }
 
   // Progression System
@@ -85877,10 +85892,10 @@ function checkHit(target, b, i){
         else if (isPropHuntMode) mapLabel = 'Prop Hunt — Crown Collapse';
         else if (isTrioShowdownMode) mapLabel = 'Trio Showdown Arena';
         ctx.fillText(`Map: ${mapLabel}`, 20, 86);
-        if (activeShowdownModifier && activeShowdownModifier !== 'none') {
+        if (activeShowdownModifier && !isShowdownModifierActive('none')) {
             ctx.fillStyle = '#ffd166';
             ctx.fillText(`Modifier: ${activeShowdownModifierLabel}`, 20, 106);
-            const modifierDef = SHOWDOWN_MODIFIER_DEFS[activeShowdownModifier];
+            const modifierDef = getShowdownModifierDef(activeShowdownModifier);
             if (modifierDef && modifierDef.description) {
                 ctx.save();
                 ctx.font = '11px sans-serif';
