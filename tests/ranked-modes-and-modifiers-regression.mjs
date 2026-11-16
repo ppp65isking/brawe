@@ -13,19 +13,19 @@ const checks = [
   ['HOME_MODE_RULES includes brawe_ball and knockout_3v3', /brawe_ball:\s*\[[\s\S]*?3v3 Soccer clash[\s\S]*?knockout_3v3:\s*\[[\s\S]*?Best of 3 Rounds/],
 
   // 2. Ranked Modifiers: Bug Fixes & Always Hyper
-  ['always_hyper modifier registered in RANKED_MODIFIERS', /'always_hyper':\s*\{\s*id:\s*'always_hyper',\s*name:\s*'Always Hyper'/],
-  ['always_hyper continuously hypercharges player and bots in update loop', /activeRankedModifier === 'always_hyper'[\s\S]*?isHypercharged = true;[\s\S]*?(b\.isHypercharged = true;|setEntityHypercharged\(b, now \+ 999999999, now\);)/],
-  ['always_hyper initializes hypercharge on match start', /activeRankedModifier === 'always_hyper'[\s\S]*?isHypercharged = true;[\s\S]*?hyperChargeCharge = 100;/],
-  ['always_hyper persists hypercharge across respawns', /activeRankedModifier === 'always_hyper'[\s\S]*?(entity\.isHypercharged = true;|setEntityHypercharged\(entity, now \+ 999999999, now\);)/],
-  ['always_hyper exempted from player and bot hypercharge expiration', /!\(isRankedMatch && activeRankedModifier === 'always_hyper'\)/],
-  ['timed_detonation crash fixed: uses bushZones and bushes without grassZones', !game.includes('grassZones') && game.includes("activeRankedModifier !== 'timed_detonation'") && game.includes('bushZones.splice(i, 1);')],
+  ['always_hyper modifier registered in MUTATOR_DEFS', /const MUTATOR_DEFS = \{[\s\S]*?'always_hyper':\s*\{\s*id:\s*'always_hyper',\s*name:\s*'Always Hyper'/],
+  ['always_hyper continuously hypercharges player and bots in update loop', /isMutatorActive\('always_hyper'\)[\s\S]*?isHypercharged = true;[\s\S]*?setEntityHypercharged\(b, now \+ 999999999, now\);/],
+  ['always_hyper initializes hypercharge on match start', /isMutatorActive\('always_hyper'\)[\s\S]*?isHypercharged = true;[\s\S]*?hyperChargeCharge = 100;/],
+  ['always_hyper persists hypercharge across respawns', /isMutatorActive\('always_hyper'\)[\s\S]*?setEntityHypercharged\(entity, now \+ 999999999, now\);/],
+  ['always_hyper exempted from player and bot hypercharge expiration', /!isMutatorActive\('always_hyper'\)/.test(game)],
+  ['timed_detonation crash fixed: uses bushZones and bushes without grassZones', !game.includes('grassZones') && game.includes("isMutatorActive('timed_detonation')") && game.includes('bushZones.splice(i, 1);')],
   ['hyper_overdrive passive charge fixed to call updateHyperButton', /hyperChargeCharge = Math\.min\(100,\s*hyperChargeCharge \+ 4\.0 \* dt\);[\s\S]*?if \(typeof updateHyperButton === 'function'\) updateHyperButton\(\);/],
   ['super_surge passive super charge calls updateSuperButton', /superCharge = Math\.min\(100,\s*superCharge \+ 5\.0 \* dt\);[\s\S]*?if \(typeof updateSuperButton === 'function'\) updateSuperButton\(\);/],
-  ['colossus_friend persists max HP across respawns with 4,000 HP bonus shield', /activeRankedModifier === 'colossus_friend' && activeColossusMaxHp[\s\S]*?grantShield\(entity,\s*4000,\s*4000\);/],
-  ['quickfire only refunds ammo on main attacks, not supers', /activeRankedModifier === 'quickfire' && !source\?\.super && !source\?\.isSuper/],
+  ['colossus_friend persists max HP across respawns with 4,000 HP bonus shield', /isMutatorActive\('colossus_friend'\) && activeColossusMaxHp[\s\S]*?grantShield\(entity,\s*4000,\s*4000\);/],
+  ['quickfire only refunds ammo on main attacks, not supers', /isMutatorActive\('quickfire'\) && !source\?\.super && !source\?\.isSuper/],
   ['Ranked modifier HUD badge helper implemented', /function renderRankedModifierHUD\(ctx\)/],
-  ['friendly_fire modifier registered in RANKED_MODIFIERS', /'friendly_fire':\s*\{\s*id:\s*'friendly_fire',\s*name:\s*'Friendly Fire'/],
-  ['isFriendlyFireActive helper function implemented', /function isFriendlyFireActive\(\)\s*\{\s*return (?:isRankedMatch && activeRankedModifier === 'friendly_fire'|\(isRankedMatch && activeRankedModifier === 'friendly_fire'\) \|\| [^;]+);\s*\}/],
+  ['friendly_fire modifier registered in MUTATOR_DEFS', /const MUTATOR_DEFS = \{[\s\S]*?'friendly_fire':\s*\{\s*id:\s*'friendly_fire',\s*name:\s*'Friendly Fire'/],
+  ['isFriendlyFireActive helper function implemented', /function isFriendlyFireActive\(\)\s*\{\s*return isMutatorActive\('friendly_fire'\) \|\| isFriendlyFirePlusActive\(\) \|\| \(showdownMode === 'knock_donate' && !isBossFight && !isTraining\);\s*\}/],
   ['friendly_fire permits bullet hit detection against allied player and bots', /if \(!isFriendlyFireActive\(\)\) continue; \/\/ skip friendly fire/],
   ['friendly_fire permits AOEDamage against allied entities', /areAlliedEntities\(owner, bot\) && !bot\.isChairSpinning && !isFriendlyFireActive\(\)[\s\S]*?!\(owner && areAlliedEntities\(owner, player\)\) \|\| isFriendlyFireActive\(\)/],
   ['friendly_fire prevents super charge gain on hitting teammates', /!\(areAlliedEntities\(owner, target\) && isFriendlyFireActive\(\)\)\) grantMainAttackCharge/],
@@ -65,7 +65,7 @@ const checks = [
   ['showdownResults handles Brawe Ball and Knockout custom outcomes', /if \(isBraweBallMode\) \{[\s\S]*?BRAWE BALL VICTORY![\s\S]*?\} else if \(isKnockoutMode\) \{[\s\S]*?KNOCKOUT MATCH VICTORY!/],
 
   // 7. Master update: queue pool twins + ranked-pass pin packs
-  ['super_rate_plus excluded from the ranked queue pool but still defined', /k !== 'super_rate_plus'/.test(game) && /'super_rate_plus':\s*\{/.test(game)],
+  ['super_rate_plus removed as a duplicate def, kept as a canonicalising alias', /MUTATOR_ALIASES\s*=\s*\{[^}]*'super_rate_plus':\s*'super_rate_90'/.test(game) && !/'super_rate_plus':\s*\{/.test(game) && /getRankedMutatorPoolKeys/.test(game)],
   ['ranked-pass pinpack claim branch grants via grantPinPack', /reward\.type === 'pinpack'/.test(game) && /grantPinPack\(reward\.amount \|\| 3\);/.test(game)],
   ['ranked-pass pinpack claim fails closed when grantPinPack is missing', /reward\.type === 'pinpack' && typeof grantPinPack !== 'function'/.test(game)],
   ['no rp_* pin ids exist anywhere', !game.includes('rp_weekly_max') && !game.includes('rp_bronze') && !game.includes('rp_legend')]

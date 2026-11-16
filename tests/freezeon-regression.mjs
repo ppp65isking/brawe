@@ -264,6 +264,18 @@ const sandbox = {
   window: {},
   ctx: null,
 };
+// Phase 5 mutators rework: extracted freezeon code now calls the central
+// isMutatorActive() instead of the raw three-slot OR chain. Mirror the real
+// helper (incl. alias resolution) over this sandbox's live slot values.
+const MUTATOR_ALIAS_SHIM = { super_rate_plus: 'super_rate_90', projectiles_150: 'giant_projectiles' };
+sandbox.isMutatorActive = (id) => {
+  if (!sandbox.isRankedMatch && !sandbox.isCustomMutatorMatch) return false;
+  const canon = (x) => (!x || typeof x !== 'string') ? null : (MUTATOR_ALIAS_SHIM[x] || x);
+  const c = canon(id);
+  if (!c || c === 'classic') return false;
+  return [sandbox.activeRankedModifier, sandbox.activeRankedModifierSecondary, sandbox.activeRankedModifierTertiary]
+    .some((slot) => canon(slot) === c);
+};
 // Pull every FREEZEON_* numeric constant straight from game.js (no drift).
 for (const m of game.matchAll(/const (FREEZEON_[A-Z0-9_]+) = ([0-9.]+);/g)) {
   sandbox[m[1]] = Number(m[2]);

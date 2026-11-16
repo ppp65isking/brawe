@@ -5420,7 +5420,7 @@ const bolznstienPendingStrikes = [];
         if (effect === 'slow') entity.slowUntil = Math.max(entity.slowUntil || 0, until);
         if (effect === 'stun') entity.stunUntil = Math.max(entity.stunUntil || 0, until);
         if (effect === 'root') entity.rootUntil = Math.max(entity.rootUntil || 0, until);
-        if ((isRankedMatch || isCustomMutatorMatch) && (activeRankedModifier === 'crowd_uncontrol' || activeRankedModifierSecondary === 'crowd_uncontrol' || activeRankedModifierTertiary === 'crowd_uncontrol') && sourceEntity && sourceEntity !== entity && !sourceEntity._ccReflecting) {
+        if (isMutatorActive('crowd_uncontrol') && sourceEntity && sourceEntity !== entity && !sourceEntity._ccReflecting) {
             sourceEntity._ccReflecting = true;
             applyStatusEffect(sourceEntity, effect, durationMs);
             spawnFloatingText(sourceEntity.x, sourceEntity.y - 36, '🌀 CC REFLECTED!', '#ee5253');
@@ -12448,109 +12448,159 @@ function isPowerPlayModifierActive(entity = player) {
     let rankedDraftSummary = '';
     const RANKED_TEAM_MODE_POOL = ['knock_donate', 'arena_forge', 'brick_vault'];
 
-    const RANKED_MODIFIERS = {
+    // --- MUTATOR REGISTRY (Thanksgiving Phase 5) -------------------------------
+    // One canonical definition per mutator mechanic. The old table carried 14
+    // keys for 11 mechanics: 'super_rate_plus' duplicated 'super_rate_90' and
+    // 'projectiles_150' duplicated 'giant_projectiles'. The duplicates are
+    // REMOVED as definitions (not kept as alias entries) -- see MUTATOR_ALIASES
+    // below, which keeps old saved drafts / slot values resolving to the same
+    // canonical mechanic. A third phantom id with no definition and no
+    // picker is rejected (resolveMutatorId -> null).
+    // Ranked "leaving" exclusions live here as rankedPool: false instead of
+    // a side Set in the draft code. Field names keep the codebase's existing
+    // color/desc spellings so HUD/banner consumers do not churn.
+    const MUTATOR_DEFS = {
         'classic': {
             id: 'classic',
             name: 'Classic',
             desc: 'Standard competitive battle rules. Pure brawler skills, no mutators.',
             icon: '⚔️',
-            color: '#90b4ce'
+            color: '#90b4ce',
+            testId: 'mutator-classic'
         },
         'colossus_friend': {
             id: 'colossus_friend',
             name: 'Colossus Big Friend',
             desc: 'Every brawler shares the Max HP of the highest-HP brawler in the match + everyone spawns with a 4,000 HP bonus shield!',
             icon: '🛡️',
-            color: '#ff9f43'
+            color: '#ff9f43',
+            testId: 'mutator-colossus-friend'
         },
         'crowd_uncontrol': {
             id: 'crowd_uncontrol',
             name: 'Crowd Uncontrol',
             desc: 'Applying any stun, slow, freeze, or knockback applies the exact same crowd control back to yourself!',
             icon: '🌀',
-            color: '#ee5253'
+            color: '#ee5253',
+            testId: 'mutator-crowd-uncontrol'
         },
         'hyper_overdrive': {
             id: 'hyper_overdrive',
             name: 'Hypercharge Overdrive',
             desc: 'Passive continuous Hypercharge energy generation (+4%/sec) for frequent hypercharge engagements!',
             icon: '🔥',
-            color: '#e056fd'
+            color: '#e056fd',
+            testId: 'mutator-hyper-overdrive'
         },
         'always_hyper': {
             id: 'always_hyper',
             name: 'Always Hyper',
             desc: 'Every brawler in the match has permanent active Hypercharge for the entire battle! Blazing speed, boosted damage, and unstoppable supers.',
             icon: '⚡',
-            color: '#e056fd'
+            color: '#e056fd',
+            testId: 'mutator-always-hyper'
         },
         'quickfire': {
             id: 'quickfire',
             name: 'Quickfire',
             desc: 'Landing any main attack hit refunds 10% of your maximum ammo immediately.',
             icon: '⚡',
-            color: '#0abde3'
+            color: '#0abde3',
+            testId: 'mutator-quickfire'
         },
         'timed_detonation': {
             id: 'timed_detonation',
             name: 'Timed Detonation',
             desc: 'Arena obstacles, walls, and grass steadily explode and clear out from the center over time.',
             icon: '💣',
-            color: '#ff6b6b'
+            color: '#ff6b6b',
+            testId: 'mutator-timed-detonation',
+            rankedPool: false
         },
         'super_surge': {
             id: 'super_surge',
             name: 'Super Surge',
             desc: 'Continuous passive Super generation (+5%/sec) and +40% bonus Super charge gained on hit.',
             icon: '✨',
-            color: '#feca57'
+            color: '#feca57',
+            testId: 'mutator-super-surge'
         },
         'friendly_fire': {
             id: 'friendly_fire',
             name: 'Friendly Fire',
             desc: 'Attacks, projectiles, and explosions damage teammates! Watch your aim and area effects.',
             icon: '⚠️',
-            color: '#ff4757'
+            color: '#ff4757',
+            testId: 'mutator-friendly-fire'
         },
         'friendly_fire_plus': {
             id: 'friendly_fire_plus',
             name: 'Friendly Fire+',
             desc: 'Attacks and explosives damage teammates, but landing hits on teammates awards massive Super and Hypercharge!',
             icon: '⚠️⚡',
-            color: '#ff6b81'
+            color: '#ff6b81',
+            testId: 'mutator-friendly-fire-plus'
         },
         'super_rate_90': {
             id: 'super_rate_90',
             name: '90% Super Rate+',
             desc: '+90% Super charge rate on all attack hits and +90% faster continuous passive Super generation!',
             icon: '🔋⚡',
-            color: '#ffd166'
-        },
-        'super_rate_plus': {
-            id: 'super_rate_plus',
-            name: '90% Super Rate+',
-            desc: '+90% Super charge rate on all attack hits and +90% faster continuous passive Super generation!',
-            icon: '🔋⚡',
-            color: '#ffd166'
+            color: '#ffd166',
+            testId: 'mutator-super-rate-90'
         },
         'giant_projectiles': {
             id: 'giant_projectiles',
             name: '150% Bigger Projectiles',
             desc: 'Every projectile, shot, and attack is 150% bigger in size, visual aura, and collision hitboxes!',
             icon: '🔮',
-            color: '#ff70a6'
-        },
-        'projectiles_150': {
-            id: 'projectiles_150',
-            name: '150% Bigger Projectiles',
-            desc: 'Every projectile, shot, and attack is 150% bigger in size, visual aura, and collision hitboxes!',
-            icon: '🔮',
-            color: '#ff70a6'
+            color: '#ff70a6',
+            testId: 'mutator-giant-projectiles',
+            rankedPool: false
         }
     };
+    // Legacy alias ids -> canonical id. Old saved drafts may still carry
+    // these in a slot; resolveMutatorId() maps them so they activate the
+    // exact same mechanic. Never add a new mechanic here -- add a def above.
+    const MUTATOR_ALIASES = {
+        'super_rate_plus': 'super_rate_90',
+        'projectiles_150': 'giant_projectiles'
+    };
+    function resolveMutatorId(id) {
+        if (!id || typeof id !== 'string') return null;
+        if (MUTATOR_DEFS[id]) return id;
+        return MUTATOR_ALIASES[id] || null;
+    }
+    function getMutatorDef(id) {
+        const canonical = resolveMutatorId(id);
+        return canonical ? MUTATOR_DEFS[canonical] : null;
+    }
     let activeRankedModifier = 'classic';
     let activeRankedModifierSecondary = null;
     let activeRankedModifierTertiary = null;
+    // The single active check every call site uses: true when a Ranked or
+    // Custom Mutator match is running and any of the three slots holds the
+    // (alias-resolved) id. Unknown ids never activate.
+    function isMutatorActive(id) {
+        if (!isRankedMatch && !isCustomMutatorMatch) return false;
+        const canonical = resolveMutatorId(id);
+        if (!canonical || canonical === 'classic') return false;
+        return [activeRankedModifier, activeRankedModifierSecondary, activeRankedModifierTertiary]
+            .some((slot) => resolveMutatorId(slot) === canonical);
+    }
+    // Ranked draft pool: canonical mechanics only, minus rankedPool: false.
+    // includeClassic mirrors the old two-pool shape -- multi-modifier drafts
+    // never roll 'classic', the single-modifier fallback can.
+    function getRankedMutatorPoolKeys(includeClassic) {
+        return Object.keys(MUTATOR_DEFS).filter((k) => (includeClassic || k !== 'classic') && MUTATOR_DEFS[k].rankedPool !== false);
+    }
+    // Canonicalising slot assignment: draft / veto / picker paths resolve
+    // aliases on selection so a slot never stores a duplicate id.
+    function setActiveMutators(primary, secondary, tertiary) {
+        activeRankedModifier = resolveMutatorId(primary) || 'classic';
+        activeRankedModifierSecondary = resolveMutatorId(secondary);
+        activeRankedModifierTertiary = resolveMutatorId(tertiary);
+    }
     let isCustomMutatorMatch = false;
     // Friendly Battles (Thanksgiving Phase 8): an upgrade of Custom Mutator
     // Clash, NOT a new mode — the home card keeps the `custom_clash` id. A
@@ -12578,18 +12628,15 @@ function isPowerPlayModifierActive(entity = player) {
     let activeColossusMaxHp = null;
 
     function isFriendlyFirePlusActive() {
-        const isFFP = (m) => m === 'friendly_fire_plus';
-        return (isRankedMatch || isCustomMutatorMatch) && (isFFP(activeRankedModifier) || isFFP(activeRankedModifierSecondary) || isFFP(activeRankedModifierTertiary));
+        return isMutatorActive('friendly_fire_plus');
     }
 
     function isSuperRate90Active() {
-        const isSR = (m) => m === 'super_rate_90' || m === 'super_rate_plus';
-        return (isRankedMatch || isCustomMutatorMatch) && (isSR(activeRankedModifier) || isSR(activeRankedModifierSecondary) || isSR(activeRankedModifierTertiary));
+        return isMutatorActive('super_rate_90');
     }
 
     function isGiantProjectilesActive() {
-        const isGP = (m) => m === 'giant_projectiles' || m === 'projectiles_150';
-        return (isRankedMatch || isCustomMutatorMatch) && (isGP(activeRankedModifier) || isGP(activeRankedModifierSecondary) || isGP(activeRankedModifierTertiary));
+        return isMutatorActive('giant_projectiles');
     }
 
     function applyGiantProjectilesModifier(b) {
@@ -14054,7 +14101,7 @@ function isPowerPlayModifierActive(entity = player) {
     }
 
     function isFriendlyFireActive() {
-        return (isRankedMatch && activeRankedModifier === 'friendly_fire') || (isRankedMatch && activeRankedModifierSecondary === 'friendly_fire') || ((isRankedMatch || isCustomMutatorMatch) && activeRankedModifierTertiary === 'friendly_fire') || (isCustomMutatorMatch && (activeRankedModifier === 'friendly_fire' || activeRankedModifierSecondary === 'friendly_fire')) || isFriendlyFirePlusActive() || (showdownMode === 'knock_donate' && !isBossFight && !isTraining);
+        return isMutatorActive('friendly_fire') || isFriendlyFirePlusActive() || (showdownMode === 'knock_donate' && !isBossFight && !isTraining);
     }
 
     function grantFriendlyFirePlusBonus(owner) {
@@ -14454,14 +14501,14 @@ function isPowerPlayModifierActive(entity = player) {
         const fallbackY = entity.team === 'enemy' ? 190 : WORLD_H - 190;
         entity.x = Number.isFinite(spawn?.x) ? spawn.x : fallbackX;
         entity.y = Number.isFinite(spawn?.y) ? spawn.y : fallbackY;
-        if ((isRankedMatch || isCustomMutatorMatch) && ((activeRankedModifier === 'colossus_friend' && activeColossusMaxHp) || (activeRankedModifierSecondary === 'colossus_friend' && activeColossusMaxHp) || (activeRankedModifierTertiary === 'colossus_friend' && activeColossusMaxHp))) {
+        if (isMutatorActive('colossus_friend') && activeColossusMaxHp) {
             entity.maxHp = activeColossusMaxHp;
             entity.hp = activeColossusMaxHp;
             grantShield(entity, 4000, 4000);
         } else {
             entity.hp = Math.max(1, Number(entity.maxHp) || 1);
         }
-        if (((isRankedMatch || isCustomMutatorMatch) && (activeRankedModifier === 'always_hyper' || activeRankedModifierSecondary === 'always_hyper' || activeRankedModifierTertiary === 'always_hyper')) || isHyperForgeLTM) {
+        if (isMutatorActive('always_hyper') || isHyperForgeLTM) {
             setEntityHypercharged(entity, now + 999999999, now);
             entity.hyperChargeCharge = 100;
         }
@@ -14552,7 +14599,7 @@ function isPowerPlayModifierActive(entity = player) {
     let timedDetonationStage = 0;
 
     function triggerTimedDetonationWave() {
-        if ((!isRankedMatch && !isCustomMutatorMatch) || (activeRankedModifier !== 'timed_detonation' && activeRankedModifierSecondary !== 'timed_detonation' && activeRankedModifierTertiary !== 'timed_detonation') || !playing || gameOver) return;
+        if (!isMutatorActive('timed_detonation') || !playing || gameOver) return;
         timedDetonationStage = (timedDetonationStage || 0) + 1;
         const blastRadius = Math.min(Math.max(WORLD_W, WORLD_H) * 0.48, 280 + timedDetonationStage * 160);
         const centerX = WORLD_W * 0.5, centerY = WORLD_H * 0.5;
@@ -25853,7 +25900,7 @@ let heistFeverActive = false;
         explosions.push({ x: target.x, y: target.y, radius: 72, life: 0, maxLife: .36, color: freezeHyper ? 'rgba(192,132,252,.82)' : 'rgba(56,189,248,.82)', legendary: true, fxKind: 'freezeonFreeze', hyper: freezeHyper });
         spawnFloatingText(target.x, target.y - 50, 'FROZEN!', '#e0f2fe');
         // Ranked 'crowd_uncontrol': crowd control reflects back (ice_cream precedent).
-        if ((isRankedMatch || isCustomMutatorMatch) && (activeRankedModifier === 'crowd_uncontrol' || activeRankedModifierSecondary === 'crowd_uncontrol' || activeRankedModifierTertiary === 'crowd_uncontrol') && owner && owner !== target && !owner._ccReflecting) {
+        if (isMutatorActive('crowd_uncontrol') && owner && owner !== target && !owner._ccReflecting) {
             owner._ccReflecting = true;
             try {
                 owner.stunUntil = Math.max(owner.stunUntil || 0, now + freezeonFreezeDurationMs(owner));
@@ -33487,9 +33534,9 @@ let heistFeverActive = false;
       const brawler = source?.ownerBrawler || owner.currentMainAttackBrawler || owner.brawler || (owner.id === player.id ? selectedBrawler : 'outlit');
       let gain = (100 / getSuperChargeHitsForBrawler(brawler)) * getAttackChargeMultiplier(owner);
       if (isArenaForgeMode && owner.arenaForgeHyperDynamo) gain *= 1.35;
-      if ((isRankedMatch || isCustomMutatorMatch) && (activeRankedModifier === 'super_surge' || activeRankedModifierSecondary === 'super_surge' || activeRankedModifierTertiary === 'super_surge')) gain *= 1.4;
+      if (isMutatorActive('super_surge')) gain *= 1.4;
       if (typeof isSuperRate90Active === 'function' && isSuperRate90Active()) gain *= 1.9;
-      if ((isRankedMatch || isCustomMutatorMatch) && ((activeRankedModifier === 'quickfire' && !source?.super && !source?.isSuper) || (activeRankedModifierSecondary === 'quickfire' && !source?.super && !source?.isSuper) || (activeRankedModifierTertiary === 'quickfire' && !source?.super && !source?.isSuper))) {
+      if (isMutatorActive('quickfire') && !source?.super && !source?.isSuper) {
            const refundAmt = Math.max(0.35, (owner.maxAmmo || 3) * 0.12);
            if (owner.id === player.id) {
                ammo = Math.min(maxAmmo, ammo + refundAmt);
@@ -38675,7 +38722,7 @@ let heistFeverActive = false;
     target.iceCreamFreeze=Math.min(100,(target.iceCreamFreeze||0)+Math.max(0,amount));
     target.iceCreamFreezeLastHitAt=now;target.iceCreamFreezeDecayDelay=getIceCreamStar(owner)==='long'?3500:2000;target.iceCreamFreezeOwnerId=owner.id;
     spawnFloatingText(target.x,target.y-42,`${Math.round(target.iceCreamFreeze)}% FREEZE`,'#8ee9ff');
-    if ((isRankedMatch || isCustomMutatorMatch) && (activeRankedModifier === 'crowd_uncontrol' || activeRankedModifierSecondary === 'crowd_uncontrol' || activeRankedModifierTertiary === 'crowd_uncontrol') && owner && owner !== target && !owner._ccReflecting) {
+    if (isMutatorActive('crowd_uncontrol') && owner && owner !== target && !owner._ccReflecting) {
         owner._ccReflecting = true;
         try {
             owner.iceCreamFreeze = Math.min(100, (owner.iceCreamFreeze || 0) + Math.max(0, amount));
@@ -51656,8 +51703,7 @@ let heistFeverActive = false;
         let draftMode = modePool[Math.floor(Math.random() * modePool.length)] || 'construction';
 
         const aboveBrickFume = isRankedAboveBrickFume(rankedPoints);
-        const rankedLeavingModifiers = new Set(['timed_detonation', 'giant_projectiles', 'projectiles_150']);
-        const mutatorKeys = Object.keys(RANKED_MODIFIERS).filter(k => k !== 'classic' && k !== 'super_rate_plus' && !rankedLeavingModifiers.has(k));
+        const mutatorKeys = getRankedMutatorPoolKeys(false);
         let draftModifierKey = 'classic';
         let draftModifierKeySecondary = null;
         let draftModifierKeyTertiary = null;
@@ -51683,16 +51729,14 @@ let heistFeverActive = false;
                 draftModifierKey = shuffled[0];
                 draftModifierKeySecondary = shuffled[1];
             } else {
-                const allKeys = Object.keys(RANKED_MODIFIERS).filter(k => !rankedLeavingModifiers.has(k));
+                const allKeys = getRankedMutatorPoolKeys(true);
                 draftModifierKey = allKeys[Math.floor(Math.random() * allKeys.length)] || 'classic';
                 draftModifierKeySecondary = null;
                 draftModifierKeyTertiary = null;
             }
         }
 
-        activeRankedModifier = draftModifierKey;
-        activeRankedModifierSecondary = draftModifierKeySecondary;
-        activeRankedModifierTertiary = draftModifierKeyTertiary;
+        setActiveMutators(draftModifierKey, draftModifierKeySecondary, draftModifierKeyTertiary);
 
         // Player Slot Assignment:
         // 0 = Team Leader (Captain) -> 2 Bans
@@ -51859,9 +51903,9 @@ let heistFeverActive = false;
         banner.style.flexWrap = 'wrap';
         banner.style.gap = '10px';
 
-        const modDef1 = RANKED_MODIFIERS[draftModifierKey] || RANKED_MODIFIERS.classic;
-        const modDef2 = draftModifierKeySecondary ? RANKED_MODIFIERS[draftModifierKeySecondary] : null;
-        const modDef3 = draftModifierKeyTertiary ? RANKED_MODIFIERS[draftModifierKeyTertiary] : null;
+        const modDef1 = getMutatorDef(draftModifierKey) || MUTATOR_DEFS.classic;
+        const modDef2 = draftModifierKeySecondary ? getMutatorDef(draftModifierKeySecondary) : null;
+        const modDef3 = draftModifierKeyTertiary ? getMutatorDef(draftModifierKeyTertiary) : null;
         let modDisplayHtml = '';
         if (modDef3 && modDef2) {
             modDisplayHtml = `<div style="font-size:13px;color:#00f5d4;font-weight:800;">⚡ TRIPLE MODIFIER: ` +
@@ -52067,9 +52111,9 @@ let heistFeverActive = false;
         };
 
         const rebuildRankedModifierBanner = () => {
-            const modDef1 = RANKED_MODIFIERS[draftModifierKey] || RANKED_MODIFIERS.classic;
-            const modDef2 = draftModifierKeySecondary ? RANKED_MODIFIERS[draftModifierKeySecondary] : null;
-            const modDef3 = draftModifierKeyTertiary ? RANKED_MODIFIERS[draftModifierKeyTertiary] : null;
+            const modDef1 = getMutatorDef(draftModifierKey) || MUTATOR_DEFS.classic;
+            const modDef2 = draftModifierKeySecondary ? getMutatorDef(draftModifierKeySecondary) : null;
+            const modDef3 = draftModifierKeyTertiary ? getMutatorDef(draftModifierKeyTertiary) : null;
             let modDisplayHtml = '';
             if (modDef3 && modDef2) {
                 modDisplayHtml = `<div style="font-size:13px;color:#00f5d4;font-weight:800;">⚡ TRIPLE MODIFIER: ` +
@@ -52620,7 +52664,7 @@ let heistFeverActive = false;
                     if (draftModifierKeyTertiary) vetoSlots.push(draftModifierKeyTertiary);
                     for (const modKey of vetoSlots) {
                         const vetoBtn = document.createElement('button');
-                        vetoBtn.textContent = `🚫 VETO ${RANKED_MODIFIERS[modKey]?.name || modKey}`;
+                        vetoBtn.textContent = `🚫 VETO ${getMutatorDef(modKey)?.name || modKey}`;
                         vetoBtn.style.border = 'none';
                         vetoBtn.style.borderRadius = '8px';
                         vetoBtn.style.padding = '8px 16px';
@@ -52640,9 +52684,7 @@ let heistFeverActive = false;
                                 draftModifierKeySecondary = remaining[1] || null;
                                 draftModifierKeyTertiary = remaining[2] || null;
                             }
-                            activeRankedModifier = draftModifierKey;
-                            activeRankedModifierSecondary = draftModifierKeySecondary;
-                            activeRankedModifierTertiary = draftModifierKeyTertiary;
+                            setActiveMutators(draftModifierKey, draftModifierKeySecondary, draftModifierKeyTertiary);
                             rebuildRankedModifierBanner();
                             draftState = 'ready';
                             renderDraft();
@@ -52715,8 +52757,8 @@ let heistFeverActive = false;
                 red: redBans.filter(Boolean)
             };
 
-            const modSummaryLabel = activeRankedModifierSecondary ? (activeRankedModifierTertiary ? `${RANKED_MODIFIERS[activeRankedModifier]?.name || activeRankedModifier} + ${RANKED_MODIFIERS[activeRankedModifierSecondary]?.name || activeRankedModifierSecondary} + ${RANKED_MODIFIERS[activeRankedModifierTertiary]?.name || activeRankedModifierTertiary}` : `${RANKED_MODIFIERS[activeRankedModifier]?.name || activeRankedModifier} + ${RANKED_MODIFIERS[activeRankedModifierSecondary]?.name || activeRankedModifierSecondary}`) : (RANKED_MODIFIERS[activeRankedModifier]?.name || activeRankedModifier);
-            rankedDraftSummary = `${getShowdownModeLabel(draftMode)} | Mod: ${modSummaryLabel} | You: ${(brawlerData[selectedBrawler]?.name || selectedBrawler)} (${isPlayerLeader ? 'Leader' : 'Member'}, Pick #${playerLineNumber}/6) | Protect: ${(brawlerData[blueProtect]?.name || blueProtect || '—')} | Veto: ${(vetoedModifier ? (RANKED_MODIFIERS[vetoedModifier]?.name || vetoedModifier) : '—')}`;
+            const modSummaryLabel = activeRankedModifierSecondary ? (activeRankedModifierTertiary ? `${getMutatorDef(activeRankedModifier)?.name || activeRankedModifier} + ${getMutatorDef(activeRankedModifierSecondary)?.name || activeRankedModifierSecondary} + ${getMutatorDef(activeRankedModifierTertiary)?.name || activeRankedModifierTertiary}` : `${getMutatorDef(activeRankedModifier)?.name || activeRankedModifier} + ${getMutatorDef(activeRankedModifierSecondary)?.name || activeRankedModifierSecondary}`) : (getMutatorDef(activeRankedModifier)?.name || activeRankedModifier);
+            rankedDraftSummary = `${getShowdownModeLabel(draftMode)} | Mod: ${modSummaryLabel} | You: ${(brawlerData[selectedBrawler]?.name || selectedBrawler)} (${isPlayerLeader ? 'Leader' : 'Member'}, Pick #${playerLineNumber}/6) | Protect: ${(brawlerData[blueProtect]?.name || blueProtect || '—')} | Veto: ${(vetoedModifier ? (getMutatorDef(vetoedModifier)?.name || vetoedModifier) : '—')}`;
             isRankedMatch = true;
             showdownMode = draftMode;
             if (brawlerSelect) brawlerSelect.value = selectedBrawler;
@@ -52851,9 +52893,9 @@ let heistFeverActive = false;
         isCustomMutatorMatch = true;
         isRankedMatch = false;
         showdownMode = mode;
-        activeRankedModifier = modifiers[0] || 'classic';
-        activeRankedModifierSecondary = modifiers[1] || null;
-        activeRankedModifierTertiary = modifiers[2] || null;
+        // Route through the mutators canonicaliser (alias resolution) so a
+        // friendly match activates exactly what the picker listed.
+        setActiveMutators(modifiers[0] || 'classic', modifiers[1] || null, modifiers[2] || null);
         friendlyBattlePendingConfig = {
             mode,
             mapIndex: Number.isInteger(cfg.mapIndex) ? cfg.mapIndex : null,
@@ -53602,9 +53644,7 @@ let heistFeverActive = false;
           isCustomMutatorMatch = true;
           isRankedMatch = false;
           showdownMode = friendlyBattleConfig.mode;
-          activeRankedModifier = friendlyBattleConfig.modifiers[0] || 'classic';
-          activeRankedModifierSecondary = friendlyBattleConfig.modifiers[1] || null;
-          activeRankedModifierTertiary = friendlyBattleConfig.modifiers[2] || null;
+          setActiveMutators(friendlyBattleConfig.modifiers[0] || 'classic', friendlyBattleConfig.modifiers[1] || null, friendlyBattleConfig.modifiers[2] || null);
       }
       try { console.log('[GAME] Start showdown', { showdownMode, selectedBrawler }); } catch(e) {}
       if (showdownMode === 'splitter_powered') showdownMode = 'power_gods';
@@ -53973,7 +54013,7 @@ let heistFeverActive = false;
       if (isRankedMatch || isCustomMutatorMatch) {
           timedDetonationStage = 0;
           window._lastTimedDetonationAt = performance.now();
-          if (activeRankedModifier === 'colossus_friend' || activeRankedModifierSecondary === 'colossus_friend' || activeRankedModifierTertiary === 'colossus_friend') {
+          if (isMutatorActive('colossus_friend')) {
               let highestHp = player.maxHp || 4000;
               for (const b of bots) {
                   if (b && (b.maxHp || 0) > highestHp) highestHp = b.maxHp;
@@ -53990,7 +54030,7 @@ let heistFeverActive = false;
                   }
               }
           }
-          if (activeRankedModifier === 'always_hyper' || activeRankedModifierSecondary === 'always_hyper' || activeRankedModifierTertiary === 'always_hyper' || isHyperForgeLTM) {
+          if (isMutatorActive('always_hyper') || isHyperForgeLTM) {
               if (!isHypercharged) recordOverdriveActivation();
               isHypercharged = true;
               hyperchargeUntil = performance.now() + 999999999;
@@ -54003,7 +54043,7 @@ let heistFeverActive = false;
                   }
               }
           }
-          if (activeRankedModifier === 'friendly_fire' || activeRankedModifierSecondary === 'friendly_fire' || activeRankedModifierTertiary === 'friendly_fire') {
+          if (isMutatorActive('friendly_fire')) {
               setTimeout(() => {
                   spawnFloatingText(player.x, player.y - 65, '⚠️ FRIENDLY FIRE ACTIVE! WATCH YOUR AIM!', '#ff4757');
               }, 400);
@@ -61252,7 +61292,7 @@ function checkHit(target, b, i){
     if (isTowerDefenseEvent) updateTowerDefenseEvent(now, dt);
     if (isWarperEvent) updateWarperEvent(now);
     if ((isRankedMatch || isCustomMutatorMatch || isHyperForgeLTM) && playing && !gameOver) {
-        if (activeRankedModifier === 'always_hyper' || activeRankedModifierSecondary === 'always_hyper' || activeRankedModifierTertiary === 'always_hyper' || isHyperForgeLTM) {
+        if (isMutatorActive('always_hyper') || isHyperForgeLTM) {
             if (player.hp > 0) {
                 if (!isHypercharged) recordOverdriveActivation();
                 isHypercharged = true;
@@ -61267,7 +61307,7 @@ function checkHit(target, b, i){
                 }
             }
         }
-        if (activeRankedModifier === 'hyper_overdrive' || activeRankedModifierSecondary === 'hyper_overdrive' || activeRankedModifierTertiary === 'hyper_overdrive') {
+        if (isMutatorActive('hyper_overdrive')) {
             if (!isHypercharged && player.hp > 0) {
                 hyperChargeCharge = Math.min(100, hyperChargeCharge + 4.0 * dt);
                 if (typeof updateHyperButton === 'function') updateHyperButton();
@@ -61278,7 +61318,7 @@ function checkHit(target, b, i){
                 }
             }
         }
-        if (activeRankedModifier === 'super_surge' || activeRankedModifierSecondary === 'super_surge' || activeRankedModifierTertiary === 'super_surge') {
+        if (isMutatorActive('super_surge')) {
             if (player.hp > 0) {
                 superCharge = Math.min(100, superCharge + 5.0 * dt);
                 if (typeof updateSuperButton === 'function') updateSuperButton();
@@ -61300,7 +61340,7 @@ function checkHit(target, b, i){
                 }
             }
         }
-        if (activeRankedModifier === 'timed_detonation' || activeRankedModifierSecondary === 'timed_detonation' || activeRankedModifierTertiary === 'timed_detonation') {
+        if (isMutatorActive('timed_detonation')) {
             if (!window._lastTimedDetonationAt) window._lastTimedDetonationAt = now;
             if (now - window._lastTimedDetonationAt >= 8000) {
                 window._lastTimedDetonationAt = now;
@@ -61968,7 +62008,7 @@ function checkHit(target, b, i){
     // Update gadget button every frame to handle cooldown expiration
     updateGadgetButton();
 
-    if(isHypercharged && performance.now() > hyperchargeUntil && !(isRankedMatch && activeRankedModifier === 'always_hyper') && !(isRankedMatch && activeRankedModifierSecondary === 'always_hyper') && !((isRankedMatch || isCustomMutatorMatch) && (activeRankedModifier === 'always_hyper' || activeRankedModifierSecondary === 'always_hyper' || activeRankedModifierTertiary === 'always_hyper')) && !isHyperForgeLTM){
+    if(isHypercharged && performance.now() > hyperchargeUntil && !isMutatorActive('always_hyper') && !isHyperForgeLTM){
         isHypercharged = false;
         hyperChargeCharge = 0;
         updateHyperButton();
@@ -67634,7 +67674,7 @@ function checkHit(target, b, i){
           }
       }
 
-      if(t.isHypercharged && !t.isBoss && performance.now() > (t.hyperchargeUntil || 0) && !(isRankedMatch && activeRankedModifier === 'always_hyper') && !(isRankedMatch && activeRankedModifierSecondary === 'always_hyper') && !((isRankedMatch || isCustomMutatorMatch) && (activeRankedModifier === 'always_hyper' || activeRankedModifierSecondary === 'always_hyper' || activeRankedModifierTertiary === 'always_hyper')) && !isHyperForgeLTM) {
+      if(t.isHypercharged && !t.isBoss && performance.now() > (t.hyperchargeUntil || 0) && !isMutatorActive('always_hyper') && !isHyperForgeLTM) {
           t.isHypercharged = false; t.hyperChargeCharge = 0;
       }
 
@@ -92019,9 +92059,9 @@ function renderKnockoutHUD(ctx) {
 
 function renderRankedModifierHUD(ctx) {
     if ((!isRankedMatch && !isCustomMutatorMatch) || !activeRankedModifier) return;
-    const mod1 = RANKED_MODIFIERS[activeRankedModifier];
-    const mod2 = activeRankedModifierSecondary ? RANKED_MODIFIERS[activeRankedModifierSecondary] : null;
-    const mod3 = activeRankedModifierTertiary ? RANKED_MODIFIERS[activeRankedModifierTertiary] : null;
+    const mod1 = getMutatorDef(activeRankedModifier);
+    const mod2 = activeRankedModifierSecondary ? getMutatorDef(activeRankedModifierSecondary) : null;
+    const mod3 = activeRankedModifierTertiary ? getMutatorDef(activeRankedModifierTertiary) : null;
     if (!mod1 && !mod2 && !mod3) return;
 
     const innerWidth = window.innerWidth;
@@ -95879,6 +95919,13 @@ function renderBouncinBossEvent(phase) {
     get clearRankedSessionState() { return clearRankedSessionState; },
     armFriendlyBattle,
     launchFriendlyBattle,
+    get MUTATOR_DEFS() { return MUTATOR_DEFS; },
+    get MUTATOR_ALIASES() { return MUTATOR_ALIASES; },
+    get resolveMutatorId() { return resolveMutatorId; },
+    get getMutatorDef() { return getMutatorDef; },
+    get isMutatorActive() { return isMutatorActive; },
+    get getRankedMutatorPoolKeys() { return getRankedMutatorPoolKeys; },
+    get setActiveMutators() { return setActiveMutators; },
     get isFriendlyFirePlusActive() { return isFriendlyFirePlusActive; },
     get isSuperRate90Active() { return isSuperRate90Active; },
     get grantFriendlyFirePlusBonus() { return grantFriendlyFirePlusBonus; },
