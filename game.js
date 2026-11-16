@@ -15786,7 +15786,7 @@ let heistFeverActive = false;
       }
       if(attacks.includes('eruption')&&now>=rt.nextEruptionAt){
           rt.nextEruptionAt=now+TOMBSTONE_ERUPTION_INTERVAL_MS;
-          const zoneCount=(boss.bossStage||1)>=3?3:2;
+          const zoneCount=Math.max(boss.bossStage||1,rt.frenzyEarly?3:1)>=3?3:2;
           for(let i=0;i<zoneCount;i++){
               rt.telegraphs.push({kind:'eruption',x:clamp(player.x+(Math.random()-.5)*220,60,WORLD_W-60),y:clamp(player.y+(Math.random()-.5)*220,60,WORLD_H-60),radius:TOMBSTONE_ERUPTION_RADIUS,explodeAt:now+TOMBSTONE_ERUPTION_WARN_MS,damage:TOMBSTONE_ERUPTION_DAMAGE});
           }
@@ -66893,7 +66893,11 @@ function checkHit(target, b, i){
           t.hyperchargeUntil = performance.now() + 999999999;
           const hpPct = t.hp / t.maxHp;
           if (hpPct <= 0.33 && t.bossStage !== 3) {
-              t.bossStage = 3; t.speed *= 1.25; t.superCharge = 100;
+              t.bossStage = 3;
+              // Tombstone Impossible: the 50% early frenzy IS the phase-3 frenzy
+              // ("instead of 33%") — it already applied the speed + superCharge,
+              // so the generic 33% transition must not stack them a second time.
+              if (!(t.isTombstoneBoss && tombstoneBossRuntime && tombstoneBossRuntime.frenzyEarly)) { t.speed *= 1.25; t.superCharge = 100; }
               spawnFloatingText(t.x, t.y - 60, "FURIOUS!", "#ff0000");
           } else if (hpPct <= 0.66 && hpPct > 0.33 && t.bossStage !== 2) {
               t.bossStage = 2; t.speed *= 1.15; t.superCharge = 100;
