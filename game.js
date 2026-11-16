@@ -25647,16 +25647,21 @@ let heistFeverActive = false;
     }
 
     // ===== FreeZeon systems (Lou copy, Anthony's twists) =====
-    // Main: 4 snow cones (Lou: 3); cones leave a 1s slip zone where they land.
-    // Super: Ice Rink — ice patch that also does impact damage on landing.
+    // Main: 4 snow cones in a straight line (Lou: 3, straight line);
+    // cones leave a 1s slip zone where they land, and every cone hit
+    // builds the freeze meter (+0.5s per hit, 4 hits freeze).
+    // Super: Ice Rink — lobbed throwable; the rink can arcs to the target,
+    // bursts on impact (800 dmg), then stays as a patch (30/s DoT).
     // Hyper Super: freeze builds 2x faster + 150/s damage-over-time inside.
     // Hyper main: every cone hit schedules a brain-freeze shatter 0.6s later.
+    // Freeze completion fires a real ice-explosion visual (purple when the
+    // owner is Hypercharged) — drawn from the real frozen/hyper state.
     const FREEZEON_CONE_COUNT = 4; // Anthony's twist: Lou fires 3, FreeZeon fires 4
     const FREEZEON_CONE_SPEED = 780; // px/s
     const FREEZEON_CONE_RANGE = 700; // px
     const FREEZEON_CONE_DMG = 500; // P11 base cone damage (see getScaledStats 'freezeon'.dmg)
-    const FREEZEON_CONE_SPREAD = 0.42; // total spread radians across the volley
-    const FREEZEON_SLIP_RADIUS = 120; // px
+    const FREEZEON_CONE_STAGGER = 18; // px trail spacing: cones follow each other in a straight line (Lou)
+    const FREEZEON_SLIP_RADIUS = 72; // px — changes round 1: slip zone -40% (was 120)
     const FREEZEON_SLIP_DURATION_MS = 1000; // slip zone lasts 1s (Anthony's spec)
     const FREEZEON_SLIP_DRIFT_MULT = 1.6; // slide amplifies the enemy's own movement
     const FREEZEON_SUPER_RADIUS = 260; // px
@@ -25673,6 +25678,10 @@ let heistFeverActive = false;
     const FREEZEON_FREEZE_DECAY_DELAY_MS = 2000; // buildup starts decaying 2s after last tick
     const FREEZEON_FREEZE_DECAY_PER_S = 24; // buildup decay per second
     const FREEZEON_HYPER_DOT_PER_S = 150; // Hyper Super damage-over-time inside the patch
+    const FREEZEON_SUPER_DOT_PER_S = 30; // base Super damage-over-time inside the patch (changes round 1)
+    const FREEZEON_CONE_FREEZE_BUILD = 25; // +0.5s of freeze progress per cone hit (meter is 2s = 100)
+    const FREEZEON_SUPER_THROW_SPEED = 1100; // px/s lobbed flight speed (changes round 1)
+    const FREEZEON_SUPER_ARC_HEIGHT = 80; // arc peak px (jackTrade pattern)
     const FREEZEON_SHATTER_DELAY_MS = 600; // brain-freeze shatter delay after a cone hit
     const FREEZEON_SHATTER_RADIUS = 150; // px
     const FREEZEON_SHATTER_DMG = 600; // P11 shatter damage
@@ -25685,6 +25694,7 @@ let heistFeverActive = false;
     let freezeonPatches = []; // {x, y, radius, until, nextTickAt, ownerId, hyper} — ice rink patches
     let freezeonSlipZones = []; // {x, y, radius, until, ownerId} — 1s slippery slush
     let freezeonShatters = []; // {x, y, at, ownerId, targetId} — pending brain-freeze shatters
+    let freezeonThrownRinks = []; // {startX, startY, targetX, targetY, createdAt, impactAt, ownerId, hyper} — lobbed rink cans in flight
     let freezeonVoicePrevPlaying = false;
     let freezeonVoicePrevGameOver = false;
     let freezeonVoiceMatchEndPlayed = false;
@@ -25706,7 +25716,11 @@ let heistFeverActive = false;
         target.freezeonFreeze = 0;
         target.stunUntil = Math.max(target.stunUntil || 0, now + freezeonFreezeDurationMs(owner));
         target.freezeonFreezeImmuneUntil = now + FREEZEON_FREEZE_IMMUNE_MS;
-        explosions.push({ x: target.x, y: target.y, radius: 72, life: 0, maxLife: .36, color: 'rgba(56,189,248,.82)', legendary: true, fxKind: 'freezeonFreeze' });
+        // The freeze explosion carries the owner's REAL Hyper state at
+        // the moment of the freeze — the render branch keys its purple
+        // variant off this flag, never a faked one (Snipa lesson).
+        const freezeHyper = owner.id === player.id ? !!isHypercharged : !!owner.isHypercharged;
+        explosions.push({ x: target.x, y: target.y, radius: 72, life: 0, maxLife: .36, color: freezeHyper ? 'rgba(192,132,252,.82)' : 'rgba(56,189,248,.82)', legendary: true, fxKind: 'freezeonFreeze', hyper: freezeHyper });
         spawnFloatingText(target.x, target.y - 50, 'FROZEN!', '#e0f2fe');
         // Ranked 'crowd_uncontrol': crowd control reflects back (ice_cream precedent).
         if ((isRankedMatch || isCustomMutatorMatch) && (activeRankedModifier === 'crowd_uncontrol' || activeRankedModifierSecondary === 'crowd_uncontrol' || activeRankedModifierTertiary === 'crowd_uncontrol') && owner && owner !== target && !owner._ccReflecting) {
@@ -25749,7 +25763,9 @@ let heistFeverActive = false;
         if (owner) freezeonSpawnSlipZone(owner, b.x, b.y);
     }
 
-    // Main: hurl 4 snow cones in a spread (6 with Extra Scoop armed).
+    // Main: hurl 4 snow cones in a straight line (6 with Extra Scoop
+    // armed) — like real Lou. Cones trail each other along the aim
+    // direction so they read as a line, not a fan.
     function fireFreezeonMain(fromEntity, targetX, targetY, isBot) {
         const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
         const stats = getScaledStats('freezeon', fromEntity === player ? getSelectedBrawlerLevel() : (fromEntity.level || 11));
@@ -25757,14 +25773,14 @@ let heistFeverActive = false;
         fromEntity.freezeonExtraScoopArmed = false;
         const ang = Math.atan2(targetY - fromEntity.y, targetX - fromEntity.x);
         for (let i = 0; i < count; i++) {
-            const lane = count === 1 ? 0 : (i / (count - 1) - .5);
-            const a = ang + lane * FREEZEON_CONE_SPREAD;
-            bullets.push({ ownerBrawler: 'freezeon', isFreezeonCone: true, ownerId: fromEntity.id, x: fromEntity.x + Math.cos(a) * (fromEntity.radius + 8), y: fromEntity.y + Math.sin(a) * (fromEntity.radius + 8), vx: Math.cos(a) * FREEZEON_CONE_SPEED, vy: Math.sin(a) * FREEZEON_CONE_SPEED, life: 0, maxLife: FREEZEON_CONE_RANGE / FREEZEON_CONE_SPEED, damage: stats.dmg, pierce: false, hitIds: {}, hitboxMod: 1.4, hyperVisual: hyper });
+            const trail = i * FREEZEON_CONE_STAGGER;
+            bullets.push({ ownerBrawler: 'freezeon', isFreezeonCone: true, ownerId: fromEntity.id, x: fromEntity.x + Math.cos(ang) * (fromEntity.radius + 8) - Math.cos(ang) * trail, y: fromEntity.y + Math.sin(ang) * (fromEntity.radius + 8) - Math.sin(ang) * trail, vx: Math.cos(ang) * FREEZEON_CONE_SPEED, vy: Math.sin(ang) * FREEZEON_CONE_SPEED, life: 0, maxLife: FREEZEON_CONE_RANGE / FREEZEON_CONE_SPEED, damage: stats.dmg, pierce: false, hitIds: {}, hitboxMod: 1.4, hyperVisual: hyper });
         }
         return true;
     }
 
-    // Super: hurl an ice rink that bursts on impact, then stays as a patch.
+    // Super: lob a frozen rink can in an arc to the target point
+    // (jackTrade pattern) — it bursts on landing, then stays as a patch.
     function castFreezeonSuper(entity, hyper, targetX, targetY) {
         if (!entity) return false;
         const now = performance.now();
@@ -25772,20 +25788,34 @@ let heistFeverActive = false;
         const dist = clamp(Math.hypot(targetX - entity.x, targetY - entity.y) || 0, 0, FREEZEON_SUPER_THROW_RANGE);
         const x = clamp(entity.x + Math.cos(ang) * dist, 40, WORLD_W - 40);
         const y = clamp(entity.y + Math.sin(ang) * dist, 40, WORLD_H - 40);
+        const flightMs = clamp(Math.hypot(x - entity.x, y - entity.y) / FREEZEON_SUPER_THROW_SPEED * 1000, 150, 600);
+        freezeonThrownRinks.push({ startX: entity.x, startY: entity.y, targetX: x, targetY: y, createdAt: now, impactAt: now + flightMs, ownerId: entity.id, hyper: !!hyper });
+        if (entity.id === player.id) { try { window.BraweFreezeonVoice?.play('super'); } catch (e) {} }
+        return true;
+    }
+
+    // A lobbed rink can landed: impact damage, then the patch forms.
+    function freezeonLandRink(thrown) {
+        const now = performance.now();
+        const owner = freezeonFindOwner(thrown.ownerId);
+        const x = thrown.targetX, y = thrown.targetY, hyper = !!thrown.hyper;
         // Impact damage on landing (brawlers only, never structures).
-        for (const target of [player, ...bots]) {
-            if (!target || target.hp <= 0 || target.id === entity.id || areAlliedEntities(entity, target)) continue;
-            if (target.isStructure || target.isPet) continue;
-            if (Math.hypot(target.x - x, target.y - y) <= FREEZEON_SUPER_RADIUS + (target.radius || 14)) {
-                checkHit(target, { ownerBrawler: 'freezeon', ownerId: entity.id, damage: FREEZEON_SUPER_IMPACT_DMG, pierce: true, super: true, hitIds: {}, isFreezeonSuperImpact: true }, -1);
+        // If the owner died mid-flight we skip damage (can't tell friend
+        // from foe) but the patch still forms.
+        if (owner) {
+            for (const target of [player, ...bots]) {
+                if (!target || target.hp <= 0 || target.id === owner.id || areAlliedEntities(owner, target)) continue;
+                if (target.isStructure || target.isPet) continue;
+                if (Math.hypot(target.x - x, target.y - y) <= FREEZEON_SUPER_RADIUS + (target.radius || 14)) {
+                    checkHit(target, { ownerBrawler: 'freezeon', ownerId: owner.id, damage: FREEZEON_SUPER_IMPACT_DMG, pierce: true, super: true, hitIds: {}, isFreezeonSuperImpact: true }, -1);
+                }
             }
         }
-        freezeonPatches.push({ x, y, radius: FREEZEON_SUPER_RADIUS, until: now + FREEZEON_SUPER_DURATION_MS, nextTickAt: now, ownerId: entity.id, hyper: !!hyper });
-        const mine = freezeonPatches.filter((p) => p.ownerId === entity.id);
+        freezeonPatches.push({ x, y, radius: FREEZEON_SUPER_RADIUS, until: now + FREEZEON_SUPER_DURATION_MS, nextTickAt: now, ownerId: thrown.ownerId, hyper });
+        const mine = freezeonPatches.filter((p) => p.ownerId === thrown.ownerId);
         if (mine.length > FREEZEON_MAX_PATCHES_PER_OWNER) freezeonPatches.splice(freezeonPatches.indexOf(mine[0]), 1);
         explosions.push({ x, y, radius: FREEZEON_SUPER_RADIUS, life: 0, maxLife: .4, color: hyper ? 'rgba(192,132,252,.55)' : 'rgba(56,189,248,.55)', legendary: true, fxKind: 'freezeonSuperSpawn' });
         spawnFloatingText(x, y - 40, hyper ? '❄️ DEEP FREEZE!' : '❄️ ICE RINK!', hyper ? '#e9d5ff' : '#bae6fd');
-        if (entity.id === player.id) { try { window.BraweFreezeonVoice?.play('super'); } catch (e) {} }
         return true;
     }
 
@@ -25862,7 +25892,14 @@ let heistFeverActive = false;
             if (!owner || owner.hp <= 0) continue;
             freezeonDetonateShatter(owner, s);
         }
-        // Patch ticks (250ms): freeze buildup + Hyper DoT + Hypothermia mark.
+        // Lobbed rink cans fly in an arc, then land (jackTrade pattern).
+        for (let i = freezeonThrownRinks.length - 1; i >= 0; i--) {
+            const r = freezeonThrownRinks[i];
+            if (now < r.impactAt) continue;
+            freezeonThrownRinks.splice(i, 1);
+            freezeonLandRink(r);
+        }
+        // Patch ticks (250ms): freeze buildup + DoT + Hypothermia mark.
         const entities = [player, ...bots].filter((e) => e && e.hp > 0);
         for (const p of freezeonPatches) {
             const owner = freezeonFindOwner(p.ownerId);
@@ -25877,6 +25914,8 @@ let heistFeverActive = false;
                     freezeonApplyFreezeBuild(owner, target, p.hyper ? FREEZEON_FREEZE_PER_TICK_HYPER : FREEZEON_FREEZE_PER_TICK);
                     if (p.hyper) {
                         checkHit(target, { ownerBrawler: 'freezeon', ownerId: owner.id, damage: Math.round(FREEZEON_HYPER_DOT_PER_S * FREEZEON_FREEZE_TICK_MS / 1000), pierce: true, super: true, hitIds: {}, isFreezeonPatchDot: true }, -1);
+                    } else {
+                        checkHit(target, { ownerBrawler: 'freezeon', ownerId: owner.id, damage: Math.round(FREEZEON_SUPER_DOT_PER_S * FREEZEON_FREEZE_TICK_MS / 1000), pierce: true, super: true, hitIds: {}, isFreezeonPatchDot: true }, -1);
                     }
                     if (sp2) target.freezeonHypothermiaUntil = Math.max(target.freezeonHypothermiaUntil || 0, now + 400);
                 }
@@ -25946,6 +25985,39 @@ let heistFeverActive = false;
             ctx.setLineDash([14, 10]);
             ctx.beginPath(); ctx.arc(0, 0, p.radius, now / 600, now / 600 + Math.PI * 2); ctx.stroke();
             ctx.setLineDash([]);
+            ctx.restore();
+        }
+        // Lobbed rink cans in flight: spinning ice can on its arc + a
+        // dashed landing marker on the ground (jackTrade pattern).
+        for (const r of freezeonThrownRinks) {
+            const progress = clamp((now - r.createdAt) / Math.max(1, r.impactAt - r.createdAt), 0, 1);
+            const arc = Math.sin(progress * Math.PI) * FREEZEON_SUPER_ARC_HEIGHT;
+            const gx = r.startX + (r.targetX - r.startX) * progress;
+            const gy = r.startY + (r.targetY - r.startY) * progress;
+            ctx.save();
+            // Landing marker.
+            ctx.globalAlpha = 0.5;
+            ctx.strokeStyle = r.hyper ? '#c084fc' : '#38bdf8';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([10, 8]);
+            ctx.beginPath(); ctx.arc(r.targetX, r.targetY, 40, 0, Math.PI * 2); ctx.stroke();
+            ctx.setLineDash([]);
+            // Ground shadow under the can.
+            ctx.globalAlpha = 0.3;
+            ctx.fillStyle = '#0c4a6e';
+            ctx.beginPath(); ctx.ellipse(gx, gy, 18 * (1 - progress * 0.3), 8, 0, 0, Math.PI * 2); ctx.fill();
+            // The can itself, riding the arc and spinning.
+            ctx.translate(gx, gy - arc);
+            ctx.rotate(now / 120);
+            ctx.globalAlpha = 0.95;
+            ctx.shadowColor = r.hyper ? '#c084fc' : '#38bdf8';
+            ctx.shadowBlur = 16;
+            ctx.fillStyle = r.hyper ? '#c084fc' : '#7dd3fc';
+            ctx.beginPath(); ctx.arc(0, 0, 14, 0, Math.PI * 2); ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI * 2); ctx.stroke();
             ctx.restore();
         }
         // Freeze buildup bar above enemies (ice-blue).
@@ -32322,7 +32394,7 @@ let heistFeverActive = false;
   function startDuelsRound() {
     outlitWallChains.length = 0;
     bullets.length = 0; ragerWarTotems.length = 0;
-    bolznstienPendingStrikes.length = 0; bolznstienShockTrails.length = 0; bolznstienChainArcs.length = 0; chocolatePuddles.length = 0; magnatarVortices.length = 0; oilMakerPuddles.length = 0; oilMakerBarrels.length = 0; oilMakerPendingPuddles.length = 0; steamerPoles.length = 0; weefeePoles.length = 0; chickpigEggZones.length = 0; rings.length = 0; cheeseFields.length = 0; healingPods.length = 0; explosions.length = 0; pendingClones.length = 0; destructibleWalls.length = 0; floatingTexts.length = 0; stickyNotes.length = 0; amplifierToolboxes.length = 0; amplifierScrewZones.length = 0; skeleParachutes.length = 0; skelePortals.length = 0; malakorHellZones.length = 0; malakorHands.length = 0; relativityZones.length = 0; packetTimeFields.length = 0; packetTelegraphs.length = 0; fastpassCheckpoints.length = 0; freestyleMicrophones.length = 0; portaloPortalPairs.length = 0; portaloPrisons.length = 0; portaloShockTimers.length = 0; ghoulHaunts.length = 0; darkenerClouds.length = 0; darkagons.length = 0; cursedStorms.length = 0; cursedHyperClouds.length = 0; antiRoyalMortarShells.length = 0; antiRoyalMortarZones.length = 0; jackTradeVolleys.length = 0; jackTradeThrownEffects.length = 0; jackTradeZones.length = 0; jackTradeEndpointShots.length = 0; badbatSwarm.length = 0; badbatShieldOrbs.length = 0; loomaThreads.length = 0; loomaWeaves.length = 0; feathersWindZones.length = 0; feathersStorms.length = 0; spikeyParkedBalls.length = 0; spikeyMegaBalls.length = 0; spikeyPendingSlams.length = 0; electricRealms.length = 0; electrostienPendingStrikes.length = 0; freezeonPatches.length = 0; freezeonSlipZones.length = 0; freezeonShatters.length = 0;
+    bolznstienPendingStrikes.length = 0; bolznstienShockTrails.length = 0; bolznstienChainArcs.length = 0; chocolatePuddles.length = 0; magnatarVortices.length = 0; oilMakerPuddles.length = 0; oilMakerBarrels.length = 0; oilMakerPendingPuddles.length = 0; steamerPoles.length = 0; weefeePoles.length = 0; chickpigEggZones.length = 0; rings.length = 0; cheeseFields.length = 0; healingPods.length = 0; explosions.length = 0; pendingClones.length = 0; destructibleWalls.length = 0; floatingTexts.length = 0; stickyNotes.length = 0; amplifierToolboxes.length = 0; amplifierScrewZones.length = 0; skeleParachutes.length = 0; skelePortals.length = 0; malakorHellZones.length = 0; malakorHands.length = 0; relativityZones.length = 0; packetTimeFields.length = 0; packetTelegraphs.length = 0; fastpassCheckpoints.length = 0; freestyleMicrophones.length = 0; portaloPortalPairs.length = 0; portaloPrisons.length = 0; portaloShockTimers.length = 0; ghoulHaunts.length = 0; darkenerClouds.length = 0; darkagons.length = 0; cursedStorms.length = 0; cursedHyperClouds.length = 0; antiRoyalMortarShells.length = 0; antiRoyalMortarZones.length = 0; jackTradeVolleys.length = 0; jackTradeThrownEffects.length = 0; jackTradeZones.length = 0; jackTradeEndpointShots.length = 0; badbatSwarm.length = 0; badbatShieldOrbs.length = 0; loomaThreads.length = 0; loomaWeaves.length = 0; feathersWindZones.length = 0; feathersStorms.length = 0; spikeyParkedBalls.length = 0; spikeyMegaBalls.length = 0; spikeyPendingSlams.length = 0; electricRealms.length = 0; electrostienPendingStrikes.length = 0; freezeonPatches.length = 0; freezeonSlipZones.length = 0; freezeonShatters.length = 0; freezeonThrownRinks.length = 0;
     snapperWaves.length = 0;
     rocketeerFireZones.length = 0;
     jetpackFireZones.length = 0;
@@ -52077,7 +52149,7 @@ let heistFeverActive = false;
       isMegasteinBossEvent = showdownMode === 'megastein_boss';
       isBossFight = isLavaBossEvent || isBouncinBossEvent || isHeadlessBossEvent || isTombstoneBossEvent || isMegasteinBossEvent || isBeastBossEvent;
       activeSkinTrial = null; // real matches never use trial skins
-      feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = [];
+      feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = [];
       if (isBouncinBossEvent) {
           initBouncinBossMatch();
       }
@@ -52510,7 +52582,7 @@ let heistFeverActive = false;
       isMirrorMode = false;
       isImpossibleMode = false;
       isObjectiveMode = false;
-      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; isPropHuntMode = false; propHuntState = null;
+      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; isPropHuntMode = false; propHuntState = null;
       isTraining = false;
       isDuels = true;
       isTowerDuelEvent = true;
@@ -52553,7 +52625,7 @@ let heistFeverActive = false;
       isMirrorMode = false;
       isImpossibleMode = false;
       isObjectiveMode = false;
-      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; isPropHuntMode = false; propHuntState = null;
+      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; isPropHuntMode = false; propHuntState = null;
       isTraining = false;
       isDuels = true;
       isFusedMode = true;
@@ -53806,7 +53878,7 @@ isBrawlerLabMode = false;
       isTowerDuelEvent = false;
       isWarperEvent = false;
       isObjectiveMode = false;
-      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; isPropHuntMode = false; propHuntState = null;
+      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; isPropHuntMode = false; propHuntState = null;
       soloTrialWave = 0;
       soloTrialPending = false;
       playing = true;
@@ -53952,7 +54024,7 @@ isBrawlerLabMode = false;
       player.fusedParts = null;
       isWarperEvent = false;
       isObjectiveMode = false;
-      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; isPropHuntMode = false; propHuntState = null;
+      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; isPropHuntMode = false; propHuntState = null;
     isConstructionMode = false;
       if (document.getElementById('topbar')) document.getElementById('topbar').textContent = 'Arena Forge - Rookie Course';
       playing = true;
@@ -56570,12 +56642,14 @@ function checkHit(target, b, i){
             if (bookwormOwner) bookwormApplyWormStack(bookwormOwner, target);
         }
         // FreeZeon: a cone that hits an enemy leaves slush where it landed,
-        // and a Hyper cone hit schedules a brain-freeze shatter.
+        // builds the freeze meter (+0.5s per hit — 4 hits freeze), and a
+        // Hyper cone hit schedules a brain-freeze shatter.
         if (b && b.ownerBrawler === 'freezeon' && b.isFreezeonCone && target && target.hp > 0) {
             freezeonConeLanded(b);
-            if (b.hyperVisual) {
-                const freezeonOwner = getEntityById(b.ownerId);
-                if (freezeonOwner) freezeonScheduleShatter(freezeonOwner, target);
+            const freezeonOwner = getEntityById(b.ownerId);
+            if (freezeonOwner) {
+                if (!target.isStructure && !target.isPet) freezeonApplyFreezeBuild(freezeonOwner, target, FREEZEON_CONE_FREEZE_BUILD);
+                if (b.hyperVisual) freezeonScheduleShatter(freezeonOwner, target);
             }
         }
 
@@ -83630,6 +83704,41 @@ function checkHit(target, b, i){
             ctx.beginPath(); ctx.arc(ex.x, ex.y, 10 * fAlpha + 4, 0, Math.PI * 2); ctx.fill();
             ctx.strokeStyle = '#d1d5db'; ctx.lineWidth = 2.5;
             ctx.beginPath(); ctx.arc(ex.x, ex.y, gR * (0.5 + 0.5 * fAlpha), 0, Math.PI * 2); ctx.stroke();
+            ctx.restore();
+            continue;
+        }
+        if (ex.fxKind === 'freezeonFreeze') {
+            // FreeZeon freeze explosion: real ice shards + flash + expanding
+            // ring, drawn from the real frozen state — ex.hyper is the
+            // owner's real Hyper state at the moment of the freeze (purple
+            // variant), never a faked flag (Snipa lesson).
+            const fAlpha = Math.max(0, 1 - ex.life / ex.maxLife);
+            const progress = clamp(ex.life / ex.maxLife, 0, 1);
+            const fR = (ex.radius || 72) * (0.35 + 0.65 * progress);
+            const shard = ex.hyper ? '#e9d5ff' : '#bae6fd';
+            const shardCore = ex.hyper ? '#c084fc' : '#38bdf8';
+            const ringColor = ex.hyper ? '#a855f7' : '#7dd3fc';
+            ctx.save();
+            ctx.globalAlpha = fAlpha;
+            ctx.shadowColor = shardCore; ctx.shadowBlur = 18;
+            // Ice shards: 8 jagged shards radiating from the frozen enemy.
+            ctx.strokeStyle = shard; ctx.lineWidth = 4; ctx.lineCap = 'round';
+            for (let s = 0; s < 8; s++) {
+                const a = (s / 8) * Math.PI * 2 + (ex.life * 2);
+                const r1 = fR * 0.3, r2 = fR;
+                ctx.beginPath();
+                ctx.moveTo(ex.x + Math.cos(a) * r1, ex.y + Math.sin(a) * r1);
+                ctx.lineTo(ex.x + Math.cos(a + 0.12) * fR * 0.72, ex.y + Math.sin(a + 0.12) * fR * 0.72);
+                ctx.lineTo(ex.x + Math.cos(a) * r2, ex.y + Math.sin(a) * r2);
+                ctx.stroke();
+            }
+            ctx.shadowBlur = 0;
+            // Expanding ring.
+            ctx.strokeStyle = ringColor; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.arc(ex.x, ex.y, fR, 0, Math.PI * 2); ctx.stroke();
+            // White flash core.
+            ctx.fillStyle = `rgba(255,255,255,${0.9 * fAlpha})`;
+            ctx.beginPath(); ctx.arc(ex.x, ex.y, 10 * fAlpha + 4, 0, Math.PI * 2); ctx.fill();
             ctx.restore();
             continue;
         }
