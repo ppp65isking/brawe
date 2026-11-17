@@ -137,6 +137,14 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             0% { box-shadow: 0 0 20px 8px rgba(255, 0, 255, 0.6), inset 0 0 12px rgba(255, 255, 255, 0.1); }
             100% { box-shadow: 0 0 42px 18px rgba(255, 102, 255, 0.8), inset 0 0 20px rgba(255, 255, 255, 0.18); }
         }
+        /* New Hypercharge effect (2026-11-17): the hc-ready/hc-active
+           keyframes above were dead CSS — nothing referenced them. They now
+           drive the real hyper button states (classes toggled off the real
+           isHypercharged gate). */
+        .mobile-action-btn--hyper.is-ready { animation: hc-ready-flame .8s ease-in-out infinite alternate; }
+        .mobile-action-btn--hyper.is-active { animation: hc-active-flame .45s ease-in-out infinite alternate; }
+        #hypercharge.is-ready { animation: hc-ready-flame .8s ease-in-out infinite alternate; }
+        #hypercharge.is-active { animation: hc-active-flame .45s ease-in-out infinite alternate; }
         #mobileControlsRoot {
             position: fixed;
             inset: 0;
@@ -3845,6 +3853,10 @@ function updateGadgetInfo() {
       if (!hyperBtn) return;
       const unlocked = isTraining || !!getSelectedProgress().hyperchargeUnlocked;
       if (!unlocked) { hyperBtn.textContent = 'Core Surge: Locked'; hyperBtn.disabled = true; return; }
+      // New Hypercharge effect: flame the desktop button off the same real
+      // gate the mobile button already uses (is-ready / is-active).
+      hyperBtn.classList.toggle('is-ready', hyperChargeCharge >= 100 || !!isHypercharged);
+      hyperBtn.classList.toggle('is-active', !!isHypercharged);
       if (isHypercharged) { hyperBtn.textContent = 'CORE SURGED'; hyperBtn.disabled = false; return; }
       hyperBtn.textContent = hyperChargeCharge >= 100 ? 'CORE SURGE: Ready' : `CORE: ${Math.floor(hyperChargeCharge)}%`;
       hyperBtn.disabled = hyperChargeCharge < 100;
@@ -4759,6 +4771,90 @@ const bolznstienPendingStrikes = [];
     const BUSH_WORLD_RENDER_ENABLED = true;
   const pendingClones = [];
   const explosions = [];
+  // ---- New Hypercharge effect (2026-11-17): "Hypercharge Nova" ----
+  // Flashier AND cheaper than the old explosion-spam trail. All glow is
+  // baked ONCE into offscreen sprites (no per-frame gradients, no
+  // shadowBlur anywhere in the effect path); embers live in a fixed
+  // preallocated pool (no steady-state allocation); activation/expiry are
+  // one explosion entry each, fired on the rising/falling edge of the REAL
+  // hyper gate (isEntityHyperchargedNow) — never a faked flag.
+  let hcGlowSprite = null;   // 128px magenta radial glow
+  let hcCoreSprite = null;   // 64px white-hot core
+  let hcSparkSprite = null;  // 32px ember dot
+  let hcSpritesReady = false;
+  function ensureHyperFxSprites() {
+      if (hcSpritesReady) return;
+      hcSpritesReady = true; // try once; a stub/broken context degrades to arcs
+      try {
+          const mk = (size, stops) => {
+              const c = document.createElement('canvas');
+              c.width = size; c.height = size;
+              const g = c.getContext('2d');
+              if (!g || typeof g.createRadialGradient !== 'function') return null;
+              const grad = g.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+              for (const stop of stops) grad.addColorStop(stop[0], stop[1]);
+              g.fillStyle = grad;
+              g.fillRect(0, 0, size, size);
+              return c;
+          };
+          hcGlowSprite = mk(128, [[0, 'rgba(255,255,255,0.95)'], [0.25, 'rgba(232,0,255,0.75)'], [0.55, 'rgba(168,60,255,0.38)'], [1, 'rgba(120,20,255,0)']]);
+          hcCoreSprite = mk(64, [[0, 'rgba(255,255,255,1)'], [0.4, 'rgba(255,179,255,0.85)'], [1, 'rgba(232,0,255,0)']]);
+          hcSparkSprite = mk(32, [[0, 'rgba(255,255,255,1)'], [0.35, 'rgba(255,214,255,0.9)'], [1, 'rgba(217,70,239,0)']]);
+      } catch (e) { /* sprites stay null; arcs still draw */ }
+  }
+  // Fixed ember pool: preallocated once, reused ring-buffer style.
+  const HC_EMBER_MAX = LOW_POWER_DEVICE ? 48 : 96;
+  const HC_EMBER_POOL = [];
+  for (let _hcEi = 0; _hcEi < HC_EMBER_MAX; _hcEi++) HC_EMBER_POOL.push({ x: 0, y: 0, vx: 0, vy: 0, life: 0, maxLife: 0.7, size: 5, alive: false });
+  let hcEmberCursor = 0;
+  function hcSpawnEmber(x, y) {
+      const em = HC_EMBER_POOL[hcEmberCursor];
+      hcEmberCursor = (hcEmberCursor + 1) % HC_EMBER_MAX;
+      const a = Math.random() * Math.PI * 2;
+      em.x = x + Math.cos(a) * 10; em.y = y + (Math.random() * 8 - 4) - 6;
+      em.vx = Math.cos(a) * 14; em.vy = -(26 + Math.random() * 30);
+      em.life = 0; em.maxLife = 0.55 + Math.random() * 0.3;
+      em.size = 4 + Math.random() * 4; em.alive = true;
+  }
+  function hcUpdateEmbers(dt) {
+      for (let i = 0; i < HC_EMBER_MAX; i++) {
+          const em = HC_EMBER_POOL[i];
+          if (!em.alive) continue;
+          em.life += dt;
+          if (em.life >= em.maxLife) { em.alive = false; continue; }
+          em.x += em.vx * dt; em.y += em.vy * dt; em.vy -= 12 * dt;
+      }
+  }
+  // Edge detector for the new Hypercharge effect: fires the activation
+  // burst on the rising edge of the REAL hyper gate and the expiry poof on
+  // the falling edge, and trickles pooled embers while active. One helper
+  // covers the player AND every bot, so button / always_hyper / Hyper
+  // Forge / bot / boss activations all get the burst with no per-site hooks.
+  function hcTickHyperEntity(e, now, isPlayerEntity) {
+      if (!e) return;
+      const isHc = isEntityHyperchargedNow(e, now);
+      if (isHc && !e._hcFxActive) {
+          e._hcFxActive = true;
+          e._hcFxEmberAt = 0;
+          ensureHyperFxSprites();
+          explosions.push({ x: e.x, y: e.y, radius: (e.radius || 16) + 52, life: 0, maxLife: 0.55, fxKind: 'hyperActivate' });
+          if (isPlayerEntity) {
+              spawnFloatingText(e.x, e.y - 46, '⚡ HYPERCHARGE!', '#f0abff');
+              screenShakeUntil = now + 160;
+              screenShakeAmount = 4;
+          }
+      } else if (!isHc && e._hcFxActive) {
+          e._hcFxActive = false;
+          if (e.hp > 0) explosions.push({ x: e.x, y: e.y, radius: (e.radius || 16) + 40, life: 0, maxLife: 0.45, fxKind: 'hyperExpire' });
+      }
+      if (isHc && e.hp > 0 && explosions.length <= 105) {
+          const gap = LOW_POWER_DEVICE ? 90 : 55;
+          if (now - (e._hcFxEmberAt || 0) >= gap) {
+              e._hcFxEmberAt = now;
+              hcSpawnEmber(e.x, e.y);
+          }
+      }
+  }
   // Thanksgiving big update Phase 3: Power Box break shards (art only).
   const powerBoxShards = [];
   const nativeExplosionPush = Array.prototype.push;
@@ -37105,6 +37201,9 @@ let heistFeverActive = false;
       hyperChargeCharge = 0;
       player.isHypercharged = false;
       player.hyperChargeCharge = 0;
+      // New Hypercharge effect: clear the aura edge flag too, so a reset
+      // match can't ghost-fire an expiry burst on its first frame.
+      player._hcFxActive = false;
       if (typeof updateHyperButton === 'function') updateHyperButton();
   }
 
@@ -62920,31 +63019,13 @@ function checkHit(target, b, i){
     tickShieldDecay(player, dt);
     for(const bot of aliveBots){ tickShieldDecay(bot, dt); }
 
-    // Hypercharge Aura Trail
-    for (const e of [player, ...(typeof bots !== "undefined" ? bots : [])]) {
-        const isHc = e === player ? isHypercharged : e.isHypercharged;
-        if (e.hp > 0 && isHc) {
-            if (Math.random() < 0.5) { // Outer purple flame
-                explosions.push({
-                    x: e.x + (Math.random() * 30 - 15),
-                    y: e.y + (Math.random() * 30 - 15) - 10,
-                    radius: 12 + Math.random() * 8,
-                    life: 0,
-                    maxLife: 0.4 + Math.random() * 0.2,
-                    color: 'rgba(238, 0, 255, 0.4)'
-                });
-            }
-            if (Math.random() < 0.3) { // Inner bright pink/white flame
-                explosions.push({
-                    x: e.x + (Math.random() * 20 - 10),
-                    y: e.y + (Math.random() * 20 - 10) - 15,
-                    radius: 6 + Math.random() * 6,
-                    life: 0,
-                    maxLife: 0.25 + Math.random() * 0.15,
-                    color: 'rgba(255, 150, 255, 0.7)'
-                });
-            }
-        }
+    // New Hypercharge effect (2026-11-17): replaces the old explosion-spam
+    // trail (see hcTickHyperEntity). One burst per activation, one per
+    // expiry, pooled embers while active — all off the REAL hyper gate.
+    hcUpdateEmbers(dt);
+    hcTickHyperEntity(player, now, true);
+    if (typeof bots !== "undefined") {
+        for (let _hcI = 0; _hcI < bots.length; _hcI++) hcTickHyperEntity(bots[_hcI], now, false);
     }
 
     if(player.reloadBuffUntil && now < player.reloadBuffUntil){
@@ -71824,6 +71905,73 @@ function checkHit(target, b, i){
           ctx.fillStyle = '#ffb36b';
           ctx.fillRect(x, y + h + 3 + bob, w * hpPct, 4);
       }
+  }
+
+  // New Hypercharge effect (2026-11-17): active aura, drawn once per
+  // frame for every hypercharged on-screen entity. Pre-rendered sprites
+  // only — no shadowBlur, no per-frame gradients, no allocations.
+  function drawHyperchargeAuras(now, isWorldVisualVisible, visualPressure) {
+      ensureHyperFxSprites();
+      // Player first, then bots — one indexed loop, no spread allocation.
+      const botCount = (typeof bots !== "undefined") ? bots.length : 0;
+      for (let i = -1; i < botCount; i++) {
+          const e = i === -1 ? player : bots[i];
+          if (!e || e.hp <= 0 || !isEntityHyperchargedNow(e, now)) continue;
+          const r = e.radius || 16;
+          if (!isWorldVisualVisible(e.x, e.y, r + 90)) continue;
+          const pulse = 1 + Math.sin(now / 160 + (e.id || 0) * 1.7) * 0.07;
+          const glowR = (r + 46) * pulse;
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+          if (hcGlowSprite) {
+              ctx.globalAlpha = 0.5;
+              ctx.drawImage(hcGlowSprite, e.x - glowR, e.y - glowR, glowR * 2, glowR * 2);
+          }
+          if (hcCoreSprite) {
+              const cr = r * 1.15 * pulse;
+              ctx.globalAlpha = 0.65;
+              ctx.drawImage(hcCoreSprite, e.x - cr, e.y - cr, cr * 2, cr * 2);
+          }
+          // Orbit rings: rotating dashed outer ring + thin inner ring.
+          ctx.globalAlpha = 0.85;
+          ctx.strokeStyle = '#e878ff';
+          ctx.lineWidth = 3;
+          ctx.setLineDash([14, 10]);
+          ctx.lineDashOffset = -now / 28;
+          ctx.beginPath();
+          ctx.arc(e.x, e.y, r + 16, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.globalAlpha = 0.5;
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(e.x, e.y, r + 8, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+      }
+      if (visualPressure) return;
+      // Pooled embers (shared pool; only the live ones draw).
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < HC_EMBER_MAX; i++) {
+          const em = HC_EMBER_POOL[i];
+          if (!em.alive) continue;
+          if (!isWorldVisualVisible(em.x, em.y, 40)) continue;
+          const prog = em.life / em.maxLife;
+          const sz = em.size * (1 + prog * 0.6);
+          if (hcSparkSprite) {
+              ctx.globalAlpha = (1 - prog) * 0.9;
+              ctx.drawImage(hcSparkSprite, em.x - sz, em.y - sz, sz * 2, sz * 2);
+          } else {
+              ctx.globalAlpha = (1 - prog) * 0.7;
+              ctx.fillStyle = '#f0abff';
+              ctx.beginPath();
+              ctx.arc(em.x, em.y, sz * 0.5, 0, Math.PI * 2);
+              ctx.fill();
+          }
+      }
+      ctx.restore();
   }
 
   function render(){
@@ -84845,6 +84993,11 @@ function checkHit(target, b, i){
         }
     }
 
+    // New Hypercharge effect (2026-11-17): active aura — pre-rendered glow
+    // + core sprites, orbit rings, pooled embers. Drawn after entities so
+    // the additive glow sits on top of the brawler.
+    drawHyperchargeAuras(now, isWorldVisualVisible, visualPressure);
+
     let decorativeFxSeen = 0;
     for(const ex of explosions){
         const visualRadius = Math.max(80, Number(ex?.radius) || 0) + 80;
@@ -85391,6 +85544,79 @@ function checkHit(target, b, i){
             for(let ray=0;ray<16;ray++){const angle=ray*Math.PI*2/16+progress*.18,inner=ex.radius*(.12+burst*.12),outer=ex.radius*(.34+burst*(.72+(ray%3)*.08));ctx.globalAlpha=alpha*(ray%2?.7:.95);ctx.strokeStyle=ray%3===0?(hyper?'#f28aff':'#fff0a2'):(hyper?'#9b50e8':'#ff9f3c');ctx.lineWidth=ray%3===0?5:3;ctx.beginPath();ctx.moveTo(Math.cos(angle)*inner,Math.sin(angle)*inner);ctx.lineTo(Math.cos(angle)*outer,Math.sin(angle)*outer);ctx.stroke();}
             for(let chip=0;chip<10;chip++){const angle=chip*Math.PI*2/10-progress*.7,r=ex.radius*(.25+burst*(.45+(chip%2)*.18));ctx.save();ctx.translate(Math.cos(angle)*r,Math.sin(angle)*r);ctx.rotate(angle+progress*5);ctx.globalAlpha=alpha;ctx.fillStyle=chip%2?(hyper?'#ef91ff':'#ffd55b'):'#f8f0ff';if(chip%3===0){ctx.font='900 17px serif';ctx.textAlign='center';ctx.fillText(chip%2?'♦':'♠',0,5);}else{ctx.beginPath();ctx.arc(0,0,5+(chip%3),0,Math.PI*2);ctx.fill();}ctx.restore();}
             ctx.restore();continue;
+        }
+        if (ex.fxKind === 'hyperActivate') {
+            // Hypercharge Nova — activation burst. Pre-rendered glow flash +
+            // 3 expanding rings + 12 fixed spark streaks. No shadowBlur, no
+            // per-frame gradients, no allocations (loop vars only).
+            const p = clamp(ex.life / ex.maxLife, 0, 1);
+            const burst = 1 - Math.pow(1 - p, 3);
+            const a = 1 - p;
+            ctx.save();
+            ctx.translate(ex.x, ex.y);
+            ctx.globalCompositeOperation = 'lighter';
+            if (hcGlowSprite) {
+                const gs = ex.radius * (0.7 + burst * 1.7);
+                ctx.globalAlpha = a * 0.9;
+                ctx.drawImage(hcGlowSprite, -gs, -gs, gs * 2, gs * 2);
+            }
+            const ringCols = ['#ffffff', '#f0abff', '#d946ef'];
+            for (let ring = 0; ring < 3; ring++) {
+                ctx.globalAlpha = a * (1 - ring * 0.22);
+                ctx.strokeStyle = ringCols[ring];
+                ctx.lineWidth = 6 - ring * 2;
+                ctx.beginPath();
+                ctx.arc(0, 0, ex.radius * (0.22 + burst * (0.62 - ring * 0.12)), 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            for (let s = 0; s < 12; s++) {
+                const ang = (s / 12) * Math.PI * 2 + p * 0.9;
+                const r0 = ex.radius * (0.15 + burst * 0.2);
+                const r1 = ex.radius * (0.35 + burst * 0.85);
+                ctx.globalAlpha = a * (s % 2 ? 0.75 : 0.95);
+                ctx.strokeStyle = s % 3 === 0 ? '#ffffff' : '#e879ff';
+                ctx.lineWidth = s % 3 === 0 ? 3.5 : 2.5;
+                ctx.beginPath();
+                ctx.moveTo(Math.cos(ang) * r0, Math.sin(ang) * r0);
+                ctx.lineTo(Math.cos(ang) * r1, Math.sin(ang) * r1);
+                ctx.stroke();
+            }
+            ctx.restore();
+            continue;
+        }
+        if (ex.fxKind === 'hyperExpire') {
+            // Hypercharge Nova — expiry poof. Collapsing violet ring + fading
+            // glow + 6 short sparks. Quiet by design: no text, no shake.
+            const p = clamp(ex.life / ex.maxLife, 0, 1);
+            const a = 1 - p;
+            ctx.save();
+            ctx.translate(ex.x, ex.y);
+            ctx.globalCompositeOperation = 'lighter';
+            if (hcGlowSprite) {
+                const gs = ex.radius * (1 - p * 0.35);
+                ctx.globalAlpha = a * 0.45;
+                ctx.drawImage(hcGlowSprite, -gs, -gs, gs * 2, gs * 2);
+            }
+            ctx.globalAlpha = a * 0.7;
+            ctx.strokeStyle = '#c084fc';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(0, 0, ex.radius * (0.95 - p * 0.55), 0, Math.PI * 2);
+            ctx.stroke();
+            for (let s = 0; s < 6; s++) {
+                const ang = (s / 6) * Math.PI * 2 + p * 0.6;
+                const r0 = ex.radius * (0.25 + p * 0.3);
+                const r1 = ex.radius * (0.5 + p * 0.45);
+                ctx.globalAlpha = a * 0.8;
+                ctx.strokeStyle = '#e9d5ff';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(Math.cos(ang) * r0, Math.sin(ang) * r0);
+                ctx.lineTo(Math.cos(ang) * r1, Math.sin(ang) * r1);
+                ctx.stroke();
+            }
+            ctx.restore();
+            continue;
         }
         if(ex.fxKind==='fastpassLane'){
             const progress=clamp(ex.life/ex.maxLife,0,1),ease=1-Math.pow(1-progress,3),hyper=!!ex.hyperVisual,primary=hyper?'223,92,255':'69,235,255',secondary=hyper?'255,103,220':'220,255,255',rotation=(performance.now()/360)*(hyper?-1:1);ctx.save();ctx.translate(ex.x,ex.y);ctx.globalCompositeOperation='lighter';const glow=ctx.createRadialGradient(0,0,0,0,0,ex.radius*.58);glow.addColorStop(0,`rgba(${secondary},${alpha*.42})`);glow.addColorStop(.38,`rgba(${primary},${alpha*.22})`);glow.addColorStop(1,`rgba(${primary},0)`);ctx.fillStyle=glow;ctx.beginPath();ctx.arc(0,0,ex.radius*.58,0,Math.PI*2);ctx.fill();ctx.rotate(rotation);for(let ring=0;ring<3;ring++){const r=ex.radius*(.16+ease*(.48+ring*.18));ctx.strokeStyle=`rgba(${ring===1?secondary:primary},${alpha*(.95-ring*.18)})`;ctx.lineWidth=hyper?5-ring:4-ring*.7;ctx.setLineDash(ring===1?[18,10]:[]);ctx.lineDashOffset=ring===1?-performance.now()/14:0;ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.stroke();}ctx.setLineDash([]);const streaks=hyper?24:16;for(let i=0;i<streaks;i++){const a=i*Math.PI*2/streaks+(i%2?progress*.16:-progress*.11),inner=ex.radius*(.13+progress*.14),outer=ex.radius*(.42+ease*(.46+(i%3)*.035));ctx.strokeStyle=`rgba(${i%3===0?secondary:primary},${alpha*(i%2?.72:.95)})`;ctx.lineWidth=i%3===0?3.5:2;ctx.beginPath();ctx.moveTo(Math.cos(a)*inner,Math.sin(a)*inner);ctx.lineTo(Math.cos(a)*outer,Math.sin(a)*outer);ctx.stroke();}for(let i=0;i<6;i++){const a=i*Math.PI/3-progress*.7,r=ex.radius*(.28+ease*.48),size=hyper?13:10;ctx.save();ctx.translate(Math.cos(a)*r,Math.sin(a)*r);ctx.rotate(a);ctx.strokeStyle=`rgba(${secondary},${alpha*.9})`;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-size,-size*.55);ctx.lineTo(0,0);ctx.lineTo(-size,size*.55);ctx.stroke();ctx.restore();}ctx.restore();continue;
@@ -95588,6 +95814,11 @@ function renderBouncinBossEvent(phase) {
     set hyperChargeCharge(v) { hyperChargeCharge = v; },
     get hyperchargeUntil() { return hyperchargeUntil; },
     set hyperchargeUntil(v) { hyperchargeUntil = v; },
+    // New Hypercharge effect (2026-11-17): test-only API so the regression
+    // suite can drive the REAL activation path and observe the REAL burst
+    // entries (same pattern as the existing update/render exports).
+    get activateHypercharge() { return activateHypercharge; },
+    get explosions() { return explosions; },
     get activeRankedModifier() { return activeRankedModifier; },
     set activeRankedModifier(v) { activeRankedModifier = v; },
     get activeRankedModifierSecondary() { return activeRankedModifierSecondary; },
