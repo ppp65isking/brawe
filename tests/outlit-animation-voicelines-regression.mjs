@@ -32,15 +32,15 @@ const EXPECTED_TEXT = {
   'spawn-2.mp3': "Outlit's in the arena. Try and keep up.",
   'spawn-3.mp3': 'Locked, loaded, and lit.',
   'attack-1.mp3': 'Eat buckshot!',
-  'attack-2.mp3': 'Point blank!',
+  'attack-2.mp3': 'Taste the light!',
   'attack-3.mp3': 'Scatter!',
   'attack-4.mp3': 'Pump it up!',
   'super-1.mp3': 'Boom Break!',
   'super-2.mp3': 'Lights out!',
-  'super-3.mp3': 'Three shots. No survivors.',
+  'super-3.mp3': 'Here comes the big one!',
   'kill-1.mp3': 'Lights out for you.',
   'kill-2.mp3': "Down. Who's next?",
-  'kill-3.mp3': 'Point blank. Ouch.',
+  'kill-3.mp3': 'That one left a mark.',
   'hurt-1.mp3': 'Hey! Watch the lamp!',
   'hurt-2.mp3': 'Ow! That actually hurt!',
   'hurt-3.mp3': 'You scratched the paint!',
@@ -51,16 +51,21 @@ const EXPECTED_TEXT = {
   'win-2.mp3': 'Still lit. Still standing.',
   'win-3.mp3': 'Day one, and still number one.',
   'idle-1.mp3': 'Hello? Anyone still out there?',
-  'idle-2.mp3': "My lamp's getting bored."
+  'idle-2.mp3': "My lamp's getting bored.",
+  // Mutation trigger (added 2026-11-05 with the Fuser voice update).
+  'mutation-1.mp3': "Overpressure! Light it up!",
+  'mutation-2.mp3': "Pressure's peaking, time to blow this wide open!",
+  'mutation-3.mp3': "Full pressure! Nobody's safe now!"
 };
-const TRIGGERS = ['spawn', 'attack', 'super', 'kill', 'hurt', 'death', 'win', 'idle'];
-check('voice map covers all 8 triggers', TRIGGERS.every(t => Array.isArray(VOICE.lines[t]) && VOICE.lines[t].length > 0));
-check('voice map has exactly 24 clips', VOICE.fileCount() === 24 && Object.values(VOICE.lines).flat().length === 24);
+const TRIGGERS = ['spawn', 'attack', 'super', 'kill', 'hurt', 'death', 'win', 'idle', 'mutation'];
+check('voice map covers all triggers', TRIGGERS.every(t => Array.isArray(VOICE.lines[t]) && VOICE.lines[t].length > 0));
+check('voice map has exactly 27 clips (24 + 3 mutation)', VOICE.fileCount() === 27 && Object.values(VOICE.lines).flat().length === 27);
 check('voice text map matches the SPEC line list exactly', JSON.stringify(VOICE.text) === JSON.stringify(EXPECTED_TEXT));
 check('voice is Twenty (avocado_v2:Twenty), the flagged builder pick', VOICE.voiceId === 'avocado_v2:Twenty' && VOICE.voiceName === 'Twenty');
 check('voice cooldowns: attack 4500 / hurt 2500 / kill 1200 / idle 20000, rare triggers unthrottled',
   VOICE.cooldowns.attack === 4500 && VOICE.cooldowns.hurt === 2500 && VOICE.cooldowns.kill === 1200 && VOICE.cooldowns.idle === 20000 &&
-  VOICE.cooldowns.spawn === 0 && VOICE.cooldowns.super === 0 && VOICE.cooldowns.death === 0 && VOICE.cooldowns.win === 0);
+  VOICE.cooldowns.spawn === 0 && VOICE.cooldowns.super === 0 && VOICE.cooldowns.death === 0 && VOICE.cooldowns.win === 0 &&
+  VOICE.cooldowns.mutation === 0);
 
 let audioBytes = 0, audioOk = true;
 for (const [file, text] of Object.entries(EXPECTED_TEXT)) {
@@ -74,7 +79,7 @@ for (const [file, text] of Object.entries(EXPECTED_TEXT)) {
 }
 check('all 24 audio files exist on disk and are real MP3s', audioOk);
 check('total audio size is reasonable (< 1 MB)', audioBytes > 100000 && audioBytes < 1024 * 1024);
-console.log(`  (audio total: ${(audioBytes / 1024).toFixed(0)} KB across 24 clips)`);
+console.log(`  (audio total: ${(audioBytes / 1024).toFixed(0)} KB across 27 clips)`);
 
 // --- Voice playback degrades silently without Audio/DOM ---
 check('play() returns false (never throws) with no Audio in the environment', VOICE.play('spawn') === false && VOICE.play('attack') === false);

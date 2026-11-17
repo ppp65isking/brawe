@@ -109,6 +109,8 @@ async function startLegacyRuntime() {
   const moduleFiles = [
     './modules/visuals/roster-2p5d.js',
     './modules/audio/outlit-voicelines.js',
+    './modules/audio/fuser-voicelines.js',
+    './modules/audio/hypercharge-sfx.js',
     './modules/audio/voodoyou-voicelines.js',
     './modules/audio/pandy-voicelines.js',
     './modules/audio/snipa-voicelines.js',
