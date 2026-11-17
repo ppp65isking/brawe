@@ -118,8 +118,10 @@ check('UI_HUD_TOKENS declared with the HUD panel colours',
 check('drawChunkyPanel defined once, with slab + radius + fill + stroke + lineWidth',
   (game.match(/function drawChunkyPanel\(ctx, x, y, w, h, opts\)/g) || []).length === 1 &&
   game.includes('ctx.roundRect(x, y + (o.slabOffset == null ? UI_HUD_TOKENS.slabOffset : o.slabOffset), w, h, radius)'));
-check('exactly 10 drawChunkyPanel call sites (11 matches incl. the definition line)',
-  (game.match(/drawChunkyPanel\(ctx, /g) || []).length === 11);
+// UI Refresh Part 2 (2026-11-17): 12 mode panels + 1 stack flush added, so the
+// count is 23 call sites (24 matches incl. the definition line).
+check('exactly 23 drawChunkyPanel call sites (24 matches incl. the definition line)',
+  (game.match(/drawChunkyPanel\(ctx, /g) || []).length === 24);
 for (const [name, snippet] of [
   ['attack/super cards', "drawChunkyPanel(ctx, x, readY, cardW, readH, {"],
   ['minimap frame', 'drawChunkyPanel(ctx, 0, 0, mapW, mapH, { radius: 8,'],
@@ -141,7 +143,9 @@ for (const [name, snippet] of [
   ['kit panel Tool/Talent/Core rows', "ctx.fillText('Tool', hudX + 12, hudY + 22)"],
   ['super bar label', "ctx.fillText(hudSuperLabel, bx, by-10)"],
   ['hyper bar label', "ctx.fillText('CORE SURGE (F)', bx, hy-10)"],
-  ['alive counter', "ctx.fillText('Brawlers Left: ' + aliveCount, innerWidth/2 - 80, 48)"],
+  // UI Refresh Part 2 (2026-11-17): the alive line is queued into the top-center
+  // stack now — same string, same x/y, drawn by flushTopCenterStack.
+  ['alive counter', "queueTopCenterLine(ctx, topCenterStackQueue, 'Brawlers Left: ' + aliveCount, innerWidth/2 - 80, 48)"],
   ['minimap player dot', "ctx.fillRect(player.x*scX - 3, player.y*scY - 3, 6, 6)"],
   ['minimap morphed-hider leak guard (PR #38)', 'if (isPropHuntMode && t.propHuntMorphed'],
   ['ranked badge text', "ctx.fillText((mod1?.icon || '⚡') + ' ' + (mod1?.name || 'Modifier').toUpperCase(), innerWidth * 0.5, badgeY + 17)"],

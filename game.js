@@ -6934,7 +6934,54 @@ const bolznstienPendingStrikes = [];
         }
         ctx.restore();
     }
-  
+
+    // UI Refresh Part 2 (Phase 7E completion): the top-center stack.
+    // The alive-counter line (baseline y=48) and the mode-rule line (y=60) sit
+    // 12px apart, so separate pills would overlap — one shared chunky panel is
+    // drawn behind all queued lines instead, and the texts are then drawn at
+    // exactly their old x/y with their old font/fillStyle/textAlign. The panel
+    // bounds come from each line's REAL ctx.measureText width and its REAL font
+    // size — never a hardcoded estimate. Modes whose own HUD already covers the
+    // top-center suppress the flush (see the flush call site).
+    function queueTopCenterLine(ctx, queue, text, x, y) {
+        queue.push({
+            text, x, y,
+            font: ctx.font,
+            fillStyle: ctx.fillStyle,
+            textAlign: ctx.textAlign,
+            width: ctx.measureText(text).width
+        });
+    }
+    function flushTopCenterStack(ctx, queue, suppressed) {
+        if (!queue.length || suppressed) { queue.length = 0; return; }
+        let top = Infinity, bottom = -Infinity, left = Infinity, right = -Infinity;
+        for (const line of queue) {
+            const m = /(\d+(?:\.\d+)?)px/.exec(line.font || '');
+            const size = m ? parseFloat(m[1]) : 14;
+            const ascent = size * 0.75, descent = size * 0.25;
+            if (line.y - ascent < top) top = line.y - ascent;
+            if (line.y + descent > bottom) bottom = line.y + descent;
+            const lineLeft = line.textAlign === 'center' ? line.x - line.width / 2 : line.x;
+            const lineRight = line.textAlign === 'center' ? line.x + line.width / 2 : line.x + line.width;
+            if (lineLeft < left) left = lineLeft;
+            if (lineRight > right) right = lineRight;
+        }
+        const padX = 14;
+        ctx.save();
+        drawChunkyPanel(ctx, left - padX, top - 6, (right - left) + padX * 2, (bottom - top) + 10,
+            { radius: 14, fill: UI_HUD_TOKENS.panelFill, stroke: UI_HUD_TOKENS.panelStroke, lineWidth: 1 });
+        ctx.textBaseline = 'alphabetic';
+        for (const line of queue) {
+            ctx.font = line.font;
+            ctx.fillStyle = line.fillStyle;
+            ctx.textAlign = line.textAlign;
+            ctx.fillText(line.text, line.x, line.y);
+        }
+        ctx.textAlign = 'left';
+        ctx.restore();
+        queue.length = 0;
+    }
+
     // Utility: deterministic color from string
     function colorFromId(id) {
             let h = 0;
@@ -86183,16 +86230,20 @@ function checkHit(target, b, i){
     const mapW = 160; const mapH = 160;
     const mapX = innerWidth - mapW - 20; const mapY = 20;
     
+    // UI Refresh Part 2 — top-center stack queue (flushed after the
+    // mode-rule chain below; see the helpers by drawChunkyPanel).
+    const topCenterStackQueue = [];
+
     // Alive counter
     ctx.fillStyle = '#cfeef7'; ctx.font = 'bold 20px sans-serif'; 
     if (isDuels) {
-        ctx.fillText(`Duels | You: ${playerScore}  Bot: ${botScore}`, innerWidth/2 - 100, 48);
+        queueTopCenterLine(ctx, topCenterStackQueue, `Duels | You: ${playerScore}  Bot: ${botScore}`, innerWidth/2 - 100, 48);
     } else if (isKnockDonateMode) {
-        ctx.fillText(`Knock n Donate 3v3 | Round ${knockDonateRound} | You ${knockDonateWins.player || 0}-${knockDonateWins.enemy || 0} Enemy`, innerWidth/2 - 230, 48);
+        queueTopCenterLine(ctx, topCenterStackQueue, `Knock n Donate 3v3 | Round ${knockDonateRound} | You ${knockDonateWins.player || 0}-${knockDonateWins.enemy || 0} Enemy`, innerWidth/2 - 230, 48);
     } else if (isConstructionMode) {
-        ctx.fillText('Brick Run 3v3', innerWidth/2 - 70, 48);
+        queueTopCenterLine(ctx, topCenterStackQueue, 'Brick Run 3v3', innerWidth/2 - 70, 48);
     } else if (isBrickVaultMode) {
-        ctx.fillText(isTowerPowerVaultWeekendMatch ? 'Tower Power Vault Siege' : 'Vault Siege 3v3', innerWidth/2 - 78, 48);
+        queueTopCenterLine(ctx, topCenterStackQueue, isTowerPowerVaultWeekendMatch ? 'Tower Power Vault Siege' : 'Vault Siege 3v3', innerWidth/2 - 78, 48);
     } else if (isArenaForgeMode) {
         const now = performance.now();
         const prepLeft = Math.max(0, Math.ceil((arenaForgePrepUntil - now) / 1000));
@@ -86205,7 +86256,7 @@ function checkHit(target, b, i){
         ctx.save();
         ctx.textAlign = 'center';
         if (prepLeft > 0) {
-            ctx.fillText(`Arena Forge 2.0 | PREPARE ${prepLeft}s`, innerWidth / 2, 48);
+            queueTopCenterLine(ctx, topCenterStackQueue, `Arena Forge 2.0 | PREPARE ${prepLeft}s`, innerWidth / 2, 48);
             const panelW = Math.min(560, innerWidth - 32);
             const panelH = 168;
             const panelX = (innerWidth - panelW) / 2;
@@ -86223,32 +86274,32 @@ function checkHit(target, b, i){
             const title = arenaForgeOvertime ? 'OVERTIME' : 'Arena Forge 2.0 • TRIPLE TOWER WAR';
             const timer = `${Math.floor(phaseLeft / 60)}:${String(Math.ceil(phaseLeft % 60)).padStart(2, '0')}`;
             const extras = arenaForgeOvertime ? 'MEGA SURGE' : `Wave ${arenaForgeWaveNumber + 1} ${waveLeft}s | Breach ${breachLeft}s | Boon ${boonLeft}s`;
-            ctx.fillText(`${title} | ${timer} | Energy ${arenaForgeSoulBank.player || 0}-${arenaForgeSoulBank.enemy || 0} | ${extras}`, innerWidth / 2, 48);
+            queueTopCenterLine(ctx, topCenterStackQueue, `${title} | ${timer} | Energy ${arenaForgeSoulBank.player || 0}-${arenaForgeSoulBank.enemy || 0} | ${extras}`, innerWidth / 2, 48);
             if (arenaForgeLastCallout && now < arenaForgeLastCalloutUntil) {
                 ctx.fillStyle = '#ffcf66'; ctx.font = '900 15px sans-serif';
-                ctx.fillText(arenaForgeLastCallout, innerWidth / 2, 69);
+                queueTopCenterLine(ctx, topCenterStackQueue, arenaForgeLastCallout, innerWidth / 2, 69);
             }
         }
         ctx.restore();
     } else if (isMarkedMayhemMode) {
         const left = Math.max(0, MARKED_MAYHEM_MATCH_SECONDS - markedMayhemTimer);
-        ctx.fillText(`Target Rush | You ${markedMayhemScores.player || 0}-${markedMayhemScores.enemy || 0} Enemy | ${Math.floor(left / 60)}:${String(Math.ceil(left % 60)).padStart(2, '0')}`, innerWidth/2 - 205, 48);
+        queueTopCenterLine(ctx, topCenterStackQueue, `Target Rush | You ${markedMayhemScores.player || 0}-${markedMayhemScores.enemy || 0} Enemy | ${Math.floor(left / 60)}:${String(Math.ceil(left % 60)).padStart(2, '0')}`, innerWidth/2 - 205, 48);
     } else if (isTugZoneMode) {
         const pct=Math.round(Math.abs(tugZone.x-WORLD_W*.5)/(WORLD_W*.42)*100);
-        ctx.fillText(`Tug Zone | ${tugZone.x<WORLD_W*.5?'YOUR PULL':'ENEMY PULL'} ${clamp(pct,0,100)}%`,innerWidth/2-130,48);
+        queueTopCenterLine(ctx, topCenterStackQueue, `Tug Zone | ${tugZone.x<WORLD_W*.5?'YOUR PULL':'ENEMY PULL'} ${clamp(pct,0,100)}%`,innerWidth/2-130,48);
     } else if (isMirrorMode) {
-        ctx.fillText(`Mirror 5v5 (${mirrorModeBrawler.toUpperCase()})`, innerWidth/2 - 130, 48);
+        queueTopCenterLine(ctx, topCenterStackQueue, `Mirror 5v5 (${mirrorModeBrawler.toUpperCase()})`, innerWidth/2 - 130, 48);
     } else if (isDuoShowdown) {
-        ctx.fillText(`Duo Showdown | Teams Left: ${aliveCount}`, innerWidth/2 - 135, 48);
+        queueTopCenterLine(ctx, topCenterStackQueue, `Duo Showdown | Teams Left: ${aliveCount}`, innerWidth/2 - 135, 48);
     } else if (isTrioShowdownMode) {
-        ctx.fillText(`Trio Showdown | Teams Left: ${aliveCount}`, innerWidth/2 - 140, 48);
+        queueTopCenterLine(ctx, topCenterStackQueue, `Trio Showdown | Teams Left: ${aliveCount}`, innerWidth/2 - 140, 48);
     } else if (isDamageFillerMode) {
         const fillerLabel = isSplitterPoweredMode
             ? `Splitter Powered 10v10 (Round ${splitterPoweredRound})`
             : `Damage Filler ${damageFillerTeamSize}v${damageFillerTeamSize}`;
-        ctx.fillText(fillerLabel, innerWidth/2 - 150, 48);
+        queueTopCenterLine(ctx, topCenterStackQueue, fillerLabel, innerWidth/2 - 150, 48);
     } else {
-        ctx.fillText('Brawlers Left: ' + aliveCount, innerWidth/2 - 80, 48);
+        queueTopCenterLine(ctx, topCenterStackQueue, 'Brawlers Left: ' + aliveCount, innerWidth/2 - 80, 48);
     }
 
     if ((isDuoShowdown || isTrioShowdownMode) && !gameOver) {
@@ -86411,11 +86462,8 @@ function checkHit(target, b, i){
             }
         }
         const bannerH = phLine2 ? 56 : 36;
-        ctx.fillStyle = 'rgba(24, 18, 4, 0.85)';
-        ctx.fillRect(innerWidth / 2 - bannerW / 2, 78, bannerW, bannerH);
-        ctx.strokeStyle = 'rgba(255, 209, 102, 0.8)';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(innerWidth / 2 - bannerW / 2, 78, bannerW, bannerH);
+        // Chunky panel (UI Refresh Part 2): same geometry/fill/stroke, rounded.
+        drawChunkyPanel(ctx, innerWidth / 2 - bannerW / 2, 78, bannerW, bannerH, { radius: 12, fill: 'rgba(24, 18, 4, 0.85)', stroke: 'rgba(255, 209, 102, 0.8)', lineWidth: 2 });
         ctx.fillStyle = '#ffe9ad';
         ctx.font = 'bold 13px sans-serif';
         ctx.textAlign = 'center';
@@ -86433,11 +86481,8 @@ function checkHit(target, b, i){
         const tScores = turkeyCaptureState.scores || { player: 0, enemy: 0 };
         const tLeft = Math.max(0, Math.ceil(TURKEY_CAPTURE_MATCH_SECONDS - (turkeyCaptureState.timer || 0)));
         const bannerW = 460;
-        ctx.fillStyle = 'rgba(32, 16, 4, 0.85)';
-        ctx.fillRect(innerWidth / 2 - bannerW / 2, 78, bannerW, 36);
-        ctx.strokeStyle = 'rgba(255, 179, 71, 0.8)';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(innerWidth / 2 - bannerW / 2, 78, bannerW, 36);
+        // Chunky panel (UI Refresh Part 2): same geometry/fill/stroke, rounded.
+        drawChunkyPanel(ctx, innerWidth / 2 - bannerW / 2, 78, bannerW, 36, { radius: 12, fill: 'rgba(32, 16, 4, 0.85)', stroke: 'rgba(255, 179, 71, 0.8)', lineWidth: 2 });
         ctx.fillStyle = '#ffe3b3';
         ctx.font = 'bold 13px sans-serif';
         ctx.textAlign = 'center';
@@ -86448,11 +86493,9 @@ function checkHit(target, b, i){
         const redPct = Math.round(objectiveScores?.enemy || 0);
         const timeLeft = Math.max(0, Math.ceil(180 - objectiveTimer));
         const bannerW = 420;
-        ctx.fillStyle = 'rgba(4, 14, 32, 0.85)';
-        ctx.fillRect(innerWidth / 2 - bannerW / 2, 78, bannerW, 36);
-        ctx.strokeStyle = 'rgba(120, 190, 255, 0.75)';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(innerWidth / 2 - bannerW / 2, 78, bannerW, 36);
+        // Chunky panel (UI Refresh Part 2): same geometry/fill/stroke, rounded.
+        // The progress bars below stay plain fillRect (bars are bars, not panels).
+        drawChunkyPanel(ctx, innerWidth / 2 - bannerW / 2, 78, bannerW, 36, { radius: 12, fill: 'rgba(4, 14, 32, 0.85)', stroke: 'rgba(120, 190, 255, 0.75)', lineWidth: 2 });
 
         // Progress bars
         ctx.fillStyle = '#38bdf8';
@@ -86475,11 +86518,8 @@ function checkHit(target, b, i){
         }
 
         const bannerW = 480;
-        ctx.fillStyle = 'rgba(4, 14, 32, 0.88)';
-        ctx.fillRect(innerWidth / 2 - bannerW / 2, 78, bannerW, brickCountdownTeam ? 52 : 36);
-        ctx.strokeStyle = brickCountdownTeam === 'player' ? '#38bdf8' : (brickCountdownTeam === 'enemy' ? '#f87171' : 'rgba(125, 210, 255, 0.75)');
-        ctx.lineWidth = 2;
-        ctx.strokeRect(innerWidth / 2 - bannerW / 2, 78, bannerW, brickCountdownTeam ? 52 : 36);
+        // Chunky panel (UI Refresh Part 2): same geometry/fill/stroke, rounded.
+        drawChunkyPanel(ctx, innerWidth / 2 - bannerW / 2, 78, bannerW, brickCountdownTeam ? 52 : 36, { radius: 12, fill: 'rgba(4, 14, 32, 0.88)', stroke: brickCountdownTeam === 'player' ? '#38bdf8' : (brickCountdownTeam === 'enemy' ? '#f87171' : 'rgba(125, 210, 255, 0.75)'), lineWidth: 2 });
 
         ctx.fillStyle = '#d8f0ff';
         ctx.font = 'bold 13px sans-serif';
@@ -86505,11 +86545,8 @@ function checkHit(target, b, i){
         const panelW = 620, panelH = 64;
         const panelX = innerWidth / 2 - panelW / 2, panelY = 76;
 
-        ctx.fillStyle = 'rgba(4, 14, 32, 0.88)';
-        ctx.fillRect(panelX, panelY, panelW, panelH);
-        ctx.strokeStyle = heistFeverActive ? '#ff0055' : 'rgba(125, 210, 255, 0.78)';
-        ctx.lineWidth = heistFeverActive ? 3 : 2;
-        ctx.strokeRect(panelX, panelY, panelW, panelH);
+        // Chunky panel (UI Refresh Part 2): same geometry/fill/stroke, rounded.
+        drawChunkyPanel(ctx, panelX, panelY, panelW, panelH, { radius: 12, fill: 'rgba(4, 14, 32, 0.88)', stroke: heistFeverActive ? '#ff0055' : 'rgba(125, 210, 255, 0.78)', lineWidth: heistFeverActive ? 3 : 2 });
 
         // Title & Timer
         ctx.font = 'bold 13px sans-serif';
@@ -86544,8 +86581,8 @@ function checkHit(target, b, i){
         const forgeXpNeeded = getArenaForgeXpRequirement(player);
         const forgeXpPct = (player.arenaForgeBonusLevel || 0) >= ARENA_FORGE_MAX_BONUS_LEVELS ? 1 : clamp((player.arenaForgeXp || 0) / Math.max(1, forgeXpNeeded), 0, 1);
         const panelX = innerWidth / 2 - 265, panelY = 78;
-        ctx.fillStyle = 'rgba(4, 14, 32, 0.82)'; ctx.fillRect(panelX, panelY, 530, 76);
-        ctx.strokeStyle = arenaForgeOvertime ? '#ffcf66' : '#63e6be'; ctx.lineWidth = 2; ctx.strokeRect(panelX, panelY, 530, 76);
+        // Chunky panel (UI Refresh Part 2): same geometry/fill/stroke, rounded.
+        drawChunkyPanel(ctx, panelX, panelY, 530, 76, { radius: 12, fill: 'rgba(4, 14, 32, 0.82)', stroke: arenaForgeOvertime ? '#ffcf66' : '#63e6be', lineWidth: 2 });
         ctx.fillStyle = '#d8f0ff'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center';
         ctx.fillText(`${ownIntegrity.towersAlive}/2 YOUR TOWERS  |  TOTAL BASE INTEGRITY  |  ${enemyIntegrity.towersAlive}/2 ENEMY TOWERS`, innerWidth / 2, panelY + 17);
         ctx.fillStyle = '#102235'; ctx.fillRect(panelX + 18, panelY + 28, 220, 10); ctx.fillRect(panelX + 292, panelY + 28, 220, 10);
@@ -86562,8 +86599,8 @@ function checkHit(target, b, i){
         const panelX = innerWidth / 2 - 235, panelY = 78;
         const playerPct = clamp((markedMayhemScores.player || 0) / MARKED_MAYHEM_SCORE_GOAL, 0, 1);
         const enemyPct = clamp((markedMayhemScores.enemy || 0) / MARKED_MAYHEM_SCORE_GOAL, 0, 1);
-        ctx.fillStyle = 'rgba(4, 14, 32, 0.82)'; ctx.fillRect(panelX, panelY, 470, 52);
-        ctx.strokeStyle = '#ff6cab'; ctx.lineWidth = 2; ctx.strokeRect(panelX, panelY, 470, 52);
+        // Chunky panel (UI Refresh Part 2): same geometry/fill/stroke, rounded.
+        drawChunkyPanel(ctx, panelX, panelY, 470, 52, { radius: 12, fill: 'rgba(4, 14, 32, 0.82)', stroke: '#ff6cab', lineWidth: 2 });
         ctx.fillStyle = '#6ee7ff'; ctx.fillRect(panelX + 16, panelY + 30, 200 * playerPct, 9);
         ctx.fillStyle = '#ff5f9e'; ctx.fillRect(panelX + 254, panelY + 30, 200 * enemyPct, 9);
         ctx.fillStyle = '#f3eaff'; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center';
@@ -86572,16 +86609,14 @@ function checkHit(target, b, i){
     } else if (isTugZoneMode && playing) {
         const counts=countTugZoneOccupants(); const panelX=innerWidth/2-245,panelY=78;
         const pos=clamp((tugZone.x-WORLD_W*.08)/(WORLD_W*.84),0,1);
-        ctx.fillStyle='rgba(4,14,32,.84)';ctx.fillRect(panelX,panelY,490,50);ctx.strokeStyle='#6ee7ff';ctx.lineWidth=2;ctx.strokeRect(panelX,panelY,490,50);
+        // Chunky panel (UI Refresh Part 2): same geometry/fill/stroke, rounded.
+        drawChunkyPanel(ctx, panelX, panelY, 490, 50, { radius: 12, fill: 'rgba(4,14,32,.84)', stroke: '#6ee7ff', lineWidth: 2 });
         ctx.fillStyle='#17314d';ctx.fillRect(panelX+18,panelY+29,454,9);ctx.fillStyle='#6ee7ff';ctx.fillRect(panelX+18+454*pos-5,panelY+25,10,17);
         ctx.fillStyle='#eafaff';ctx.font='bold 13px sans-serif';ctx.textAlign='center';ctx.fillText(`YOUR GOAL  |  IN ZONE ${counts.player}-${counts.enemy}  |  ENEMY GOAL`,innerWidth/2,panelY+18);
         if(tugZoneAnnouncement&&performance.now()<tugZoneAnnouncementUntil){ctx.fillStyle='#ffe56b';ctx.font='900 20px sans-serif';ctx.fillText(tugZoneAnnouncement,innerWidth/2,panelY+75);}ctx.textAlign='left';
     } else if (isKnockDonateMode && playing) {
-        ctx.fillStyle = 'rgba(4, 14, 32, 0.78)';
-        ctx.fillRect(innerWidth / 2 - 240, 78, 480, 40);
-        ctx.strokeStyle = 'rgba(125, 210, 255, 0.75)';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(innerWidth / 2 - 240, 78, 480, 40);
+        // Chunky panel (UI Refresh Part 2): same geometry/fill/stroke, rounded.
+        drawChunkyPanel(ctx, innerWidth / 2 - 240, 78, 480, 40, { radius: 12, fill: 'rgba(4, 14, 32, 0.78)', stroke: 'rgba(125, 210, 255, 0.75)', lineWidth: 2 });
         ctx.fillStyle = '#d8f0ff';
         ctx.font = 'bold 14px sans-serif';
         ctx.textAlign = 'center';
@@ -86593,11 +86628,8 @@ function checkHit(target, b, i){
             if (!b || b.hp <= 0 || (b.team || 'enemy') === 'player') continue;
             hostileTeams.add(b.team || 'enemy');
         }
-        ctx.fillStyle = 'rgba(4, 14, 32, 0.78)';
-        ctx.fillRect(innerWidth / 2 - 205, 78, 410, 40);
-        ctx.strokeStyle = 'rgba(125, 210, 255, 0.75)';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(innerWidth / 2 - 205, 78, 410, 40);
+        // Chunky panel (UI Refresh Part 2): same geometry/fill/stroke, rounded.
+        drawChunkyPanel(ctx, innerWidth / 2 - 205, 78, 410, 40, { radius: 12, fill: 'rgba(4, 14, 32, 0.78)', stroke: 'rgba(125, 210, 255, 0.75)', lineWidth: 2 });
         ctx.fillStyle = '#d8f0ff';
         ctx.font = 'bold 14px sans-serif';
         ctx.textAlign = 'center';
@@ -86615,11 +86647,8 @@ function checkHit(target, b, i){
         const panelX = innerWidth / 2 - 265;
         const panelY = 78;
         const panelH = isSplitterPoweredMode ? 92 : 58;
-        ctx.fillStyle = 'rgba(4, 14, 32, 0.8)';
-        ctx.fillRect(panelX, panelY, 530, panelH);
-        ctx.strokeStyle = 'rgba(125, 210, 255, 0.78)';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(panelX, panelY, 530, panelH);
+        // Chunky panel (UI Refresh Part 2): same geometry/fill/stroke, rounded.
+        drawChunkyPanel(ctx, panelX, panelY, 530, panelH, { radius: 12, fill: 'rgba(4, 14, 32, 0.8)', stroke: 'rgba(125, 210, 255, 0.78)', lineWidth: 2 });
 
         ctx.fillStyle = '#d8f0ff';
         ctx.font = 'bold 14px sans-serif';
@@ -86667,11 +86696,8 @@ function checkHit(target, b, i){
         const enemyPct = clamp(enemyKills / MIRROR_KILL_GOAL, 0, 1);
         const panelX = innerWidth / 2 - 250;
         const panelY = 78;
-        ctx.fillStyle = 'rgba(4, 14, 32, 0.8)';
-        ctx.fillRect(panelX, panelY, 500, 58);
-        ctx.strokeStyle = 'rgba(125, 210, 255, 0.78)';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(panelX, panelY, 500, 58);
+        // Chunky panel (UI Refresh Part 2): same geometry/fill/stroke, rounded.
+        drawChunkyPanel(ctx, panelX, panelY, 500, 58, { radius: 12, fill: 'rgba(4, 14, 32, 0.8)', stroke: 'rgba(125, 210, 255, 0.78)', lineWidth: 2 });
         ctx.fillStyle = '#d8f0ff';
         ctx.font = 'bold 14px sans-serif';
         ctx.textAlign = 'center';
@@ -87029,57 +87055,57 @@ function checkHit(target, b, i){
                         }
                         ctx.textAlign = 'center';
                     } else {
-                        ctx.fillText('TRAINING MODE · ALL ABILITIES ENABLED', innerWidth/2, 60);
+                        queueTopCenterLine(ctx, topCenterStackQueue, 'TRAINING MODE · ALL ABILITIES ENABLED', innerWidth/2, 60);
                     }
                 ctx.textAlign = 'left';
         } else if (isSoloTrial) {
                 ctx.fillStyle = '#6ee7ff';
                 ctx.font = 'bold 14px sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText(`⚔️ SOLO TRIAL MODE - WAVE ${Math.min(soloTrialWave + 1, SOLO_TRIAL_MAX_WAVES)}/${SOLO_TRIAL_MAX_WAVES} ⚔️`, innerWidth/2, 60);
+                queueTopCenterLine(ctx, topCenterStackQueue, `⚔️ SOLO TRIAL MODE - WAVE ${Math.min(soloTrialWave + 1, SOLO_TRIAL_MAX_WAVES)}/${SOLO_TRIAL_MAX_WAVES} ⚔️`, innerWidth/2, 60);
         ctx.textAlign = 'left';
     } else if (isBossFight) {
         ctx.fillStyle = isLavaBossEvent ? '#ff9a3d' : isHeadlessBossEvent ? '#7dff6a' : isTombstoneBossEvent ? '#7dffb0' : isMegasteinBossEvent ? '#c084fc' : '#ff6bb2';
         ctx.font = 'bold 14px sans-serif';
         ctx.textAlign = 'center';
         const diffName = getBeastBossDifficultyName(getBeastBossDifficultyIndex());
-        ctx.fillText(isLavaBossEvent?`LAVA VILLAIN 3V1 • ${getLavaBossDifficulty(lavaBossRuntime?.difficulty).name} • ${Math.max(0,Math.ceil((lavaBossRuntime.timeLimitMs-(performance.now()-lavaBossRuntime.startedAt))/1000))}s`:isHeadlessBossEvent?`HEADLESS BOLZNSTIEN 3V1 • ${getHeadlessBossDifficulty(headlessBossRuntime?.difficulty).name} • ${Math.max(0,Math.ceil((headlessBossRuntime.timeLimitMs-(performance.now()-headlessBossRuntime.startedAt))/1000))}s`:isTombstoneBossEvent?`🪦 TOMBSTONE TYCOON • ${getTombstoneBossDifficulty(tombstoneBossRuntime?.difficulty).name} • SOLO BOSS`:isMegasteinBossEvent?`🧬 MEGASTEIN • MEGA-HARD • SOLO BOSS`:`🧬 BEAST BOSS 5V1 [${diffName}] - COLLECT CRYSTALS FOR 5s EMPOWERED BEAST 🧬`, innerWidth/2, 60);
+        queueTopCenterLine(ctx, topCenterStackQueue, isLavaBossEvent?`LAVA VILLAIN 3V1 • ${getLavaBossDifficulty(lavaBossRuntime?.difficulty).name} • ${Math.max(0,Math.ceil((lavaBossRuntime.timeLimitMs-(performance.now()-lavaBossRuntime.startedAt))/1000))}s`:isHeadlessBossEvent?`HEADLESS BOLZNSTIEN 3V1 • ${getHeadlessBossDifficulty(headlessBossRuntime?.difficulty).name} • ${Math.max(0,Math.ceil((headlessBossRuntime.timeLimitMs-(performance.now()-headlessBossRuntime.startedAt))/1000))}s`:isTombstoneBossEvent?`🪦 TOMBSTONE TYCOON • ${getTombstoneBossDifficulty(tombstoneBossRuntime?.difficulty).name} • SOLO BOSS`:isMegasteinBossEvent?`🧬 MEGASTEIN • MEGA-HARD • SOLO BOSS`:`🧬 BEAST BOSS 5V1 [${diffName}] - COLLECT CRYSTALS FOR 5s EMPOWERED BEAST 🧬`, innerWidth/2, 60);
         ctx.textAlign = 'left';
     } else if (isConstructionMode) {
         ctx.fillStyle = '#7dd8ff';
         ctx.font = 'bold 14px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('🏗️ BRICK RUN 3V3 - STAND IN CART ZONE TO PUSH, HOLD SITE FOR 20s 🏗️', innerWidth/2, 60);
+        queueTopCenterLine(ctx, topCenterStackQueue, '🏗️ BRICK RUN 3V3 - STAND IN CART ZONE TO PUSH, HOLD SITE FOR 20s 🏗️', innerWidth/2, 60);
         ctx.textAlign = 'left';
     } else if (isBrickVaultMode) {
         ctx.fillStyle = '#7dd8ff';
         ctx.font = 'bold 14px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('🧱 BRICK VAULT 3V3 - BREAK BOTH ENEMY VAULTS OR LEAD DAMAGE % AT 3:00 🧱', innerWidth/2, 60);
+        queueTopCenterLine(ctx, topCenterStackQueue, '🧱 BRICK VAULT 3V3 - BREAK BOTH ENEMY VAULTS OR LEAD DAMAGE % AT 3:00 🧱', innerWidth/2, 60);
         ctx.textAlign = 'left';
     } else if (isArenaForgeMode) {
         ctx.fillStyle = arenaForgeOvertime ? '#ffcf66' : '#7fffd4';
         ctx.font = 'bold 14px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(arenaForgeOvertime ? 'OVERTIME - WALLS DOWN, BOTH CORES EXPOSED' : 'ARENA FORGE 3V3 - BREAK 2 TOWERS, THEN DESTROY THE CORE', innerWidth/2, 60);
+        queueTopCenterLine(ctx, topCenterStackQueue, arenaForgeOvertime ? 'OVERTIME - WALLS DOWN, BOTH CORES EXPOSED' : 'ARENA FORGE 3V3 - BREAK 2 TOWERS, THEN DESTROY THE CORE', innerWidth/2, 60);
         ctx.textAlign = 'left';
     } else if (isMarkedMayhemMode) {
         ctx.fillStyle = '#ff8fbd';
         ctx.font = 'bold 14px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(`TARGET RUSH - MARKED KO = 3, NORMAL KO = 1, FIRST TO ${MARKED_MAYHEM_SCORE_GOAL}`, innerWidth/2, 60);
+        queueTopCenterLine(ctx, topCenterStackQueue, `TARGET RUSH - MARKED KO = 3, NORMAL KO = 1, FIRST TO ${MARKED_MAYHEM_SCORE_GOAL}`, innerWidth/2, 60);
         ctx.textAlign = 'left';
     } else if (isKnockDonateMode) {
         ctx.fillStyle = '#7dd8ff';
         ctx.font = 'bold 14px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('💉 KNOCK N DONATE 3V3 - BEST OF 3 ROUNDS, NO RESPAWNS, DEATH DONATES FULL SUPER 💉', innerWidth/2, 60);
+        queueTopCenterLine(ctx, topCenterStackQueue, '💉 KNOCK N DONATE 3V3 - BEST OF 3 ROUNDS, NO RESPAWNS, DEATH DONATES FULL SUPER 💉', innerWidth/2, 60);
         ctx.textAlign = 'left';
     } else if (isTrioShowdownMode) {
         ctx.fillStyle = '#7dd8ff';
         ctx.font = 'bold 14px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('🔥 TRIO SHOWDOWN - NO RESPAWNS, STORM CLOSES, LAST TRIO WINS 🔥', innerWidth/2, 60);
+        queueTopCenterLine(ctx, topCenterStackQueue, '🔥 TRIO SHOWDOWN - NO RESPAWNS, STORM CLOSES, LAST TRIO WINS 🔥', innerWidth/2, 60);
         ctx.textAlign = 'left';
     } else if (isImpossibleMode) {
         const impossibleBot = bots.find((bot) => bot.isImpossibleAI);
@@ -87109,21 +87135,30 @@ function checkHit(target, b, i){
         ctx.textAlign = 'center';
         if (isSplitterPoweredMode) {
             if (splitterPoweredRound === 1) {
-                ctx.fillText(`💥 SPLITTER POWERED 10V10 - NERFED MAIN 1>3>9>27>81>120 - DEAL ${SPLITTER_POWERED_ROUND1_DUMMY_GOAL.toLocaleString()} TO CENTER DUMMY 💥`, innerWidth/2, 60);
+                queueTopCenterLine(ctx, topCenterStackQueue, `💥 SPLITTER POWERED 10V10 - NERFED MAIN 1>3>9>27>81>120 - DEAL ${SPLITTER_POWERED_ROUND1_DUMMY_GOAL.toLocaleString()} TO CENTER DUMMY 💥`, innerWidth/2, 60);
             } else {
-                ctx.fillText(`💥 SPLITTER POWERED ROUND 2 - FIRST TO ${damageFillerGoal.toLocaleString()} DAMAGE WINS (+1M BOOST FROM ROUND 1) 💥`, innerWidth/2, 60);
+                queueTopCenterLine(ctx, topCenterStackQueue, `💥 SPLITTER POWERED ROUND 2 - FIRST TO ${damageFillerGoal.toLocaleString()} DAMAGE WINS (+1M BOOST FROM ROUND 1) 💥`, innerWidth/2, 60);
             }
         } else {
-            ctx.fillText(`⚡ DAMAGE FILLER ${damageFillerTeamSize}V${damageFillerTeamSize} - FIRST TO ${damageFillerGoal.toLocaleString()} DAMAGE WINS ⚡`, innerWidth/2, 60);
+            queueTopCenterLine(ctx, topCenterStackQueue, `⚡ DAMAGE FILLER ${damageFillerTeamSize}V${damageFillerTeamSize} - FIRST TO ${damageFillerGoal.toLocaleString()} DAMAGE WINS ⚡`, innerWidth/2, 60);
         }
         ctx.textAlign = 'left';
     } else if (isMirrorMode) {
         ctx.fillStyle = '#7dd8ff';
         ctx.font = 'bold 14px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(`🪞 MIRROR 5V5 - ${mirrorModeBrawler.toUpperCase()} ONLY - FIRST TO ${MIRROR_KILL_GOAL} KILLS 🪞`, innerWidth/2, 60);
+        queueTopCenterLine(ctx, topCenterStackQueue, `🪞 MIRROR 5V5 - ${mirrorModeBrawler.toUpperCase()} ONLY - FIRST TO ${MIRROR_KILL_GOAL} KILLS 🪞`, innerWidth/2, 60);
         ctx.textAlign = 'left';
     }
+
+    // UI Refresh Part 2 — top-center stack flush: one shared chunky panel
+    // behind the queued alive/rule/callout lines (see helpers by drawChunkyPanel).
+    // Suppressed when this mode's own HUD already covers the top-center — those
+    // lines are hidden under that panel today, and the stack must neither
+    // paint over it nor resurrect the text on top of it.
+    flushTopCenterStack(ctx, topCenterStackQueue,
+        isImpossibleMode || isBraweBallMode || isKnockoutMode ||
+        isWeeFeeBossMode || isBlinkEyeDodgeMode || isTutorialMode);
 
     renderHypeChainHud();
 
