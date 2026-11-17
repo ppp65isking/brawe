@@ -4807,6 +4807,26 @@ const bolznstienPendingStrikes = [];
   const HC_EMBER_POOL = [];
   for (let _hcEi = 0; _hcEi < HC_EMBER_MAX; _hcEi++) HC_EMBER_POOL.push({ x: 0, y: 0, vx: 0, vy: 0, life: 0, maxLife: 0.7, size: 5, alive: false });
   let hcEmberCursor = 0;
+  // Hypercharge Nova PERF FIX (2026-11-17, Anthony: "so laggy" on Pixel 9 Pro):
+  // the Nova aura cost scaled linearly with HC entity count — per entity per
+  // frame a glow + core sprite (additive, save/restore each) plus dashed
+  // rotating rings — and activation bursts stacked without a ceiling. The
+  // tiers below cap it: player always full aura; bots get glow only when few
+  // are HC, nearby, and the device is not a phone; everyone else gets one
+  // cheap solid ring. Gameplay numbers are untouched — visuals only.
+  // NOTE: LOW_POWER_DEVICE is CPU-core based (hardwareConcurrency <= 4) and
+  // is FALSE on Anthony's 8-core Pixel 9 Pro, so the phone gate uses the
+  // touchscreen check instead.
+  const HC_TOUCH_DEVICE = isTouchInputEnvironment();
+  const HC_BURST_MAX_LIVE = 3;
+  const HC_MAX_GLOW_BOTS = 3;
+  const HC_GLOW_RANGE_PX = 400;
+  const HC_MAX_EMBERS_DRAWN = 24;
+  // Optional FPS meter: add ?fps=1 to the URL to show frame time + live HC
+  // entity count (top-left) so playtest reports carry numbers, not vibes.
+  const HC_FPS_METER = typeof location !== 'undefined' && typeof location.search === 'string' && /(?:^|[?&])fps=1(?:&|$)/.test(location.search);
+  let hcFpsLastAt = 0;
+  let hcFpsMs = 0;
   function hcSpawnEmber(x, y) {
       const em = HC_EMBER_POOL[hcEmberCursor];
       hcEmberCursor = (hcEmberCursor + 1) % HC_EMBER_MAX;
@@ -4831,13 +4851,23 @@ const bolznstienPendingStrikes = [];
   // covers the player AND every bot, so button / always_hyper / Hyper
   // Forge / bot / boss activations all get the burst with no per-site hooks.
   function hcTickHyperEntity(e, now, isPlayerEntity) {
-      if (!e) return;
+      // Training dummies are non-combatants: they never show Nova visuals,
+      // even if some path ever flags them hypercharged (Anthony: "it makes
+      // everyone hc" in training — dummies must stay visually plain).
+      if (!e || e.isDummy) return;
       const isHc = isEntityHyperchargedNow(e, now);
       if (isHc && !e._hcFxActive) {
           e._hcFxActive = true;
           e._hcFxEmberAt = 0;
           ensureHyperFxSprites();
-          explosions.push({ x: e.x, y: e.y, radius: (e.radius || 16) + 52, life: 0, maxLife: 0.55, fxKind: 'hyperActivate' });
+          // Serialize activation bursts: at most HC_BURST_MAX_LIVE live at
+          // once. A mass activation (always_hyper match start) gives the
+          // extras aura-only, no burst — the aura flag is already set above.
+          let hcLiveBursts = 0;
+          for (let i = 0; i < explosions.length; i++) if (explosions[i] && explosions[i].fxKind === 'hyperActivate') hcLiveBursts++;
+          if (hcLiveBursts < HC_BURST_MAX_LIVE) {
+              explosions.push({ x: e.x, y: e.y, radius: (e.radius || 16) + 52, life: 0, maxLife: 0.55, fxKind: 'hyperActivate' });
+          }
           if (isPlayerEntity) {
               spawnFloatingText(e.x, e.y - 46, '⚡ HYPERCHARGE!', '#f0abff');
               screenShakeUntil = now + 160;
@@ -4847,7 +4877,9 @@ const bolznstienPendingStrikes = [];
           e._hcFxActive = false;
           if (e.hp > 0) explosions.push({ x: e.x, y: e.y, radius: (e.radius || 16) + 40, life: 0, maxLife: 0.45, fxKind: 'hyperExpire' });
       }
-      if (isHc && e.hp > 0 && explosions.length <= 105) {
+      // Phone mode: embers are player-only. Bot embers were the bulk of the
+      // sprite cost at N HC entities and read as noise on a small screen.
+      if (isHc && e.hp > 0 && explosions.length <= 105 && !(HC_TOUCH_DEVICE && !isPlayerEntity)) {
           const gap = LOW_POWER_DEVICE ? 90 : 55;
           if (now - (e._hcFxEmberAt || 0) >= gap) {
               e._hcFxEmberAt = now;
@@ -71912,49 +71944,96 @@ function checkHit(target, b, i){
   // only — no shadowBlur, no per-frame gradients, no allocations.
   function drawHyperchargeAuras(now, isWorldVisualVisible, visualPressure) {
       ensureHyperFxSprites();
-      // Player first, then bots — one indexed loop, no spread allocation.
+      // Nova PERF FIX (2026-11-17, Anthony: "so laggy" on Pixel 9 Pro):
+      // the old version drew a full additive aura per HC entity per frame
+      // (glow + core sprites, save/restore + 'lighter' each, dashed rotating
+      // rings), so cost scaled linearly with HC count — at 10 HC entities
+      // ~20 large additive sprites + 20 ring strokes per frame on a mobile
+      // GPU. New tiers (same look for the player, cheaper for the crowd):
+      //   player: full aura (glow + core + solid rings), always.
+      //   bot: glow + core only when few entities are HC (<=3), nearby
+      //        (<=400px), and the device is not a phone under pressure;
+      //        otherwise a cheap solid ring only.
+      //   dummy: nothing (see hcTickHyperEntity).
+      // Rings are batched into two single strokes (outer + inner) with no
+      // dashes, no per-entity save/restore. Glow/core/embers share ONE
+      // 'lighter' pass. Embers drawn per frame are capped.
       const botCount = (typeof bots !== "undefined") ? bots.length : 0;
-      for (let i = -1; i < botCount; i++) {
-          const e = i === -1 ? player : bots[i];
-          if (!e || e.hp <= 0 || !isEntityHyperchargedNow(e, now)) continue;
+      const hasPlayer = player && player.hp > 0 && isEntityHyperchargedNow(player, now);
+      let hcCount = 0;
+      if (hasPlayer) hcCount++;
+      for (let i = 0; i < botCount; i++) {
+          const b = bots[i];
+          if (b && b.hp > 0 && !b.isDummy && isEntityHyperchargedNow(b, now)) hcCount++;
+      }
+      const botsGetGlow = !HC_TOUCH_DEVICE && !visualPressure && hcCount <= HC_MAX_GLOW_BOTS;
+      const px = player ? player.x : 0, py = player ? player.y : 0;
+      // Pass 1 — solid rings, normal compositing, two batched strokes.
+      const outer = [], inner = [];
+      const collectRing = (e) => {
+          if (!e || e.hp <= 0 || !isEntityHyperchargedNow(e, now)) return;
           const r = e.radius || 16;
-          if (!isWorldVisualVisible(e.x, e.y, r + 90)) continue;
-          const pulse = 1 + Math.sin(now / 160 + (e.id || 0) * 1.7) * 0.07;
-          const glowR = (r + 46) * pulse;
+          if (!isWorldVisualVisible(e.x, e.y, r + 90)) return;
+          outer.push([e.x, e.y, r + 16]);
+          inner.push([e.x, e.y, r + 8]);
+      };
+      if (hasPlayer) collectRing(player);
+      for (let i = 0; i < botCount; i++) { const b = bots[i]; if (b && !b.isDummy) collectRing(b); }
+      if (outer.length) {
           ctx.save();
-          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = 0.85;
+          ctx.strokeStyle = '#e878ff';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          for (let i = 0; i < outer.length; i++) ctx.arc(outer[i][0], outer[i][1], outer[i][2], 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.globalAlpha = 0.5;
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          for (let i = 0; i < inner.length; i++) ctx.arc(inner[i][0], inner[i][1], inner[i][2], 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+      }
+      if (visualPressure) return;
+      // Pass 2 — ONE additive pass: glow + core sprites, then pooled embers.
+      const glowDraws = [];
+      const collectGlow = (e) => {
+          if (!e || e.hp <= 0 || !isEntityHyperchargedNow(e, now)) return;
+          const r = e.radius || 16;
+          if (!isWorldVisualVisible(e.x, e.y, r + 90)) return;
+          const pulse = 1 + Math.sin(now / 160 + (e.id || 0) * 1.7) * 0.07;
+          glowDraws.push([e, (r + 46) * pulse, r * 1.15 * pulse]);
+      };
+      if (hasPlayer) collectGlow(player);
+      if (botsGetGlow) {
+          for (let i = 0; i < botCount; i++) {
+              const b = bots[i];
+              if (!b || b.hp <= 0 || b.isDummy || !isEntityHyperchargedNow(b, now)) continue;
+              if (Math.hypot(b.x - px, b.y - py) > HC_GLOW_RANGE_PX) continue;
+              collectGlow(b);
+          }
+      }
+      let hasEmbers = false;
+      for (let i = 0; i < HC_EMBER_MAX; i++) if (HC_EMBER_POOL[i].alive) { hasEmbers = true; break; }
+      if (!glowDraws.length && !hasEmbers) return;
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < glowDraws.length; i++) {
+          const g = glowDraws[i];
+          const e = g[0], glowR = g[1], cr = g[2];
           if (hcGlowSprite) {
               ctx.globalAlpha = 0.5;
               ctx.drawImage(hcGlowSprite, e.x - glowR, e.y - glowR, glowR * 2, glowR * 2);
           }
           if (hcCoreSprite) {
-              const cr = r * 1.15 * pulse;
               ctx.globalAlpha = 0.65;
               ctx.drawImage(hcCoreSprite, e.x - cr, e.y - cr, cr * 2, cr * 2);
           }
-          // Orbit rings: rotating dashed outer ring + thin inner ring.
-          ctx.globalAlpha = 0.85;
-          ctx.strokeStyle = '#e878ff';
-          ctx.lineWidth = 3;
-          ctx.setLineDash([14, 10]);
-          ctx.lineDashOffset = -now / 28;
-          ctx.beginPath();
-          ctx.arc(e.x, e.y, r + 16, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.setLineDash([]);
-          ctx.globalAlpha = 0.5;
-          ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.arc(e.x, e.y, r + 8, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.restore();
       }
-      if (visualPressure) return;
-      // Pooled embers (shared pool; only the live ones draw).
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      for (let i = 0; i < HC_EMBER_MAX; i++) {
+      // Pooled embers (shared pool; only the live ones draw, capped per frame).
+      let embersDrawn = 0;
+      for (let i = 0; i < HC_EMBER_MAX && embersDrawn < HC_MAX_EMBERS_DRAWN; i++) {
           const em = HC_EMBER_POOL[i];
           if (!em.alive) continue;
           if (!isWorldVisualVisible(em.x, em.y, 40)) continue;
@@ -71970,6 +72049,7 @@ function checkHit(target, b, i){
               ctx.arc(em.x, em.y, sz * 0.5, 0, Math.PI * 2);
               ctx.fill();
           }
+          embersDrawn++;
       }
       ctx.restore();
   }
@@ -87164,6 +87244,26 @@ function checkHit(target, b, i){
         ctx.fillText(`SIGNATURE (R) · ${signatureState.label}`,bx,sy-10);
     }
     drawBlinkEyePiPScreen(ctx);
+    // Hypercharge Nova PERF FIX: optional FPS meter (?fps=1) — frame time +
+    // live HC entity count, top-left, so playtests report numbers, not vibes.
+    if (HC_FPS_METER) {
+        const hcNow = performance.now();
+        if (hcFpsLastAt > 0) {
+            const hcDt = hcNow - hcFpsLastAt;
+            hcFpsMs = hcFpsMs > 0 ? hcFpsMs * 0.9 + hcDt * 0.1 : hcDt;
+        }
+        hcFpsLastAt = hcNow;
+        let hcLive = 0;
+        if (player && player.hp > 0 && isEntityHyperchargedNow(player, hcNow)) hcLive++;
+        for (let i = 0; i < bots.length; i++) { const b = bots[i]; if (b && b.hp > 0 && !b.isDummy && isEntityHyperchargedNow(b, hcNow)) hcLive++; }
+        ctx.save();
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(8, 8, 132, 22);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 12px monospace';
+        ctx.fillText(`${hcFpsMs.toFixed(1)}ms · HC: ${hcLive}`, 14, 23);
+        ctx.restore();
+    }
 
     if (selectedBrawler === 'goonbob') {
         const stored = getBlobertStoredLiquid(player);
@@ -89531,7 +89631,7 @@ function updateBlinkEyeDodge(dt, now) {
         // Enrage check (<45% HP)
         if (ent.hp <= ent.maxHp * 0.45) {
             ent.enraged = true;
-            if (ent.isMegaBossBlinkeye) ent.isHypercharged = true;
+            if (ent.isMegaBossBlinkeye) { ent.isHypercharged = true; ent.hyperchargeUntil = performance.now() + 999999999; }
         }
 
         const currentSpeed = ent.enraged ? ent.speed * 1.25 : ent.speed;
@@ -92297,6 +92397,7 @@ function updateOrboBoss(dt, now) {
             if (!megaBoss.enraged) {
                 megaBoss.enraged = true;
                 megaBoss.isHypercharged = true;
+                megaBoss.hyperchargeUntil = performance.now() + 999999999;
                 spawnFloatingText(megaBoss.x, megaBoss.y - 70, '⚡ COSMIC HYPERCHARGE ENRAGED! ⚡', '#ff5ba7');
                 explosions.push({ x: megaBoss.x, y: megaBoss.y, radius: 140, life: 0, maxLife: 0.4, color: 'rgba(255, 91, 167, 0.6)' });
             }
@@ -95877,6 +95978,15 @@ function renderBouncinBossEvent(phase) {
     get executeMagnatarG1() { return executeMagnatarG1; },
     get executeMagnatarG2() { return executeMagnatarG2; },
     get playerData() { return playerData; },
+    // Hypercharge Nova perf-fix (2026-11-17): test-only training hooks so
+    // the suite can verify Training mode directly (player-only hyper, and
+    // Training with several HC entities). No gameplay effect.
+    get launchTrainingSandbox() { return launchTrainingSandbox; },
+    get isTraining() { return isTraining; },
+    get trainingGridBotsActiveAI() { return trainingGridBotsActiveAI; },
+    set trainingGridBotsActiveAI(v) { trainingGridBotsActiveAI = !!v; },
+    get isEntityHyperchargedNow() { return isEntityHyperchargedNow; },
+    get LOW_POWER_DEVICE() { return LOW_POWER_DEVICE; },
     get AOEDamage() { return AOEDamage; },
     get getEntitySlowMultiplier() { return getEntitySlowMultiplier; },
     get activateSignatureAbility() { return activateSignatureAbility; },
