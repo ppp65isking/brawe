@@ -59,6 +59,8 @@ html.desktop-device #fullscreenBtn { opacity: .88; }
   /* Canvas HUD panel colours (mirrored in game.js UI_HUD_TOKENS). */
   --af-hud-panel: rgba(4, 8, 16, 0.56);
   --af-hud-stroke: rgba(255, 255, 255, 0.08);
+  /* UI Refresh Part 2: results-overlay backdrop (value-identical adoption). */
+  --af-overlay-backdrop: rgba(2, 8, 18, 0.94);
 }
 * { box-sizing: border-box; }
 button, select, input {
@@ -1573,7 +1575,7 @@ html,body{overflow-x:hidden !important}
 
 
 /* Match report: one compact battle card, readable rewards, no costly backdrop FX. */
-.match-results-overlay{position:fixed;inset:0;z-index:5000;display:grid;place-items:center;padding:18px;box-sizing:border-box;overflow:auto;background:rgba(2,8,18,.94);color:#fff;font-family:Trebuchet MS,Arial,sans-serif}
+.match-results-overlay{position:fixed;inset:0;z-index:5000;display:grid;place-items:center;padding:18px;box-sizing:border-box;overflow:auto;background:var(--af-overlay-backdrop);color:#fff;font-family:Trebuchet MS,Arial,sans-serif}
 .match-results-overlay::before{content:'';position:fixed;inset:0;pointer-events:none;background:linear-gradient(125deg,rgba(53,220,255,.12),transparent 42%,rgba(135,75,255,.13));opacity:.9}
 .match-results-overlay.is-defeat::before{background:linear-gradient(125deg,rgba(255,76,96,.13),transparent 44%,rgba(111,54,163,.12))}
 .match-results-card{position:relative;width:min(760px,96vw);display:grid;gap:15px;padding:clamp(17px,3vw,30px);box-sizing:border-box;border:3px solid #69efda;border-radius:var(--af-radius-xl);background:var(--af-panel-grad);box-shadow:var(--af-slab-9);overflow:hidden}
