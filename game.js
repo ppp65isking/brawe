@@ -33707,6 +33707,12 @@ let heistFeverActive = false;
   }
 
   function startDuelsRound() {
+    // Hypercharge leak fix: Duels / Tower Duels / Fused launch straight here,
+    // bypassing launchShowdownMatch — clear any hyper left by a previous
+    // match. Runs before the savedPlayerHyper restore below, so the designed
+    // super/hyper CHARGE carryover between rounds still works; only an active
+    // hyper buff is dropped.
+    resetPlayerHyperchargeState();
     outlitWallChains.length = 0;
     bullets.length = 0; ragerWarTotems.length = 0;
     bolznstienPendingStrikes.length = 0; bolznstienShockTrails.length = 0; bolznstienChainArcs.length = 0; chocolatePuddles.length = 0; magnatarVortices.length = 0; oilMakerPuddles.length = 0; oilMakerBarrels.length = 0; oilMakerPendingPuddles.length = 0; steamerPoles.length = 0; weefeePoles.length = 0; chickpigEggZones.length = 0; rings.length = 0; cheeseFields.length = 0; healingPods.length = 0; explosions.length = 0; pendingClones.length = 0; destructibleWalls.length = 0; floatingTexts.length = 0; stickyNotes.length = 0; amplifierToolboxes.length = 0; amplifierScrewZones.length = 0; skeleParachutes.length = 0; skelePortals.length = 0; malakorHellZones.length = 0; malakorHands.length = 0; relativityZones.length = 0; packetTimeFields.length = 0; packetTelegraphs.length = 0; fastpassCheckpoints.length = 0; freestyleMicrophones.length = 0; portaloPortalPairs.length = 0; portaloPrisons.length = 0; portaloShockTimers.length = 0; ghoulHaunts.length = 0; darkenerClouds.length = 0; darkagons.length = 0; cursedStorms.length = 0; cursedHyperClouds.length = 0; antiRoyalMortarShells.length = 0; antiRoyalMortarZones.length = 0; jackTradeVolleys.length = 0; jackTradeThrownEffects.length = 0; jackTradeZones.length = 0; jackTradeEndpointShots.length = 0; badbatSwarm.length = 0; badbatShieldOrbs.length = 0; loomaThreads.length = 0; loomaWeaves.length = 0; feathersWindZones.length = 0; feathersStorms.length = 0; spikeyParkedBalls.length = 0; spikeyMegaBalls.length = 0; spikeyPendingSlams.length = 0; electricRealms.length = 0; electrostienPendingStrikes.length = 0; freezeonPatches.length = 0; freezeonSlipZones.length = 0; freezeonShatters.length = 0; freezeonThrownRinks.length = 0; freezeonPendingCones.length = 0; gravyPools.length = 0; gravyWaves.length = 0; gravyThrownGlobs.length = 0;
@@ -37027,6 +37033,21 @@ let heistFeverActive = false;
           if (!rectCircleCollides(wall.x, wall.y, wall.w, wall.h, x, y, radius)) continue;
           applyHeaterBoxDamage(ownerEntity, wall, damage);
       }
+  }
+
+  // Hypercharge must never carry between matches: an always_hyper / Hyper
+  // Forge match grants hyperchargeUntil = now + 999999999, which the update()
+  // expiry check can never reach in a later match, so every launch boundary
+  // resets the player's hyper state first. The always_hyper grant in
+  // launchShowdownMatch() and the per-frame enforcer in update() re-apply it
+  // only while the mutator/LTM is actually active.
+  function resetPlayerHyperchargeState() {
+      isHypercharged = false;
+      hyperchargeUntil = 0;
+      hyperChargeCharge = 0;
+      player.isHypercharged = false;
+      player.hyperChargeCharge = 0;
+      if (typeof updateHyperButton === 'function') updateHyperButton();
   }
 
   function activateHypercharge(){
@@ -53382,6 +53403,12 @@ let heistFeverActive = false;
   updateShowdownModeUI();
 
   function launchShowdownMatch() {
+      // Hypercharge leak fix: a previous always_hyper / Hyper Forge match
+      // leaves isHypercharged + a ~11.5-day hyperchargeUntil behind, and the
+      // update() expiry can never reach it — clear it before anything else,
+      // so the grant later in this function only applies when the mutator is
+      // actually active this match. Placed before the fused early return.
+      resetPlayerHyperchargeState();
       // Friendly Battles (Phase 8): the picker arms a one-shot config and the
       // launch consumes it here, so no other launch path can inherit a stale
       // friendly flag. clearRankedSessionState / the role-picker abort clear it.
@@ -55150,6 +55177,10 @@ isBrawlerLabMode = false;
   let trainingMode = 'free';
   const TRAINING_MODE_LABELS = { free: 'Free Play', dps: 'DPS Lab', duel: 'Duel Lab', healing: 'Healing Lab' };
   function launchTrainingSandbox(targetBrawler = selectedBrawler, mode = 'free') {
+      // Hypercharge leak fix: training is its own launch boundary — never
+      // inherit hyper from a previous match. (The trainingInfiniteCharges
+      // assignments later in this function still apply.)
+      resetPlayerHyperchargeState();
       trainingMode = ['free', 'dps', 'duel', 'healing'].includes(mode) ? mode : 'free';
       selectedBrawler = allBrawlers.includes(targetBrawler) ? targetBrawler : 'outlit';
       if (brawlerSelect) brawlerSelect.value = selectedBrawler;
@@ -55300,6 +55331,9 @@ isBrawlerLabMode = false;
   });
 
   function launchTutorialMatch() {
+      // Hypercharge leak fix: the tutorial is its own launch boundary — never
+      // inherit hyper from a previous match.
+      resetPlayerHyperchargeState();
       clearShowdownModifier();
       isTraining = true;
       isTutorialMode = true;
