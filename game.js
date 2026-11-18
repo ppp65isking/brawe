@@ -6612,7 +6612,7 @@ const bolznstienPendingStrikes = [];
             attackEffect: { type: 'treeOrnament', color: '#dc2626', glow: true },
             superEffect: { type: 'treeStar', color: '#fbbf24', glow: true },
             spawnEffect: { type: 'treeArrival', color: '#16a34a', glow: true },
-            takedownEffect: { type: 'ornamentBurst', color: '#fbbf24', glow: true }
+            takedownEffect: { type: 'snowballLanding', color: '#fbbf24', glow: true }
         },
         'electified-forest': {
             id: 'electified-forest',
@@ -7899,6 +7899,13 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
                 const arcAng = -Math.PI / 6 + (arcIndex / 5) * (Math.PI * 0.9);
                 explosions.push({ x: entity.x + Math.cos(arcAng) * 34, y: entity.y + Math.sin(arcAng) * 34, radius: 6, life: 0, maxLife: 0.35, color: 'rgba(255,215,107,.85)', fxKind: 'harvestReapingArc', legendary: true, skinId: skin.id });
             }
+            return;
+        }
+        if (kind === 'takedown' && skin.id === 'tree-freeze-freezeon') {
+            // Tree Freeze takedown: a snowball drops from above and lands on
+            // the defeated enemy with a poof of snow. Visual only — no
+            // damage, knockback or status changes (Anthony 2026-11-18).
+            explosions.push({ x: entity.x, y: entity.y, radius: 46, life: 0, maxLife: 0.65, fxKind: 'treeFreezeSnowball', legendary: true, skinId: skin.id });
             return;
         }
         const color = effect.color || getSkinRarityMeta(skin.rarity).border;
@@ -59896,7 +59903,10 @@ function checkHit(target, b, i){
 
     if (target.hp <= 0 && b.ownerId === player.id) {
         const takedownSkin = getActiveSkinForBrawler(selectedBrawler);
-        if ((takedownSkin?.rarity === 'legendary' || takedownSkin?.rarity === 'mythic') && !target._legendaryTakedownFxPlayed) {
+        // Hypercharge skins (Tree Freeze, Nightmare Outlit, Aura Farmer)
+        // declare takedownEffects too, and triggerSkinPulse already treats
+        // hypercharge as legendary — the gate above was the only blocker.
+        if ((takedownSkin?.rarity === 'legendary' || takedownSkin?.rarity === 'mythic' || takedownSkin?.rarity === 'hypercharge') && !target._legendaryTakedownFxPlayed) {
             triggerSkinPulse(target, takedownSkin, 'takedown');
             target._legendaryTakedownFxPlayed = true;
             // Add screen shake for legendary and mythic takedowns
@@ -85800,6 +85810,59 @@ function checkHit(target, b, i){
             // White flash core.
             ctx.fillStyle = `rgba(255,255,255,${0.9 * fAlpha})`;
             ctx.beginPath(); ctx.arc(ex.x, ex.y, 10 * fAlpha + 4, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+            continue;
+        }
+        if (ex.fxKind === 'treeFreezeSnowball') {
+            // Tree Freeze takedown: a snowball drops from above onto the
+            // defeated enemy, then lands with a poof of snow. Phase 1
+            // (first 55%): the ball falls with an ease-in drop and a
+            // growing ground shadow. Phase 2: expanding white ring, 8
+            // snow-poof dots and a flattening snow pile that fades.
+            // Visual only.
+            const sAlpha = Math.max(0, 1 - ex.life / ex.maxLife);
+            const progress = clamp(ex.life / ex.maxLife, 0, 1);
+            const landAt = 0.55;
+            const sR = ex.radius || 46;
+            ctx.save();
+            ctx.globalAlpha = sAlpha;
+            if (progress < landAt) {
+                const t = progress / landAt;
+                const ease = t * t;
+                const ballY = ex.y - 150 * (1 - ease);
+                // Ground shadow grows as the ball approaches.
+                ctx.fillStyle = `rgba(15,23,42,${0.18 + 0.22 * ease})`;
+                ctx.beginPath(); ctx.ellipse(ex.x, ex.y + 10, 6 + 12 * ease, 3 + 5 * ease, 0, 0, Math.PI * 2); ctx.fill();
+                // The snowball: white ball, light-blue rim, tiny highlight.
+                ctx.shadowColor = '#bae6fd'; ctx.shadowBlur = 10;
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath(); ctx.arc(ex.x, ballY, 13, 0, Math.PI * 2); ctx.fill();
+                ctx.shadowBlur = 0;
+                ctx.strokeStyle = '#bae6fd'; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(ex.x, ballY, 13, 0, Math.PI * 2); ctx.stroke();
+                ctx.fillStyle = 'rgba(255,255,255,.9)';
+                ctx.beginPath(); ctx.arc(ex.x - 4, ballY - 4, 3.5, 0, Math.PI * 2); ctx.fill();
+            } else {
+                const q = (progress - landAt) / (1 - landAt);
+                const poofR = sR * (0.3 + 0.7 * q);
+                // Expanding snow ring.
+                ctx.strokeStyle = '#e0f2fe'; ctx.lineWidth = 3;
+                ctx.beginPath(); ctx.arc(ex.x, ex.y, poofR, 0, Math.PI * 2); ctx.stroke();
+                // Snow-poof dots: 8 deterministic puffs flying outward.
+                for (let s = 0; s < 8; s++) {
+                    const a = (s / 8) * Math.PI * 2 + 0.3;
+                    ctx.fillStyle = s % 2 ? '#ffffff' : '#e0f2fe';
+                    ctx.beginPath();
+                    ctx.arc(ex.x + Math.cos(a) * poofR * 0.8, ex.y + Math.sin(a) * poofR * 0.8, 5 + 3 * (1 - q), 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                // Flattening snow pile at the landing spot, fading out.
+                ctx.fillStyle = `rgba(255,255,255,${0.85 * (1 - q)})`;
+                ctx.beginPath(); ctx.ellipse(ex.x, ex.y + 6, 16 + 10 * q, 6 + 3 * q, 0, 0, Math.PI * 2); ctx.fill();
+                // White flash core on impact.
+                ctx.fillStyle = `rgba(255,255,255,${0.8 * (1 - q)})`;
+                ctx.beginPath(); ctx.arc(ex.x, ex.y, 10 * (1 - q) + 3, 0, Math.PI * 2); ctx.fill();
+            }
             ctx.restore();
             continue;
         }
