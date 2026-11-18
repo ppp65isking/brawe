@@ -10854,8 +10854,8 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           hyper: 'Deep Freeze: the rink freezes twice as fast and melts enemies over time, and cone hits burst into a brain-freeze shatter.',
           g1: 'Cryo Syrup (Instantly freeze everyone standing in your rink)',
           g2: 'Extra Scoop (Next attack fires 6 cones instead of 4)',
-          sp1: 'Supercool (Enemies frozen by your rink stay frozen 0.5 seconds longer)',
-          sp2: 'Hypothermia (Enemies standing in your rink deal 25% less damage)'
+          sp1: 'Supercool (Your Ice Rink shoots snowballs at enemies: 300 damage + 12 freeze each)',
+          sp2: 'Hypothermia (Enemies standing in your slip zones build up to 8 freeze each)'
       },
       'driller': {
           name: 'Driller', role: 'Damage Dealer', rarity: 'Epic', color: '#a16207',
@@ -26063,7 +26063,7 @@ let heistFeverActive = false;
     // owner is Hypercharged) — drawn from the real frozen/hyper state.
     const FREEZEON_CONE_COUNT = 4; // Anthony's twist: Lou fires 3, FreeZeon fires 4
     const FREEZEON_CONE_SPEED = 720; // px/s — Tree Freeze nerf (2026-11-18): was 780
-    const FREEZEON_CONE_SPREAD_RAD = 0.07; // ~4 deg — Tree Freeze nerf: cones alternate left/right of the aim line, Lou-style (cone 1 left, cone 2 right, cone 3 left, cone 4 right)
+    const FREEZEON_CONE_SPREAD_RAD = 0.045; // ~2.6 deg — SP rework (2026-11-18): L-R spread a little narrower than the Tree Freeze 0.07 rad
     const FREEZEON_CONE_RANGE = 700; // px
     const FREEZEON_CONE_DMG = 500; // P11 base cone damage (see getScaledStats 'freezeon'.dmg)
     const FREEZEON_CONE_FIRE_DELAY_MS = 90; // ms between cones: the volley fires sequentially, one cone every 90ms (Lou-style) — changes round 2
@@ -26079,13 +26079,21 @@ let heistFeverActive = false;
     const FREEZEON_FREEZE_PER_TICK = 12.5; // 100 in 2s standing in the patch
     const FREEZEON_FREEZE_PER_TICK_HYPER = 25; // Hyper: 100 in 1s standing
     const FREEZEON_FREEZE_DURATION_MS = 1000; // frozen 1s, then progress resets
-    const FREEZEON_SP1_FREEZE_DURATION_MS = 1500; // Supercool: frozen 0.5s longer
+    // SP1 Supercool rework (2026-11-18): the active rink shoots snowballs.
+    const FREEZEON_SP1_SNOWBALL_DMG = 300; // snowball damage per hit
+    const FREEZEON_SP1_SNOWBALL_FREEZE = 12; // freeze progress per snowball hit (meter is 0-100)
+    const FREEZEON_SP1_SNOWBALL_INTERVAL_MS = 800; // one snowball per 0.8s per patch
+    const FREEZEON_SP1_SNOWBALL_SPEED = 650; // px/s
+    const FREEZEON_SP1_SNOWBALL_RANGE_BONUS = 150; // targets within patch radius + 150px
+    // SP2 Hypothermia rework (2026-11-18): slip zones build freeze.
+    const FREEZEON_SP2_ZONE_FREEZE_PER_S = 8; // +8 freeze per second standing in a slip zone
+    const FREEZEON_SP2_ZONE_FREEZE_CAP = 8; // capped at +8 total per enemy per zone (zones alone can never freeze)
     const FREEZEON_FREEZE_IMMUNE_MS = 2500; // post-freeze immunity (ice_cream pattern)
     const FREEZEON_FREEZE_DECAY_DELAY_MS = 2000; // buildup starts decaying 2s after last tick
     const FREEZEON_FREEZE_DECAY_PER_S = 24; // buildup decay per second
     const FREEZEON_HYPER_DOT_PER_S = 150; // Hyper Super damage-over-time inside the patch
     const FREEZEON_SUPER_DOT_PER_S = 30; // base Super damage-over-time inside the patch (changes round 1)
-    const FREEZEON_CONE_FREEZE_BUILD = 25; // +0.5s of freeze progress per cone hit (meter is 2s = 100)
+    const FREEZEON_CONE_FREEZE_BUILD = 15; // SP rework (2026-11-18): -40% per hit, was 25 — now ~7 cone hits to freeze (was 4)
     const FREEZEON_SUPER_THROW_SPEED = 1100; // px/s lobbed flight speed (changes round 1)
     const FREEZEON_SUPER_ARC_HEIGHT = 80; // arc peak px (jackTrade pattern)
     const FREEZEON_SHATTER_DELAY_MS = 600; // brain-freeze shatter delay after a cone hit
@@ -26112,7 +26120,6 @@ let heistFeverActive = false;
     function freezeonHasSP1(entity) { return freezeonStarChoice(entity) === 'slow'; }
     function freezeonHasSP2(entity) { return freezeonStarChoice(entity) === 'long'; }
     function isFreezeon(entity) { return !!entity && (entity.brawler === 'freezeon' || (entity.id === player.id && selectedBrawler === 'freezeon')); }
-    function freezeonFreezeDurationMs(entity) { return freezeonHasSP1(entity) ? FREEZEON_SP1_FREEZE_DURATION_MS : FREEZEON_FREEZE_DURATION_MS; }
     function freezeonFindOwner(ownerId) { if (player && player.id === ownerId) return player; return bots.find((b) => b && b.id === ownerId) || null; }
 
     // Freeze the target solid (stun) for the freeze duration, then grant immunity.
@@ -26121,7 +26128,7 @@ let heistFeverActive = false;
         const now = performance.now();
         if (now < (target.freezeonFreezeImmuneUntil || 0)) return false;
         target.freezeonFreeze = 0;
-        target.stunUntil = Math.max(target.stunUntil || 0, now + freezeonFreezeDurationMs(owner));
+        target.stunUntil = Math.max(target.stunUntil || 0, now + FREEZEON_FREEZE_DURATION_MS);
         target.freezeonFreezeImmuneUntil = now + FREEZEON_FREEZE_IMMUNE_MS;
         // The freeze explosion carries the owner's REAL Hyper state at
         // the moment of the freeze — the render branch keys its purple
@@ -26133,7 +26140,7 @@ let heistFeverActive = false;
         if (isMutatorActive('crowd_uncontrol') && owner && owner !== target && !owner._ccReflecting) {
             owner._ccReflecting = true;
             try {
-                owner.stunUntil = Math.max(owner.stunUntil || 0, now + freezeonFreezeDurationMs(owner));
+                owner.stunUntil = Math.max(owner.stunUntil || 0, now + FREEZEON_FREEZE_DURATION_MS);
                 owner.freezeonFreezeImmuneUntil = now + FREEZEON_FREEZE_IMMUNE_MS;
                 spawnFloatingText(owner.x, owner.y - 50, '↩ FROZEN!', '#ff88ff');
             } finally { owner._ccReflecting = false; }
@@ -26254,7 +26261,7 @@ let heistFeverActive = false;
                 }
             }
         }
-        freezeonPatches.push({ x, y, radius: FREEZEON_SUPER_RADIUS, until: now + FREEZEON_SUPER_DURATION_MS, nextTickAt: now, ownerId: thrown.ownerId, hyper, treeFreeze: !!thrown.treeFreeze });
+        freezeonPatches.push({ x, y, radius: FREEZEON_SUPER_RADIUS, until: now + FREEZEON_SUPER_DURATION_MS, nextTickAt: now, nextSnowballAt: 0, ownerId: thrown.ownerId, hyper, treeFreeze: !!thrown.treeFreeze });
         const mine = freezeonPatches.filter((p) => p.ownerId === thrown.ownerId);
         if (mine.length > FREEZEON_MAX_PATCHES_PER_OWNER) freezeonPatches.splice(freezeonPatches.indexOf(mine[0]), 1);
         explosions.push({ x, y, radius: FREEZEON_SUPER_RADIUS, life: 0, maxLife: .4, color: hyper ? 'rgba(192,132,252,.55)' : 'rgba(56,189,248,.55)', legendary: true, fxKind: 'freezeonSuperSpawn', treeFreeze: !!thrown.treeFreeze });
@@ -26316,9 +26323,27 @@ let heistFeverActive = false;
         return false;
     }
 
+    // SP1 Supercool rework: fire one snowball from the patch at the
+    // nearest enemy in range. Returns false when nobody is in range.
+    function freezeonFirePatchSnowball(owner, p) {
+        let best = null, bestD = Infinity;
+        for (const target of [player, ...bots]) {
+            if (!target || target.hp <= 0 || target.id === owner.id || areAlliedEntities(owner, target)) continue;
+            if (target.isStructure || target.isPet) continue;
+            const d = Math.hypot(target.x - p.x, target.y - p.y) - (target.radius || 14);
+            if (d > p.radius + FREEZEON_SP1_SNOWBALL_RANGE_BONUS || d >= bestD) continue;
+            best = target; bestD = d;
+        }
+        if (!best) return false;
+        const ang = Math.atan2(best.y - p.y, best.x - p.x);
+        const range = Math.min(bestD + 120, 700);
+        bullets.push({ ownerBrawler: 'freezeon', isFreezeonSp1Snowball: true, ownerId: owner.id, x: p.x, y: p.y, vx: Math.cos(ang) * FREEZEON_SP1_SNOWBALL_SPEED, vy: Math.sin(ang) * FREEZEON_SP1_SNOWBALL_SPEED, life: 0, maxLife: range / FREEZEON_SP1_SNOWBALL_SPEED, damage: FREEZEON_SP1_SNOWBALL_DMG, pierce: false, hitIds: {}, hitboxMod: 1.2, hyperVisual: !!p.hyper });
+        return true;
+    }
+
     // Per-frame FreeZeon maintenance: freeze decay, patch/slip expiry,
-    // shatter detonation, patch ticks (freeze buildup + Hyper DoT + SP2 mark),
-    // and sliding enemies in slip zones / patches.
+    // shatter detonation, patch ticks (freeze buildup + Hyper DoT + SP1
+    // snowballs), and sliding enemies in slip zones / patches.
     function updateFreezeonSystems(dt) {
         const now = performance.now();
         // Freeze buildup decays after 2s without a new tick.
@@ -26355,12 +26380,18 @@ let heistFeverActive = false;
             freezeonThrownRinks.splice(i, 1);
             freezeonLandRink(r);
         }
-        // Patch ticks (250ms): freeze buildup + DoT + Hypothermia mark.
+        // Patch ticks (250ms): freeze buildup + DoT (+ SP1 snowballs below).
         const entities = [player, ...bots].filter((e) => e && e.hp > 0);
         for (const p of freezeonPatches) {
             const owner = freezeonFindOwner(p.ownerId);
             if (!owner) continue;
-            const sp2 = freezeonHasSP2(owner);
+            // SP1 Supercool rework: while the rink is active it shoots a
+            // snowball every 0.8s at the nearest enemy within patch radius
+            // + 150px. Normal projectile — dodgeable, blocked by walls.
+            if (freezeonHasSP1(owner) && now >= (p.nextSnowballAt || 0)) {
+                p.nextSnowballAt = now + FREEZEON_SP1_SNOWBALL_INTERVAL_MS;
+                freezeonFirePatchSnowball(owner, p);
+            }
             if (now >= (p.nextTickAt || 0)) {
                 p.nextTickAt = now + FREEZEON_FREEZE_TICK_MS;
                 for (const target of entities) {
@@ -26373,7 +26404,6 @@ let heistFeverActive = false;
                     } else {
                         checkHit(target, { ownerBrawler: 'freezeon', ownerId: owner.id, damage: Math.round(FREEZEON_SUPER_DOT_PER_S * FREEZEON_FREEZE_TICK_MS / 1000), pierce: true, super: true, hitIds: {}, isFreezeonPatchDot: true }, -1);
                     }
-                    if (sp2) target.freezeonHypothermiaUntil = Math.max(target.freezeonHypothermiaUntil || 0, now + 400);
                 }
             }
         }
@@ -26404,6 +26434,27 @@ let heistFeverActive = false;
                 e._freezeonSlipVx *= decay; e._freezeonSlipVy *= decay;
                 if (Math.abs(e._freezeonSlipVx) < 4) e._freezeonSlipVx = 0;
                 if (Math.abs(e._freezeonSlipVy) < 4) e._freezeonSlipVy = 0;
+            }
+        }
+        // SP2 Hypothermia rework: enemies standing in a MAIN-attack slip
+        // zone build freeze — +8 per second, capped at +8 total per enemy
+        // per zone. Zones alone can never freeze anyone (8 < 100); they
+        // only contribute toward the 100. Patches do NOT build freeze
+        // this way (their 250ms ticks already build freeze).
+        for (const z of freezeonSlipZones) {
+            const zoneOwner = freezeonFindOwner(z.ownerId);
+            if (!zoneOwner || !freezeonHasSP2(zoneOwner)) continue;
+            z.freezeBuilt = z.freezeBuilt || {};
+            for (const e of entities) {
+                if (e.id === zoneOwner.id || areAlliedEntities(zoneOwner, e)) continue;
+                if (e.isStructure || e.isPet || e.hp <= 0) continue;
+                if (Math.hypot(e.x - z.x, e.y - z.y) > z.radius + (e.radius || 14)) continue;
+                const built = z.freezeBuilt[e.id] || 0;
+                if (built >= FREEZEON_SP2_ZONE_FREEZE_CAP) continue;
+                const add = Math.min(FREEZEON_SP2_ZONE_FREEZE_CAP - built, FREEZEON_SP2_ZONE_FREEZE_PER_S * dt);
+                if (add <= 0) continue;
+                z.freezeBuilt[e.id] = built + add;
+                freezeonApplyFreezeBuild(zoneOwner, e, add);
             }
         }
     }
@@ -26647,6 +26698,31 @@ let heistFeverActive = false;
         ctx.fillStyle = '#fff';
         ctx.beginPath();
         ctx.arc(6, -3, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    // SP1 Supercool rework: the patch snowball — a packed white snowball
+    // with a pale-blue rim (purple glow while the patch is Hypercharged).
+    function drawFreezeonSnowball(ctx, b) {
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        ctx.shadowColor = b.hyperVisual ? '#c084fc' : '#7dd3fc';
+        ctx.shadowBlur = 12;
+        ctx.fillStyle = '#f8fafc';
+        ctx.beginPath();
+        ctx.arc(0, 0, 9, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = b.hyperVisual ? '#e9d5ff' : '#bae6fd';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, 9, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(186,230,253,.9)';
+        ctx.beginPath();
+        ctx.arc(-3, -3, 2.5, 0, Math.PI * 2);
+        ctx.arc(3, 3, 2, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
     }
@@ -36320,7 +36396,6 @@ let heistFeverActive = false;
       if (!entity) return 1;
       let mult = 1;
       if ((entity.prismDampenedUntil || 0) > now) mult *= 0.82; // Drainbow SP2: 18% damage reduction
-      if ((entity.freezeonHypothermiaUntil || 0) > now) mult *= 0.75; // FreeZeon SP2 Hypothermia: 25% less damage inside his rink
       if ((entity.drillerWeakenUntil || 0) > now) mult *= Math.max(0.10, 1 - DRILLER_HYPER_WEAKEN_PER_HIT * (entity.drillerWeakenStacks || 1)); // Driller Hyper main: weakened enemies deal up to 90% less damage (30% per hit, max 3 stacks, 0.7s)
       if ((entity.awakenatorSleepUntil || 0) > now) mult *= (entity.awakenatorDeepSleep ? 0.70 : 0.80);
       if ((entity.awakenatorCorruptFriendlyUntil || 0) > now) mult *= 0.30;
@@ -58357,7 +58432,7 @@ function checkHit(target, b, i){
             if (bookwormOwner) bookwormApplyWormStack(bookwormOwner, target);
         }
         // FreeZeon: a cone that hits an enemy leaves slush where it landed,
-        // builds the freeze meter (+0.5s per hit — 4 hits freeze), and a
+        // builds the freeze meter (+15 per hit — ~7 hits freeze), and a
         // Hyper cone hit schedules a brain-freeze shatter.
         if (b && b.ownerBrawler === 'freezeon' && b.isFreezeonCone && target && target.hp > 0) {
             freezeonConeLanded(b);
@@ -58366,6 +58441,12 @@ function checkHit(target, b, i){
                 if (!target.isStructure && !target.isPet) freezeonApplyFreezeBuild(freezeonOwner, target, FREEZEON_CONE_FREEZE_BUILD);
                 if (b.hyperVisual) freezeonScheduleShatter(freezeonOwner, target);
             }
+        }
+        // FreeZeon SP1 Supercool rework: a patch snowball that hits
+        // builds the freeze meter (+12 per hit).
+        if (b && b.ownerBrawler === 'freezeon' && b.isFreezeonSp1Snowball && target && target.hp > 0) {
+            const freezeonOwner = getEntityById(b.ownerId);
+            if (freezeonOwner && !target.isStructure && !target.isPet) freezeonApplyFreezeBuild(freezeonOwner, target, FREEZEON_SP1_SNOWBALL_FREEZE);
         }
 
         // Driller: a Hyper dirt bomb or one of its spin clods weakens the
@@ -79825,6 +79906,10 @@ function checkHit(target, b, i){
       }
       if (b.isFreezeonCone) {
         drawFreezeonCone(ctx, b);
+        continue;
+      }
+      if (b.isFreezeonSp1Snowball) {
+        drawFreezeonSnowball(ctx, b);
         continue;
       }
       if (b.isDrillerBomb) {

@@ -83,7 +83,7 @@ const near = (a, b, eps = 0.01) => Math.abs(a - b) < eps;
 // ================= 1. source pins: stamping + propagation =============
 assert.match(game, /const treeFreeze = entity\.id === player\.id && getActiveSkinForBrawler\('freezeon'\)\?\.id === 'tree-freeze-freezeon';/, 'Super stamps the skin only for the PLAYER cast (bots own no skins)');
 assert.match(game, /freezeonThrownRinks\.push\(\{ startX: entity\.x, startY: entity\.y, targetX: x, targetY: y, createdAt: now, impactAt: now \+ flightMs, ownerId: entity\.id, hyper: !!hyper, treeFreeze \}\);/, 'thrown rink carries the treeFreeze flag');
-assert.match(game, /freezeonPatches\.push\(\{ x, y, radius: FREEZEON_SUPER_RADIUS, until: now \+ FREEZEON_SUPER_DURATION_MS, nextTickAt: now, ownerId: thrown\.ownerId, hyper, treeFreeze: !!thrown\.treeFreeze \}\);/, 'landing propagates treeFreeze to the patch');
+assert.match(game, /freezeonPatches\.push\(\{ x, y, radius: FREEZEON_SUPER_RADIUS, until: now \+ FREEZEON_SUPER_DURATION_MS, nextTickAt: now, nextSnowballAt: 0, ownerId: thrown\.ownerId, hyper, treeFreeze: !!thrown\.treeFreeze \}\);/, 'landing propagates treeFreeze to the patch');
 assert.match(game, /fxKind: 'freezeonSuperSpawn', treeFreeze: !!thrown\.treeFreeze \}\);/, 'landing propagates treeFreeze to the impact explosion');
 assert.match(game, /thrown\.treeFreeze \? \(hyper \? '🎄 DEEP FREEZE!' : '🎄 TREE RINK!'\) : \(hyper \? '❄️ DEEP FREEZE!' : '❄️ ICE RINK!'\)/, 'floating text is Christmas when skinned, default otherwise');
 assert.match(game, /'❄️ ICE RINK!'/, 'default ICE RINK text still exists');

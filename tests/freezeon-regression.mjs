@@ -11,7 +11,7 @@
 // whether the owner is moving or standing still. Every cone leaves a
 // 1-second slip zone (72px after the round-1 -40%) where it lands (on
 // enemy hit, on a wall, or at max range), and every cone hit builds the
-// freeze meter (+0.5s — 4 hits freeze).
+// freeze meter (+15 per hit — ~7 hits freeze, was 25 / 4 hits).
 // Enemies inside a slip zone keep sliding in the direction they were
 // moving. Super "Ice Rink": LOBBED throwable (changes round 1 — the rink
 // can arcs to the target, 560px throw range) that bursts on landing for
@@ -30,9 +30,11 @@
 // centered on the hit enemy's CURRENT spot (up to 4 shatters per
 // attack). G1 Cryo Syrup
 // (14s): instantly freeze everyone standing in your rink. G2 Extra Scoop
-// (16s): next main fires 6 cones instead of 4. SP1 Supercool: rink-frozen
-// enemies stay frozen 0.5s longer (1.5s). SP2 Hypothermia: enemies in the
-// rink deal 25% less damage. Voice lines are flavor-only (RULE ONE) and
+// (16s): next main fires 6 cones instead of 4. SP1 Supercool (SP rework
+// 2026-11-18): the active rink shoots snowballs — 300 damage + 12 freeze
+// each, one per 0.8s. SP2 Hypothermia (SP rework 2026-11-18): enemies
+// standing in a slip zone build up to 8 freeze each. Voice lines are
+// flavor-only (RULE ONE) and
 // silent until Anthony picks a voice. Roster: FreeZeon makes 110 ids / 102
 // selectable (109/101 + 1). Driller (2026-11-16) now makes 111 ids / 103 selectable. Gravy (2026-11-16) now makes 112 ids / 104 selectable. Delete-disabled (2026-11-16) now makes 104 ids / 104 selectable. Slip/freeze affect brawlers only, never
 // structures. Known limitation (flagged, not a spec deviation): in Fused
@@ -84,12 +86,12 @@ check('bullet wall hook: cone hits a wall -> slip zone, then dies', game.include
 check('update loop calls updateFreezeonSystems', game.includes('if (playing && !gameOver) updateFreezeonSystems(dt);'));
 check('render calls renderFreezeonEffects', game.includes('    renderFreezeonEffects();'));
 check('portrait body-art branch (snowman: white body + carrot nose)', game.includes("if (brawlerId === 'freezeon') {") && game.includes("ctx.fillStyle = '#e0f2fe';") && game.includes("ctx.fillStyle = '#f97316';"));
-check('constants (Tree Freeze nerf): 4 cones / 720 / 700 / 500 dmg / sequential fire 90ms apart / L-R spread 0.07 rad', game.includes('const FREEZEON_CONE_COUNT = 4;') && game.includes('const FREEZEON_CONE_SPEED = 720;') && game.includes('const FREEZEON_CONE_SPREAD_RAD = 0.07;') && game.includes('const FREEZEON_CONE_RANGE = 700;') && game.includes('const FREEZEON_CONE_DMG = 500;') && game.includes('const FREEZEON_CONE_FIRE_DELAY_MS = 90;') && !game.includes('FREEZEON_CONE_STAGGER'));
+check('constants (SP rework): 4 cones / 720 / 700 / 500 dmg / sequential fire 90ms apart / L-R spread 0.045 rad', game.includes('const FREEZEON_CONE_COUNT = 4;') && game.includes('const FREEZEON_CONE_SPEED = 720;') && game.includes('const FREEZEON_CONE_SPREAD_RAD = 0.045;') && game.includes('const FREEZEON_CONE_RANGE = 700;') && game.includes('const FREEZEON_CONE_DMG = 500;') && game.includes('const FREEZEON_CONE_FIRE_DELAY_MS = 90;') && !game.includes('FREEZEON_CONE_STAGGER'));
 check('constants: slip 72px (-40%) / 1s / drift 1.6', game.includes('const FREEZEON_SLIP_RADIUS = 72;') && game.includes('const FREEZEON_SLIP_DURATION_MS = 1000;') && game.includes('const FREEZEON_SLIP_DRIFT_MULT = 1.6;'));
 check('constants: super 260px / 6s / throw 560 / impact 800 / charge 7', game.includes('const FREEZEON_SUPER_RADIUS = 260;') && game.includes('const FREEZEON_SUPER_DURATION_MS = 6000;') && game.includes('const FREEZEON_SUPER_THROW_RANGE = 560;') && game.includes('const FREEZEON_SUPER_IMPACT_DMG = 800;') && game.includes('const FREEZEON_SUPER_CHARGE_HITS = 7;'));
-check('constants: freeze tick 250ms / 12.5 / hyper 25 / freeze 1s / SP1 1.5s / immune 2.5s', game.includes('const FREEZEON_FREEZE_TICK_MS = 250;') && game.includes('const FREEZEON_FREEZE_PER_TICK = 12.5;') && game.includes('const FREEZEON_FREEZE_PER_TICK_HYPER = 25;') && game.includes('const FREEZEON_FREEZE_DURATION_MS = 1000;') && game.includes('const FREEZEON_SP1_FREEZE_DURATION_MS = 1500;') && game.includes('const FREEZEON_FREEZE_IMMUNE_MS = 2500;'));
+check('constants: freeze tick 250ms / 12.5 / hyper 25 / freeze 1s / immune 2.5s (old SP1 1.5s const gone)', game.includes('const FREEZEON_FREEZE_TICK_MS = 250;') && game.includes('const FREEZEON_FREEZE_PER_TICK = 12.5;') && game.includes('const FREEZEON_FREEZE_PER_TICK_HYPER = 25;') && game.includes('const FREEZEON_FREEZE_DURATION_MS = 1000;') && !game.includes('FREEZEON_SP1_FREEZE_DURATION_MS') && !game.includes('freezeonFreezeDurationMs') && game.includes('const FREEZEON_FREEZE_IMMUNE_MS = 2500;'));
 check('constants: decay 2s delay / 24 per s / hyper DoT 150/s', game.includes('const FREEZEON_FREEZE_DECAY_DELAY_MS = 2000;') && game.includes('const FREEZEON_FREEZE_DECAY_PER_S = 24;') && game.includes('const FREEZEON_HYPER_DOT_PER_S = 150;'));
-check('constants (changes round 1): base DoT 30/s / cone freeze +25 / throw 1100 px/s / arc 80', game.includes('const FREEZEON_SUPER_DOT_PER_S = 30;') && game.includes('const FREEZEON_CONE_FREEZE_BUILD = 25;') && game.includes('const FREEZEON_SUPER_THROW_SPEED = 1100;') && game.includes('const FREEZEON_SUPER_ARC_HEIGHT = 80;'));
+check('constants (changes round 1, SP rework): base DoT 30/s / cone freeze +15 (-40%) / throw 1100 px/s / arc 80', game.includes('const FREEZEON_SUPER_DOT_PER_S = 30;') && game.includes('const FREEZEON_CONE_FREEZE_BUILD = 15;') && game.includes('const FREEZEON_SUPER_THROW_SPEED = 1100;') && game.includes('const FREEZEON_SUPER_ARC_HEIGHT = 80;'));
 check('lobbed super: thrown-rink array + land function + arc flight', game.includes('let freezeonThrownRinks = [];') && game.includes('function freezeonLandRink(thrown) {') && game.includes('freezeonThrownRinks.push({ startX: entity.x, startY: entity.y, targetX: x, targetY: y, createdAt: now, impactAt: now + flightMs, ownerId: entity.id, hyper: !!hyper, treeFreeze });'));
 check('freeze explosion render branch keys off the real hyper flag', game.includes("if (ex.fxKind === 'freezeonFreeze') {") && game.includes("const shard = ex.hyper ? '#e9d5ff' : '#bae6fd';") && game.includes("const ringColor = ex.hyper ? '#a855f7' : '#7dd3fc';"));
 check('freeze explosion carries the real hyper state at freeze time', game.includes('const freezeHyper = owner.id === player.id ? !!isHypercharged : !!owner.isHypercharged;') && game.includes("fxKind: 'freezeonFreeze', hyper: freezeHyper"));
@@ -104,7 +106,7 @@ check('changes round 2: shatter render branch keys off the real hyper flag (purp
   const branch = game.slice(start, end);
   return start !== -1 && branch.includes("const shard = ex.hyper ? '#e9d5ff' : '#bae6fd';") && branch.includes("const ringColor = ex.hyper ? '#a855f7' : '#7dd3fc';") && branch.includes('const shardCount = 10;');
 })());
-check('SP2 Hypothermia: 25% less damage while marked', game.includes("if ((entity.freezeonHypothermiaUntil || 0) > now) mult *= 0.75; // FreeZeon SP2 Hypothermia: 25% less damage inside his rink"));
+check('old SP2 Hypothermia (25% less damage mark) is gone entirely', !game.includes('freezeonHypothermiaUntil'));
 check('reset sites clear the FreeZeon arrays (duels + 5 mode starts)', game.includes('freezeonPatches.length = 0; freezeonSlipZones.length = 0; freezeonShatters.length = 0; freezeonThrownRinks.length = 0; freezeonPendingCones.length = 0;') && game.includes('electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; freezeonPendingCones = [];'));
 check('voice module registered in bootstrap', bootstrap.includes("'./modules/audio/freezeon-voicelines.js'"));
 check('voice hooks: attack + kill + super + watcher', game.includes("BraweFreezeonVoice?.play('attack')") && game.includes("BraweFreezeonVoice?.play('kill')") && game.includes("BraweFreezeonVoice?.play('super')") && game.includes('updateFreezeonVoiceState();'));
@@ -291,11 +293,11 @@ vm.createContext(sandbox);
 vm.runInContext(
   [
     'freezeonStarChoice', 'freezeonHasSP1', 'freezeonHasSP2', 'isFreezeon',
-    'freezeonFreezeDurationMs', 'freezeonFindOwner', 'freezeonFreezeTarget',
+    'freezeonFindOwner', 'freezeonFreezeTarget', 'freezeonFirePatchSnowball',
     'freezeonApplyFreezeBuild', 'freezeonSpawnSlipZone', 'freezeonConeLanded',
     'fireFreezeonMain', 'freezeonFirePendingCone', 'castFreezeonSuper', 'freezeonLandRink', 'freezeonScheduleShatter',
     'freezeonDetonateShatter', 'executeFreezeonGadget', 'updateFreezeonSystems',
-    'renderFreezeonEffects', 'drawFreezeonCone',
+    'renderFreezeonEffects', 'drawFreezeonCone', 'drawFreezeonSnowball',
   ].map((fn) => extractFn(game, fn)).join('\n'),
   sandbox);
 
@@ -306,8 +308,7 @@ try {
   check('SP1 gate: stored long is false', sandbox.freezeonHasSP1({ selectedStar: 'long' }) === false);
   check('SP2 gate: stored long is true', sandbox.freezeonHasSP2({ selectedStar: 'long' }) === true);
   check('SP2 gate: stored slow is false', sandbox.freezeonHasSP2({ selectedStar: 'slow' }) === false);
-  check('freeze duration: base 1000ms', sandbox.freezeonFreezeDurationMs({ selectedStar: 'none' }) === 1000);
-  check('freeze duration: SP1 Supercool 1500ms', sandbox.freezeonFreezeDurationMs({ selectedStar: 'slow' }) === 1500);
+  check('freeze duration: SP1 no longer extends the freeze (always 1000ms)', (() => { const e = mkBot('e1', { x: 300, y: 0, hp: 5000 }); sandbox.freezeonFreezeTarget(mkBot('sp1', { team: 'player', brawler: 'freezeon', selectedStar: 'slow' }), e); return e.stunUntil === nowMs + 1000; })());
   check('isFreezeon: player with selectedBrawler freezeon', sandbox.isFreezeon(playerEnt) === true);
   check('isFreezeon: bot with brawler freezeon', sandbox.isFreezeon(mkBot('fz', { brawler: 'freezeon' })) === true);
   check('isFreezeon: other brawler is false', sandbox.isFreezeon(mkBot('o', { brawler: 'outlit' })) === false);
@@ -336,7 +337,7 @@ try {
   check('main (changes round 2): all 4 cones in flight by +270ms, queue empty', cones.length === 4 && sandbox.freezeonPendingCones.length === 0);
   check('main (Tree Freeze): cones 720 px/s, 700px range (maxLife 700/720), 500 dmg at P11', cones.every((c) => near(Math.hypot(c.vx, c.vy), 720) && near(c.maxLife, 700 / 720) && c.damage === 500));
   check('main: cones do not pierce, hitbox 1.4x', cones.every((c) => c.pierce === false && c.hitboxMod === 1.4));
-  check('main (Tree Freeze): cones alternate left/right — two angles, first cone left, second right', (() => { const angs = cones.map((c) => Math.atan2(c.vy, c.vx)); return new Set(angs.map((a) => a.toFixed(3))).size === 2 && angs[0] < 0 && angs[1] > 0 && angs.filter((a) => a < 0).length === 2 && angs.filter((a) => a > 0).length === 2 && angs.every((a) => near(Math.abs(a), 0.07, 0.001)); })());
+  check('main (SP rework): cones alternate left/right — two angles, first cone left, second right, spread 0.045 rad', (() => { const angs = cones.map((c) => Math.atan2(c.vy, c.vx)); return new Set(angs.map((a) => a.toFixed(3))).size === 2 && angs[0] < 0 && angs[1] > 0 && angs.filter((a) => a < 0).length === 2 && angs.filter((a) => a > 0).length === 2 && angs.every((a) => near(Math.abs(a), 0.045, 0.001)); })());
   check('main (Tree Freeze): cones spawn from the snapshotted origin, 22px out along their own L/R angle', cones.length === 4 && cones.every((c) => near(Math.hypot(c.x, c.y), 22)) && cones.filter((c) => c.y < 0).length === 2 && cones.filter((c) => c.y > 0).length === 2);
   check('main: no hyper tint without Hyper', cones.every((c) => c.hyperVisual === false));
   // Dead owner mid-volley: remaining cones never fire.
@@ -486,14 +487,14 @@ try {
   nowMs += 6001; // patch expired too — no more ticks
   sandbox.updateFreezeonSystems(1);
   check('decay: buildup fades 24/s after 2s without a tick', enemy2.freezeonFreeze === 1);
-  // SP1: frozen 1.5s.
+  // SP1 (rework): frozen 1s — the old 1.5s extension is gone.
   resetWorld();
   const sp1Owner = mkBot('sp1', { team: 'player', brawler: 'freezeon', selectedStar: 'slow' });
   const enemy3 = mkBot('e1', { x: 300, y: 0, hp: 5000 });
   sandbox.castFreezeonSuper(sp1Owner, false, 300, 0);
   landRinks();
   for (let t = 0; t < 8; t++) { sandbox.updateFreezeonSystems(0.016); nowMs += 250; }
-  check('freeze: SP1 Supercool freezes for 1500ms', enemy3.stunUntil === nowMs - 250 + 1500);
+  check('freeze: SP1 (rework) freezes for 1000ms, not 1500ms', enemy3.stunUntil === nowMs - 250 + 1000);
 } catch (e) { failures.push('patch ticks / freeze threw: ' + e.message); }
 
 // --- executed: Hyper Super (2x freeze speed + 150/s DoT) + SP2 mark ---
@@ -508,16 +509,17 @@ try {
   for (let t = 1; t < 4; t++) { nowMs += 250; sandbox.updateFreezeonSystems(0.016); }
   check('hyper: frozen after 4 ticks (1s standing)', enemy.stunUntil === nowMs + 1000);
   check('hyper: DoT applied every tick (4 * 38)', enemy.hp === 5000 - 38 * 4 - 800);
-  // SP2 Hypothermia: enemies in the patch get marked.
+  // SP2 (rework): no Hypothermia mark anymore — the rink only ticks
+  // freeze + DoT, and the zone-freeze lives in slip zones (new suite).
   resetWorld();
   const sp2Owner = mkBot('sp2', { team: 'player', brawler: 'freezeon', selectedStar: 'long' });
   const enemy2 = mkBot('e1', { x: 300, y: 0, hp: 5000 });
   sandbox.castFreezeonSuper(sp2Owner, false, 300, 0);
   landRinks();
-  check('SP2: enemy in the rink gets the Hypothermia mark', (enemy2.freezeonHypothermiaUntil || 0) > nowMs);
+  check('SP2 (rework): enemy in the rink gets NO Hypothermia mark', !enemy2.freezeonHypothermiaUntil);
   const farEnemy = mkBot('e2', { x: 900, y: 0, hp: 5000 });
   sandbox.updateFreezeonSystems(0.016);
-  check('SP2: enemy outside the rink gets no mark', !farEnemy.freezeonHypothermiaUntil);
+  check('SP2 (rework): enemy outside the rink gets no mark either', !farEnemy.freezeonHypothermiaUntil);
 } catch (e) { failures.push('hyper super / SP2 threw: ' + e.message); }
 
 // --- executed: brain-freeze shatter (0.6s delay, follows the target, 600 AoE) ---
@@ -625,18 +627,17 @@ try {
 // --- executed: changes round 1 (cone freeze meter / base DoT / real
 // freeze visuals keyed off real state / lobbed rink render) ---
 try {
-  // Cone-hit freeze meter: 4 cone hits freeze (25 each), via the real
-  // buildup path (same decay/immunity rules as the patch).
+  // Cone-hit freeze meter: 7 cone hits freeze (15 each, -40%), via the
+  // real buildup path (same decay/immunity rules as the patch).
   resetWorld();
   const owner = playerEnt;
   const enemy = mkBot('e1', { x: 300, y: 0, hp: 5000 });
-  sandbox.freezeonApplyFreezeBuild(owner, enemy, 25);
-  check('cone freeze: one cone hit builds 25 (0.5s)', enemy.freezeonFreeze === 25);
-  sandbox.freezeonApplyFreezeBuild(owner, enemy, 25);
-  sandbox.freezeonApplyFreezeBuild(owner, enemy, 25);
-  check('cone freeze: three hits build 75, not yet frozen', enemy.freezeonFreeze === 75 && !enemy.stunUntil);
-  sandbox.freezeonApplyFreezeBuild(owner, enemy, 25);
-  check('cone freeze: the fourth hit freezes solid for 1s', enemy.freezeonFreeze === 0 && enemy.stunUntil === nowMs + 1000);
+  sandbox.freezeonApplyFreezeBuild(owner, enemy, 15);
+  check('cone freeze: one cone hit builds 15 (-40%)', enemy.freezeonFreeze === 15);
+  for (let i = 0; i < 5; i++) sandbox.freezeonApplyFreezeBuild(owner, enemy, 15);
+  check('cone freeze: six hits build 90, not yet frozen', enemy.freezeonFreeze === 90 && !enemy.stunUntil);
+  sandbox.freezeonApplyFreezeBuild(owner, enemy, 15);
+  check('cone freeze: the seventh hit freezes solid for 1s', enemy.freezeonFreeze === 0 && enemy.stunUntil === nowMs + 1000);
   check('cone freeze: FROZEN! text shown', floatingTexts.some((f) => f.text === 'FROZEN!'));
   // Base Super DoT: 30/s = 8 per 250ms tick (on top of the 800 impact).
   resetWorld();
