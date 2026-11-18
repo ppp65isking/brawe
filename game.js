@@ -246,6 +246,42 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
            has those too. The .native-app class is set at boot (see
            isNativeAppMode) and only ever exists inside the native WebView. */
         .native-app #fullscreenBtn, .native-app #mobileFullscreenBtn, .native-app #hud { display:none !important; }
+        /* App home (Brawl Stars style, 2026-11-18): the native shell replaces the web home grid with a fullscreen app layout — slim top strip, big hero fighter card, huge PLAY button, bottom tab bar. Scoped under .native-app so the website is byte-for-byte unchanged. The hero uses explicit flex sizing (never percentage-height + absolute-position children, which is how the web card's stage went blank on phone landscape) and a --hero-color fallback so its background can never go invalid. */
+        .native-app #homeScreen{display:none !important}
+        #appHome{position:fixed;inset:0;z-index:30;display:none;flex-direction:column;box-sizing:border-box;padding-top:max(8px,env(safe-area-inset-top));padding-bottom:max(8px,env(safe-area-inset-bottom));padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right));font-family:'Trebuchet MS','Gill Sans','Verdana',sans-serif;color:#fff;background:linear-gradient(160deg,#06101f 0%,#0a2140 55%,#04101f 100%)}
+        .native-app #appHome:not(.app-home-hidden){display:flex}
+        #appHomeTop{flex:none;display:flex;align-items:center;gap:10px;min-height:44px}
+        #appHomePlayer{display:flex;align-items:center;gap:8px;font-weight:1000;font-size:15px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:6px 12px;white-space:nowrap}
+        #appHomeSeasonChip{font-weight:1000;font-size:12px;letter-spacing:.06em;color:#ffd166;background:rgba(255,209,102,.12);border:1px solid rgba(255,209,102,.35);border-radius:999px;padding:6px 12px;white-space:nowrap}
+        #appHomeTop #homeCurrencyBar{display:flex;gap:8px;margin-left:auto}
+        #appHomeBody{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+        #appHomeHeroView,#appHomeEventsHost{flex:1 1 auto;min-height:0;display:none;flex-direction:column}
+        #appHomeHeroView.is-active,#appHomeEventsHost.is-active{display:flex}
+        #appHomeEventsHost{overflow-y:auto}
+        #appHomeHero{flex:1 1 auto;min-height:0;display:flex;align-items:center;gap:18px;padding:10px 14px;border-radius:22px;border:3px solid rgba(255,255,255,.75);background:linear-gradient(155deg,color-mix(in srgb,var(--hero-color,#0b69bd) 68%,#0b69bd),#06428c 72%);box-shadow:0 8px 0 #042960,0 18px 35px rgba(0,28,75,.4),inset 0 3px rgba(255,255,255,.28);overflow:hidden;cursor:pointer}
+        .app-hero-portrait{flex:none;width:min(32vh,230px);aspect-ratio:1;display:grid;place-items:center;border-radius:50%;border:6px solid #fff;background:linear-gradient(145deg,var(--hero-color,#0b69bd),#072755);box-shadow:0 0 0 5px #071f4a,0 18px 26px rgba(0,21,60,.55),inset 0 6px rgba(255,255,255,.35);overflow:hidden;font-size:clamp(64px,16vh,120px)}
+        .app-hero-portrait svg{width:92%;height:92%;display:block}
+        .app-hero-portrait.app-hero-fallback{font-weight:1000;color:#fff;text-shadow:0 4px rgba(0,0,0,.45)}
+        .app-hero-info{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:6px}
+        .app-hero-info small{color:#bceeff;font-size:11px;font-weight:1000;letter-spacing:.14em}
+        .app-hero-info strong{font-size:clamp(28px,6vh,44px);line-height:1;text-transform:uppercase}
+        .app-hero-sub{font-size:13px;font-weight:1000}
+        .app-hero-stats{display:flex;gap:8px;flex-wrap:wrap}
+        .app-hero-stats span{background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:6px 10px;font-size:13px;font-weight:800;white-space:nowrap}
+        .app-hero-stats small{color:#8fdfff;font-size:10px;font-weight:1000;margin-right:4px}
+        .app-hero-fighters{align-self:flex-start;margin-top:2px;padding:9px 16px;border:0;border-radius:12px;background:#ff9f1c;color:#231303;font-weight:1000;font-size:14px;letter-spacing:.03em}
+        #appHomePlayRow{flex:none;display:flex;align-items:center;justify-content:center;gap:12px;padding:10px 0 4px}
+        #appHomePlay{min-width:min(320px,44vw);padding:14px 34px;border:0;border-radius:18px;background:linear-gradient(#7dff6a,#37c837);color:#062b07;font-size:clamp(22px,4.5vh,30px);font-weight:1000;letter-spacing:.04em;box-shadow:0 6px 0 #1d7a1d,0 12px 24px rgba(0,0,0,.45);cursor:pointer}
+        #appHomePlay:active{transform:translateY(4px);box-shadow:0 2px 0 #1d7a1d}
+        #appHomeEventChip{display:flex;align-items:center;gap:8px;max-width:44vw;padding:10px 14px;border-radius:14px;border:1px solid rgba(255,255,255,.2);background:rgba(8,20,42,.6);color:#fff;font-weight:800;cursor:pointer}
+        #appHomeEventChip b{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        #appHomeEventChip small{font-size:11px;color:#9fc6e8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        #appHomeEventChip i{font-style:normal;font-size:9px;font-weight:1000;letter-spacing:.08em;color:#ffd166}
+        #appHomeTabs{flex:none;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:8px 4px 0}
+        #appHomeTabs button{padding:10px 6px;border-radius:14px;border:2px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#cfe6ff;font-weight:1000;font-size:15px;cursor:pointer}
+        #appHomeTabs button small{display:block;font-size:10px;letter-spacing:.08em;opacity:.75}
+        #appHomeTabs button.is-active{background:#ff9f1c;border-color:#ffd166;color:#231303}
+        @media (orientation:portrait){#appHomeHero{flex-direction:column;justify-content:center;text-align:center}.app-hero-info{align-items:center}.app-hero-fighters{align-self:center}#appHomeEventChip{max-width:52vw}}
         #mobileLandscapeHint{top:max(10px,env(safe-area-inset-top));padding:7px 12px;border-color:rgba(255,196,93,.5);background:rgba(17,20,31,.85);color:#ffe0a3}
         @media (orientation:portrait) and (max-width:760px){.mobile-stick{width:112px;height:112px}#mobileMoveStick,#mobileAimStick{bottom:max(26px,calc(env(safe-area-inset-bottom) + 10px))}#mobileActionButtons{right:max(14px,env(safe-area-inset-right));bottom:calc(max(26px,env(safe-area-inset-bottom)) + 118px);grid-template-columns:repeat(2,52px);gap:8px}.mobile-action-btn{width:52px;height:52px;font-size:19px}}
         @media (orientation:landscape) and (max-height:540px){.mobile-stick{width:118px;height:118px}#mobileMoveStick{left:max(24px,env(safe-area-inset-left));bottom:max(18px,env(safe-area-inset-bottom))}#mobileAimStick{right:max(26px,env(safe-area-inset-right));bottom:max(18px,env(safe-area-inset-bottom))}#mobileActionButtons{right:calc(max(26px,env(safe-area-inset-right)) + 124px);bottom:max(26px,env(safe-area-inset-bottom));grid-template-columns:repeat(2,52px)}.mobile-action-btn{width:52px;height:52px;font-size:19px}#mobileLandscapeHint{display:none}}
@@ -5605,6 +5641,166 @@ const bolznstienPendingStrikes = [];
         try { return !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()); } catch (_) { return false; }
     }
     if (isNativeAppMode()) document.documentElement.classList.add('native-app');
+
+    // App home (Brawl Stars style, 2026-11-18): the native shell replaces
+    // the web home grid with a fullscreen app layout — slim top strip, big
+    // hero fighter card, huge PLAY button, bottom tab bar. App mode ONLY:
+    // this block only builds when isNativeAppMode() is true and every rule
+    // is scoped under .native-app, so the website is untouched. Behavior
+    // is reused, not rebuilt: the hero reads the same data as
+    // renderHomeBrawlerCard, Fighters/Shop open the existing modals,
+    // Events reuses setHomeTab + the existing events view (moved into the
+    // app shell), PLAY clicks the existing #startMatch button.
+    // Diagnosis of the blank web card (Anthony's screenshot): the card's
+    // background rings painted but NONE of its innerHTML children did
+    // (avatar blob, identity, power badge, stats) and the profile chip
+    // still showed the static "BRAWLER" default — i.e. renderHomeBrawlerCard
+    // never completed on that fresh-install boot (it calls updateCurrencies
+    // first, and a throw anywhere in that path leaves the card at its empty
+    // static HTML). The app hero is immune by construction: explicit flex
+    // sizing (no percentage-height + absolute-position children), a
+    // --hero-color fallback so its background can never go invalid, and a
+    // large initials tile if the portrait markup ever comes back empty.
+    // Boot-order note: this block runs during initial evaluation, before
+    // later top-level lets (selectedBrawler, playerData, HOME_LAST_TAB_KEY)
+    // are initialized — so buildAppHome touches DOM only, and the first
+    // syncAppHome is deferred with setTimeout(0) plus the render hooks
+    // below. Never call syncAppHome (or read game state) synchronously here.
+    let appHomeEl = null;
+    let appHomeTab = 'home';
+    function buildAppHome() {
+        if (appHomeEl || !isNativeAppMode()) return;
+        const homeScreenEl = document.getElementById('homeScreen');
+        if (!homeScreenEl) return;
+        const shell = document.createElement('div');
+        shell.id = 'appHome';
+        shell.className = 'app-home-hidden';
+        shell.innerHTML = `
+          <div id="appHomeTop">
+            <div id="appHomePlayer"><span aria-hidden="true">👤</span><span id="appHomePlayerName">BRAWLER</span></div>
+            <div id="appHomeSeasonChip">SEASON</div>
+            <div id="appHomeCurrencies"></div>
+          </div>
+          <div id="appHomeBody">
+            <div id="appHomeHeroView" class="is-active">
+              <div id="appHomeHero" role="button" tabindex="0" aria-label="Change fighter"></div>
+              <div id="appHomePlayRow">
+                <button id="appHomeEventChip" type="button" aria-label="Change event"></button>
+                <button id="appHomePlay" type="button">▶ PLAY</button>
+              </div>
+            </div>
+            <div id="appHomeEventsHost"></div>
+          </div>
+          <nav id="appHomeTabs" aria-label="App navigation">
+            <button type="button" data-app-tab="home" class="is-active">🏠<small>HOME</small></button>
+            <button type="button" data-app-tab="fighters">👤<small>FIGHTERS</small></button>
+            <button type="button" data-app-tab="events">📅<small>EVENTS</small></button>
+            <button type="button" data-app-tab="shop">🛒<small>SHOP</small></button>
+          </nav>`;
+        document.body.appendChild(shell);
+        appHomeEl = shell;
+        // Move the live currency bar into the app top strip: updateHomeCurrencyBar
+        // keeps rewriting it by id, so it stays live after the move.
+        const currencyBar = document.getElementById('homeCurrencyBar');
+        const currencyHost = document.getElementById('appHomeCurrencies');
+        if (currencyBar && currencyHost) currencyHost.appendChild(currencyBar);
+        // Move the whole events view into the app shell: setHomeTab,
+        // setupCompactHomeModeSelector and the mode-card map all keep working
+        // on the moved node (they address it by id / captured reference), and
+        // the mode-card styles are global, not #homeScreen-scoped.
+        const eventsView = document.getElementById('homeEventsView');
+        const eventsHost = document.getElementById('appHomeEventsHost');
+        if (eventsView && eventsHost) eventsHost.appendChild(eventsView);
+        document.getElementById('appHomeHero')?.addEventListener('click', () => { if (brawlerBtn) brawlerBtn.click(); });
+        document.getElementById('appHomeHero')?.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); if (brawlerBtn) brawlerBtn.click(); }
+        });
+        document.getElementById('appHomePlay')?.addEventListener('click', () => {
+            document.getElementById('startMatch')?.click();
+        });
+        document.getElementById('appHomeEventChip')?.addEventListener('click', () => setAppHomeTab('events'));
+        appHomeEl.querySelectorAll('[data-app-tab]').forEach((button) => {
+            button.addEventListener('click', () => setAppHomeTab(button.dataset.appTab));
+        });
+        syncAppHomeVisibility();
+        try {
+            new MutationObserver(syncAppHomeVisibility).observe(homeScreenEl, { attributes: true, attributeFilter: ['style'] });
+        } catch (_) {}
+        if (typeof setTimeout === 'function') setTimeout(syncAppHome, 0);
+    }
+    function syncAppHomeVisibility() {
+        if (!appHomeEl) return;
+        const homeScreenEl = document.getElementById('homeScreen');
+        const hidden = homeScreenEl ? homeScreenEl.style.display === 'none' : false;
+        appHomeEl.classList.toggle('app-home-hidden', hidden);
+    }
+    function renderAppHomeHero() {
+        const hero = document.getElementById('appHomeHero');
+        if (!hero) return;
+        const data = brawlerData[selectedBrawler] || brawlerData.outlit || { name: 'Outlit', role: 'Fighter', rarity: 'Common' };
+        const level = Math.max(1, Math.min(MAX_POWER_LEVEL, playerData?.brawlers?.[selectedBrawler]?.level || 1));
+        const rarity = brawlerRarities[selectedBrawler] || 'Starter';
+        const rarityColors = { 'Starter': '#9fb4c7', 'Common': '#9fb4c7', 'Rare': '#5df2c2', 'Super Rare': '#6ee7ff', 'Epic': '#f1c40f', 'Mythic': '#ff7bd1', 'Exotic': '#b983ff', 'Unique': '#ff9b42', 'Legendary': '#ff9b42', 'Anomaly': '#7a4dff' };
+        const rarityColor = rarityColors[rarity] || '#9fb4c7';
+        const stats = getScaledStats(selectedBrawler);
+        const bColor = data.color || '#fff';
+        const name = data.name || selectedBrawler;
+        let portrait = '';
+        try { portrait = getBrawlerPortraitMarkup(selectedBrawler) || ''; } catch (_) { portrait = ''; }
+        const portraitHtml = portrait.trim()
+            ? `<div class="app-hero-portrait">${portrait}</div>`
+            : `<div class="app-hero-portrait app-hero-fallback" style="background:${bColor}">${(name || '?').substring(0, 2).toUpperCase()}</div>`;
+        hero.style.setProperty('--hero-color', bColor);
+        hero.style.setProperty('--hero-rarity', rarityColor);
+        hero.innerHTML = `
+          ${portraitHtml}
+          <div class="app-hero-info">
+            <small>READY TO BRAWL</small>
+            <strong>${name}</strong>
+            <span class="app-hero-sub" style="color:${rarityColor}">${rarity.toUpperCase()} · ${(data.role || 'Fighter').toUpperCase()}</span>
+            <div class="app-hero-stats">
+              <span><small>HP</small><b>${stats.hp}</b></span>
+              <span><small>DMG</small><b>${stats.dmg}</b></span>
+              <span><small>SPEED</small><b>${stats.speed}</b></span>
+              <span><small>POWER</small><b>${level}</b></span>
+            </div>
+            <span class="app-hero-fighters">👤 FIGHTERS — TAP TO CHANGE</span>
+          </div>`;
+    }
+    function renderAppHomeTop() {
+        const nameEl = document.getElementById('appHomePlayerName');
+        if (nameEl) nameEl.textContent = String(playerData?.profile?.playerName || playerData?.playerName || 'BRAWLER').trim().slice(0, 18) || 'BRAWLER';
+        const seasonEl = document.getElementById('appHomeSeasonChip');
+        if (seasonEl) { const s = getActiveSeasonProfile(); seasonEl.textContent = `Season ${s.seasonNumber} · ${s.name}`; }
+    }
+    function renderAppHomeEventChip() {
+        const chip = document.getElementById('appHomeEventChip');
+        if (!chip) return;
+        const modeEntry = HOME_MODE_DATA?.[showdownMode] || HOME_MODE_DATA?.solo || [showdownMode, '⚔', 'Battle', 'Enter the arena'];
+        chip.innerHTML = `<span aria-hidden="true">${modeEntry[1] || '⚔'}</span><b>${modeEntry[2] || 'Battle'}</b><small>${modeEntry[3] || ''}</small><i>CHANGE</i>`;
+    }
+    function syncAppHome() {
+        if (!appHomeEl || !isNativeAppMode()) return;
+        renderAppHomeHero();
+        renderAppHomeTop();
+        renderAppHomeEventChip();
+        // The web tab state is the source of truth: boot restores the saved
+        // tab via setHomeTab, and every tab change flows through it.
+        const eventsActive = !!document.getElementById('homeEventsView')?.classList.contains('is-active');
+        appHomeTab = eventsActive ? 'events' : 'home';
+        document.getElementById('appHomeHeroView')?.classList.toggle('is-active', !eventsActive);
+        document.getElementById('appHomeEventsHost')?.classList.toggle('is-active', eventsActive);
+        appHomeEl.querySelectorAll('[data-app-tab]').forEach((button) => {
+            button.classList.toggle('is-active', button.dataset.appTab === appHomeTab);
+        });
+    }
+    function setAppHomeTab(tab) {
+        if (!appHomeEl) return;
+        if (tab === 'fighters') { if (brawlerBtn) brawlerBtn.click(); return; }
+        if (tab === 'shop') { if (typeof openHomeShop === 'function') openHomeShop(); return; }
+        setHomeTab(tab === 'events' ? 'events' : 'home');
+    }
+    buildAppHome();
 
     // Fullscreen persistence (home-screen redesign 2026-11-03): remember
     // the player's fullscreen choice across page reloads. Browsers always
@@ -49183,6 +49379,7 @@ let heistFeverActive = false;
             <span><small>SPEED</small><b>${stats.speed}</b></span>
           </div>
       `;
+      syncAppHome();
   }
 
   const FASTPASS_MOMENTUM_PER_HIT = .08;
@@ -52048,6 +52245,7 @@ let heistFeverActive = false;
           <div class="home-career-stat"><small>SELECTED BRICKS</small><b>${lifetime.toLocaleString()}</b></div>
           <div class="home-career-stat"><small>POWER</small><b>${Math.max(1, Math.min(MAX_POWER_LEVEL, progress.level || 1))}</b></div>`;
       if (season) { const homeSeasonProfile = getActiveSeasonProfile(); season.innerHTML = homeSeasonProfile.key === 'turkey' ? `<b>SEASON 5 · TURKEY TROUBLE × ARENA FORGE</b><br>The turkeys are loose! Capture the Turkey is live all November — grab the bird, haul it home, first to 3 captures wins.` : `<b>SEASON 4 · ARENAAWEEN × ARENA FORGE</b><br>Spooky Boxes are dropping across the arena — crack them for skins, coins, or souls. Packets have been retired.`; }
+      syncAppHome();
   }
 
   function setHomeTab(tab = 'home') {
@@ -52070,6 +52268,7 @@ let heistFeverActive = false;
       }
       if (safeTab === 'events') syncHomeModeCards();
       document.getElementById('homePanel')?.scrollTo({ top: 0, behavior: 'smooth' });
+      syncAppHome();
   }
 
   let homeModeSelect = null;
