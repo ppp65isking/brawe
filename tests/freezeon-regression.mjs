@@ -2,10 +2,13 @@
 // his correction). Anthony's core kit is authoritative; everything else
 // below is a builder pick.
 // Locked design: Epic Controller (170 souls), 5200 HP / 270 speed, 500 base
-// main damage. Main "Snow Cones": 4 cones in a STRAIGHT LINE (Lou fires 3 —
-// Anthony's twist; changes round 1: a line, not a fan), fired
+// main damage. Main "Snow Cones": 4 cones alternating LEFT/RIGHT of the
+// aim line (Tree Freeze nerf 2026-11-18 — Lou fires 3 in a line, FreeZeon
+// fires 4 with a slight zigzag; changes round 1 had a straight line), fired
 // SEQUENTIALLY one every 90ms (changes round 2 — Lou-style, so the volley
-// reads cone-by-cone), 780 px/s, 700px range; every cone leaves a
+// reads cone-by-cone), 720 px/s (Tree Freeze nerf: was 780), 700px range;
+// the volley origin is snapshotted at fire time, so the volley is identical
+// whether the owner is moving or standing still. Every cone leaves a
 // 1-second slip zone (72px after the round-1 -40%) where it lands (on
 // enemy hit, on a wall, or at max range), and every cone hit builds the
 // freeze meter (+0.5s — 4 hits freeze).
@@ -81,7 +84,7 @@ check('bullet wall hook: cone hits a wall -> slip zone, then dies', game.include
 check('update loop calls updateFreezeonSystems', game.includes('if (playing && !gameOver) updateFreezeonSystems(dt);'));
 check('render calls renderFreezeonEffects', game.includes('    renderFreezeonEffects();'));
 check('portrait body-art branch (snowman: white body + carrot nose)', game.includes("if (brawlerId === 'freezeon') {") && game.includes("ctx.fillStyle = '#e0f2fe';") && game.includes("ctx.fillStyle = '#f97316';"));
-check('constants (changes round 2): 4 cones / 780 / 700 / 500 dmg / sequential fire 90ms apart (no spread, no stagger)', game.includes('const FREEZEON_CONE_COUNT = 4;') && game.includes('const FREEZEON_CONE_SPEED = 780;') && game.includes('const FREEZEON_CONE_RANGE = 700;') && game.includes('const FREEZEON_CONE_DMG = 500;') && game.includes('const FREEZEON_CONE_FIRE_DELAY_MS = 90;') && !game.includes('FREEZEON_CONE_SPREAD') && !game.includes('FREEZEON_CONE_STAGGER'));
+check('constants (Tree Freeze nerf): 4 cones / 720 / 700 / 500 dmg / sequential fire 90ms apart / L-R spread 0.07 rad', game.includes('const FREEZEON_CONE_COUNT = 4;') && game.includes('const FREEZEON_CONE_SPEED = 720;') && game.includes('const FREEZEON_CONE_SPREAD_RAD = 0.07;') && game.includes('const FREEZEON_CONE_RANGE = 700;') && game.includes('const FREEZEON_CONE_DMG = 500;') && game.includes('const FREEZEON_CONE_FIRE_DELAY_MS = 90;') && !game.includes('FREEZEON_CONE_STAGGER'));
 check('constants: slip 72px (-40%) / 1s / drift 1.6', game.includes('const FREEZEON_SLIP_RADIUS = 72;') && game.includes('const FREEZEON_SLIP_DURATION_MS = 1000;') && game.includes('const FREEZEON_SLIP_DRIFT_MULT = 1.6;'));
 check('constants: super 260px / 6s / throw 560 / impact 800 / charge 7', game.includes('const FREEZEON_SUPER_RADIUS = 260;') && game.includes('const FREEZEON_SUPER_DURATION_MS = 6000;') && game.includes('const FREEZEON_SUPER_THROW_RANGE = 560;') && game.includes('const FREEZEON_SUPER_IMPACT_DMG = 800;') && game.includes('const FREEZEON_SUPER_CHARGE_HITS = 7;'));
 check('constants: freeze tick 250ms / 12.5 / hyper 25 / freeze 1s / SP1 1.5s / immune 2.5s', game.includes('const FREEZEON_FREEZE_TICK_MS = 250;') && game.includes('const FREEZEON_FREEZE_PER_TICK = 12.5;') && game.includes('const FREEZEON_FREEZE_PER_TICK_HYPER = 25;') && game.includes('const FREEZEON_FREEZE_DURATION_MS = 1000;') && game.includes('const FREEZEON_SP1_FREEZE_DURATION_MS = 1500;') && game.includes('const FREEZEON_FREEZE_IMMUNE_MS = 2500;'));
@@ -93,7 +96,7 @@ check('freeze explosion carries the real hyper state at freeze time', game.inclu
 check('constants (changes round 2): shatter 0.6s / 90px (-40%) / 600 dmg / caps 4 zones / 2 patches', game.includes('const FREEZEON_SHATTER_DELAY_MS = 600;') && game.includes('const FREEZEON_SHATTER_RADIUS = 90;') && game.includes('const FREEZEON_SHATTER_DMG = 600;') && game.includes('const FREEZEON_MAX_SLIP_ZONES_PER_OWNER = 4;') && game.includes('const FREEZEON_MAX_PATCHES_PER_OWNER = 2;'));
 check('constants: hyper aura mirrors Pandy/Snipa (radius +20, line 5, alpha 0.9)', game.includes('const FREEZEON_HYPER_AURA_RADIUS_BONUS = 20;') && game.includes('const FREEZEON_HYPER_AURA_LINE_WIDTH = 5;') && game.includes('const FREEZEON_HYPER_AURA_STROKE_ALPHA = 0.9;'));
 check('SP gates use stored keys slow/long (never sp1/sp2 alone)', game.includes("function freezeonHasSP1(entity) { return freezeonStarChoice(entity) === 'slow'; }") && game.includes("function freezeonHasSP2(entity) { return freezeonStarChoice(entity) === 'long'; }"));
-check('changes round 2: pending-cone queue declared, enqueued per volley, processed in the tick', game.includes('let freezeonPendingCones = [];') && game.includes('freezeonPendingCones.push({ at: now + i * FREEZEON_CONE_FIRE_DELAY_MS, ownerId: fromEntity.id, ang, hyper, dmg: stats.dmg });') && game.includes('freezeonFirePendingCone(c);') && game.includes('function freezeonFirePendingCone(entry) {'));
+check('changes round 2 + Tree Freeze: pending-cone queue declared, enqueued per volley with origin snapshot + spread angle, processed in the tick', game.includes('let freezeonPendingCones = [];') && game.includes('freezeonPendingCones.push({ at: now + i * FREEZEON_CONE_FIRE_DELAY_MS, ownerId: fromEntity.id, ang: coneAng, hyper, dmg: stats.dmg, ox, oy, spawnR, treeFreeze });') && game.includes('freezeonFirePendingCone(c);') && game.includes('function freezeonFirePendingCone(entry) {'));
 check('changes round 2: shatter detonation reads the owner\'s real Hyper state (never faked)', game.includes('const shatterHyper = owner.id === player.id ? !!isHypercharged : !!owner.isHypercharged;') && game.includes("fxKind: 'freezeonShatter', hyper: shatterHyper"));
 check('changes round 2: shatter render branch keys off the real hyper flag (purple vs ice-blue, 10 shards)', (() => {
   const start = game.indexOf("if (ex.fxKind === 'freezeonShatter') {");
@@ -232,6 +235,10 @@ const sandbox = {
   getEntityStarChoice: (e) => (e && e.selectedStar) || 'none',
   getScaledStats: (id, lvl) => id === 'freezeon' ? { hp: 5200, dmg: 500, speed: 270 } : { hp: 5000, dmg: 1000, speed: 250 },
   getSelectedBrawlerLevel: () => 11,
+  // Tree Freeze: fireFreezeonMain stamps the equipped skin onto each
+  // queued cone. The shipped game resolves it from playerData; here the
+  // default is "no skin" (the new tree-freeze suite overrides this stub).
+  getActiveSkinForBrawler: () => null,
   getEntityById: (id) => entitiesById.get(id) || null,
   areAlliedEntities: (a, b) => !!a && !!b && a.team === b.team,
   isEntityHyperchargedNow: (e) => !!e && !!e.isHypercharged,
@@ -327,10 +334,10 @@ try {
   sandbox.updateFreezeonSystems(0.016); // t+270: cones 3 and 4 fire
   const cones = bullets.filter((b) => b.isFreezeonCone);
   check('main (changes round 2): all 4 cones in flight by +270ms, queue empty', cones.length === 4 && sandbox.freezeonPendingCones.length === 0);
-  check('main: cones 780 px/s, 700px range (maxLife 700/780), 500 dmg at P11', cones.every((c) => near(Math.hypot(c.vx, c.vy), 780) && near(c.maxLife, 700 / 780) && c.damage === 500));
+  check('main (Tree Freeze): cones 720 px/s, 700px range (maxLife 700/720), 500 dmg at P11', cones.every((c) => near(Math.hypot(c.vx, c.vy), 720) && near(c.maxLife, 700 / 720) && c.damage === 500));
   check('main: cones do not pierce, hitbox 1.4x', cones.every((c) => c.pierce === false && c.hitboxMod === 1.4));
-  check('main (changes round 1): cones fly in a straight line — one shared angle', new Set(cones.map((c) => Math.atan2(c.vy, c.vx).toFixed(3))).size === 1);
-  check('main (changes round 2): cones spawn at the owner spot along the aim line', cones.every((c) => c.x === 22 && c.y === 0));
+  check('main (Tree Freeze): cones alternate left/right — two angles, first cone left, second right', (() => { const angs = cones.map((c) => Math.atan2(c.vy, c.vx)); return new Set(angs.map((a) => a.toFixed(3))).size === 2 && angs[0] < 0 && angs[1] > 0 && angs.filter((a) => a < 0).length === 2 && angs.filter((a) => a > 0).length === 2 && angs.every((a) => near(Math.abs(a), 0.07, 0.001)); })());
+  check('main (Tree Freeze): cones spawn from the snapshotted origin, 22px out along their own L/R angle', cones.length === 4 && cones.every((c) => near(Math.hypot(c.x, c.y), 22)) && cones.filter((c) => c.y < 0).length === 2 && cones.filter((c) => c.y > 0).length === 2);
   check('main: no hyper tint without Hyper', cones.every((c) => c.hyperVisual === false));
   // Dead owner mid-volley: remaining cones never fire.
   resetWorld();

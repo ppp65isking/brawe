@@ -4869,7 +4869,7 @@ const bolznstienPendingStrikes = [];
               explosions.push({ x: e.x, y: e.y, radius: (e.radius || 16) + 52, life: 0, maxLife: 0.55, fxKind: 'hyperActivate' });
           }
           if (isPlayerEntity) {
-              spawnFloatingText(e.x, e.y - 46, '⚡ HYPERCHARGE!', '#f0abff');
+              spawnFloatingText(e.x, e.y - 46, '⚡ CORE SURGE!', '#f0abff');
               screenShakeUntil = now + 160;
               screenShakeAmount = 4;
           }
@@ -5876,6 +5876,7 @@ const bolznstienPendingStrikes = [];
                 if (!playerData.brawlers.rager.selectedStar || playerData.brawlers.rager.selectedStar === 'none') playerData.brawlers.rager.selectedStar = 'slow';
             }
             grantFreeThanksgivingSkins();
+            grantFreeChristmasSkins();
         }
 
         function isFavoriteBrawler(id) {
@@ -6594,6 +6595,25 @@ const bolznstienPendingStrikes = [];
             superEffect: { type: 'moltenSpin', color: '#ff9b42', glow: true },
             takedownEffect: { type: 'lavaBurst', color: '#ffb15a', glow: true }
         },
+        'tree-freeze-freezeon': {
+            id: 'tree-freeze-freezeon',
+            name: 'Tree Freeze',
+            brawler: 'freezeon',
+            rarity: 'hypercharge',
+            set: 'Christmas 2026',
+            price: 0,
+            currency: 'gems',
+            description: 'FREE Christmas skin! FreeZeon is a living Christmas tree — pine-green tiers, shiny bauble ornaments and a golden star topper. His cones become Christmas ornaments, and while Core Surged the tree lights blaze and the star shines bright.',
+            _displayColor: '#16a34a',
+            icon: '🎄',
+            hyperTransform: true,
+            isHyperchargeSkin: true,
+            isAlwaysAvailable: true,
+            attackEffect: { type: 'treeOrnament', color: '#dc2626', glow: true },
+            superEffect: { type: 'treeStar', color: '#fbbf24', glow: true },
+            spawnEffect: { type: 'treeArrival', color: '#16a34a', glow: true },
+            takedownEffect: { type: 'ornamentBurst', color: '#fbbf24', glow: true }
+        },
         'electified-forest': {
             id: 'electified-forest',
             name: 'Electified Forest',
@@ -7140,6 +7160,17 @@ const bolznstienPendingStrikes = [];
         if (!playerData.ownedSkins) playerData.ownedSkins = {};
         if (!playerData.ownedSkins.chaird) playerData.ownedSkins.chaird = [];
         if (!playerData.ownedSkins.chaird.includes('molten-rock-chaird')) playerData.ownedSkins.chaird.push('molten-rock-chaird');
+    }
+
+    // Christmas 2026 (unannounced, launching today): Tree Freeze is FREE
+    // for everyone — same precedent as Molten Rock Chaird. No cost, no
+    // paywall; every save owns it, so it shows up in the brawler-select
+    // skin list as EQUIP, never as a purchase. Idempotent: safe to run
+    // on every load. Never auto-equips (selection stays the player's tap).
+    function grantFreeChristmasSkins() {
+        if (!playerData.ownedSkins) playerData.ownedSkins = {};
+        if (!playerData.ownedSkins.freezeon) playerData.ownedSkins.freezeon = [];
+        if (!playerData.ownedSkins.freezeon.includes('tree-freeze-freezeon')) playerData.ownedSkins.freezeon.push('tree-freeze-freezeon');
     }
 
     const SKIN_RARITY_META = {
@@ -17510,6 +17541,7 @@ let heistFeverActive = false;
           ensureDailyWeeklyQuestData();
           refreshDailyWeeklyQuests();
           grantFreeThanksgivingSkins();
+          grantFreeChristmasSkins();
       } catch(e) {
           console.error('Failed to load progress safely:', e);
       }
@@ -26030,7 +26062,8 @@ let heistFeverActive = false;
     // Freeze completion fires a real ice-explosion visual (purple when the
     // owner is Hypercharged) — drawn from the real frozen/hyper state.
     const FREEZEON_CONE_COUNT = 4; // Anthony's twist: Lou fires 3, FreeZeon fires 4
-    const FREEZEON_CONE_SPEED = 780; // px/s
+    const FREEZEON_CONE_SPEED = 720; // px/s — Tree Freeze nerf (2026-11-18): was 780
+    const FREEZEON_CONE_SPREAD_RAD = 0.07; // ~4 deg — Tree Freeze nerf: cones alternate left/right of the aim line, Lou-style (cone 1 left, cone 2 right, cone 3 left, cone 4 right)
     const FREEZEON_CONE_RANGE = 700; // px
     const FREEZEON_CONE_DMG = 500; // P11 base cone damage (see getScaledStats 'freezeon'.dmg)
     const FREEZEON_CONE_FIRE_DELAY_MS = 90; // ms between cones: the volley fires sequentially, one cone every 90ms (Lou-style) — changes round 2
@@ -26068,7 +26101,7 @@ let heistFeverActive = false;
     let freezeonSlipZones = []; // {x, y, radius, until, ownerId} — 1s slippery slush
     let freezeonShatters = []; // {x, y, at, ownerId, targetId} — pending brain-freeze shatters
     let freezeonThrownRinks = []; // {startX, startY, targetX, targetY, createdAt, impactAt, ownerId, hyper} — lobbed rink cans in flight
-    let freezeonPendingCones = []; // {at, ownerId, ang, hyper, dmg} — volley cones waiting their 90ms turn (changes round 2)
+    let freezeonPendingCones = []; // {at, ownerId, ang, hyper, dmg, ox, oy, spawnR, treeFreeze} — volley cones waiting their 90ms turn (changes round 2). ox/oy/spawnR snapshot the volley origin at fire time (Tree Freeze: identical volley moving or still); treeFreeze stamps the Tree Freeze skin at fire time.
     let freezeonVoicePrevPlaying = false;
     let freezeonVoicePrevGameOver = false;
     let freezeonVoiceMatchEndPlayed = false;
@@ -26137,13 +26170,18 @@ let heistFeverActive = false;
         if (owner) freezeonSpawnSlipZone(owner, b.x, b.y);
     }
 
-    // Main: hurl 4 snow cones in a straight line (6 with Extra Scoop
-    // armed) — like real Lou. Cones fire SEQUENTIALLY, one every 90ms,
-    // so the volley reads cone-by-cone instead of all at once
-    // (changes round 2 — Anthony: "Why is there no delay between
-    // bullets"). Each cone spawns at the owner's current spot along
-    // the aim direction at its turn, so the line trails naturally
-    // (90ms at 780 px/s puts each cone ~70px behind the last).
+    // Main: hurl 4 snow cones alternating slightly left / right of the
+    // aim line (6 with Extra Scoop armed) — like real Lou. Cones fire
+    // SEQUENTIALLY, one every 90ms, so the volley reads cone-by-cone
+    // instead of all at once (changes round 2 — Anthony: "Why is there
+    // no delay between bullets"). Tree Freeze nerf (2026-11-18): cone
+    // speed 780 -> 720 px/s, and the volley origin is snapshotted at
+    // fire time — every cone spawns from that fixed origin, so the
+    // volley geometry (speed, 90ms delay, cone spacing) is identical
+    // whether the owner is moving or standing still. (Before, each cone
+    // spawned at the owner's LIVE position at its turn, so moving
+    // forward squeezed the cones together and moving away stretched
+    // them apart.)
     function fireFreezeonMain(fromEntity, targetX, targetY, isBot) {
         const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
         const stats = getScaledStats('freezeon', fromEntity === player ? getSelectedBrawlerLevel() : (fromEntity.level || 11));
@@ -26151,20 +26189,33 @@ let heistFeverActive = false;
         fromEntity.freezeonExtraScoopArmed = false;
         const ang = Math.atan2(targetY - fromEntity.y, targetX - fromEntity.x);
         const now = performance.now();
+        // Snapshot the volley origin: fixed for the whole volley so the
+        // cones land identically moving or still (see header comment).
+        const ox = fromEntity.x, oy = fromEntity.y, spawnR = (fromEntity.radius || 14) + 8;
+        const treeFreeze = getActiveSkinForBrawler('freezeon')?.id === 'tree-freeze-freezeon';
         for (let i = 0; i < count; i++) {
-            freezeonPendingCones.push({ at: now + i * FREEZEON_CONE_FIRE_DELAY_MS, ownerId: fromEntity.id, ang, hyper, dmg: stats.dmg });
+            // Left-right-left-right, Lou-style: cone 1 left, cone 2 right...
+            const coneAng = ang + (i % 2 === 0 ? -FREEZEON_CONE_SPREAD_RAD : FREEZEON_CONE_SPREAD_RAD);
+            freezeonPendingCones.push({ at: now + i * FREEZEON_CONE_FIRE_DELAY_MS, ownerId: fromEntity.id, ang: coneAng, hyper, dmg: stats.dmg, ox, oy, spawnR, treeFreeze });
         }
         return true;
     }
 
-    // A queued cone's turn has come: spawn it at the owner's current
-    // spot along the volley angle (dropped silently if the owner died
-    // mid-volley — no cone from a dead brawler).
+    // A queued cone's turn has come: spawn it from the snapshotted
+    // volley origin along its left/right angle (dropped silently if the
+    // owner died mid-volley — no cone from a dead brawler).
     function freezeonFirePendingCone(entry) {
         const owner = getEntityById(entry.ownerId);
         if (!owner || owner.hp <= 0) return false;
         const ang = entry.ang;
-        bullets.push({ ownerBrawler: 'freezeon', isFreezeonCone: true, ownerId: owner.id, x: owner.x + Math.cos(ang) * (owner.radius + 8), y: owner.y + Math.sin(ang) * (owner.radius + 8), vx: Math.cos(ang) * FREEZEON_CONE_SPEED, vy: Math.sin(ang) * FREEZEON_CONE_SPEED, life: 0, maxLife: FREEZEON_CONE_RANGE / FREEZEON_CONE_SPEED, damage: entry.dmg, pierce: false, hitIds: {}, hitboxMod: 1.4, hyperVisual: entry.hyper });
+        // Spawn from the snapshotted volley origin (fireFreezeonMain),
+        // not the owner's live position — the volley is identical
+        // moving or still. Fall back to the live position for entries
+        // queued before the snapshot existed (defensive only).
+        const ox = Number.isFinite(entry.ox) ? entry.ox : owner.x;
+        const oy = Number.isFinite(entry.oy) ? entry.oy : owner.y;
+        const spawnR = Number.isFinite(entry.spawnR) ? entry.spawnR : (owner.radius + 8);
+        bullets.push({ ownerBrawler: 'freezeon', isFreezeonCone: true, ownerId: owner.id, x: ox + Math.cos(ang) * spawnR, y: oy + Math.sin(ang) * spawnR, vx: Math.cos(ang) * FREEZEON_CONE_SPEED, vy: Math.sin(ang) * FREEZEON_CONE_SPEED, life: 0, maxLife: FREEZEON_CONE_RANGE / FREEZEON_CONE_SPEED, damage: entry.dmg, pierce: false, hitIds: {}, hitboxMod: 1.4, hyperVisual: entry.hyper, treeFreeze: !!entry.treeFreeze });
         return true;
     }
 
@@ -26458,6 +26509,42 @@ let heistFeverActive = false;
         ctx.save();
         ctx.translate(b.x, b.y);
         ctx.rotate(a);
+        if (b.treeFreeze) {
+            // Tree Freeze: the cone is a Christmas bauble, not a snow
+            // cone — round ornament with a gold cap + hook, red normally,
+            // purple-gold while Hypercharged. Same size/hitbox as the cone.
+            ctx.shadowColor = b.hyperVisual ? '#c084fc' : '#fbbf24';
+            ctx.shadowBlur = 14;
+            ctx.fillStyle = b.hyperVisual ? '#a855f7' : '#dc2626';
+            ctx.beginPath();
+            ctx.arc(0, 0, 9, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = b.hyperVisual ? '#e9d5ff' : '#fde68a';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(0, 0, 9, 0, Math.PI * 2);
+            ctx.stroke();
+            // Gold cap + hook at the back (trailing edge).
+            ctx.fillStyle = '#fbbf24';
+            ctx.fillRect(-13, -3, 4, 6);
+            ctx.strokeStyle = '#fde68a';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(-14, 0, 2.5, Math.PI * 0.5, Math.PI * 1.5);
+            ctx.stroke();
+            // Highlight + a painted star on the bauble.
+            ctx.fillStyle = 'rgba(255,255,255,.85)';
+            ctx.beginPath();
+            ctx.arc(-3, -4, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = b.hyperVisual ? '#f0abfc' : '#fde68a';
+            ctx.font = '900 9px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('★', 1, 1);
+            ctx.restore();
+            return;
+        }
         ctx.shadowColor = b.hyperVisual ? '#c084fc' : '#38bdf8';
         ctx.shadowBlur = 14;
         ctx.fillStyle = '#d97706';
@@ -71391,6 +71478,84 @@ function checkHit(target, b, i){
                 ctx.restore();
             }
             if (brawlerId === 'freezeon') {
+                // Tree Freeze: FreeZeon IS the Christmas tree — pine tiers,
+                // bauble ornaments, golden star topper. While Core Surged
+                // the lights blaze and the star shines bright. RENDER ONLY
+                // — no HP, damage, speed or hitbox change (PR #42).
+                const treeSkin = activeSkin?.id === 'tree-freeze-freezeon';
+                const treeHyper = treeSkin && (entity === player ? !!isHypercharged : !!entity.isHypercharged);
+                if (treeSkin) {
+                    ctx.save();
+                    ctx.shadowColor = treeHyper ? '#fbbf24' : '#16a34a';
+                    ctx.shadowBlur = treeHyper ? 18 : 8;
+                    // Trunk.
+                    ctx.fillStyle = '#78350f';
+                    ctx.fillRect(entity.x - size * 0.05, drawY + size * 0.3, size * 0.1, size * 0.14);
+                    // Three pine tiers, wide at the bottom.
+                    ctx.fillStyle = '#15803d';
+                    ctx.beginPath();
+                    ctx.moveTo(entity.x - size * 0.28, drawY + size * 0.32);
+                    ctx.lineTo(entity.x + size * 0.28, drawY + size * 0.32);
+                    ctx.lineTo(entity.x, drawY - size * 0.05);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.fillStyle = '#16a34a';
+                    ctx.beginPath();
+                    ctx.moveTo(entity.x - size * 0.22, drawY + size * 0.12);
+                    ctx.lineTo(entity.x + size * 0.22, drawY + size * 0.12);
+                    ctx.lineTo(entity.x, drawY - size * 0.2);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.fillStyle = '#22c55e';
+                    ctx.beginPath();
+                    ctx.moveTo(entity.x - size * 0.16, drawY - size * 0.06);
+                    ctx.lineTo(entity.x + size * 0.16, drawY - size * 0.06);
+                    ctx.lineTo(entity.x, drawY - size * 0.32);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                    // Bauble ornaments.
+                    const treeBaubles = [
+                        [-0.13, 0.22, '#dc2626'], [0.14, 0.18, '#2563eb'],
+                        [-0.1, 0.02, '#fbbf24'], [0.11, -0.02, '#dc2626'],
+                        [0, -0.14, '#2563eb'],
+                    ];
+                    for (const [bx, by, bc] of treeBaubles) {
+                        ctx.fillStyle = bc;
+                        ctx.beginPath();
+                        ctx.arc(entity.x + size * bx, drawY + size * by, size * 0.045, 0, Math.PI * 2);
+                        ctx.fill();
+                        if (treeHyper) {
+                            ctx.fillStyle = 'rgba(255,255,255,.9)';
+                            ctx.beginPath();
+                            ctx.arc(entity.x + size * bx - size * 0.012, drawY + size * by - size * 0.012, size * 0.014, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                    }
+                    // Golden star topper — brighter while Core Surged.
+                    const treeStarR = size * (treeHyper ? 0.1 : 0.085);
+                    ctx.fillStyle = treeHyper ? '#fde047' : '#fbbf24';
+                    ctx.strokeStyle = '#fff7cc';
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    for (let p = 0; p < 10; p++) {
+                        const rr = p % 2 === 0 ? treeStarR : treeStarR * 0.45;
+                        const aa = -Math.PI / 2 + p * Math.PI / 5;
+                        const sx = entity.x + Math.cos(aa) * rr, sy = drawY - size * 0.38 + Math.sin(aa) * rr;
+                        if (p === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                    // Snow dusting on the tiers.
+                    ctx.fillStyle = 'rgba(255,255,255,.85)';
+                    ctx.beginPath();
+                    ctx.arc(entity.x - size * 0.08, drawY + size * 0.1, size * 0.02, 0, Math.PI * 2);
+                    ctx.arc(entity.x + size * 0.09, drawY + size * 0.24, size * 0.02, 0, Math.PI * 2);
+                    ctx.arc(entity.x - size * 0.05, drawY - size * 0.08, size * 0.018, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                } else {
                 ctx.save();
                 ctx.shadowColor = '#38bdf8';
                 ctx.shadowBlur = 8;
@@ -71423,6 +71588,7 @@ function checkHit(target, b, i){
                 ctx.closePath();
                 ctx.fill();
                 ctx.restore();
+                }
             }
             if (brawlerId === 'driller') {
                 ctx.save();
@@ -73777,6 +73943,30 @@ function checkHit(target, b, i){
               });
           }
       }
+      if (activeSkinId === 'tree-freeze-freezeon') {
+          // Tree Freeze: twinkling tree-lights ring + a rising sparkle.
+          // RENDER ONLY — no HP, damage, speed or hitbox change (PR #42).
+          const treeHyper = t === player ? !!isHypercharged : !!t.isHypercharged;
+          const treePulse = 0.85 + Math.sin(performance.now() / 160) * 0.15;
+          ctx.strokeStyle = treeHyper ? 'rgba(251, 191, 36, 0.7)' : 'rgba(34, 197, 94, 0.55)';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(t.x, drawY, t.radius + 6 * treePulse, 0, Math.PI * 2);
+          ctx.stroke();
+          if (Math.random() < 0.05) {
+              explosions.push({
+                  x: t.x + (Math.random() - 0.5) * t.radius * 2,
+                  y: drawY - t.radius * 0.5,
+                  vx: (Math.random() - 0.5) * 10,
+                  vy: -25 - Math.random() * 20,
+                  radius: 1.5 + Math.random() * 2,
+                  life: 0,
+                  maxLife: 0.6 + Math.random() * 0.3,
+                  color: treeHyper ? '#fde047' : (Math.random() < 0.5 ? '#fbbf24' : '#dc2626'),
+                  isParticle: true
+              });
+          }
+      }
       if (activeSkinId === 'molten-rock-chaird') {
           // Molten Rock Chaird: ember-glow ring + lava cracks over the fighter.
           // RENDER ONLY — no HP, damage, speed or hitbox change (PR #42: skins
@@ -74347,6 +74537,30 @@ function checkHit(target, b, i){
                   life: 0,
                   maxLife: 0.5 + Math.random() * 0.3,
                   color: Math.random() < 0.5 ? '#00ffff' : '#ffffff',
+                  isParticle: true
+              });
+          }
+      }
+      if (activeSkinId === 'tree-freeze-freezeon') {
+          // Tree Freeze: twinkling tree-lights ring + a rising sparkle.
+          // RENDER ONLY — no HP, damage, speed or hitbox change (PR #42).
+          const treeHyper = t === player ? !!isHypercharged : !!t.isHypercharged;
+          const treePulse = 0.85 + Math.sin(performance.now() / 160) * 0.15;
+          ctx.strokeStyle = treeHyper ? 'rgba(251, 191, 36, 0.7)' : 'rgba(34, 197, 94, 0.55)';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(t.x, drawY, t.radius + 6 * treePulse, 0, Math.PI * 2);
+          ctx.stroke();
+          if (Math.random() < 0.05) {
+              explosions.push({
+                  x: t.x + (Math.random() - 0.5) * t.radius * 2,
+                  y: drawY - t.radius * 0.5,
+                  vx: (Math.random() - 0.5) * 10,
+                  vy: -25 - Math.random() * 20,
+                  radius: 1.5 + Math.random() * 2,
+                  life: 0,
+                  maxLife: 0.6 + Math.random() * 0.3,
+                  color: treeHyper ? '#fde047' : (Math.random() < 0.5 ? '#fbbf24' : '#dc2626'),
                   isParticle: true
               });
           }

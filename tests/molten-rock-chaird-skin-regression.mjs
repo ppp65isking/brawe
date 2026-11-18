@@ -106,8 +106,8 @@ assert.doesNotMatch(game, /lava-stones-2026-05/, 'old lava-stones season referen
 
 // ================= 2. free unlock grant =================
 assert.match(game, /function grantFreeThanksgivingSkins\(\)/, 'grant function exists');
-assert.match(game, /grantFreeThanksgivingSkins\(\);\n\s*\} catch\(e\)/, 'grant runs at the end of loadProgress');
-assert.match(game, /grantFreeThanksgivingSkins\(\);\n        \}\n\n        function isFavoriteBrawler/, 'grant runs in ensurePlayerDataDefaults');
+assert.match(game, /grantFreeThanksgivingSkins\(\);\n\s*grantFreeChristmasSkins\(\);\n\s*\} catch\(e\)/, 'grant runs at the end of loadProgress (Christmas grant runs right after it)');
+assert.match(game, /grantFreeThanksgivingSkins\(\);\n            grantFreeChristmasSkins\(\);\n        \}\n\n        function isFavoriteBrawler/, 'grant runs in ensurePlayerDataDefaults (Christmas grant runs right after it)');
 const grantSrc = extractFn(game, 'grantFreeThanksgivingSkins');
 assert.match(grantSrc, /ownedSkins\.chaird\.includes\('molten-rock-chaird'\)/, 'grant is idempotent (includes-check)');
 assert.doesNotMatch(grantSrc, /selectedSkins/, 'grant never auto-equips (selection stays the player\'s tap)');
