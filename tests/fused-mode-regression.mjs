@@ -64,7 +64,7 @@ check('round rolls a fresh bot fusion',
   game.includes('fusedParts: fusedBotParts || undefined,'));
 check('round uses averaged tiers',
   game.includes('const ptier = isFusedMode ? getFusedTier(player.fusedParts, duelPlayerLevel) : getHPTier(selectedBrawler, duelPlayerLevel);') &&
-  game.includes('const btier = isFusedMode ? getFusedTier(fusedBotParts, botLevel) : getHPTier(bBrawler, botLevel);'));
+  game.includes('const btier = isFusedMode ? getFusedTier(fusedBotParts, duelBotLevel) : getHPTier(bBrawler, duelBotLevel);')); // Tournament mode (2026-11-18): bot level is tournament-aware (duelBotLevel) so tier bots play at their skill-tier Power
 check('round announces the fusion',
   game.includes("'FUSED: ' + getFusedDisplayName(player.fusedParts) + '!'") &&
   game.includes("'FUSED: ' + getFusedDisplayName(fusedBot.fusedParts) + '!'"));

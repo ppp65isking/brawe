@@ -69,7 +69,7 @@ check('overlay title is mode-aware', game.includes("title.textContent = isTowerD
 check('overlay hint is mode-aware', game.includes("draftHint.textContent = isTowerDuels ? 'Choose 1–4 fighters — ALL 8 Tower Powers active for every fighter. First to 9 rounds.' : 'Choose 1–4 fighters, then pick a format and LAUNCH.';"));
 check('format row hidden in Tower Duels (fixed at 9)', game.includes("if (isTowerDuels) formatRow.style.display = 'none';"));
 check('launch button label is mode-aware', game.includes("launchBtn.textContent = isTowerDuels ? 'LAUNCH TOWER DUELS' : 'LAUNCH DUELS';"));
-check('launch sets isTowerDuelsMode + isDuelsMaxedMode exactly once each', (game.match(/isTowerDuelsMode = isTowerDuels;/g) || []).length === 1 && (game.match(/isDuelsMaxedMode = true;/g) || []).length === 1);
+check('launch sets isTowerDuelsMode + isDuelsMaxedMode exactly once each', (game.match(/isTowerDuelsMode = isTowerDuels;/g) || []).length === 1 && (game.match(/isDuelsMaxedMode = true;/g) || []).length === 2); // Tournament mode (2026-11-18) is a second Duels launch path that also maxes: the draft launch + launchTournamentMatch
 check('launch forces 9 rounds in Tower Duels', game.includes('if (isTowerDuels) duelsTargetWins = 9;'));
 check('topbar banner is mode-aware (real state)', game.includes("document.getElementById('topbar').textContent = isTowerDuels ? 'Arena Forge - Tower Duels • ALL 8 Tower Powers' : 'Arena Forge - Duels • Tower Power';"));
 check('bot HUD var declared', game.includes('let slopSushiBotCardHud=null;'));
