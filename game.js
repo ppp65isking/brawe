@@ -10790,10 +10790,10 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           attack: 'Overcharged Volt', attackDesc: 'Lobs an overcharged volt over walls that explodes in a real burst of voltz (900 damage, 120px blast). Enemies caught in the blast are overcharged: their reload is 20% slower for 1 second.',
           super: 'Power Outage', superDesc: 'Zaps every enemy within 300px for 400 damage, then a chain stays on them: their speed ramps from 10% slower to 50% slower over 4 seconds and they take 150 damage per second. The chain cannot kill healthy enemies (it stops at 1 HP) — but it can finish enemies who started with low HP. If a chained enemy gets near another enemy, the chain travels to them. The chain only goes away when it kills someone (10 second max).',
           hyper: 'Volt Overdrive: the volt splits into 2 smaller volts on impact (each 70% damage, 100px blast). Power Outage chains 2 enemies together — they break free by getting 450px apart, and one of them randomly keeps the electric.',
-          g1: 'Arc Leap (Your next volt arcs to one extra nearby enemy on impact — a mini explosion plus the overcharge)',
+          g1: 'Arc Leap (Your next volt arcs to up to 7 nearby enemies on impact — each a mini explosion plus the overcharge)',
           g2: 'Static Field (For 4 seconds, enemies within 150px of Voltastein are overcharged)',
           sp1: 'Deep Charge (Overcharge lasts 2 seconds instead of 1, and slows reloads by 30% instead of 20%)',
-          sp2: 'Feedback Loop (While Power Outage is active on any enemy, the main attack reloads 30% faster)'
+          sp2: 'Feedback Loop (While Power Outage is active on any enemy, the main attack reloads 50% faster)'
       },
       'staticstein': {
           name: 'Staticstein', role: 'Damage Dealer', rarity: 'Mythic', color: '#d1d5db',
@@ -39968,7 +39968,7 @@ let heistFeverActive = false;
     if(isBot && brawler === 'runner' && now < (fromEntity.runnerReloadBuffUntil || 0)) fireDelay /= RUNNER_HYPER_RELOAD_MULT;
     if(isBot && fromEntity.reloadDebuffUntil && now < fromEntity.reloadDebuffUntil) fireDelay *= 1.4;
     if(isBot && now < (fromEntity.voltasteinOverchargeUntil || 0)) fireDelay *= (fromEntity.voltasteinOverchargeMult || 1.25);
-    if(isBot && brawler === 'voltastein' && isAnyVoltasteinOutageActive(fromEntity, now) && voltasteinHasSP2(fromEntity)) fireDelay /= 1.30;
+    if(isBot && brawler === 'voltastein' && isAnyVoltasteinOutageActive(fromEntity, now) && voltasteinHasSP2(fromEntity)) fireDelay /= VOLTASTEIN_SP2_RELOAD_MULT;
     if(isBot && brawler === 'staticstein' && now < (fromEntity.staticsteinInterferenceUntil || 0)) fireDelay = staticsteinHasSP2(fromEntity) ? 615 : 800;
     if(isBot && brawler === 'oil_maker' && fromEntity.oilMakerSp1ReloadUntil && now < fromEntity.oilMakerSp1ReloadUntil) fireDelay *= 1.22; // Round 41 Oil SP1 reload slow (bot side; player side in reload pipeline).
     if(isBot && brawler === 'oil_maker' && (fromEntity.selectedStar === 'long' || fromEntity.selectedStar === 'sp2') && oilMakerPuddles.some(p => p.ignited && Math.hypot(p.x - fromEntity.x, p.y - fromEntity.y) <= 120)) fireDelay /= 1.10; // Round 41 Oil SP2 reload buff 25% -> 10% (bot side; was player-only).
@@ -50357,6 +50357,8 @@ let heistFeverActive = false;
   const VOLTASTEIN_G1_ARC_RADIUS = 250;
   const VOLTASTEIN_G1_MINI_DMG_MULT = 0.5;
   const VOLTASTEIN_G1_MINI_RADIUS = 80;
+  const VOLTASTEIN_G1_MAX_ARCS = 7;
+  const VOLTASTEIN_SP2_RELOAD_MULT = 1.50;
   const VOLTASTEIN_G2_FIELD_RADIUS = 150;
   const VOLTASTEIN_G2_FIELD_MS = 4000;
 
@@ -50442,26 +50444,37 @@ let heistFeverActive = false;
           if (excludeId && target.id === excludeId) continue;
           checkHit(target, { ownerBrawler: 'voltastein', ownerId: owner.id, damage: dmg, pierce: true, hitIds: {}, isVoltasteinExplosion: true }, -1);
       }
-      // Arc Leap (G1): the next volt arcs to one extra nearby enemy — a real
-      // lobbed child volt, not an instant hit. It flies (~0.38s max) to the
-      // best target and detonates there; the landing explosion overcharges
-      // and damages everyone in its radius, exactly as a normal volt does.
+      // Arc Leap (G1): the next volt arcs to up to VOLTASTEIN_G1_MAX_ARCS
+      // nearby enemies — one real lobbed child volt per arc, not an instant
+      // hit. Each child flies (~0.38s max) to the best target not already
+      // arced to and detonates there; the landing explosion overcharges
+      // and damages everyone in its radius, exactly as a normal volt does,
+      // and a child volt's own explosion spends the next arc, so the chain
+      // walks from enemy to enemy until it runs out of arcs or targets.
       // (Behavior change vs the shipped instant mini-explosion, flagged in
       // the PR body: instant -> short lobbed flight.)
-      if (owner.voltasteinArcLeapNext) {
-          owner.voltasteinArcLeapNext = false;
+      if ((owner.voltasteinArcLeapsLeft || 0) > 0) {
           let best = null, bestD = Infinity;
+          const arcHitIds = owner.voltasteinArcHitIds || {};
           for (const target of all) {
               if (!target || target.hp <= 0 || areAlliedEntities(owner, target)) continue;
               if (excludeId && target.id === excludeId) continue;
+              if (arcHitIds[target.id]) continue;
               const d = Math.hypot(target.x - x, target.y - y);
               if (d <= VOLTASTEIN_G1_ARC_RADIUS && d < bestD) { best = target; bestD = d; }
           }
           if (best) {
+              owner.voltasteinArcLeapsLeft -= 1;
+              arcHitIds[best.id] = true;
+              owner.voltasteinArcHitIds = arcHitIds;
               const miniDmg = Math.max(1, Math.round(dmg * VOLTASTEIN_G1_MINI_DMG_MULT));
               const leapAng = Math.atan2(best.y - y, best.x - x);
               const leapDist = Math.hypot(best.x - x, best.y - y);
               bullets.push({ ownerBrawler: 'voltastein', isVoltasteinVolt: true, voltasteinHyper: false, voltasteinChild: true, voltasteinLob: true, voltasteinLandX: clamp(best.x, 0, WORLD_W), voltasteinLandY: clamp(best.y, 0, WORLD_H), x, y, vx: Math.cos(leapAng) * VOLTASTEIN_BULLET_SPEED, vy: Math.sin(leapAng) * VOLTASTEIN_BULLET_SPEED, life: 0, maxLife: Math.max(.05, leapDist / VOLTASTEIN_BULLET_SPEED), damage: miniDmg, voltDamage: miniDmg, voltRadius: VOLTASTEIN_G1_MINI_RADIUS, pierce: false, pierceWalls: true, ownerId: owner.id, hitIds: {}, hitboxMod: 1.1, hyperVisual: false });
+          } else {
+              // No enemy in arc range: the chain ends, remaining arcs fizzle.
+              owner.voltasteinArcLeapsLeft = 0;
+              owner.voltasteinArcHitIds = {};
           }
       }
       // Hyper split: the volt forks into two smaller volts on impact.
@@ -50606,7 +50619,8 @@ let heistFeverActive = false;
       }
   }
   function executeVoltasteinG1(entity) {
-      entity.voltasteinArcLeapNext = true;
+      entity.voltasteinArcLeapsLeft = VOLTASTEIN_G1_MAX_ARCS;
+      entity.voltasteinArcHitIds = {};
       spawnFloatingText(entity.x, entity.y - 40, 'ARC LEAP READY', '#ffe45e');
   }
   function executeVoltasteinG2(entity) {
@@ -68002,7 +68016,7 @@ function checkHit(target, b, i){
        if(selectedBrawler==='chickpig'&&selectedStar==='long'&&now<(player.chickpigChickenUntil||0))currentReloadTime*=.85;
        if(player.reloadDebuffUntil && now < player.reloadDebuffUntil) currentReloadTime *= 1.4;
        if(now < (player.voltasteinOverchargeUntil || 0)) currentReloadTime *= (player.voltasteinOverchargeMult || 1.25);
-       if(selectedBrawler === 'voltastein' && isAnyVoltasteinOutageActive(player, now) && voltasteinHasSP2(player)) currentReloadTime /= 1.30;
+       if(selectedBrawler === 'voltastein' && isAnyVoltasteinOutageActive(player, now) && voltasteinHasSP2(player)) currentReloadTime /= VOLTASTEIN_SP2_RELOAD_MULT;
        if(selectedBrawler === 'staticstein' && now < (player.staticsteinInterferenceUntil || 0)) currentReloadTime = staticsteinHasSP2(player) ? 615 : 800;
        if(player.dashaholicSignatureReloadUntil && now < player.dashaholicSignatureReloadUntil) currentReloadTime /= 1.5;
        if(player.trinketHyperReloadUntil && now < player.trinketHyperReloadUntil) currentReloadTime /= 1.10;
