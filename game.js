@@ -12335,12 +12335,450 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
 const TOWER_DUELS_ACTIVE_TOWER_POWERS = 8;
   let duelsTargetWins = 9;
   function getDuelsWinScore() {
+      if (isTournamentMatch) return TOURNAMENT_DUELS_WIN_SCORE;
       if (isTowerDuelEvent) return 5;
       return DUELS_ROUND_OPTIONS.includes(duelsTargetWins) ? duelsTargetWins : 9;
   }
   let towerDuelOriginalBrawler = null;
   let towerDuelPowerLoadouts = {};
   let towerDuelBotPowerLoadouts = {};
+  // ---- Tournament mode (32-player single-elimination bracket) ----
+  // Anthony 2026-11-18: "32 ppl 1 [you] 31 bots ... u choose one
+  // brawler then u dual in the bracket ... if you win the tournament
+  // then u go to the silver league tournament, then gold, then diamond.
+  // With rewards". Reuses the Duels battle engine (startDuelsRound,
+  // first-to-N rounds, Power 12 maxed loadouts) — no second combat
+  // engine. Tournament matches are Duels matches with a locked
+  // single-brawler team on both sides.
+  const TOURNAMENT_STORAGE_KEY = 'arenaForgeTournamentV1';
+  const TOURNAMENT_DUELS_WIN_SCORE = 3; // first to 3 rounds per bracket match (builder pick: a 5-match run stays short)
+  const TOURNAMENT_ROUND_NAMES = ['Round of 32', 'Round of 16', 'Quarterfinal', 'Semifinal', 'Final'];
+  const TOURNAMENT_TIERS = {
+      rookie: { label: 'ROOKIE', color: '#5df2c2', botLevel: 9, cadenceMult: 1.4, strength: 1 },
+      contender: { label: 'CONTENDER', color: '#ffd166', botLevel: 11, cadenceMult: 1.0, strength: 2 },
+      champion: { label: 'CHAMPION', color: '#ff6b81', botLevel: 12, cadenceMult: 0.85, strength: 3 },
+  };
+  const TOURNAMENT_LEAGUES = [
+      { id: 'bronze', name: 'Bronze', emoji: '🥉', color: '#cd7f32', rewardCoins: 500, rewardSouls: 50, tierMix: { rookie: 22, contender: 8, champion: 1 } },
+      { id: 'silver', name: 'Silver', emoji: '🥈', color: '#c0c0c0', rewardCoins: 1000, rewardSouls: 100, tierMix: { rookie: 12, contender: 15, champion: 4 } },
+      { id: 'gold', name: 'Gold', emoji: '🥇', color: '#ffd700', rewardCoins: 2000, rewardSouls: 200, tierMix: { rookie: 5, contender: 16, champion: 10 } },
+      { id: 'diamond', name: 'Diamond', emoji: '💎', color: '#7ee7ff', rewardCoins: 4000, rewardSouls: 400, tierMix: { rookie: 0, contender: 13, champion: 18 } },
+  ];
+  const TOURNAMENT_BOT_NAMES = ['Max', 'Ruby', 'Finn', 'Zara', 'Leo', 'Mia', 'Oscar', 'Ivy', 'Hugo', 'Luna', 'Kai', 'Nora', 'Eli', 'Jade', 'Milo', 'Ava', 'Felix', 'Rosa', 'Sam', 'Tessa', 'Owen', 'Priya', 'Cole', 'Daisy', 'Rex', 'Wren', 'Jax', 'Elsie', 'Theo', 'Mabel', 'Gus'];
+  function getTournamentLeague(id) { return TOURNAMENT_LEAGUES.find((l) => l.id === id) || TOURNAMENT_LEAGUES[0]; }
+  function getTournamentLeagueIndex(id) { const i = TOURNAMENT_LEAGUES.findIndex((l) => l.id === id); return i < 0 ? 0 : i; }
+  function defaultTournamentState() { return { unlocked: ['bronze'], wins: {}, active: null }; }
+  function loadTournamentState() {
+      try {
+          const raw = localStorage.getItem(TOURNAMENT_STORAGE_KEY);
+          if (!raw) return defaultTournamentState();
+          const parsed = safeJsonParse(raw, null);
+          if (!parsed || typeof parsed !== 'object') return defaultTournamentState();
+          if (!Array.isArray(parsed.unlocked) || parsed.unlocked.length === 0) parsed.unlocked = ['bronze'];
+          if (!parsed.unlocked.includes('bronze')) parsed.unlocked.unshift('bronze');
+          if (!parsed.wins || typeof parsed.wins !== 'object') parsed.wins = {};
+          if (parsed.active && (!parsed.active.league || !Array.isArray(parsed.active.entrants) || parsed.active.entrants.length !== 32 || !Array.isArray(parsed.active.rounds))) parsed.active = null;
+          return parsed;
+      } catch (_) { return defaultTournamentState(); }
+  }
+  function saveTournamentState(state) {
+      try { localStorage.setItem(TOURNAMENT_STORAGE_KEY, JSON.stringify(state)); } catch (_) {}
+  }
+  let tournamentStateCache = null;
+  function getTournamentState() {
+      if (!tournamentStateCache) tournamentStateCache = loadTournamentState();
+      return tournamentStateCache;
+  }
+  function setTournamentState(next) { tournamentStateCache = next; saveTournamentState(next); }
+  function shuffleTournamentArray(arr, rng = Math.random) {
+      const out = [...arr];
+      for (let i = out.length - 1; i > 0; i--) {
+          const j = Math.floor(rng() * (i + 1));
+          const tmp = out[i]; out[i] = out[j]; out[j] = tmp;
+      }
+      return out;
+  }
+  function buildTournamentTierList(league, rng = Math.random) {
+      const tiers = [];
+      for (const [tier, count] of Object.entries(league.tierMix)) {
+          for (let i = 0; i < count; i++) tiers.push(tier);
+      }
+      return shuffleTournamentArray(tiers, rng);
+  }
+  function createTournamentEntrants(league, playerBrawler, rng = Math.random) {
+      const tiers = buildTournamentTierList(league, rng);
+      const pool = (typeof getBotBrawlerPool === 'function' ? getBotBrawlerPool() : ['outlit']);
+      const bots = TOURNAMENT_BOT_NAMES.map((name, i) => ({
+          name, brawler: pool[Math.floor(rng() * pool.length)] || 'outlit',
+          tier: tiers[i] || 'rookie', isPlayer: false,
+      }));
+      return shuffleTournamentArray([{ name: 'YOU', brawler: playerBrawler, tier: null, isPlayer: true }, ...bots], rng);
+  }
+  function buildTournamentRound(entrantIndexes) {
+      const matches = [];
+      for (let i = 0; i + 1 < entrantIndexes.length; i += 2) {
+          matches.push({ a: entrantIndexes[i], b: entrantIndexes[i + 1], winner: null });
+      }
+      return matches;
+  }
+  function simulateTournamentBotMatch(a, b, rng = Math.random) {
+      const sa = (TOURNAMENT_TIERS[a.tier] || TOURNAMENT_TIERS.rookie).strength;
+      const sb = (TOURNAMENT_TIERS[b.tier] || TOURNAMENT_TIERS.rookie).strength;
+      return rng() * (sa + sb) < sa ? a : b;
+  }
+  function simulateTournamentBotMatches(active, roundIndex, rng = Math.random) {
+      const round = active.rounds[roundIndex];
+      if (!round) return;
+      for (const match of round) {
+          if (match.winner != null) continue;
+          const a = active.entrants[match.a], b = active.entrants[match.b];
+          if (a.isPlayer || b.isPlayer) continue; // the player's match is played live
+          match.winner = active.entrants.indexOf(simulateTournamentBotMatch(a, b, rng));
+      }
+  }
+  function generateTournamentBracket(leagueId, playerBrawler, rng = Math.random) {
+      const league = getTournamentLeague(leagueId);
+      const entrants = createTournamentEntrants(league, playerBrawler, rng);
+      const active = { league: league.id, playerBrawler, entrants, rounds: [], currentRound: 0, status: 'active' };
+      active.rounds.push(buildTournamentRound(entrants.map((_, i) => i)));
+      simulateTournamentBotMatches(active, 0, rng);
+      return active;
+  }
+  function getTournamentPlayerMatch(active) {
+      const round = active.rounds[active.currentRound];
+      if (!round) return null;
+      const playerIndex = active.entrants.findIndex((e) => e.isPlayer);
+      return round.find((m) => (m.a === playerIndex || m.b === playerIndex) && m.winner == null) || null;
+  }
+  function getTournamentOpponent(active) {
+      const match = getTournamentPlayerMatch(active);
+      if (!match) return null;
+      const playerIndex = active.entrants.findIndex((e) => e.isPlayer);
+      return active.entrants[match.a === playerIndex ? match.b : match.a];
+  }
+  function advanceTournamentAfterWin(active, rng = Math.random) {
+      if (active.currentRound >= 4) { active.status = 'won'; return active; }
+      const winners = active.rounds[active.currentRound].map((m) => m.winner);
+      if (winners.some((w) => w == null)) return active;
+      active.currentRound += 1;
+      active.rounds.push(buildTournamentRound(winners));
+      simulateTournamentBotMatches(active, active.currentRound, rng);
+      return active;
+  }
+  function recordTournamentMatchResult(won) {
+      const state = getTournamentState();
+      const active = state.active;
+      if (!active || active.status !== 'active') return { outcome: 'none', matchText: won ? 'YOU WON THE DUEL!' : 'BOT WON THE DUEL!', rankText: `Score: ${playerScore} - ${botScore}` };
+      const league = getTournamentLeague(active.league);
+      const match = getTournamentPlayerMatch(active);
+      const playerIndex = active.entrants.findIndex((e) => e.isPlayer);
+      const opponent = getTournamentOpponent(active);
+      const roundName = TOURNAMENT_ROUND_NAMES[active.currentRound] || 'Tournament';
+      if (!match) return { outcome: 'none', matchText: won ? 'YOU WON THE DUEL!' : 'BOT WON THE DUEL!', rankText: `Score: ${playerScore} - ${botScore}` };
+      if (!won) {
+          match.winner = match.a === playerIndex ? match.b : match.a;
+          active.status = 'lost';
+          state.active = null; // eliminated: the run is over, re-enter the same league to try again
+          setTournamentState(state);
+          return { outcome: 'eliminated', matchText: 'ELIMINATED FROM THE TOURNAMENT!', rankText: `${league.emoji} ${league.name} League • ${roundName} • lost to ${opponent ? opponent.name : 'a rival'} • ${playerScore}-${botScore}` };
+      }
+      match.winner = playerIndex;
+      if (active.currentRound >= 4) {
+          active.status = 'won';
+          state.wins[league.id] = (state.wins[league.id] || 0) + 1;
+          const nextLeague = TOURNAMENT_LEAGUES[getTournamentLeagueIndex(league.id) + 1];
+          if (nextLeague && !state.unlocked.includes(nextLeague.id)) state.unlocked.push(nextLeague.id);
+          state.active = null;
+          playerData.coins = (playerData.coins || 0) + league.rewardCoins;
+          addSouls(league.rewardSouls);
+          setTournamentState(state);
+          return { outcome: 'champion', matchText: `🏆 ${league.name.toUpperCase()} TOURNAMENT CHAMPION!`, rankText: `+${league.rewardCoins} Coins • +${league.rewardSouls} Souls${nextLeague ? ` • ${nextLeague.emoji} ${nextLeague.name} League UNLOCKED!` : ' • You conquered every league!'}` };
+      }
+      advanceTournamentAfterWin(active);
+      setTournamentState(state);
+      const nextRoundName = TOURNAMENT_ROUND_NAMES[active.currentRound] || 'Tournament';
+      const nextOpponent = getTournamentOpponent(active);
+      const nextTier = nextOpponent ? TOURNAMENT_TIERS[nextOpponent.tier] : null;
+      return { outcome: 'advanced', matchText: `YOU ADVANCED! • ${roundName} WON`, rankText: `${league.emoji} ${league.name} League • Next: ${nextRoundName} vs ${nextOpponent ? nextOpponent.name : '???'}${nextTier ? ` (${nextTier.label})` : ''} • ${playerScore}-${botScore}` };
+  }
+  let isTournamentMatch = false;
+  let tournamentBotLevel = 12;
+  let tournamentBotCadenceMult = 1;
+  let tournamentMatchContext = null; // { league, leagueName, roundName, opponentName, opponentTier, opponentBrawler }
+  function getTournamentCardSubtitle() {
+      const state = getTournamentState();
+      const active = state.active;
+      if (active && active.status === 'active') {
+          const league = getTournamentLeague(active.league);
+          const roundName = TOURNAMENT_ROUND_NAMES[active.currentRound] || 'Tournament';
+          const opponent = getTournamentOpponent(active);
+          return `IN PROGRESS • ${league.name} • ${roundName}${opponent ? ` vs ${opponent.name}` : ''}`;
+      }
+      const topId = [...state.unlocked].reverse()[0] || 'bronze';
+      const league = getTournamentLeague(topId);
+      const wins = state.wins[league.id] || 0;
+      return wins > 0 ? `🏆 ${league.name} Champion x${wins} • 32-player bracket` : '32-player bracket • Bronze → Diamond leagues';
+  }
+  function launchTournamentMatch() {
+      const state = getTournamentState();
+      const active = state.active;
+      if (!active || active.status !== 'active') return false;
+      const opponent = getTournamentOpponent(active);
+      const match = getTournamentPlayerMatch(active);
+      if (!opponent || !match) return false;
+      const tier = TOURNAMENT_TIERS[opponent.tier] || TOURNAMENT_TIERS.rookie;
+      const league = getTournamentLeague(active.league);
+      playerTeam = [active.playerBrawler];
+      botTeam = [opponent.brawler];
+      isDuoShowdown = false;
+      isConstructionMode = false;
+      isDamageFillerMode = false;
+      isKnockDonateMode = false;
+      isBrickVaultMode = false;
+      isArenaForgeMode = false;
+      isHyperForgeLTM = false;
+      isMarkedMayhemMode = false;
+      isTugZoneMode = false;
+      isTrioShowdownMode = false;
+      isSplitterPoweredMode = false;
+      isPowerGodsMode = false;
+      isMirrorMode = false;
+      isImpossibleMode = false;
+      isDuels = true;
+      isTowerDuelEvent = false;
+      isTowerDuelsMode = false;
+      isDuelsMaxedMode = true;
+      duelsTargetWins = TOURNAMENT_DUELS_WIN_SCORE;
+      isTournamentMatch = true;
+      tournamentBotLevel = tier.botLevel;
+      tournamentBotCadenceMult = tier.cadenceMult;
+      tournamentMatchContext = { league: league.id, leagueName: league.name, roundName: TOURNAMENT_ROUND_NAMES[active.currentRound] || 'Tournament', opponentName: opponent.name, opponentTier: opponent.tier, opponentBrawler: opponent.brawler };
+      isSlopSushiMode = true;
+      sushiMatchArmed = true;
+      clearShowdownModifier();
+      if (document.getElementById('topbar')) document.getElementById('topbar').textContent = `Arena Forge - Tournament • ${league.name} League • ${tournamentMatchContext.roundName}`;
+      playerScore = 0;
+      botScore = 0;
+      WORLD_W = 1000; WORLD_H = 1000;
+      generateCubes();
+      cubes.length = 0;
+      powerups.length = 0;
+      amplifierToolboxes.length = 0;
+      amplifierScrewZones.length = 0;
+      skeleParachutes.length = 0;
+      skelePortals.length = 0;
+      startDuelsRound();
+      if (brawlerSelect) brawlerSelect.disabled = true;
+      if (homeScreen) homeScreen.style.display = 'none';
+      return true;
+  }
+  function openTournamentHub() {
+      const state = getTournamentState();
+      if (state.active && state.active.status === 'active') { openTournamentBracket(); return; }
+      const overlay = document.createElement('div');
+      overlay.style.position = 'fixed'; overlay.style.inset = '0';
+      overlay.style.background = 'rgba(8, 17, 31, 0.95)'; overlay.style.zIndex = '100';
+      overlay.style.display = 'flex'; overlay.style.flexDirection = 'column';
+      overlay.style.alignItems = 'center'; overlay.style.justifyContent = 'flex-start';
+      overlay.style.padding = '60px 0'; overlay.style.color = '#fff';
+      overlay.style.fontFamily = 'sans-serif'; overlay.style.overflowY = 'auto';
+      const title = document.createElement('h1');
+      title.textContent = '🏆 Tournament';
+      overlay.appendChild(title);
+      const hint = document.createElement('div');
+      hint.textContent = '32 players. One brawler, locked for the whole run. Win the league to unlock the next.';
+      hint.style.fontSize = '14px'; hint.style.color = '#a8c8ef'; hint.style.marginTop = '8px';
+      overlay.appendChild(hint);
+      const grid = document.createElement('div');
+      grid.style.display = 'flex'; grid.style.gap = '16px'; grid.style.flexWrap = 'wrap';
+      grid.style.justifyContent = 'center'; grid.style.maxWidth = '1000px'; grid.style.marginTop = '30px';
+      TOURNAMENT_LEAGUES.forEach((league, idx) => {
+          const unlocked = state.unlocked.includes(league.id);
+          const prev = idx === 0 ? null : TOURNAMENT_LEAGUES[idx - 1];
+          const wins = state.wins[league.id] || 0;
+          const card = document.createElement('div');
+          card.style.background = '#1a2a4f';
+          card.style.border = `4px solid ${league.color}`;
+          card.style.borderRadius = '16px'; card.style.padding = '24px';
+          card.style.width = '200px'; card.style.textAlign = 'center';
+          card.style.cursor = unlocked ? 'pointer' : 'not-allowed';
+          if (!unlocked) card.style.opacity = '.55';
+          card.innerHTML = `<div style="font-size:40px">${league.emoji}</div><h3 style="margin:8px 0 4px">${league.name} League</h3><div style="font-size:13px;color:#a8c8ef">Champion prize: +${league.rewardCoins.toLocaleString()} Coins • +${league.rewardSouls} Souls</div>${wins > 0 ? `<div style="font-size:12px;color:#5df2c2;font-weight:900;margin-top:6px">🏆 Won ${wins}x</div>` : ''}${unlocked ? '' : `<div style="font-size:12px;color:#ff9ba5;font-weight:900;margin-top:6px">🔒 Win ${prev ? prev.name : ''} League to unlock</div>`}`;
+          if (unlocked) card.onclick = () => { document.body.removeChild(overlay); openTournamentBrawlerPicker(league.id); };
+          grid.appendChild(card);
+      });
+      overlay.appendChild(grid);
+      const closeBtn = document.createElement('button');
+      closeBtn.textContent = 'CLOSE';
+      closeBtn.style.padding = '12px 24px'; closeBtn.style.borderRadius = '12px';
+      closeBtn.style.marginTop = '24px'; closeBtn.style.cursor = 'pointer';
+      closeBtn.onclick = () => document.body.removeChild(overlay);
+      overlay.appendChild(closeBtn);
+      document.body.appendChild(overlay);
+  }
+  function openTournamentBrawlerPicker(leagueId) {
+      const league = getTournamentLeague(leagueId);
+      const overlay = document.createElement('div');
+      overlay.style.position = 'fixed'; overlay.style.inset = '0';
+      overlay.style.background = 'rgba(8, 17, 31, 0.95)'; overlay.style.zIndex = '100';
+      overlay.style.display = 'flex'; overlay.style.flexDirection = 'column';
+      overlay.style.alignItems = 'center'; overlay.style.justifyContent = 'flex-start';
+      overlay.style.padding = '60px 0'; overlay.style.color = '#fff';
+      overlay.style.fontFamily = 'sans-serif'; overlay.style.overflowY = 'auto';
+      const title = document.createElement('h1');
+      title.textContent = `Pick ONE brawler — ${league.name} League`;
+      overlay.appendChild(title);
+      const hint = document.createElement('div');
+      hint.textContent = 'Locked for the whole tournament. No switching between rounds. Every bot\'s brawler is locked too.';
+      hint.style.fontSize = '14px'; hint.style.color = '#a8c8ef'; hint.style.marginTop = '8px';
+      overlay.appendChild(hint);
+      const container = document.createElement('div');
+      container.style.display = 'flex'; container.style.gap = '20px';
+      container.style.flexWrap = 'wrap'; container.style.justifyContent = 'center';
+      container.style.maxWidth = '1000px'; container.style.marginTop = '24px';
+      let picked = null;
+      const pickedLabel = document.createElement('h2');
+      pickedLabel.style.color = '#5df2c2'; pickedLabel.style.marginTop = '24px';
+      pickedLabel.textContent = 'Picked: none';
+      const confirmBtn = document.createElement('button');
+      confirmBtn.textContent = 'ENTER TOURNAMENT';
+      confirmBtn.style.padding = '12px 24px'; confirmBtn.style.borderRadius = '12px';
+      confirmBtn.style.marginTop = '16px'; confirmBtn.style.cursor = 'pointer';
+      confirmBtn.disabled = true;
+      confirmBtn.onclick = () => {
+          if (!picked) return;
+          const state = getTournamentState();
+          state.active = generateTournamentBracket(leagueId, picked);
+          setTournamentState(state);
+          document.body.removeChild(overlay);
+          openTournamentBracket();
+      };
+      const pool = getUnlockedBrawlerPool();
+      const cards = [];
+      for (const id of pool) {
+          const card = document.createElement('div');
+          card.style.background = '#1a2a4f'; card.style.border = '4px solid #fff';
+          card.style.borderRadius = '16px'; card.style.padding = '24px';
+          card.style.width = '150px'; card.style.cursor = 'pointer'; card.style.textAlign = 'center';
+          const displayName = (brawlerData[id] && brawlerData[id].name) || id;
+          card.innerHTML = `<h3>${displayName}</h3><div style="font-size:11px;color:#a8c8ef">${id.toUpperCase()}</div>`;
+          card.onclick = () => {
+              picked = id;
+              pickedLabel.textContent = `Picked: ${displayName} — LOCKED for the tournament`;
+              confirmBtn.disabled = false;
+              cards.forEach((c, i) => { c.style.outline = pool[i] === picked ? '3px solid #ffd44f' : 'none'; });
+          };
+          cards.push(card);
+          container.appendChild(card);
+      }
+      overlay.appendChild(container);
+      overlay.appendChild(pickedLabel);
+      overlay.appendChild(confirmBtn);
+      const backBtn = document.createElement('button');
+      backBtn.textContent = 'BACK';
+      backBtn.style.padding = '10px 18px'; backBtn.style.borderRadius = '10px';
+      backBtn.style.marginTop = '12px'; backBtn.style.cursor = 'pointer';
+      backBtn.onclick = () => { document.body.removeChild(overlay); openTournamentHub(); };
+      overlay.appendChild(backBtn);
+      document.body.appendChild(overlay);
+  }
+  function tournamentEntrantLabel(e) {
+      const bName = (brawlerData[e.brawler] && brawlerData[e.brawler].name) || e.brawler;
+      const tier = e.tier ? TOURNAMENT_TIERS[e.tier] : null;
+      return { name: e.name, brawler: bName, tierLabel: tier ? tier.label : 'YOU', tierColor: tier ? tier.color : '#ffd44f' };
+  }
+  function openTournamentBracket() {
+      const state = getTournamentState();
+      const active = state.active;
+      if (!active || active.status !== 'active') { openTournamentHub(); return; }
+      const league = getTournamentLeague(active.league);
+      const playerMatch = getTournamentPlayerMatch(active);
+      const opponent = getTournamentOpponent(active);
+      const overlay = document.createElement('div');
+      overlay.style.position = 'fixed'; overlay.style.inset = '0';
+      overlay.style.background = 'rgba(8, 17, 31, 0.95)'; overlay.style.zIndex = '100';
+      overlay.style.display = 'flex'; overlay.style.flexDirection = 'column';
+      overlay.style.alignItems = 'center'; overlay.style.justifyContent = 'flex-start';
+      overlay.style.padding = '40px 0'; overlay.style.color = '#fff';
+      overlay.style.fontFamily = 'sans-serif'; overlay.style.overflowY = 'auto';
+      const title = document.createElement('h1');
+      title.textContent = `${league.emoji} ${league.name} League Tournament`;
+      overlay.appendChild(title);
+      const sub = document.createElement('div');
+      const playerEntrant = active.entrants.find((e) => e.isPlayer);
+      const playerBrawlerName = playerEntrant ? tournamentEntrantLabel(playerEntrant).brawler : active.playerBrawler;
+      sub.innerHTML = `Your brawler: <b style="color:#ffd44f">${playerBrawlerName} (LOCKED)</b> • First to ${TOURNAMENT_DUELS_WIN_SCORE} rounds per match • Champion prize: <b style="color:#5df2c2">+${league.rewardCoins.toLocaleString()} Coins • +${league.rewardSouls} Souls</b>`;
+      sub.style.fontSize = '14px'; sub.style.color = '#a8c8ef'; sub.style.marginTop = '8px';
+      overlay.appendChild(sub);
+      const roundsWrap = document.createElement('div');
+      roundsWrap.style.display = 'flex'; roundsWrap.style.gap = '12px';
+      roundsWrap.style.overflowX = 'auto'; roundsWrap.style.maxWidth = '1100px';
+      roundsWrap.style.width = '100%'; roundsWrap.style.padding = '0 12px';
+      roundsWrap.style.marginTop = '24px'; roundsWrap.style.alignItems = 'flex-start';
+      for (let ri = 0; ri < 5; ri++) {
+          const col = document.createElement('div');
+          col.style.flex = '1'; col.style.minWidth = '190px';
+          const colTitle = document.createElement('div');
+          colTitle.textContent = TOURNAMENT_ROUND_NAMES[ri];
+          colTitle.style.cssText = 'font-weight:900;font-size:12px;letter-spacing:.08em;color:#ffd44f;text-align:center;margin-bottom:8px;';
+          col.appendChild(colTitle);
+          const round = active.rounds[ri];
+          if (!round) {
+              const ph = document.createElement('div');
+              ph.textContent = '—';
+              ph.style.cssText = 'text-align:center;color:#5b7a99;font-size:13px;padding:10px;';
+              col.appendChild(ph);
+          } else {
+              round.forEach((match) => {
+                  const box = document.createElement('div');
+                  const isNext = playerMatch && match === playerMatch;
+                  box.style.cssText = `background:#12233d;border:${isNext ? '3px solid #ffd44f' : '1px solid #2b4368'};border-radius:10px;padding:6px;margin-bottom:8px;${isNext ? 'box-shadow:0 0 16px #ffd44f66;' : ''}`;
+                  const rows = [match.a, match.b].map((idx) => {
+                      const e = active.entrants[idx];
+                      const label = tournamentEntrantLabel(e);
+                      const won = match.winner === idx;
+                      const lost = match.winner != null && match.winner !== idx;
+                      return `<div style="padding:4px 6px;border-radius:6px;background:${won ? 'rgba(93,242,194,0.22)' : 'rgba(255,255,255,0.04)'};opacity:${lost ? 0.45 : 1};font-size:12px;font-weight:${won || e.isPlayer ? 900 : 400};color:${won ? '#5df2c2' : '#e8f4ff'}">${won ? '✓ ' : ''}${label.name} <span style="color:#a8c8ef;font-weight:400">• ${label.brawler}</span> <span style="font-size:9px;font-weight:900;color:${label.tierColor};border:1px solid ${label.tierColor}55;border-radius:4px;padding:1px 4px">${label.tierLabel}</span></div>`;
+                  }).join('<div style="text-align:center;font-size:9px;color:#89b5d9;padding:1px 0">vs</div>');
+                  box.innerHTML = rows + (isNext ? '<div style="text-align:center;font-size:10px;font-weight:900;color:#ffd44f;margin-top:4px">▶ YOUR NEXT MATCH</div>' : '');
+                  col.appendChild(box);
+              });
+          }
+          roundsWrap.appendChild(col);
+      }
+      overlay.appendChild(roundsWrap);
+      const btnRow = document.createElement('div');
+      btnRow.style.display = 'flex'; btnRow.style.gap = '12px'; btnRow.style.marginTop = '20px';
+      if (playerMatch && opponent) {
+          const playBtn = document.createElement('button');
+          playBtn.textContent = `⚔ PLAY ${TOURNAMENT_ROUND_NAMES[active.currentRound]} vs ${opponent.name}`;
+          playBtn.style.padding = '14px 26px'; playBtn.style.borderRadius = '12px';
+          playBtn.style.cursor = 'pointer'; playBtn.style.fontWeight = '900';
+          playBtn.style.background = '#ffd44f'; playBtn.style.border = '0'; playBtn.style.color = '#241a02';
+          playBtn.onclick = () => { if (launchTournamentMatch()) document.body.removeChild(overlay); };
+          btnRow.appendChild(playBtn);
+      }
+      const leaveBtn = document.createElement('button');
+      leaveBtn.textContent = 'LEAVE TOURNAMENT';
+      leaveBtn.style.padding = '14px 20px'; leaveBtn.style.borderRadius = '12px'; leaveBtn.style.cursor = 'pointer';
+      leaveBtn.onclick = () => {
+          if (!confirm('Abandon this tournament run? Your bracket is lost — you can re-enter the league and start over.')) return;
+          const s = getTournamentState();
+          s.active = null;
+          setTournamentState(s);
+          document.body.removeChild(overlay);
+          openTournamentHub();
+      };
+      btnRow.appendChild(leaveBtn);
+      const closeBtn = document.createElement('button');
+      closeBtn.textContent = 'CLOSE';
+      closeBtn.style.padding = '14px 20px'; closeBtn.style.borderRadius = '12px'; closeBtn.style.cursor = 'pointer';
+      closeBtn.onclick = () => document.body.removeChild(overlay);
+      btnRow.appendChild(closeBtn);
+      overlay.appendChild(btnRow);
+      document.body.appendChild(overlay);
+  }
+  // ---- End Tournament mode ----
   let isTraining = false;
   let activeSkinTrial = null; // { skinId, brawler } — training-only skin preview; never written to the save
   let isBrawlerLabMode = false;
@@ -31460,6 +31898,7 @@ let heistFeverActive = false;
             if (bot.arenaForgeFortressLink && isNearAlliedArenaForgeStructure(bot)) cadence *= 0.85;
             if ((bot.arenaForgeFrostfireUntil || 0) > performance.now()) cadence *= 1.25;
         }
+        if (bot.tournamentCadenceMult) cadence *= bot.tournamentCadenceMult;
         return context.now - (bot.lastShot || 0) >= cadence;
     }
 
@@ -34249,13 +34688,15 @@ let heistFeverActive = false;
     const fusedBotParts = isFusedMode ? rollFusedParts() : null;
     const bBrawler = isFusedMode ? fusedBotParts[0] : botTeam[Math.floor(Math.random() * botTeam.length)];
     const botLevel = isDuelsMaxedMode ? 12 : (isTowerDuelEvent ? 11 : getBotLevelNearPlayer());
-    const btier = isFusedMode ? getFusedTier(fusedBotParts, botLevel) : getHPTier(bBrawler, botLevel);
-    const unlocks = getUnlocksForLevel(botLevel);
+    const duelBotLevel = isTournamentMatch ? tournamentBotLevel : botLevel;
+    const btier = isFusedMode ? getFusedTier(fusedBotParts, duelBotLevel) : getHPTier(bBrawler, duelBotLevel);
+    const unlocks = getUnlocksForLevel(duelBotLevel);
     bots.push({
         id: nextId++, x: 800, y: 500, z: 0, vx:0, vy:0,
         hp: btier.hp, maxHp: btier.hp, powerCubes: 0, isDead: false, shield:0, shieldMax:0, shieldDecayTimer:0, reloadBuffUntil:0,
         radius:14, speed: btier.speed || 110, slowUntil:0, brawler: bBrawler, fusedParts: fusedBotParts || undefined,
         level: botLevel,
+        tournamentCadenceMult: isTournamentMatch ? tournamentBotCadenceMult : 1,
         gadgetUnlocked: unlocks.gadgetUnlocked,
         starPowerUnlocked: unlocks.starPowerUnlocked,
         hyperchargeUnlocked: unlocks.hyperchargeUnlocked,
@@ -48152,6 +48593,7 @@ let heistFeverActive = false;
       ['knockout_3v3', '🥊', 'Knockout 3v3', 'Best of 3 Rounds'],
       ['duels', '⚔️', 'Duels (First to 9)', 'Draft 1 to 4 brawlers'],
     ['tower_duels', '🗼', 'Tower Duels', 'Draft 1 to 4 brawlers • ALL 8 Tower Powers'],
+      ['tournament', '🏆', 'Tournament', '32-player bracket • Bronze → Diamond leagues'],
       ['fused', '🧬', 'Fused Duels', 'Two random brawlers fused — both attacks, both Supers'],
       ['brick_vault', '🔒', 'Vault Siege 3v3', 'Break the enemy core vault'],
       ['marked_mayhem', 'TR', 'Target Rush', 'Hunt marked targets for bonus points'],
@@ -48167,7 +48609,7 @@ let heistFeverActive = false;
   ];
   const HOME_MODE_DATA = Object.fromEntries(HOME_MODE_CARDS.map((entry) => [entry[0], entry]));
   const POWER_PLAY_BRAWLERS = new Set(['blinkeye', 'fuser', 'rocketeer', 'bouncin_balls', 'echo', 'orbo', 'decayer', 'money_and_tax', 'ramage']);
-  const HOME_PERMANENT_MODE_IDS = ['blink_eye_dodge', 'headless_boss_s4', 'tombstone_boss', 'orbo_boss', 'ramage_boss', 'weefee_boss', 'demon_villains_boss', 'custom_clash', 'brawe_ball', 'knockout_3v3', 'duels', 'tower_duels', 'fused', 'power_play_showdown', 'corrupted_showdown', 'slop_sushi', 'slop_sushi_gauntlet', 'chaos_crown', 'arena_forge', 'arena_forge_overclocked', 'tug_zone', 'construction', 'knock_donate', 'damage_filler', 'capture_turkey', 'prop_hunt'];
+  const HOME_PERMANENT_MODE_IDS = ['tournament', 'blink_eye_dodge', 'headless_boss_s4', 'tombstone_boss', 'orbo_boss', 'ramage_boss', 'weefee_boss', 'demon_villains_boss', 'custom_clash', 'brawe_ball', 'knockout_3v3', 'duels', 'tower_duels', 'fused', 'power_play_showdown', 'corrupted_showdown', 'slop_sushi', 'slop_sushi_gauntlet', 'chaos_crown', 'arena_forge', 'arena_forge_overclocked', 'tug_zone', 'construction', 'knock_donate', 'damage_filler', 'capture_turkey', 'prop_hunt'];
   HOME_PERMANENT_MODE_IDS.push('arena_forge_minion_surge');
   HOME_PERMANENT_MODE_IDS.push('arena_forge_hyper');
   // BUILDER PICK (flagged): Super Showdown is always available during the
@@ -48179,7 +48621,7 @@ let heistFeverActive = false;
     'arena_forge', 'arena_forge_overclocked', 'arena_forge_minion_surge', 'arena_forge_hyper',
     'brawe_ball', 'knockout_3v3', 'duels', 'tower_duels', 'fused',
     'tug_zone', 'construction', 'knock_donate', 'damage_filler',
-    'capture_turkey', 'tower_defense', 'custom_clash'];
+    'capture_turkey', 'tower_defense', 'custom_clash', 'tournament'];
   const HOME_DAILY_ROTATION_POOL = ['blink_eye_dodge', 'orbo_boss', 'ramage_boss',
     'weefee_boss', 'demon_villains_boss', 'headless_boss_s4', 'tombstone_boss',
     'power_play_showdown', 'corrupted_showdown', 'chaos_crown', 'prop_hunt',
@@ -48319,6 +48761,7 @@ let heistFeverActive = false;
       knockout_3v3: ['Best of 3 Rounds', 'No respawns during rounds'],
       duels: ['Draft 1 to 4 brawlers', 'First to win 9 rounds', 'Level 12 stats', 'All gadgets, star powers & Hypercharge', '5 Tower Powers', 'Poison storm disabled'],
       tower_duels: ['Draft 1 to 4 brawlers', 'First to win 9 rounds', 'Level 12 stats', 'All gadgets, star powers & Hypercharge', 'ALL 8 Tower Powers', 'Poison storm disabled'],
+      tournament: ['32-player single-elimination bracket — you + 31 named rivals', 'Pick ONE brawler: it is locked for the whole tournament, and so is every bot\'s brawler', 'Bot skill tiers: ROOKIE (Power 9, slower fire) • CONTENDER (Power 11) • CHAMPION (Power 12, faster fire)', 'Win the league to unlock the next: Bronze → Silver → Gold → Diamond', 'League champion prizes: Bronze +500 Coins & +50 Souls • Silver +1,000 & +100 • Gold +2,000 & +200 • Diamond +4,000 & +400', 'Tournament matches are Duels, first to 3 rounds • no per-match coin payout — the prize is the payout'],
       power_play_showdown: ['12-player Solo Battle Royale with Power Cubes', 'Every fighter wields 3 simultaneous custom superpowers', 'Curated roster: BlinkEye, Fuser, Rocketeer, Bouncin\' Balls, Echo, Orbo, Decayer, Money & Tax, Ramage'],
       tower_duels_weekend: ['Five complete Duels matches', 'Each floor rolls a fresh random trio of Power 11 guest brawlers', 'Complete Floor 5 to unlock the exclusive TOWER DUELAR title'],
       solo: ['20-player free-for-all', 'No respawns', 'Rare Nova Boxes grant +2 Power, shield and charge'],
@@ -48457,6 +48900,11 @@ let heistFeverActive = false;
           if (mode === 'custom_clash') {
               close();
               openCustomMutatorPickerUI();
+              return;
+          }
+          if (mode === 'tournament') {
+              close();
+              openTournamentHub();
               return;
           }
           showdownMode = mode;
@@ -51337,6 +51785,7 @@ let heistFeverActive = false;
               badge.style.cssText = 'position:absolute;right:6px;top:5px;padding:3px 6px;border-radius:7px;background:#ff5ba7;color:#210918;font-size:8px;font-weight:1000;box-shadow:0 0 13px #ff5ba7;z-index:2';
               card.appendChild(badge);
           } else if (!sushiActive && badge) badge.remove();
+          if (modeId === 'tournament') card.dataset.baseSubtitle = getTournamentCardSubtitle();
           const subtitle = card.querySelector('.home-mode-subtitle');
           if (subtitle) subtitle.textContent = sushiActive ? '🗼 Tower Transformations • pick 2' : (card.dataset.baseSubtitle || '');
       });
@@ -51461,6 +51910,7 @@ let heistFeverActive = false;
           blink_eye_dodge: '#a855f7',
           tower_duels_weekend: '#67e8ff',
       tower_duels: '#38bdf8',
+          tournament: '#ffd166',
           demon_villains_boss: '#d44763',
           ramage_boss: '#c0392b',
           weefee_boss: '#00f5d4',
@@ -51496,6 +51946,7 @@ let heistFeverActive = false;
           else if (id === 'orbo_boss' || id === 'ramage_boss' || id === 'demon_villains_boss' || id === 'weefee_boss' || id === 'blink_eye_dodge' || id === 'power_gods' || id === 'damage_filler' || id === 'solo_td' || id === 'tombstone_boss' || id === 'megastein_boss' || id === 'tower_defense') tag = 'SOLO';
           else if (id === 'beast_boss_god_mode') tag = '5V1';
           else if (id === 'duels' || id === 'tower_duels' || id === 'impossible') tag = '1V1';
+          else if (id === 'tournament') tag = '32P';
           else if (id === 'arena_forge') tag = '3V3';
           else if (id === 'marked_mayhem') tag = '3V3';
           else if (id === 'mirror') tag = '4V4';
@@ -51519,6 +51970,10 @@ let heistFeverActive = false;
               <span class="home-mode-info-btn" role="button" aria-label="About ${name}" title="Rules and rewards">i</span>
           `;
           const selectMode = () => {
+              if (id === 'tournament') {
+                  openTournamentHub();
+                  return;
+              }
               if (id === 'custom_clash') {
                   openCustomMutatorPickerUI();
                   return;
@@ -53880,6 +54335,7 @@ let heistFeverActive = false;
           showdownMode = friendlyBattleConfig.mode;
           setActiveMutators(friendlyBattleConfig.modifiers[0] || 'classic', friendlyBattleConfig.modifiers[1] || null, friendlyBattleConfig.modifiers[2] || null);
       }
+      isTournamentMatch = false; // a showdown launch is never a tournament match (tournament launches set it true themselves)
       try { console.log('[GAME] Start showdown', { showdownMode, selectedBrawler }); } catch(e) {}
       if (showdownMode === 'splitter_powered') showdownMode = 'power_gods';
       if(isRetiredTowerMode(showdownMode)){
@@ -54368,6 +54824,7 @@ let heistFeverActive = false;
       isTowerDuelEvent = true;
       isTowerDuelsMode = false;
       isDuelsMaxedMode = false;
+      isTournamentMatch = false;
       isSlopSushiMode = true;
       sushiMatchArmed = true;
       clearShowdownModifier();
@@ -54414,6 +54871,7 @@ let heistFeverActive = false;
       isTowerDuelEvent = false;
       isTowerDuelsMode = false;
       isDuelsMaxedMode = false;
+      isTournamentMatch = false;
       isSlopSushiMode = false;
       sushiMatchArmed = false;
       clearShowdownModifier();
@@ -54611,6 +55069,7 @@ let heistFeverActive = false;
           isMirrorMode = false;
           isImpossibleMode = false;
           isDuels = true;
+          isTournamentMatch = false;
           isTowerDuelEvent = false;
           isTowerDuelsMode = isTowerDuels;
           isDuelsMaxedMode = true;
@@ -87107,7 +87566,10 @@ function checkHit(target, b, i){
     // Alive counter
     ctx.fillStyle = '#cfeef7'; ctx.font = 'bold 20px sans-serif'; 
     if (isDuels) {
-        queueTopCenterLine(ctx, topCenterStackQueue, `Duels | You: ${playerScore}  Bot: ${botScore}`, innerWidth/2 - 100, 48);
+        const duelsLine = isTournamentMatch && tournamentMatchContext
+            ? `🏆 ${tournamentMatchContext.leagueName} • ${tournamentMatchContext.roundName} vs ${tournamentMatchContext.opponentName} | You: ${playerScore}  Bot: ${botScore}`
+            : `Duels | You: ${playerScore}  Bot: ${botScore}`;
+        queueTopCenterLine(ctx, topCenterStackQueue, duelsLine, innerWidth/2 - 100, 48);
     } else if (isKnockDonateMode) {
         queueTopCenterLine(ctx, topCenterStackQueue, `Knock n Donate 3v3 | Round ${knockDonateRound} | You ${knockDonateWins.player || 0}-${knockDonateWins.enemy || 0} Enemy`, innerWidth/2 - 230, 48);
     } else if (isConstructionMode) {
@@ -88112,6 +88574,11 @@ function checkHit(target, b, i){
                 won = playerScore >= getDuelsWinScore();
                 matchText = won ? "YOU WON THE DUEL!" : "BOT WON THE DUEL!";
                 rankText = `Score: ${playerScore} - ${botScore}`;
+                if (isTournamentMatch) {
+                    const tournamentResult = recordTournamentMatchResult(won);
+                    matchText = tournamentResult.matchText;
+                    rankText = tournamentResult.rankText;
+                }
             } else if (isTurkeyCaptureMode) {
                 won = !!objectiveWon;
                 const tFinal = turkeyCaptureState?.scores || { player: 0, enemy: 0 };
@@ -88418,7 +88885,7 @@ function checkHit(target, b, i){
             if (isBossFight && won) rewardCoins = isBeastBossEvent ? 150 : (isTombstoneBossEvent ? getTombstoneBossDifficulty(tombstoneBossRuntime?.difficulty).rewardCoins : (isMegasteinBossEvent ? MEGASTEIN_BOSS_REWARD_COINS : 100));
             if (isTowerDefenseEvent && won) rewardCoins = getTowerDefenseRewardCoins();
             if (isSoloTrial && won) rewardCoins = 80;
-            if (isDuels && won) rewardCoins = 50;
+            if (isDuels && won) rewardCoins = isTournamentMatch ? 0 : 50;
 
             let streakBonusCoins = 0;
             let streakDropBonus = 0;
@@ -88603,6 +89070,7 @@ function checkHit(target, b, i){
             // no quest/season progress, no daily-played mark.
             if (!isFriendlyBattle) awardSeasonPassXp(won ? 25 : 15);
             if (goldEventReward > 0) rewardCoins += goldEventReward;
+            if (isTournamentMatch) rewardCoins = 0; // Tournament matches pay no per-match coins — the league champion prize is the payout.
             playerData.coins += rewardCoins;
             addSouls(soulReward);
             if (rankedPromotionSouls > 0) addSouls(rankedPromotionSouls);
@@ -88760,7 +89228,7 @@ function checkHit(target, b, i){
                 rewardsBox.appendChild(promoDiv);
             }
 
-            if (won && (streakBonusCoins > 0 || (playerData.winStreak || 0) > 1)) {
+            if (won && !isTournamentMatch && (streakBonusCoins > 0 || (playerData.winStreak || 0) > 1)) {
                 const streakDiv = document.createElement('div');
                 streakDiv.textContent = `🔥 Win Streak ${playerData.winStreak} • +${streakBonusCoins} Coins`;
                 streakDiv.style.fontSize = '20px';
