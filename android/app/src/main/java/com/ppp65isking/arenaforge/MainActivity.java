@@ -1,4 +1,4 @@
-package com.example.arenaforge;
+package com.ppp65isking.arenaforge;
 
 import android.os.Build;
 import android.os.Bundle;

@@ -239,6 +239,13 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         .mobile-action-btn.is-ready,.mobile-action-btn.is-armed,.mobile-action-btn.is-active{opacity:1;filter:saturate(1.18);border-color:#fff;box-shadow:0 5px 0 rgba(2,9,22,.82),0 0 18px var(--action-color)}
         .mobile-action-btn:disabled{opacity:.38;filter:grayscale(.45);pointer-events:none}.mobile-action-btn:active{transform:translateY(3px) scale(.95);box-shadow:0 2px 0 rgba(2,9,22,.8)}
         #mobileFullscreenBtn{top:max(10px,env(safe-area-inset-top));right:max(10px,env(safe-area-inset-right));width:42px;height:42px;border:2px solid rgba(158,221,255,.6);border-radius:50%;background:rgba(5,15,32,.72);font-size:20px;box-shadow:0 5px 16px #0007}
+        /* Mobile app (Capacitor APK, 2026-11-18): the native shell already
+           runs sticky immersive fullscreen, so the browser-only fullscreen
+           buttons and the legacy DOM HUD are redundant in the app — hide
+           them. Touch sticks + action buttons are NOT hidden: Brawl Stars
+           has those too. The .native-app class is set at boot (see
+           isNativeAppMode) and only ever exists inside the native WebView. */
+        .native-app #fullscreenBtn, .native-app #mobileFullscreenBtn, .native-app #hud { display:none !important; }
         #mobileLandscapeHint{top:max(10px,env(safe-area-inset-top));padding:7px 12px;border-color:rgba(255,196,93,.5);background:rgba(17,20,31,.85);color:#ffe0a3}
         @media (orientation:portrait) and (max-width:760px){.mobile-stick{width:112px;height:112px}#mobileMoveStick,#mobileAimStick{bottom:max(26px,calc(env(safe-area-inset-bottom) + 10px))}#mobileActionButtons{right:max(14px,env(safe-area-inset-right));bottom:calc(max(26px,env(safe-area-inset-bottom)) + 118px);grid-template-columns:repeat(2,52px);gap:8px}.mobile-action-btn{width:52px;height:52px;font-size:19px}}
         @media (orientation:landscape) and (max-height:540px){.mobile-stick{width:118px;height:118px}#mobileMoveStick{left:max(24px,env(safe-area-inset-left));bottom:max(18px,env(safe-area-inset-bottom))}#mobileAimStick{right:max(26px,env(safe-area-inset-right));bottom:max(18px,env(safe-area-inset-bottom))}#mobileActionButtons{right:calc(max(26px,env(safe-area-inset-right)) + 124px);bottom:max(26px,env(safe-area-inset-bottom));grid-template-columns:repeat(2,52px)}.mobile-action-btn{width:52px;height:52px;font-size:19px}#mobileLandscapeHint{display:none}}
@@ -4526,6 +4533,21 @@ function startBlinkEyeSuper(entity, targetX, targetY, isHyper = false) {
   let camX = 0, camY = 0;
   const CAMERA_ZOOM_BASE = 0.90;
   let CAMERA_ZOOM = CAMERA_ZOOM_BASE;
+  // Mobile app POV (Arena Forge mobile app 2026-11-18): on touch /
+  // coarse-pointer screens, zoom the camera out so the visible width never
+  // drops below ~1100 world px — a phone in landscape shows only ~990 world
+  // px at the desktop 0.90 zoom, too tight to see around your brawler.
+  // Desktop is untouched (factor 1). Pandy Hyper / Snipa Super zooms stay
+  // relative to the (adjusted) base, so their 0.72-vs-0.90 ratio is the same
+  // on mobile. The parameters exist so tests can call it without a DOM.
+  const MOBILE_CAMERA_MIN_VISIBLE_WIDTH = 1100;
+  function getMobileCameraZoomFactor(viewportWidth, isTouchDevice) {
+      const touch = typeof isTouchDevice === 'boolean' ? isTouchDevice : (((typeof navigator !== 'undefined' && navigator.maxTouchPoints) || 0) > 0 || (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(pointer: coarse)').matches) || (typeof window !== 'undefined' && ('ontouchstart' in window)));
+      if (!touch) return 1;
+      const w = typeof viewportWidth === 'number' ? viewportWidth : (typeof innerWidth === 'number' ? innerWidth : 0);
+      if (!Number.isFinite(w) || w <= 0) return 1;
+      return Math.min(1, (w / CAMERA_ZOOM_BASE) / MOBILE_CAMERA_MIN_VISIBLE_WIDTH);
+  }
   let lastCameraZoomAt = 0;
   function getMouseWorld(){
     return { x: mouse.screenX / CAMERA_ZOOM + camX, y: mouse.screenY / CAMERA_ZOOM + camY };
@@ -5572,6 +5594,17 @@ const bolznstienPendingStrikes = [];
     const deviceMode = ((navigator.maxTouchPoints || 0) > 0 || window.matchMedia?.('(pointer: coarse)').matches || ('ontouchstart' in window)) ? 'mobile' : 'desktop';
     document.documentElement.classList.add(`${deviceMode}-device`);
     document.documentElement.dataset.deviceMode = deviceMode;
+
+    // Mobile app (Capacitor APK, Arena Forge mobile app 2026-11-18): detect
+    // the native shell so browser-only chrome can be hidden. window.Capacitor
+    // exists ONLY inside the native WebView — never on the website — so this
+    // can never hide controls on desktop or mobile web. The .native-app class
+    // drives the CSS rule above; the class is set once at boot and covers
+    // buttons created later (e.g. the in-match #mobileFullscreenBtn).
+    function isNativeAppMode() {
+        try { return !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()); } catch (_) { return false; }
+    }
+    if (isNativeAppMode()) document.documentElement.classList.add('native-app');
 
     // Fullscreen persistence (home-screen redesign 2026-11-03): remember
     // the player's fullscreen choice across page reloads. Browsers always
@@ -49027,6 +49060,19 @@ let heistFeverActive = false;
       return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   }
 
+  // Mobile app events page: compact season countdown — "13D 04H LEFT" instead
+  // of the HH:MM:SS daily timer (a season ending 300+ hours out reads badly
+  // as 312:00:00). Negative clamps to 0.
+  function formatSeasonCountdown(ms) {
+      const seconds = Math.max(0, Math.ceil(ms / 1000));
+      const days = Math.floor(seconds / 86400);
+      const hours = Math.floor((seconds % 86400) / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      if (days > 0) return `${days}D ${String(hours).padStart(2, '0')}H LEFT`;
+      if (hours > 0) return `${String(hours).padStart(2, '0')}H ${String(minutes).padStart(2, '0')}M LEFT`;
+      return `${String(minutes).padStart(2, '0')}M LEFT`;
+  }
+
   function openHomeModeInfo(mode, reward = null, featured = false) {
       const entry = HOME_MODE_DATA[mode];
       if (!entry) return;
@@ -52184,6 +52230,74 @@ let heistFeverActive = false;
           return { section, heading, grid };
       }
 
+      // Mobile app events page (Arena Forge mobile app 2026-11-18):
+      // Brawl Stars-style FEATURED row above the mode grid — the live season
+      // (date-driven via getActiveSeasonProfile, never hardcoded) and the
+      // tournament (resume-run state when a run is in progress). Rebuilt with
+      // the rest of the events page; the season countdown ticks in the same
+      // 1s interval as the daily-rotation countdown below. The five core mode
+      // slots (Showdown, Duels, Tower Duels, Friendly Battles, Hyper Forge)
+      // already live in POPULAR EVENTS below — these two featured slots are
+      // the only new cards, so no mode card is ever duplicated.
+      const featuredSection = createSection('FEATURED EVENTS', 'LIVE NOW — TAP TO OPEN.', 'featured-section');
+      const featuredSeasonProfile = getActiveSeasonProfile();
+      const featuredSeasonEmoji = featuredSeasonProfile.key === 'ember' ? '🔥' : featuredSeasonProfile.key === 'xplodemis' ? '🎄' : featuredSeasonProfile.key === 'turkey' ? '🦃' : '🎃';
+      const seasonSlot = document.createElement('div');
+      seasonSlot.tabIndex = 0;
+      seasonSlot.setAttribute('role', 'button');
+      seasonSlot.className = 'home-mode-card featured-event-card';
+      seasonSlot.style.width = '100%';
+      seasonSlot.style.textAlign = 'left';
+      seasonSlot.style.position = 'relative';
+      seasonSlot.style.overflow = 'hidden';
+      seasonSlot.dataset.featuredSlot = 'season';
+      seasonSlot.innerHTML = `
+          <div class="home-mode-map-preview theme-season" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+          <div style="position:absolute;left:0;top:0;width:3px;height:100%;background:#ffd166;"></div>
+          <div class="home-mode-card-content" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+              <div style="display:flex;align-items:center;gap:9px;min-width:0;">
+                  <div style="width:30px;height:30px;border-radius:8px;background:rgba(255,209,102,0.15);border:1px solid rgba(255,209,102,0.4);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">${featuredSeasonEmoji}</div>
+                  <div style="min-width:0;">
+                      <div style="font-size:13px;font-weight:800;color:#e8f4ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">SEASON ${featuredSeasonProfile.seasonNumber} · ${featuredSeasonProfile.upperName}</div>
+                      <div class="home-mode-subtitle" style="font-size:10px;color:#89b5d9;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Season Pass live · ends ${featuredSeasonProfile.endLabel}</div>
+                  </div>
+              </div>
+              <div style="font-size:8px;font-weight:900;color:#ffd166;background:#ffd16615;border:1px solid #ffd16644;border-radius:5px;padding:2px 5px;letter-spacing:0.05em;flex-shrink:0;">ENDS IN <strong data-season-countdown>${formatSeasonCountdown(Math.max(0, featuredSeasonProfile.endUtc - Date.now()))}</strong></div>
+          </div>`;
+      const openSeasonSlot = () => openSeasonPass();
+      seasonSlot.onclick = openSeasonSlot;
+      seasonSlot.onkeydown = (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openSeasonSlot(); } };
+      featuredSection.grid.appendChild(seasonSlot);
+      const featuredTournamentState = getTournamentState();
+      const featuredTournamentActive = !!(featuredTournamentState.active && featuredTournamentState.active.status === 'active');
+      const featuredTournamentLeague = getTournamentLeague(featuredTournamentActive ? featuredTournamentState.active.league : ([...featuredTournamentState.unlocked].reverse()[0] || 'bronze'));
+      const tournamentSlot = document.createElement('div');
+      tournamentSlot.tabIndex = 0;
+      tournamentSlot.setAttribute('role', 'button');
+      tournamentSlot.className = 'home-mode-card featured-event-card';
+      tournamentSlot.style.width = '100%';
+      tournamentSlot.style.textAlign = 'left';
+      tournamentSlot.style.position = 'relative';
+      tournamentSlot.style.overflow = 'hidden';
+      tournamentSlot.dataset.featuredSlot = 'tournament';
+      tournamentSlot.innerHTML = `
+          <div class="home-mode-map-preview theme-tournament" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+          <div style="position:absolute;left:0;top:0;width:3px;height:100%;background:#ffd166;"></div>
+          <div class="home-mode-card-content" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+              <div style="display:flex;align-items:center;gap:9px;min-width:0;">
+                  <div style="width:30px;height:30px;border-radius:8px;background:rgba(255,209,102,0.15);border:1px solid rgba(255,209,102,0.4);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">🏆</div>
+                  <div style="min-width:0;">
+                      <div style="font-size:13px;font-weight:800;color:#e8f4ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">TOURNAMENT · ${featuredTournamentLeague.name.toUpperCase()} LEAGUE</div>
+                      <div class="home-mode-subtitle" style="font-size:10px;color:#89b5d9;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${getTournamentCardSubtitle()}</div>
+                  </div>
+              </div>
+              <div style="font-size:8px;font-weight:900;color:#ffd166;background:#ffd16615;border:1px solid #ffd16644;border-radius:5px;padding:2px 5px;letter-spacing:0.05em;flex-shrink:0;">${featuredTournamentActive ? 'RESUME RUN' : 'LIVE'}</div>
+          </div>`;
+      const openTournamentSlot = () => openTournamentHub();
+      tournamentSlot.onclick = openTournamentSlot;
+      tournamentSlot.onkeydown = (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openTournamentSlot(); } };
+      featuredSection.grid.appendChild(tournamentSlot);
+
       if (isOverdriveActive()) {
           const odSection = createSection('CORE SURGE OVERDRIVE', 'COMMUNITY EVENT — SURGE TOGETHER.', 'overdrive-section');
           const odState = ensureOverdriveState();
@@ -52294,6 +52408,9 @@ let heistFeverActive = false;
           const todayKey = getHomeDailyRotationDayKey();
           homeModeCompactRow.querySelectorAll('[data-daily-countdown]').forEach((element) => {
               element.textContent = formatHomeEventCountdown(getHomeDailyRotationEndsAt() - Date.now());
+          });
+          homeModeCompactRow.querySelectorAll('[data-season-countdown]').forEach((element) => {
+              element.textContent = formatSeasonCountdown(Math.max(0, getActiveSeasonProfile().endUtc - Date.now()));
           });
           if (todayKey !== renderedDailyKey && !homeEventRotationAnimating) {
               homeEventRotationAnimating = true;
@@ -73037,7 +73154,11 @@ function checkHit(target, b, i){
     // consistent with the view on screen.
     const pandyHyperZoomed = !!player && player.hp > 0 && selectedBrawler === 'pandy' && isEntityHyperchargedNow(player, now);
     const snipaSuperZoomed = !!player && player.hp > 0 && selectedBrawler === 'snipa' && isSnipaChanneling(player, now);
-    const targetZoom = pandyHyperZoomed ? PANDY_HYPER_CAMERA_ZOOM : snipaSuperZoomed ? SNIPA_SUPER_CAMERA_ZOOM : CAMERA_ZOOM_BASE;
+    // Mobile app POV: the base zoom (and the Hyper/Super zooms, relative to
+    // it) scale down on touch screens so phones see >= ~1100 world px wide.
+    // Desktop factor is 1, so desktop zoom is byte-for-byte unchanged.
+    const mobileZoomFactor = getMobileCameraZoomFactor();
+    const targetZoom = pandyHyperZoomed ? PANDY_HYPER_CAMERA_ZOOM * mobileZoomFactor : snipaSuperZoomed ? SNIPA_SUPER_CAMERA_ZOOM * mobileZoomFactor : CAMERA_ZOOM_BASE * mobileZoomFactor;
     const zoomDt = clamp((now - (lastCameraZoomAt || now)) / 1000, 0, 0.1);
     lastCameraZoomAt = now;
     CAMERA_ZOOM += (targetZoom - CAMERA_ZOOM) * Math.min(1, zoomDt * 5);
