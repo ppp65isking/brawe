@@ -10,6 +10,7 @@ name: Android APK
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 
 jobs:
@@ -42,8 +43,19 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      # Do NOT use android-actions/setup-android@v3 — it runs
+      # `sdkmanager tools` and the obsolete "tools" package no longer
+      # exists, so the step fails (first main run after PR #133,
+      # 2026-11-18: "Failed to find package 'tools'", sdkmanager exit 1).
+      # Use the runner's preinstalled SDK + explicit sdkmanager calls
+      # instead — Box's proven pattern. compileSdk/targetSdk are 34
+      # (android/variables.gradle), AGP 8.2.1 defaults to build-tools 34.0.0.
+      - name: Install Android SDK packages
+        run: |
+          export ANDROID_HOME=/usr/local/lib/android/sdk
+          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
+          yes | sdkmanager --licenses
+          sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
 
       - name: Build debug APK
         working-directory: android
