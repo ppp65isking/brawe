@@ -26097,10 +26097,10 @@ let heistFeverActive = false;
     const FREEZEON_HYPER_AURA_LINE_WIDTH = 5;
     const FREEZEON_HYPER_AURA_STROKE_ALPHA = 0.9;
     const FREEZEON_HYPER_AURA_SHADOW_BLUR = 28;
-    let freezeonPatches = []; // {x, y, radius, until, nextTickAt, ownerId, hyper} — ice rink patches
+    let freezeonPatches = []; // {x, y, radius, until, nextTickAt, ownerId, hyper, treeFreeze} — ice rink patches (treeFreeze = Tree Freeze skin Super)
     let freezeonSlipZones = []; // {x, y, radius, until, ownerId} — 1s slippery slush
     let freezeonShatters = []; // {x, y, at, ownerId, targetId} — pending brain-freeze shatters
-    let freezeonThrownRinks = []; // {startX, startY, targetX, targetY, createdAt, impactAt, ownerId, hyper} — lobbed rink cans in flight
+    let freezeonThrownRinks = []; // {startX, startY, targetX, targetY, createdAt, impactAt, ownerId, hyper, treeFreeze} — lobbed rink cans in flight (treeFreeze = Tree Freeze skin Super)
     let freezeonPendingCones = []; // {at, ownerId, ang, hyper, dmg, ox, oy, spawnR, treeFreeze} — volley cones waiting their 90ms turn (changes round 2). ox/oy/spawnR snapshot the volley origin at fire time (Tree Freeze: identical volley moving or still); treeFreeze stamps the Tree Freeze skin at fire time.
     let freezeonVoicePrevPlaying = false;
     let freezeonVoicePrevGameOver = false;
@@ -26229,7 +26229,10 @@ let heistFeverActive = false;
         const x = clamp(entity.x + Math.cos(ang) * dist, 40, WORLD_W - 40);
         const y = clamp(entity.y + Math.sin(ang) * dist, 40, WORLD_H - 40);
         const flightMs = clamp(Math.hypot(x - entity.x, y - entity.y) / FREEZEON_SUPER_THROW_SPEED * 1000, 150, 600);
-        freezeonThrownRinks.push({ startX: entity.x, startY: entity.y, targetX: x, targetY: y, createdAt: now, impactAt: now + flightMs, ownerId: entity.id, hyper: !!hyper });
+        // Tree Freeze: the rink carries the skin only when the PLAYER casts
+        // it — bots own no skins (getActiveSkinForBrawler reads playerData).
+        const treeFreeze = entity.id === player.id && getActiveSkinForBrawler('freezeon')?.id === 'tree-freeze-freezeon';
+        freezeonThrownRinks.push({ startX: entity.x, startY: entity.y, targetX: x, targetY: y, createdAt: now, impactAt: now + flightMs, ownerId: entity.id, hyper: !!hyper, treeFreeze });
         if (entity.id === player.id) { try { window.BraweFreezeonVoice?.play('super'); } catch (e) {} }
         return true;
     }
@@ -26251,11 +26254,11 @@ let heistFeverActive = false;
                 }
             }
         }
-        freezeonPatches.push({ x, y, radius: FREEZEON_SUPER_RADIUS, until: now + FREEZEON_SUPER_DURATION_MS, nextTickAt: now, ownerId: thrown.ownerId, hyper });
+        freezeonPatches.push({ x, y, radius: FREEZEON_SUPER_RADIUS, until: now + FREEZEON_SUPER_DURATION_MS, nextTickAt: now, ownerId: thrown.ownerId, hyper, treeFreeze: !!thrown.treeFreeze });
         const mine = freezeonPatches.filter((p) => p.ownerId === thrown.ownerId);
         if (mine.length > FREEZEON_MAX_PATCHES_PER_OWNER) freezeonPatches.splice(freezeonPatches.indexOf(mine[0]), 1);
-        explosions.push({ x, y, radius: FREEZEON_SUPER_RADIUS, life: 0, maxLife: .4, color: hyper ? 'rgba(192,132,252,.55)' : 'rgba(56,189,248,.55)', legendary: true, fxKind: 'freezeonSuperSpawn' });
-        spawnFloatingText(x, y - 40, hyper ? '❄️ DEEP FREEZE!' : '❄️ ICE RINK!', hyper ? '#e9d5ff' : '#bae6fd');
+        explosions.push({ x, y, radius: FREEZEON_SUPER_RADIUS, life: 0, maxLife: .4, color: hyper ? 'rgba(192,132,252,.55)' : 'rgba(56,189,248,.55)', legendary: true, fxKind: 'freezeonSuperSpawn', treeFreeze: !!thrown.treeFreeze });
+        spawnFloatingText(x, y - 40, thrown.treeFreeze ? (hyper ? '🎄 DEEP FREEZE!' : '🎄 TREE RINK!') : (hyper ? '❄️ DEEP FREEZE!' : '❄️ ICE RINK!'), hyper ? '#e9d5ff' : '#bae6fd');
         return true;
     }
 
@@ -26427,6 +26430,58 @@ let heistFeverActive = false;
         for (const p of freezeonPatches) {
             ctx.save();
             ctx.translate(p.x, p.y);
+            if (p.treeFreeze) {
+                // Tree Freeze rink: a Christmas rink, not blue ice — snow
+                // center fading to pine green (gold when Hypercharged), a
+                // gold ring, 12 twinkling tree lights around the rim and
+                // a gold star at the center.
+                const grad = ctx.createRadialGradient(0, 0, p.radius * 0.15, 0, 0, p.radius);
+                grad.addColorStop(0, p.hyper ? 'rgba(254,243,199,0.6)' : 'rgba(240,253,244,0.55)');
+                grad.addColorStop(1, p.hyper ? 'rgba(251,191,36,0.18)' : 'rgba(22,163,74,0.14)');
+                ctx.fillStyle = grad;
+                ctx.beginPath(); ctx.arc(0, 0, p.radius, 0, Math.PI * 2); ctx.fill();
+                // Gold ring.
+                ctx.globalAlpha = 0.9;
+                ctx.strokeStyle = p.hyper ? '#fde047' : '#fbbf24';
+                ctx.lineWidth = 3;
+                ctx.beginPath(); ctx.arc(0, 0, p.radius, 0, Math.PI * 2); ctx.stroke();
+                // Twinkling tree lights around the rim.
+                const treeLightColors = ['#dc2626', '#fbbf24', '#2563eb', '#fde68a'];
+                for (let i = 0; i < 12; i++) {
+                    const la = (i / 12) * Math.PI * 2;
+                    const tw = 0.55 + 0.45 * Math.sin(now / 300 + i * 1.7);
+                    ctx.globalAlpha = tw;
+                    ctx.fillStyle = treeLightColors[i % treeLightColors.length];
+                    ctx.shadowColor = treeLightColors[i % treeLightColors.length];
+                    ctx.shadowBlur = 8;
+                    ctx.beginPath();
+                    ctx.arc(Math.cos(la) * p.radius * 0.97, Math.sin(la) * p.radius * 0.97, p.hyper ? 5 : 4, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.shadowBlur = 0;
+                // Gold star at the center (brighter + bigger when Hyper).
+                const starR = p.hyper ? 20 : 16;
+                ctx.globalAlpha = 0.95;
+                ctx.fillStyle = p.hyper ? '#fde047' : '#fbbf24';
+                ctx.strokeStyle = '#fff7cc';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                for (let s = 0; s < 10; s++) {
+                    const rr = s % 2 === 0 ? starR : starR * 0.45;
+                    const aa = -Math.PI / 2 + s * Math.PI / 5 + now / 1200;
+                    const sx = Math.cos(aa) * rr, sy = Math.sin(aa) * rr;
+                    if (s === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+                }
+                ctx.closePath(); ctx.fill(); ctx.stroke();
+                // Snow dots inside the rink.
+                ctx.globalAlpha = 0.5;
+                ctx.fillStyle = '#ffffff';
+                for (const [sx, sy, sr] of [[-0.45, -0.3, 3], [0.4, -0.45, 2.5], [0.5, 0.35, 3], [-0.35, 0.45, 2.5], [0, 0.55, 2]]) {
+                    ctx.beginPath(); ctx.arc(sx * p.radius, sy * p.radius, sr, 0, Math.PI * 2); ctx.fill();
+                }
+                ctx.restore();
+                continue;
+            }
             const grad = ctx.createRadialGradient(0, 0, p.radius * 0.15, 0, 0, p.radius);
             grad.addColorStop(0, p.hyper ? 'rgba(192,132,252,0.5)' : 'rgba(186,230,253,0.5)');
             grad.addColorStop(1, p.hyper ? 'rgba(192,132,252,0.12)' : 'rgba(186,230,253,0.12)');
@@ -26448,17 +26503,51 @@ let heistFeverActive = false;
             const gx = r.startX + (r.targetX - r.startX) * progress;
             const gy = r.startY + (r.targetY - r.startY) * progress;
             ctx.save();
-            // Landing marker.
+            // Landing marker (gold when Tree Freeze).
             ctx.globalAlpha = 0.5;
-            ctx.strokeStyle = r.hyper ? '#c084fc' : '#38bdf8';
+            ctx.strokeStyle = r.treeFreeze ? (r.hyper ? '#fde047' : '#fbbf24') : (r.hyper ? '#c084fc' : '#38bdf8');
             ctx.lineWidth = 3;
             ctx.setLineDash([10, 8]);
             ctx.beginPath(); ctx.arc(r.targetX, r.targetY, 40, 0, Math.PI * 2); ctx.stroke();
             ctx.setLineDash([]);
+            if (r.treeFreeze) {
+                // Small gold star at the landing point.
+                ctx.globalAlpha = 0.9;
+                ctx.fillStyle = r.hyper ? '#fde047' : '#fbbf24';
+                ctx.beginPath();
+                for (let s = 0; s < 10; s++) {
+                    const rr = s % 2 === 0 ? 8 : 8 * 0.45;
+                    const aa = -Math.PI / 2 + s * Math.PI / 5;
+                    const sx = r.targetX + Math.cos(aa) * rr, sy = r.targetY + Math.sin(aa) * rr;
+                    if (s === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+                }
+                ctx.closePath(); ctx.fill();
+            }
             // Ground shadow under the can.
             ctx.globalAlpha = 0.3;
             ctx.fillStyle = '#0c4a6e';
             ctx.beginPath(); ctx.ellipse(gx, gy, 18 * (1 - progress * 0.3), 8, 0, 0, Math.PI * 2); ctx.fill();
+            if (r.treeFreeze) {
+                // Tree Freeze: the flying can is a spinning gold star.
+                ctx.translate(gx, gy - arc);
+                ctx.rotate(now / 120);
+                ctx.globalAlpha = 0.95;
+                ctx.shadowColor = r.hyper ? '#fde047' : '#fbbf24';
+                ctx.shadowBlur = 16;
+                ctx.fillStyle = r.hyper ? '#fde047' : '#fbbf24';
+                ctx.strokeStyle = '#fff7cc';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                for (let s = 0; s < 10; s++) {
+                    const rr = s % 2 === 0 ? 16 : 16 * 0.45;
+                    const aa = -Math.PI / 2 + s * Math.PI / 5;
+                    const sx = Math.cos(aa) * rr, sy = Math.sin(aa) * rr;
+                    if (s === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+                }
+                ctx.closePath(); ctx.fill(); ctx.stroke();
+                ctx.restore();
+                continue;
+            }
             // The can itself, riding the arc and spinning.
             ctx.translate(gx, gy - arc);
             ctx.rotate(now / 120);
@@ -85667,6 +85756,48 @@ function checkHit(target, b, i){
             ctx.beginPath(); ctx.arc(ex.x, ex.y, fR * 0.6, 0, Math.PI * 2); ctx.stroke();
             // White flash core.
             ctx.globalAlpha = fAlpha;
+            ctx.fillStyle = `rgba(255,255,255,${0.9 * fAlpha})`;
+            ctx.beginPath(); ctx.arc(ex.x, ex.y, 10 * fAlpha + 4, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+            continue;
+        }
+        if (ex.fxKind === 'freezeonSuperSpawn' && ex.treeFreeze) {
+            // Tree Freeze Super impact: a gold star-burst + ornament
+            // sparks instead of the default blue ice blast. The star
+            // scales up and fades; 8 bauble dots fly outward; a gold
+            // ring expands. (Base Super keeps the generic blast.)
+            const fAlpha = Math.max(0, 1 - ex.life / ex.maxLife);
+            const progress = clamp(ex.life / ex.maxLife, 0, 1);
+            const fR = (ex.radius || 260) * (0.35 + 0.65 * progress);
+            ctx.save();
+            ctx.globalAlpha = fAlpha;
+            ctx.shadowColor = '#fbbf24'; ctx.shadowBlur = 18;
+            // Ornament sparks: 8 bauble dots flying outward.
+            const treeBurstColors = ['#dc2626', '#fbbf24', '#2563eb', '#16a34a'];
+            for (let s = 0; s < 8; s++) {
+                const a = (s / 8) * Math.PI * 2 + (ex.life * 2);
+                ctx.fillStyle = treeBurstColors[s % treeBurstColors.length];
+                ctx.beginPath();
+                ctx.arc(ex.x + Math.cos(a) * fR * 0.75, ex.y + Math.sin(a) * fR * 0.75, 6 + 3 * (1 - progress), 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.shadowBlur = 0;
+            // Expanding gold ring.
+            ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.arc(ex.x, ex.y, fR, 0, Math.PI * 2); ctx.stroke();
+            // Gold star core, scaling up as the burst expands.
+            const starR = 22 + 26 * progress;
+            ctx.fillStyle = '#fde047';
+            ctx.strokeStyle = '#fff7cc'; ctx.lineWidth = 2;
+            ctx.beginPath();
+            for (let p = 0; p < 10; p++) {
+                const rr = p % 2 === 0 ? starR : starR * 0.45;
+                const aa = -Math.PI / 2 + p * Math.PI / 5 + ex.life * 1.5;
+                const sx = ex.x + Math.cos(aa) * rr, sy = ex.y + Math.sin(aa) * rr;
+                if (p === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+            }
+            ctx.closePath(); ctx.fill(); ctx.stroke();
+            // White flash core.
             ctx.fillStyle = `rgba(255,255,255,${0.9 * fAlpha})`;
             ctx.beginPath(); ctx.arc(ex.x, ex.y, 10 * fAlpha + 4, 0, Math.PI * 2); ctx.fill();
             ctx.restore();
