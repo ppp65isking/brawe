@@ -55,6 +55,31 @@ assert.match(game, /tournamentCadenceMult: isTournamentMatch \? tournamentBotCad
 assert.match(game, /if \(bot\.tournamentCadenceMult\) cadence \*= bot\.tournamentCadenceMult;/, 'shouldBotShootTarget applies the tournament cadence multiplier');
 assert.equal(game.split('\n').filter((l) => l.trim().startsWith('isTournamentMatch = false;')).length, 4, 'isTournamentMatch is reset in all 4 non-tournament Duels launch paths');
 
+// Brawler lock (follow-up 2026-11-18): a bot's brawler is read back from
+// the stored bracket, never re-rolled from shared Duels state.
+assert.match(section, /playerBrawler: active\.playerBrawler \};/, 'match context carries the locked player brawler');
+assert.match(game, /isFusedMode = false;\n      player\.fusedParts = null;\n      duelsTargetWins = TOURNAMENT_DUELS_WIN_SCORE;/, 'tournament launch resets Fused state like every other Duels launch');
+assert.match(game, /selectedBrawler = \(isTournamentMatch && tournamentMatchContext\) \? tournamentMatchContext\.playerBrawler : playerTeam\[Math\.floor\(Math\.random\(\) \* playerTeam\.length\)\];/, 'tournament player fighter comes from the locked bracket entrant');
+assert.match(game, /const bBrawler = \(isTournamentMatch && tournamentMatchContext\) \? tournamentMatchContext\.opponentBrawler : \(isFusedMode \? fusedBotParts\[0\] : botTeam\[Math\.floor\(Math\.random\(\) \* botTeam\.length\)\]\);/, 'tournament bot fighter comes from the locked bracket entrant, never a re-roll');
+
+// Tournament polish (2026-11-18): no Tower Powers, Champion's Ring map,
+// seamless next round, UI improvements.
+assert.match(game, /if \(isTournamentMatch\) \{\n\s+isSlopSushiMode = false;\n\s+sushiMatchArmed = false;\n\s+isTowerTroubleMode = false;\n\s+slopSushiActiveCards = \[\];/, 'tournament matches deal no Tower Powers deck in startDuelsRound');
+assert.match(game, /if \(isTournamentMatch\) return; \/\/ Tournament matches have NO Tower Powers/, 'assignSlopSushiBotPowers skips tournament matches');
+assert.match(game, /isSlopSushiMode = false;\n\s+sushiMatchArmed = false;\n\s+\/\/ Seamless next round/, 'tournament launch leaves the Slop Sushi deck off');
+assert.match(game, /if \(isTournamentMatch\) \{\n\s+buildTournamentArenaMap\(\);/, 'tournament matches build the Champion\'s Ring map');
+assert.match(game, /const TOURNAMENT_MAP_NAME = "Champion's Ring";/, 'new map is named Champion\'s Ring');
+assert.match(game, /const TOURNAMENT_MAP_PLAYER_SPAWN = \{ x: 150, y: 150 \};/, 'tournament player spawns top-left');
+assert.match(game, /const TOURNAMENT_MAP_BOT_SPAWN = \{ x: 850, y: 850 \};/, 'tournament bot spawns bottom-right');
+assert.match(game, /hasHandledGameOver = false;\n\s+clearShowdownModifier\(\);/, 'tournament launch re-arms the results screen for the next match');
+assert.match(game, /PLAY NEXT MATCH — \$\{tRes\.nextRoundName/, 'results screen offers PLAY NEXT MATCH');
+assert.match(game, /if \(!launchTournamentMatch\(\)\) openTournamentBracket\(\);/, 'PLAY NEXT MATCH launches in place with a bracket fallback');
+assert.match(game, /RE-ENTER \$\{lg\.name\.toUpperCase\(\)\} LEAGUE/, 'eliminated results screen offers in-place re-entry');
+assert.match(game, /RESUME RUN — \$\{activeLeague\.emoji\}/, 'hub shows a RESUME RUN banner for an active run');
+assert.match(game, /NEXT MATCH — \$\{TOURNAMENT_ROUND_NAMES\[active\.currentRound\]\}/, 'bracket shows a NEXT MATCH hero panel');
+assert.match(game, /leagues unlocked • \$\{totalWins\} tournament win/, 'hub shows league progress');
+assert.match(game, /Bots: \$\{league\.tierMix\.rookie\} Rookie • \$\{league\.tierMix\.contender\} Contender • \$\{league\.tierMix\.champion\} Champion/, 'hub cards preview the bot mix');
+
 // Home screen entry.
 assert.match(game, /\['tournament', '🏆', 'Tournament', '32-player bracket • Bronze → Diamond leagues'\]/, 'Tournament mode card exists');
 assert.match(game, /const HOME_PERMANENT_MODE_IDS = \['tournament', 'blink_eye_dodge'/, 'Tournament is first in the permanent mode list');
@@ -85,6 +110,29 @@ function makeBox() {
         soulsAdded: 0,
         playerScore: 0,
         botScore: 0,
+        // Launch stubs: launchTournamentMatch runs against these, and the
+        // stubbed startDuelsRound records exactly what the match engine
+        // would field (used by the brawler-lock test in section 10).
+        playerTeam: [],
+        botTeam: [],
+        player: { fusedParts: null },
+        isDuels: false,
+        hasHandledGameOver: false,
+        WORLD_W: 0,
+        WORLD_H: 0,
+        launches: [],
+        cubes: [], powerups: [], amplifierToolboxes: [], amplifierScrewZones: [],
+        skeleParachutes: [], skelePortals: [],
+        // Map-builder stubs (Champion's Ring): one wall per strip.
+        destructibleWalls: [], bushZones: [], waterZones: [],
+        addArenaWallStrip: (x, y, w, h) => { const wall = { x, y, w, h }; box.destructibleWalls.push(wall); return [wall]; },
+        generateCubes: () => {},
+        clearShowdownModifier: () => {},
+        startDuelsRound: () => { box.launches.push({ playerTeam: [...box.playerTeam], botTeam: [...box.botTeam] }); },
+        document: { getElementById: () => null, createElement: () => { throw new Error('no DOM in vm harness'); }, body: { appendChild() {}, removeChild() {} } },
+        brawlerSelect: null,
+        homeScreen: null,
+        brawlerData: { outlit: { name: 'Outlit' }, shelly: { name: 'Shelly' }, colt: { name: 'Colt' }, bull: { name: 'Bull' }, nita: { name: 'Nita' }, spike: { name: 'Spike' } },
         localStorage: {
             getItem: (k) => (k in store ? store[k] : null),
             setItem: (k, v) => { store[k] = String(v); },
@@ -295,6 +343,91 @@ function freshBracket(box, leagueId = 'bronze', brawler = 'outlit', seed = 42) {
     box._store['arenaForgeTournamentV1'] = JSON.stringify({ unlocked: ['bronze'], wins: {}, active: { league: 'bronze', entrants: [{}, {}], rounds: [] } });
     vmEval(box, 'tournamentStateCache = null;');
     assert.equal(vmEval(box, 'getTournamentState()').active, null, 'malformed active bracket is discarded');
+}
+
+// ================= 10. vm: brawler lock — bracket display == brawler actually launched ==
+{
+    // Full 5-win runs, with a page reload (fresh cache, state re-read
+    // from storage) between every match, exactly like the live flow
+    // (results screen -> RETURN TO LOBBY -> fresh page load). The stubbed
+    // startDuelsRound records what the match engine would field.
+    for (const seed of [42, 7, 99, 1234, 555]) {
+        const box = makeBox();
+        vmEval(box, 'tournamentStateCache = null;');
+        const active0 = vmEval(box, `generateTournamentBracket('bronze', 'outlit', rngFactory(${seed}))`);
+        const snapBrawlers = plain(active0.entrants.map((e) => e.brawler));
+        const snapNames = plain(active0.entrants.map((e) => e.name));
+        vmEval(box, `setTournamentState({ unlocked: ['bronze'], wins: {}, active: ${JSON.stringify(active0)} })`);
+        for (let round = 0; round < 5; round++) {
+            vmEval(box, 'tournamentStateCache = null;');
+            const active = vmEval(box, 'getTournamentState().active');
+            box.active = active;
+            assert.ok(active, `seed ${seed} round ${round}: run survives the reload`);
+            assert.deepEqual(plain(active.entrants.map((e) => e.brawler)), snapBrawlers, `seed ${seed} round ${round}: no entrant brawler changed across the run`);
+            const opponent = vmEval(box, 'getTournamentOpponent(active)');
+            assert.ok(opponent && !opponent.isPlayer, `seed ${seed} round ${round}: opponent is a bot`);
+            const before = vmEval(box, 'launches.length');
+            assert.equal(vmEval(box, 'launchTournamentMatch()'), true, `seed ${seed} round ${round}: launch succeeds`);
+            const launched = vmEval(box, `launches[${before}]`);
+            assert.equal(launched.botTeam[0], opponent.brawler, `seed ${seed} round ${round}: launched bot brawler is the bracket opponent's brawler (${opponent.name})`);
+            assert.equal(launched.playerTeam[0], 'outlit', `seed ${seed} round ${round}: launched player brawler is the locked pick`);
+            const label = vmEval(box, 'tournamentEntrantLabel(getTournamentOpponent(active))');
+            assert.equal(label.brawler, vmEval(box, `brawlerData['${opponent.brawler}'].name`), `seed ${seed} round ${round}: bracket display names the launched brawler`);
+            const genIndex = snapNames.indexOf(opponent.name);
+            assert.equal(opponent.brawler, snapBrawlers[genIndex], `seed ${seed} round ${round}: ${opponent.name} still plays its generation brawler`);
+            box.playerScore = 3; box.botScore = 1;
+            const result = vmEval(box, 'recordTournamentMatchResult(true)');
+            if (round < 4) assert.equal(result.outcome, 'advanced', `seed ${seed} round ${round}: win advances`);
+        }
+    }
+}
+
+// ================= 11. vm: Champion's Ring map ========================
+{
+    const box = makeBox();
+    vmEval(box, 'buildTournamentArenaMap()');
+    const walls = vmEval(box, 'destructibleWalls');
+    const bushes = vmEval(box, 'bushZones');
+    const water = vmEval(box, 'waterZones');
+    assert.equal(vmEval(box, 'TOURNAMENT_MAP_NAME'), "Champion's Ring", 'map is named Champion\'s Ring');
+    assert.ok(walls.length >= 8, `map has at least 8 wall strips (got ${walls.length})`);
+    assert.equal(bushes.length, 5, 'map has 5 bush patches');
+    assert.equal(water.length, 2, 'map has 2 water ponds');
+    const spawns = [vmEval(box, 'TOURNAMENT_MAP_PLAYER_SPAWN'), vmEval(box, 'TOURNAMENT_MAP_BOT_SPAWN')];
+    assert.deepEqual(plain(spawns[0]), { x: 150, y: 150 }, 'player spawns top-left');
+    assert.deepEqual(plain(spawns[1]), { x: 850, y: 850 }, 'bot spawns bottom-right');
+    for (const s of spawns) {
+        for (const w of walls) {
+            const clear = s.x < w.x - 20 || s.x > w.x + w.w + 20 || s.y < w.y - 20 || s.y > w.y + w.h + 20;
+            assert.ok(clear, `spawn (${s.x},${s.y}) is clear of wall at (${w.x},${w.y},${w.w}x${w.h})`);
+        }
+    }
+    // Rebuilding is idempotent (startDuelsRound rebuilds the map every round).
+    vmEval(box, 'buildTournamentArenaMap()');
+    assert.equal(vmEval(box, 'bushZones.length'), 5, 'rebuild does not duplicate bushes');
+    assert.equal(vmEval(box, 'waterZones.length'), 2, 'rebuild does not duplicate water');
+    // Symmetric: every wall has a 180-degree rotational twin (fair map).
+    const key = (w) => `${w.x},${w.y},${w.w},${w.h}`;
+    const set = new Set(walls.map(key));
+    for (const w of walls) {
+        const twin = { x: 1000 - w.x - w.w, y: 1000 - w.y - w.h, w: w.w, h: w.h };
+        assert.ok(set.has(key(twin)), `wall (${w.x},${w.y},${w.w}x${w.h}) has a rotational twin`);
+    }
+}
+
+// ================= 12. vm: advanced result carries next-match info ====
+{
+    const box = makeBox();
+    const active = freshBracket(box, 'bronze', 'outlit', 42);
+    vmEval(box, `setTournamentState({ unlocked: ['bronze'], wins: {}, active: ${JSON.stringify(active)} })`);
+    box.playerScore = 3; box.botScore = 1;
+    const result = vmEval(box, 'recordTournamentMatchResult(true)');
+    assert.equal(result.outcome, 'advanced', 'first win advances');
+    assert.equal(result.league, 'bronze', 'advanced result names the league');
+    assert.equal(result.nextRoundName, 'Round of 16', 'advanced result names the next round');
+    assert.ok(typeof result.nextOpponentName === 'string' && result.nextOpponentName.length > 0, 'advanced result names the next opponent');
+    const nextOpponent = vmEval(box, 'getTournamentOpponent(getTournamentState().active)');
+    assert.equal(result.nextOpponentName, nextOpponent.name, 'advanced next-opponent matches the live bracket');
 }
 
 console.log('tournament-mode-regression: all assertions passed');
