@@ -18,7 +18,7 @@ assert.match(source, /towerDuelPreset\.map\(id => deck\.find/);
 assert.match(source, /const duelPlayerLevel = isDuelsMaxedMode \? 12 : 11;/); // maxed Duels/Tower Duels are 12; the weekend event (isDuelsMaxedMode false) still resolves to 11
 assert.match(source, /const botLevel = isDuelsMaxedMode \? 12 : \(isTowerDuelEvent \? 11 : getBotLevelNearPlayer\(\)\);/);
 assert.match(source, /function getNativeAmmoCapacity\(brawlerId\)[\s\S]{0,260}minigunnin[\s\S]{0,120}return 100/);
-assert.match(source, /function startDuelsRound\([\s\S]{0,4700}resetPlayerAmmoForBrawler\(selectedBrawler, true\)/); // window widened 2026-11-06: the Fused-mode round branch sits above the reset; widened again 2026-11-16: Tower Duels maxed lines (duelPlayerLevel/botLevel ternaries + 8-power slice) sit above the reset; widened again 2026-11-17: hypercharge-leak fix resetPlayerHyperchargeState() call + comment sit at the top of the round
+assert.match(source, /function startDuelsRound\([\s\S]{0,5800}resetPlayerAmmoForBrawler\(selectedBrawler, true\)/); // window widened 2026-11-06: the Fused-mode round branch sits above the reset; widened again 2026-11-16: Tower Duels maxed lines (duelPlayerLevel/botLevel ternaries + 8-power slice) sit above the reset; widened again 2026-11-17: hypercharge-leak fix resetPlayerHyperchargeState() call + comment sit at the top of the round; widened again 2026-11-18 (Tournament polish): the Champion's Ring map branch, the tournament Tower-Powers-off branch, and the tournament brawler-lock picks all sit above the reset (distance now ~5643)
 assert.match(source, /event\.matchesCompleted = Math\.min\(5/);
 assert.match(source, /bon\.unlockedTitles\.push\('tower_duelar'\)/);
 
