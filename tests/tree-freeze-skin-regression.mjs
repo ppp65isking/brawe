@@ -18,7 +18,7 @@
 //      UpieDown's super-aim telegraph, which is a per-brawler aim UI, not
 //      a hypercharge effect). Nothing changed for this part; these checks
 //      pin that it stays that way.
-// Builder picks (flagged for Anthony): the exact tree art, the ±0.07 rad
+// Builder picks (flagged for Anthony): the exact tree art, the ±0.045 rad (SP rework 2026-11-18 — was ±0.07 rad)
 // (~4 deg) spread, 720 px/s, free + auto-granted, 'Christmas 2026' set,
 // 🎄 icon. RENDER ONLY — no HP, damage, speed or hitbox change (PR #42).
 import assert from 'node:assert/strict';
@@ -119,7 +119,7 @@ assert.match(game, /grantFreeThanksgivingSkins\(\);\n          grantFreeChristma
 
 // ================= 3. nerf constants =================
 assert.match(game, /const FREEZEON_CONE_SPEED = 720;/, 'cone speed nerfed 780 -> 720');
-assert.match(game, /const FREEZEON_CONE_SPREAD_RAD = 0.07;/, 'L-R spread is 0.07 rad (~4 deg)');
+assert.match(game, /const FREEZEON_CONE_SPREAD_RAD = 0.045;/, 'L-R spread is 0.045 rad (~2.6 deg, SP rework — was 0.07)');
 assert.match(game, /const FREEZEON_CONE_FIRE_DELAY_MS = 90;/, '90ms stagger unchanged');
 assert.match(game, /const FREEZEON_CONE_RANGE = 700;/, 'range unchanged at 700px');
 assert.match(game, /freezeonPendingCones\.push\(\{ at: now \+ i \* FREEZEON_CONE_FIRE_DELAY_MS, ownerId: fromEntity\.id, ang: coneAng, hyper, dmg: stats\.dmg, ox, oy, spawnR, treeFreeze \}\);/, 'queue stores the spread angle + snapshotted origin + skin stamp');
@@ -236,7 +236,7 @@ assert.ok(volleyBox.freezeonPendingCones.every((c, i) => c.at === nowMs + i * 90
 {
   const angs = volleyBox.freezeonPendingCones.map((c) => c.ang);
   assert.ok(angs[0] < 0 && angs[1] > 0 && angs[2] < 0 && angs[3] > 0, 'queued angles alternate L/R/L/R');
-  assert.ok(angs.every((a) => near(Math.abs(a), 0.07, 0.001)), 'spread is ±0.07 rad');
+  assert.ok(angs.every((a) => near(Math.abs(a), 0.045, 0.001)), 'spread is ±0.045 rad (SP rework — was 0.07)');
   assert.ok(volleyBox.freezeonPendingCones.every((c) => c.ox === 0 && c.oy === 0 && c.spawnR === 22), 'origin snapshot is the fire-time position (0,0) + radius 22');
   assert.ok(volleyBox.freezeonPendingCones.every((c) => c.treeFreeze === false), 'no skin stamped when unequipped');
 }
