@@ -2,7 +2,7 @@
 <resources>
     <string name="app_name">Arena Forge</string>
     <string name="title_activity_main">Arena Forge</string>
-    <string name="package_name">com.example.arenaforge</string>
-    <string name="custom_url_scheme">com.example.arenaforge</string>
+    <string name="package_name">com.ppp65isking.arenaforge</string>
+    <string name="custom_url_scheme">com.ppp65isking.arenaforge</string>
     <string name="google_play_games_app_id">0</string>
 </resources>
