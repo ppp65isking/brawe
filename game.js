@@ -7908,6 +7908,14 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
             explosions.push({ x: entity.x, y: entity.y, radius: 46, life: 0, maxLife: 0.65, fxKind: 'treeFreezeSnowball', legendary: true, skinId: skin.id });
             return;
         }
+        if (kind === 'spawn' && skin.id === 'tree-freeze-freezeon') {
+            // Tree Freeze spawn: the Christmas tree arrives — a gold star
+            // topper scales in over expanding pine-green rings with
+            // twinkling bauble lights. Visual only — no damage, knockback
+            // or status changes (Anthony 2026-11-18).
+            explosions.push({ x: entity.x, y: entity.y, radius: 42, life: 0, maxLife: 0.55, fxKind: 'treeFreezeArrival', legendary: true, skinId: skin.id });
+            return;
+        }
         const color = effect.color || getSkinRarityMeta(skin.rarity).border;
         const radius = kind === 'spawn' ? 42 : (kind === 'death' ? 56 : 46);
         const isBespokeSkin = skin.set === 'Forgeaween' || ['headless-bolznstien', 'boneless-boomarang', 'master-overlord', 'emperor-overlord', 'pumkinomer', 'gentleman-homer', 'nightmare-outlit', 'hyperfusion-fuser', 'back-to-school-classy', 'classic-classy'].includes(skin.id);
@@ -85948,6 +85956,54 @@ function checkHit(target, b, i){
                 ctx.fillStyle = `rgba(255,255,255,${0.8 * (1 - q)})`;
                 ctx.beginPath(); ctx.arc(ex.x, ex.y, 10 * (1 - q) + 3, 0, Math.PI * 2); ctx.fill();
             }
+            ctx.restore();
+            continue;
+        }
+        if (ex.fxKind === 'treeFreezeArrival') {
+            // Tree Freeze spawn: the tree arrives — a gold star topper
+            // scales up over expanding pine-green + gold rings, with 12
+            // twinkling bauble lights around the rim and a soft green
+            // glow at the center. Visual only.
+            const aAlpha = Math.max(0, 1 - ex.life / ex.maxLife);
+            const progress = clamp(ex.life / ex.maxLife, 0, 1);
+            const aR = (ex.radius || 42) * (0.55 + 0.65 * progress);
+            ctx.save();
+            ctx.globalAlpha = aAlpha;
+            ctx.shadowColor = '#16a34a'; ctx.shadowBlur = 16;
+            // Expanding pine-green outer ring.
+            ctx.strokeStyle = '#16a34a'; ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.arc(ex.x, ex.y, aR, 0, Math.PI * 2); ctx.stroke();
+            // Gold inner ring.
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 2.5;
+            ctx.beginPath(); ctx.arc(ex.x, ex.y, aR * 0.72, 0, Math.PI * 2); ctx.stroke();
+            // Soft pine-green glow center.
+            ctx.fillStyle = `rgba(22,163,74,${0.22 * aAlpha})`;
+            ctx.beginPath(); ctx.arc(ex.x, ex.y, aR * 0.4, 0, Math.PI * 2); ctx.fill();
+            // Twinkling bauble lights: 12 dots around the rim, alpha
+            // oscillates with time so they twinkle.
+            const baubleColors = ['#dc2626', '#fbbf24', '#2563eb', '#16a34a'];
+            for (let s = 0; s < 12; s++) {
+                const a = (s / 12) * Math.PI * 2 + ex.life * 1.5;
+                const tw = 0.55 + 0.45 * Math.sin(ex.life * 14 + s * 1.7);
+                ctx.globalAlpha = aAlpha * tw;
+                ctx.fillStyle = baubleColors[s % baubleColors.length];
+                ctx.beginPath(); ctx.arc(ex.x + Math.cos(a) * aR * 0.9, ex.y + Math.sin(a) * aR * 0.9, 3.5, 0, Math.PI * 2); ctx.fill();
+            }
+            ctx.globalAlpha = aAlpha;
+            // Gold star topper: scales up and brightens as the tree arrives.
+            const starR = 8 + 14 * progress;
+            ctx.fillStyle = '#fde047';
+            ctx.strokeStyle = '#fff7cc'; ctx.lineWidth = 2;
+            ctx.shadowColor = '#fbbf24'; ctx.shadowBlur = 14;
+            ctx.beginPath();
+            for (let p = 0; p < 10; p++) {
+                const rr = p % 2 === 0 ? starR : starR * 0.45;
+                const aa = -Math.PI / 2 + p * Math.PI / 5 + ex.life * 1.2;
+                const sx = ex.x + Math.cos(aa) * rr, sy = ex.y + Math.sin(aa) * rr;
+                if (p === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+            }
+            ctx.closePath(); ctx.fill(); ctx.stroke();
             ctx.restore();
             continue;
         }

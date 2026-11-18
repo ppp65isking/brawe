@@ -165,12 +165,14 @@ function pulseBox() {
   assert.equal(pulses[0].ringCount, 3, 'takedown pulse has 3 rings');
 }
 
-// (d) Tree Freeze spawn -> generic spawn pulse, NOT a snowball.
+// (d) Tree Freeze spawn -> bespoke tree arrival (spawn effect wired up
+// 2026-11-18), NOT a snowball, NOT the generic pulse anymore.
 {
   const box = pulseBox();
   vm.runInContext(`triggerSkinPulse({ x: 100, y: 200 }, ${JSON.stringify(treeFreezeSkin)}, 'spawn');`, box);
   assert.equal(box.explosions.filter((e) => e.fxKind === 'treeFreezeSnowball').length, 0, 'snowball is takedown-only');
-  assert.equal(box.explosions.filter((e) => e.fxKind === 'spawn').length, 1, 'spawn still plays its generic pulse');
+  assert.equal(box.explosions.filter((e) => e.fxKind === 'treeFreezeArrival').length, 1, 'spawn plays the bespoke tree arrival');
+  assert.equal(box.explosions.filter((e) => e.fxKind === 'spawn').length, 0, 'generic spawn pulse is replaced by the bespoke arrival');
 }
 
 // (e) Plain non-hypercharge skin takedown -> generic pulse unchanged.
