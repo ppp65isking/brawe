@@ -1770,6 +1770,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         profile.showcaseBadges=normalizeUniqueStrings(profile.showcaseBadges).slice(0,3);
         if(!profile.careerStats||typeof profile.careerStats!=='object')profile.careerStats={};
         for(const key of ['matchesPlayed','soloWins','teamWins','rankedWins','eliminations'])profile.careerStats[key]=Math.max(0,Math.floor(profile.careerStats[key]||0));
+        for(const key of ['brawlerWins','brawlerMatches']){const map=profile.careerStats[key];if(!map||typeof map!=='object'||Array.isArray(map))profile.careerStats[key]={};for(const [bid,n] of Object.entries(profile.careerStats[key])){if(!allBrawlers.includes(bid)||!(Number(n)>0))delete profile.careerStats[key][bid];else profile.careerStats[key][bid]=Math.floor(Number(n));}}
         if(!playerData.brickBonV2||typeof playerData.brickBonV2!=='object')playerData.brickBonV2={};
         const bon=playerData.brickBonV2;
         bon.claimedRoad=normalizeBrickBonClaimIds(bon.claimedRoad,'road');
@@ -1824,6 +1825,58 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     function showBrickBonClaimCelebration(m){if(!isMajorBrickReward(m))return;const toast=document.createElement('div');toast.className=`bon-major-celebration${m.prestige?' architect':''}`;toast.innerHTML=`<small>MILESTONE UNLOCKED</small><b>${m.prestige?'THE ARCHITECT':m.label}</b><span>${m.rewards.map(formatProfileReward).join(' + ')}</span>`;document.body.appendChild(toast);setTimeout(()=>toast.remove(),2200);}
     function getBrickChallengeProgress(challenge){const values=Object.values(playerData.brawlers||{});if(challenge.kind==='depth')return values.filter(p=>getLifetimeBricks(p)>=challenge.threshold).length;if(challenge.kind==='prestiged')return values.filter(p=>(p?.prestige||0)>=challenge.threshold).length;if(challenge.kind==='maxPrestige')return values.reduce((m,p)=>Math.max(m,p?.prestige||0),0);return 0;}
     function getTopProfileBrawlers() {return allBrawlers.map(id=>({id,name:brawlerData[id]?.name||id,bricks:getLifetimeBricks(playerData.brawlers[id]),prestige:Math.max(0,playerData.brawlers[id]?.prestige||0)})).sort((a,b)=>b.bricks-a.bricks||a.name.localeCompare(b.name)).slice(0,10);}
+
+    // ---- Trophies (2026-11-19, app overhaul round 2) ----
+    // Honest, simple rule: 10 trophies per win with a brawler, 0 per loss.
+    // Trophies are DERIVED from tracked wins only — nothing is invented.
+    // Per-brawler wins/matches live in profile.careerStats (inside the
+    // existing brawlGameProgress / brawl_arena_save payloads), so no new
+    // storage key and no backup-whitelist change. Friendly Battles,
+    // Training and Tutorial matches earn no trophies (Friendly Battles
+    // promise "no rewards, no quests, no rank" on the results screen).
+    // Wins before this update have no per-brawler record, so they earn
+    // no trophies retroactively — the profile says so in plain text.
+    const TROPHY_PER_WIN = 10;
+    function getTrophyCareerStats() { return ensureProfileProgressionState().profile.careerStats; }
+    function getBrawlerTrophyWins(brawlerId) { const c = getTrophyCareerStats(); return Math.max(0, Math.floor((c.brawlerWins || {})[brawlerId] || 0)); }
+    function getBrawlerTrophies(brawlerId) { return TROPHY_PER_WIN * getBrawlerTrophyWins(brawlerId); }
+    function getTotalTrophies() { const c = getTrophyCareerStats(); return Object.values(c.brawlerWins || {}).reduce((sum, n) => sum + TROPHY_PER_WIN * Math.max(0, Math.floor(Number(n) || 0)), 0); }
+    function getTotalTrophyWins() { const c = getTrophyCareerStats(); return Object.values(c.brawlerWins || {}).reduce((sum, n) => sum + Math.max(0, Math.floor(Number(n) || 0)), 0); }
+    function getTopBrawlersByTrophies(limit = 5) {
+        return allBrawlers.map(id => ({ id, name: brawlerData[id]?.name || id, wins: getBrawlerTrophyWins(id), matches: Math.max(0, Math.floor((getTrophyCareerStats().brawlerMatches || {})[id] || 0)), trophies: getBrawlerTrophies(id) }))
+            .filter(b => b.wins > 0)
+            .sort((a, b) => b.trophies - a.trophies || b.wins - a.wins || a.name.localeCompare(b.name))
+            .slice(0, Math.max(0, Math.floor(limit || 0)));
+    }
+    // Single match-end hook (called from the one career-stats settlement
+    // site in the game-over handler). Returns false when nothing was
+    // recorded (unknown brawler, or a no-trophy match type).
+    function recordTrophyMatchResult(fighterId, won, opts = {}) {
+        if (!allBrawlers.includes(fighterId)) return false;
+        if (opts.isTraining || opts.isTutorialMode || opts.isFriendlyBattle) return false;
+        const c = getTrophyCareerStats();
+        if (!c.brawlerMatches || typeof c.brawlerMatches !== 'object') c.brawlerMatches = {};
+        if (!c.brawlerWins || typeof c.brawlerWins !== 'object') c.brawlerWins = {};
+        c.brawlerMatches[fighterId] = Math.max(0, Math.floor(c.brawlerMatches[fighterId] || 0)) + 1;
+        if (won) c.brawlerWins[fighterId] = Math.max(0, Math.floor(c.brawlerWins[fighterId] || 0)) + 1;
+        return true;
+    }
+    function createTrophySection() {
+        const total = getTotalTrophies(), trophyWins = getTotalTrophyWins(), top = getTopBrawlersByTrophies(5);
+        const section = document.createElement('section');
+        section.className = 'profile-section profile-trophies';
+        let html = `<h3>🏆 TROPHIES</h3><div class="profile-trophy-total"><b>🏆 ${total.toLocaleString()}</b><span>${trophyWins} trophy win${trophyWins === 1 ? '' : 's'} · 10 trophies per win</span></div>`;
+        html += `<p class="profile-trophy-note">How trophies work: every win with a brawler earns that brawler 10 trophies — losses earn 0. Friendly Battles, Training and Tutorial matches earn no trophies. Trophies are tracked since the Trophy Update, so wins before this update don't count.</p>`;
+        if (!top.length) {
+            html += '<p>No trophies yet — win a match to earn your first 10.</p>';
+        } else {
+            html += '<div class="profile-trophy-list">';
+            top.forEach((b, i) => { html += `<div class="${i < 3 ? `podium-${i + 1}` : ''}"><b>#${i + 1}</b><span><i class="fighter-inline-portrait">${getBrawlerPortraitMarkup(b.id)}</i>${b.name}</span><small>🏆 ${b.trophies.toLocaleString()} · ${b.wins} win${b.wins === 1 ? '' : 's'}</small></div>`; });
+            html += '</div>';
+        }
+        section.innerHTML = html;
+        return section;
+    }
     function createProfileBrawlerCard(id,large=false){const p=playerData.brawlers[id]||{},card=document.createElement('div');card.className=`profile-favorite ${large?'primary':''}`;card.innerHTML=`<div class="profile-favorite-icon${hasCustomBrawlerPortrait(id)?' has-custom-portrait':''}">${getBrawlerPortraitMarkup(id)}</div><div><b>${brawlerData[id]?.name||id}</b><small>${getLifetimeBricks(p)} lifetime Bricks · Prestige ${p.prestige||0}</small></div>`;return card;}
     function openProfileEditor(onSaved){
         const {profile}=ensureProfileProgressionState(),draft=JSON.parse(JSON.stringify(profile)),overlay=document.createElement('div');overlay.className='profile-edit-overlay';
@@ -1843,6 +1896,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         const {profile}=ensureProfileProgressionState(),s=getProfileProgressSummary(),title=PROFILE_TITLE_DEFS[profile.equippedTitle]?.name||'NO TITLE';container.innerHTML='';
         const hero=document.createElement('section');hero.className=`profile-hero ${profile.equippedProfileFrame||''} ${profile.equippedProfileBackground||''}`;hero.innerHTML=`<div><small>PLAYER PROFILE</small><h2>${profile.playerName}</h2><strong>${title}</strong></div><div class="profile-summary"><span><b>${s.totalBricks}</b>LIFETIME BRICKS</span><span><b>${s.prestiged}</b>PRESTIGED BRAWLERS</span><span><b>P${s.highestPrestige}</b>HIGHEST PRESTIGE</span></div>`;
         const edit=document.createElement('button');edit.textContent='EDIT PROFILE';edit.onclick=()=>openProfileEditor(()=>renderProfileCareer(container));hero.appendChild(edit);container.appendChild(hero);
+        container.appendChild(createTrophySection());
         const favorites=document.createElement('section');favorites.className='profile-section';favorites.innerHTML='<h3>FAVORITE BRAWLERS</h3>';const favrow=document.createElement('div');favrow.className='profile-favorites';profile.favorites.forEach((id,i)=>favrow.appendChild(createProfileBrawlerCard(id,i===0)));if(!profile.favorites.length)favrow.innerHTML='<p>No favorites selected yet.</p>';favorites.appendChild(favrow);container.appendChild(favorites);
         const showcase=document.createElement('section');showcase.className='profile-section';showcase.innerHTML='<h3>BADGE SHOWCASE</h3>';const badgeRow=document.createElement('div');badgeRow.className='profile-badges';profile.showcaseBadges.forEach(id=>{const d=PROFILE_BADGE_DEFS[id];if(d){const badge=document.createElement('div');badge.innerHTML=`<b>${d.icon}</b><small>${d.name}</small>`;badgeRow.appendChild(badge)}});if(!badgeRow.children.length)badgeRow.innerHTML='<p>Edit your profile to showcase unlocked badges.</p>';showcase.appendChild(badgeRow);container.appendChild(showcase);
         const top=document.createElement('section');top.className='profile-section';top.innerHTML='<div class="profile-section-head"><h3>TOP BRAWLERS BY LIFETIME BRICKS</h3></div><div class="profile-top-list"></div>';const list=top.querySelector('.profile-top-list');getTopProfileBrawlers().forEach((b,i)=>{const row=document.createElement('div');row.className=i<3?`podium-${i+1}`:'';row.innerHTML=`<b>#${i+1}</b><span><i class="fighter-inline-portrait">${getBrawlerPortraitMarkup(b.id)}</i>${b.name}</span><small>${b.bricks} Bricks</small><small>Prestige ${b.prestige}</small>`;list.appendChild(row)});container.appendChild(top);
@@ -1890,6 +1944,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         edit.onclick = () => openProfileEditor(() => { close(); openPlayerProfile(); });
         hero.appendChild(edit);
         main.appendChild(hero);
+        main.appendChild(createTrophySection());
         const fightersUnlocked = (() => {
             const pool = allBrawlers.filter((bid) => playerData.unlockedBrawlers && playerData.unlockedBrawlers[bid] && !disabledBrawlers.has(bid) && !brawlerData?.[bid]?.disabled);
             return pool.length > 0 ? pool.length : 1;
@@ -18136,7 +18191,7 @@ let heistFeverActive = false;
       corePieces: 0,
       xplodemisDaily: null,
       majorUpdateVNext: { version: 2, retiredAttachiesRefunded: false, hyperAttachiesRetiredRefunded: false, hyperAttachieRefundCoins: 0 },
-      profile: { playerName:'BRAWE PLAYER', favorites:[], equippedTitle:null, equippedProfileFrame:null, equippedProfileBackground:null, showcaseBadges:[], careerStats:{ matchesPlayed:0, soloWins:0, teamWins:0, rankedWins:0, eliminations:0 } },
+      profile: { playerName:'BRAWE PLAYER', favorites:[], equippedTitle:null, equippedProfileFrame:null, equippedProfileBackground:null, showcaseBadges:[], careerStats:{ matchesPlayed:0, soloWins:0, teamWins:0, rankedWins:0, eliminations:0, brawlerWins:{}, brawlerMatches:{} } },
       brickBonV2: { claimedRoad:[], claimedChallenges:[], unlockedTitles:[], unlockedBadges:[], unlockedFrames:[], unlockedBackgrounds:[], oldRoadMigrated:false },
       packets: { schemaVersion:1, unlocked:{}, progress:{}, equipped:null, discoveredGroups:[], stats:{damage:0,wins:0,triggers:0,used:[],discoveries:0} },
       season3: { schemaVersion:SEASON_3_SCHEMA_VERSION, seasonId:SEASON_3_ID, coreBreachCompleted:false, coreBreachReplayDebug:false, coreBreachSignalsRevealed:false, boss:{completed:[],claimedRewards:[],extremeRevealSeen:false}, bouncinBoss:{completed:[],claimedRewards:[],extremeRevealSeen:false}, headlessBoss:{completed:[],claimedRewards:[],extremeRevealSeen:false,skinClaimed:false}, questClaims:[], questProgress:{} },
@@ -91848,6 +91903,7 @@ function checkHit(target, b, i){
                 if ((Array.isArray(playerTeam) && playerTeam.length > 1) || isDuels || isMirrorMode || isArenaForgeMode) endCareer.teamWins += 1;
                 else endCareer.soloWins += 1;
             }
+            recordTrophyMatchResult(completedMatchFighter, won, { isTraining, isTutorialMode, isFriendlyBattle });
             saveProgress();
             // Match settled: drop the mega bounds now so the results screen
             // and any next match start from standard bounds.
