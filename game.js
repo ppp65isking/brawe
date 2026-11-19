@@ -11080,7 +11080,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           desc: 'The third Stein sibling — Bolznstien and Electrostien\'s sister. She lobs overcharged volts that burst into real volt explosions, and her Power Outage chains lightning that will not let go until it kills someone.',
           attack: 'Overcharged Volt', attackDesc: 'Lobs an overcharged volt over walls that explodes in a real burst of voltz (900 damage, 120px blast). Enemies caught in the blast are overcharged: their reload is 20% slower for 1 second.',
           super: 'Power Outage', superDesc: 'Zaps every enemy within 300px for 400 damage, then a chain stays on them: their speed ramps from 10% slower to 50% slower over 4 seconds and they take 150 damage per second. The chain cannot kill healthy enemies (it stops at 1 HP) — but it can finish enemies who started with low HP. If a chained enemy gets near another enemy, the chain travels to them. The chain only goes away when it kills someone (10 second max).',
-          hyper: 'Volt Overdrive: the volt splits into 2 smaller volts on impact (each 70% damage, 100px blast). Power Outage chains 2 enemies together — they break free by getting 450px apart, and one of them randomly keeps the electric.',
+          hyper: 'Volt Overdrive: the volt splits into 2 smaller volts on impact (each 70% damage, 100px blast). Power Outage chains 2 enemies together — they break free by getting 450px apart, and one of them randomly keeps the electric. While Core Surged, every volt explosion also arcs to nearby enemies (500px range, no limit, and it can bounce back and forth between enemies).',
           g1: 'Arc Leap (Your next volt arcs to up to 7 nearby enemies on impact — each a mini explosion plus the overcharge)',
           g2: 'Static Field (For 4 seconds, enemies within 150px of Voltastein are overcharged)',
           sp1: 'Deep Charge (Overcharge lasts 2 seconds instead of 1, and slows reloads by 30% instead of 20%)',
@@ -50663,6 +50663,8 @@ let heistFeverActive = false;
   const VOLTASTEIN_G1_MINI_DMG_MULT = 0.5;
   const VOLTASTEIN_G1_MINI_RADIUS = 80;
   const VOLTASTEIN_G1_MAX_ARCS = 7;
+  const VOLTASTEIN_HYPER_ARC_RADIUS = 500;
+  const VOLTASTEIN_HYPER_ARC_MAX_LEAPS = 30;
   const VOLTASTEIN_SP2_RELOAD_MULT = 1.50;
   const VOLTASTEIN_G2_FIELD_RADIUS = 150;
   const VOLTASTEIN_G2_FIELD_MS = 4000;
@@ -50749,38 +50751,84 @@ let heistFeverActive = false;
           if (excludeId && target.id === excludeId) continue;
           checkHit(target, { ownerBrawler: 'voltastein', ownerId: owner.id, damage: dmg, pierce: true, hitIds: {}, isVoltasteinExplosion: true }, -1);
       }
-      // Arc Leap (G1): the next volt arcs to up to VOLTASTEIN_G1_MAX_ARCS
-      // nearby enemies — one real lobbed child volt per arc, not an instant
-      // hit. Each child flies (~0.38s max) to the best target not already
+      // Arc Leap (G1) + Hyper Arc (Core Surge): one chain implementation,
+      // hyper parameters when hypercharged, G1 parameters otherwise.
+      // G1: the next volt arcs to up to VOLTASTEIN_G1_MAX_ARCS nearby
+      // enemies — one real lobbed child volt per arc, not an instant hit.
+      // Each child flies (~0.38s max) to the best target not already
       // arced to and detonates there; the landing explosion overcharges
       // and damages everyone in its radius, exactly as a normal volt does,
       // and a child volt's own explosion spends the next arc, so the chain
       // walks from enemy to enemy until it runs out of arcs or targets.
       // (Behavior change vs the shipped instant mini-explosion, flagged in
       // the PR body: instant -> short lobbed flight.)
-      if ((owner.voltasteinArcLeapsLeft || 0) > 0) {
-          let best = null, bestD = Infinity;
-          const arcHitIds = owner.voltasteinArcHitIds || {};
-          for (const target of all) {
-              if (!target || target.hp <= 0 || areAlliedEntities(owner, target)) continue;
-              if (excludeId && target.id === excludeId) continue;
-              if (arcHitIds[target.id]) continue;
-              const d = Math.hypot(target.x - x, target.y - y);
-              if (d <= VOLTASTEIN_G1_ARC_RADIUS && d < bestD) { best = target; bestD = d; }
-          }
-          if (best) {
-              owner.voltasteinArcLeapsLeft -= 1;
-              arcHitIds[best.id] = true;
-              owner.voltasteinArcHitIds = arcHitIds;
-              const miniDmg = Math.max(1, Math.round(dmg * VOLTASTEIN_G1_MINI_DMG_MULT));
-              const leapAng = Math.atan2(best.y - y, best.x - x);
-              const leapDist = Math.hypot(best.x - x, best.y - y);
-              bullets.push({ ownerBrawler: 'voltastein', isVoltasteinVolt: true, voltasteinHyper: false, voltasteinChild: true, voltasteinLob: true, voltasteinLandX: clamp(best.x, 0, WORLD_W), voltasteinLandY: clamp(best.y, 0, WORLD_H), x, y, vx: Math.cos(leapAng) * VOLTASTEIN_BULLET_SPEED, vy: Math.sin(leapAng) * VOLTASTEIN_BULLET_SPEED, life: 0, maxLife: Math.max(.05, leapDist / VOLTASTEIN_BULLET_SPEED), damage: miniDmg, voltDamage: miniDmg, voltRadius: VOLTASTEIN_G1_MINI_RADIUS, pierce: false, pierceWalls: true, ownerId: owner.id, hitIds: {}, hitboxMod: 1.1, hyperVisual: false });
-          } else {
-              // No enemy in arc range: the chain ends, remaining arcs fizzle.
-              owner.voltasteinArcLeapsLeft = 0;
+      // Hyper Arc (2026-11-18 buff, Anthony's order): while Voltastein is
+      // Core Surged, EVERY volt explosion chains — 500px range, no arc
+      // cap, and the chain may revisit enemies (A→B→A…). Only the enemy
+      // the chain just came from is skipped (it sits exactly at the blast
+      // point, distance 0 — without that skip the chain would re-arc the
+      // same enemy forever instead of walking on). Fresh enemies are
+      // preferred: the chain spreads to every enemy in range first and
+      // only bounces back to already-arced enemies when no fresh target
+      // is in range, so "unlimited enemies" really hits them all and
+      // "back and forth" is what happens once it runs out of fresh ones.
+      // A hard total-leap failsafe (VOLTASTEIN_HYPER_ARC_MAX_LEAPS = 30,
+      // builder pick, not Anthony's number) ends the chain so two close
+      // enemies cannot ping-pong forever; it caps total leaps, not
+      // distinct enemies. A fresh (non-child) volt starts a new hyper
+      // chain and spends any armed G1 charge on it, so G1 while
+      // hypercharged chains with the same improved parameters instead of
+      // the G1 ones.
+      const hyperArc = isEntityHyperchargedNow(owner, now);
+      const arcRadius = hyperArc ? VOLTASTEIN_HYPER_ARC_RADIUS : VOLTASTEIN_G1_ARC_RADIUS;
+      if (hyperArc || (owner.voltasteinArcLeapsLeft || 0) > 0) {
+          if (hyperArc && !bullet.voltasteinChild) {
+              owner.voltasteinHyperArcLeaps = 0;
+              owner.voltasteinHyperArcLastId = 0;
               owner.voltasteinArcHitIds = {};
+              owner.voltasteinArcLeapsLeft = 0;
           }
+          const hyperLeaps = owner.voltasteinHyperArcLeaps || 0;
+          if (!hyperArc || hyperLeaps < VOLTASTEIN_HYPER_ARC_MAX_LEAPS) {
+              let best = null, bestD = Infinity;
+              let bestRevisit = null, bestRevisitD = Infinity;
+              const arcHitIds = owner.voltasteinArcHitIds || {};
+              for (const target of all) {
+                  if (!target || target.hp <= 0 || areAlliedEntities(owner, target)) continue;
+                  if (excludeId && target.id === excludeId) continue;
+                  if (hyperArc && target.id === owner.voltasteinHyperArcLastId) continue;
+                  const d = Math.hypot(target.x - x, target.y - y);
+                  if (d > arcRadius) continue;
+                  if (arcHitIds[target.id]) {
+                      if (hyperArc && d < bestRevisitD) { bestRevisit = target; bestRevisitD = d; }
+                      continue;
+                  }
+                  if (d < bestD) { best = target; bestD = d; }
+              }
+              const picked = best || bestRevisit;
+              if (picked) {
+                  if (hyperArc) {
+                      owner.voltasteinHyperArcLeaps = hyperLeaps + 1;
+                      owner.voltasteinHyperArcLastId = picked.id;
+                  } else {
+                      owner.voltasteinArcLeapsLeft -= 1;
+                  }
+                  arcHitIds[picked.id] = true;
+                  owner.voltasteinArcHitIds = arcHitIds;
+                  const miniDmg = Math.max(1, Math.round(dmg * VOLTASTEIN_G1_MINI_DMG_MULT));
+                  const leapAng = Math.atan2(picked.y - y, picked.x - x);
+                  const leapDist = Math.hypot(picked.x - x, picked.y - y);
+                  bullets.push({ ownerBrawler: 'voltastein', isVoltasteinVolt: true, voltasteinHyper: false, voltasteinChild: true, voltasteinLob: true, voltasteinLandX: clamp(picked.x, 0, WORLD_W), voltasteinLandY: clamp(picked.y, 0, WORLD_H), x, y, vx: Math.cos(leapAng) * VOLTASTEIN_BULLET_SPEED, vy: Math.sin(leapAng) * VOLTASTEIN_BULLET_SPEED, life: 0, maxLife: Math.max(.05, leapDist / VOLTASTEIN_BULLET_SPEED), damage: miniDmg, voltDamage: miniDmg, voltRadius: VOLTASTEIN_G1_MINI_RADIUS, pierce: false, pierceWalls: true, ownerId: owner.id, hitIds: {}, hitboxMod: 1.1, hyperVisual: false });
+              } else {
+                  // No enemy in arc range: the chain ends, remaining arcs fizzle.
+                  owner.voltasteinArcLeapsLeft = 0;
+                  owner.voltasteinArcHitIds = {};
+                  if (hyperArc) { owner.voltasteinHyperArcLeaps = 0; owner.voltasteinHyperArcLastId = 0; }
+              }
+          }
+          // Else: hyper failsafe reached — the counter stays at the cap, so
+          // any child volt still in flight also stops chaining when it
+          // lands; the next fresh volt resets the counter.
       }
       // Hyper split: the volt forks into two smaller volts on impact.
       // Wall-bounce (same rule as Healnstein's remedy): a split volt whose
