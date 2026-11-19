@@ -2,9 +2,12 @@
 #
 # Builds a DEBUG APK of the Capacitor shell (which bundles the real game.js
 # via dist/) on every push to main and on manual dispatch, and uploads it as
-# the `arena-forge-apk` artifact for Anthony to sideload. Debug signing only:
-# the signing key changes per CI run, so uninstall any previous Arena Forge
-# APK before installing a new one. No Play Store, no release signing.
+# the `arena-forge-apk` artifact for Anthony to sideload. Debug signing uses
+# the FIXED keystore committed at android/debug.keystore (standard debug
+# credentials), so every build is signed with the same key and installs over
+# the previous one. One-time uninstall is still needed this once: the APK
+# currently on his phone was signed with a random per-run key. No Play Store,
+# no release signing.
 name: Android APK
 
 on:
