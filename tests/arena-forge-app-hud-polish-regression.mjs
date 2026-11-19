@@ -177,13 +177,13 @@ check('HU2 desktop map/modifier block is untouched (Map/Modifier/description lin
 // --- HU4: TOOL button numeric countdown ---
 check('HU4 touch TOOL shows numeric seconds while cooling down', game.includes('const gadgetTouchLabel = gadgetCdSecs > 0 ? `${gadgetCdSecs}s` : getMobileToolButtonIcon();'));
 check('HU4 countdown uses ceil seconds until ready, 0 when ready', game.includes('const gadgetCdSecs = gadgetReadyAt > gadgetNow ? Math.ceil((gadgetReadyAt - gadgetNow) / 1000) : 0;'));
-check('HU4 gear icon returns when the tool is ready', game.includes(': getMobileToolButtonIcon();') && game.includes("if (gadgetTouchBtn.textContent !== gadgetTouchLabel) {"));
+check('HU4 gadget icon returns when the tool is ready', game.includes(': getMobileToolButtonIcon();') && game.includes("if (gadgetTouchBtn.textContent !== gadgetTouchLabel) {"));
 check('HU4 countdown label writes only on change (cheap per-frame sync)', game.includes('if (gadgetTouchBtn.textContent !== gadgetTouchLabel) {'));
 check('HU4 countdown is announced in the aria-label', game.includes('`Use Tool, ${gadgetCdSecs} seconds remaining`'));
 check('HU4 cooldown ring is still set alongside the number', game.includes("gadgetTouchBtn.style.setProperty('--mobile-charge', `${gadgetFrac * 360}deg`);"));
 check('HU4 sync runs every frame via the rAF loop (countdown ticks live)', (() => {
     const start = game.indexOf('  function updateMobileControlsVisibility() {');
-    const end = game.indexOf('  // Phase 3: one swappable slot', start);
+    const end = game.indexOf('  // Round 2 HUD (2026-11-19): per-gadget TOOL icons.', start);
     return start !== -1 && end !== -1 && game.slice(start, end).includes('syncMobileActionButtons();') && game.includes('updateMobileControlsVisibility();');
 })());
 check('HU4 countdown formula mirror: 8s left -> 8, 1ms left -> 1, ready -> 0', (() => {
