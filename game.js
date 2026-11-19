@@ -253,6 +253,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         #appHomeTop{flex:none;display:flex;align-items:center;gap:10px;min-height:44px}
         #appHomePlayer{display:flex;align-items:center;gap:8px;font-weight:1000;font-size:15px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:6px 12px;white-space:nowrap}
         #appHomeSeasonChip{font-weight:1000;font-size:12px;letter-spacing:.06em;color:#ffd166;background:rgba(255,209,102,.12);border:1px solid rgba(255,209,102,.35);border-radius:999px;padding:6px 12px;white-space:nowrap}
+        #appHomeSaveBtn{flex:none;font-weight:1000;font-size:15px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:6px 10px;color:#fff;cursor:pointer}
         #appHomeTop #homeCurrencyBar{display:flex;gap:8px;margin-left:auto}
         #appHomeBody{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
         #appHomeHeroView,#appHomeEventsHost,#appHomeFightersView,#appHomeEventsView{flex:1 1 auto;min-height:0;display:none;flex-direction:column}
@@ -5760,6 +5761,7 @@ const bolznstienPendingStrikes = [];
             <div id="appHomePlayer"><span aria-hidden="true">👤</span><span id="appHomePlayerName">BRAWLER</span></div>
             <div id="appHomeSeasonChip">SEASON</div>
             <div id="appHomeCurrencies"></div>
+            <button id="appHomeSaveBtn" type="button" aria-label="Save code">💾</button>
           </div>
           <div id="appHomeBody">
             <div id="appHomeHeroView" class="is-active">
@@ -5801,6 +5803,7 @@ const bolznstienPendingStrikes = [];
             document.getElementById('startMatch')?.click();
         });
         document.getElementById('appHomeEventChip')?.addEventListener('click', () => setAppHomeTab('events'));
+        document.getElementById('appHomeSaveBtn')?.addEventListener('click', () => openSaveCodeModal());
         appHomeEl.querySelectorAll('[data-app-tab]').forEach((button) => {
             button.addEventListener('click', () => setAppHomeTab(button.dataset.appTab));
         });
@@ -57512,19 +57515,22 @@ isBrawlerLabMode = false;
     function isBraweBackupStorageKey(key) {
         return /^(brawl|arena_forge|super_granted|shop_|sushi_|tower_|season_)/i.test(String(key || ''));
     }
-    function downloadBraweSaveBackup() {
+    function buildBraweSaveBackupPayload() {
         saveProgress();
         const storage = {};
         for (let index = 0; index < localStorage.length; index++) {
             const key = localStorage.key(index);
             if (key && isBraweBackupStorageKey(key)) storage[key] = localStorage.getItem(key);
         }
-        const payload = {
+        return {
             format: 'BRAWE_SAVE_BACKUP',
             version: 1,
             exportedAt: new Date().toISOString(),
             storage,
         };
+    }
+    function downloadBraweSaveBackup() {
+        const payload = buildBraweSaveBackupPayload();
         const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -57536,6 +57542,29 @@ isBrawlerLabMode = false;
         setTimeout(() => URL.revokeObjectURL(url), 1000);
         if (typeof showToast === 'function') showToast('BRAWE save downloaded!', '#5df2c2');
     }
+    // Shared import path for the file importer and the save-code importer:
+    // validate the payload shape first, then write only whitelisted string
+    // keys. Returns how many keys were written; throws when the payload is
+    // not a recognized BRAWE save, so a bad import changes NOTHING. It
+    // never reloads or alerts — the caller decides that.
+    function importBraweSavePayload(payload) {
+        let imported = 0;
+        if (payload?.format === 'BRAWE_SAVE_BACKUP' && payload.storage && typeof payload.storage === 'object') {
+            for (const [key, value] of Object.entries(payload.storage)) {
+                if (!isBraweBackupStorageKey(key) || typeof value !== 'string') continue;
+                localStorage.setItem(key, value);
+                imported++;
+            }
+        } else if (payload?.persistent && typeof payload.persistent === 'object') {
+            localStorage.setItem('brawl_arena_save', JSON.stringify(payload));
+            imported = 1;
+        } else if (payload?.brawlers && typeof payload.brawlers === 'object') {
+            localStorage.setItem('brawlGameProgress', JSON.stringify(payload));
+            imported = 1;
+        }
+        if (!imported) throw new Error('Not a recognized BRAWE save');
+        return imported;
+    }
     function importBraweSaveBackup(file) {
         if (!file) return;
         const reader = new FileReader();
@@ -57543,21 +57572,7 @@ isBrawlerLabMode = false;
         reader.onload = () => {
             try {
                 const payload = JSON.parse(String(reader.result || ''));
-                let imported = 0;
-                if (payload?.format === 'BRAWE_SAVE_BACKUP' && payload.storage && typeof payload.storage === 'object') {
-                    for (const [key, value] of Object.entries(payload.storage)) {
-                        if (!isBraweBackupStorageKey(key) || typeof value !== 'string') continue;
-                        localStorage.setItem(key, value);
-                        imported++;
-                    }
-                } else if (payload?.persistent && typeof payload.persistent === 'object') {
-                    localStorage.setItem('brawl_arena_save', JSON.stringify(payload));
-                    imported = 1;
-                } else if (payload?.brawlers && typeof payload.brawlers === 'object') {
-                    localStorage.setItem('brawlGameProgress', JSON.stringify(payload));
-                    imported = 1;
-                }
-                if (!imported) throw new Error('Not a recognized BRAWE save');
+                importBraweSavePayload(payload);
                 alert('Save imported! BRAWE will reload now.');
                 location.reload();
             } catch (error) {
@@ -57565,6 +57580,124 @@ isBrawlerLabMode = false;
             }
         };
         reader.readAsText(file);
+    }
+    // Save code (copy-paste transfer, 2026-11-18): the same BRAWE_SAVE_BACKUP
+    // payload as the file download, minified and base64-encoded with the
+    // URL-safe alphabet (no + / or = padding, so it pastes cleanly anywhere).
+    // Unicode-safe: the JSON is UTF-8 encoded before base64, so player
+    // names and other non-ASCII text survive the round-trip.
+    function braweSaveCodeEncode(payload) {
+        const json = JSON.stringify(payload);
+        const bytes = new TextEncoder().encode(json);
+        let binary = '';
+        const CHUNK = 0x8000;
+        for (let i = 0; i < bytes.length; i += CHUNK) {
+            binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+        }
+        return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+    function braweSaveCodeDecode(code) {
+        const cleaned = String(code || '').replace(/\s+/g, '').replace(/=+$/, '');
+        if (!cleaned) throw new Error('Save code is empty');
+        if (!/^[A-Za-z0-9_-]+$/.test(cleaned)) throw new Error('Save code has characters outside the URL-safe base64 alphabet');
+        if (cleaned.length % 4 === 1) throw new Error('Save code length is invalid');
+        const padded = cleaned + '='.repeat((4 - (cleaned.length % 4)) % 4);
+        let binary;
+        try {
+            binary = atob(padded.replace(/-/g, '+').replace(/_/g, '/'));
+        } catch (_) {
+            throw new Error('Save code is not valid base64');
+        }
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        let json;
+        try {
+            json = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+        } catch (_) {
+            throw new Error('Save code is not valid UTF-8 text');
+        }
+        try {
+            return JSON.parse(json);
+        } catch (_) {
+            throw new Error('Save code is not valid JSON');
+        }
+    }
+    function exportBraweSaveCode() {
+        return braweSaveCodeEncode(buildBraweSaveBackupPayload());
+    }
+    function importBraweSaveCode(code) {
+        return importBraweSavePayload(braweSaveCodeDecode(code));
+    }
+    async function copySaveCodeText(text) {
+        try {
+            if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(text); return true; }
+        } catch (_) {}
+        try {
+            const ta = document.getElementById('saveCodeExport');
+            if (ta) { ta.focus(); ta.select(); }
+            return document.execCommand('copy');
+        } catch (_) { return false; }
+    }
+    function openSaveCodeModal() {
+        let modal = document.getElementById('saveCodeModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'saveCodeModal';
+            modal.style.cssText = 'position:fixed;inset:0;z-index:1200;display:flex;align-items:center;justify-content:center;background:rgba(8,17,31,.92);padding:12px;box-sizing:border-box';
+            modal.innerHTML = `
+              <div id="saveCodePanel" style="width:min(560px,94vw);max-height:88vh;overflow-y:auto;background:#0b1c33;border:2px solid rgba(120,190,255,.4);border-radius:14px;padding:16px;box-sizing:border-box;color:#fff;font-family:'Trebuchet MS','Gill Sans','Verdana',sans-serif">
+                <div style="display:flex;align-items:center;gap:8px"><b style="font-size:18px">💾 SAVE CODE</b><button id="saveCodeCloseBtn" type="button" aria-label="Close" style="margin-left:auto;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:8px;padding:4px 10px;cursor:pointer;font-weight:800">✕</button></div>
+                <p style="margin:8px 0 12px;font-size:13px;color:#cfe6ff">Copy this code on one device, paste it on the other. Importing replaces the progress on this device.</p>
+                <label for="saveCodeExport" style="font-size:12px;font-weight:800;letter-spacing:.06em;color:#8ff9d8">YOUR SAVE CODE</label>
+                <textarea id="saveCodeExport" readonly rows="4" style="width:100%;box-sizing:border-box;margin:4px 0 6px;background:rgba(0,0,0,.45);color:#d7f0ff;border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:8px;font:12px/1.4 monospace,monospace;word-break:break-all;resize:vertical"></textarea>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><button id="saveCodeCopyBtn" type="button" style="background:#5df2c2;color:#08101d;border:0;border-radius:8px;padding:9px 16px;cursor:pointer;font-weight:1000">COPY CODE</button><span id="saveCodeSizeLine" style="font-size:12px;color:#9fc6e8"></span></div>
+                <label for="saveCodeImport" style="font-size:12px;font-weight:800;letter-spacing:.06em;color:#ffd166">PASTE A SAVE CODE</label>
+                <textarea id="saveCodeImport" rows="4" placeholder="Paste a save code here…" style="width:100%;box-sizing:border-box;margin:4px 0 6px;background:rgba(0,0,0,.45);color:#d7f0ff;border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:8px;font:12px/1.4 monospace,monospace;word-break:break-all;resize:vertical"></textarea>
+                <button id="saveCodeImportBtn" type="button" style="background:#ff9f1c;color:#231303;border:0;border-radius:8px;padding:10px 16px;cursor:pointer;font-weight:1000">IMPORT SAVE CODE</button>
+              </div>`;
+            document.body.appendChild(modal);
+            modal.addEventListener('click', (event) => { if (event.target === modal) closeSaveCodeModal(); });
+            document.getElementById('saveCodeCloseBtn')?.addEventListener('click', closeSaveCodeModal);
+            document.getElementById('saveCodeCopyBtn')?.addEventListener('click', async () => {
+                const text = document.getElementById('saveCodeExport')?.value || '';
+                const ok = await copySaveCodeText(text);
+                if (ok) {
+                    if (typeof showToast === 'function') showToast('Save code copied!', '#5df2c2');
+                    const btn = document.getElementById('saveCodeCopyBtn');
+                    if (btn) { btn.textContent = 'COPIED ✓'; setTimeout(() => { btn.textContent = 'COPY CODE'; }, 1500); }
+                } else {
+                    alert('Could not copy automatically — long-press the code to copy it.');
+                }
+            });
+            document.getElementById('saveCodeImportBtn')?.addEventListener('click', () => {
+                const rawCode = document.getElementById('saveCodeImport')?.value || '';
+                if (!rawCode.trim()) { alert('Paste a save code first.'); return; }
+                if (!confirm('Import this save code? Your current progress will be replaced.')) return;
+                try {
+                    importBraweSaveCode(rawCode);
+                    alert('Save imported! BRAWE will reload now.');
+                    location.reload();
+                } catch (error) {
+                    alert(`That save code is not valid. ${error?.message || ''}`.trim());
+                }
+            });
+        }
+        try {
+            const code = exportBraweSaveCode();
+            const exportTa = document.getElementById('saveCodeExport');
+            if (exportTa) exportTa.value = code;
+            const sizeLine = document.getElementById('saveCodeSizeLine');
+            if (sizeLine) sizeLine.textContent = `Code: ${(code.length / 1024).toFixed(1)} KB — tap COPY, then paste it on your other device.`;
+        } catch (error) {
+            const exportTa = document.getElementById('saveCodeExport');
+            if (exportTa) exportTa.value = '';
+            alert(`Could not build your save code. ${error?.message || ''}`.trim());
+        }
+        modal.style.display = 'flex';
+    }
+    function closeSaveCodeModal() {
+        const modal = document.getElementById('saveCodeModal');
+        if (modal) modal.style.display = 'none';
     }
 
     const downloadSaveBtn = document.createElement('button');
@@ -57596,9 +57729,18 @@ isBrawlerLabMode = false;
     styleHomeButton(importSaveBtn, 'blue', true);
     importSaveBtn.addEventListener('click', () => importSaveInput.click());
 
+    const copySaveCodeBtn = document.createElement('button');
+    copySaveCodeBtn.id = 'copySaveCodeBtn';
+    copySaveCodeBtn.type = 'button';
+    copySaveCodeBtn.textContent = 'COPY SAVE CODE';
+    copySaveCodeBtn.title = 'Copy a save code to move your progress to another device';
+    styleHomeButton(copySaveCodeBtn, 'amber', true);
+    copySaveCodeBtn.addEventListener('click', openSaveCodeModal);
+
     if (progressionShortcutRow || homeUtilityRow) {
         (progressionShortcutRow || homeUtilityRow).appendChild(downloadSaveBtn);
         (progressionShortcutRow || homeUtilityRow).appendChild(importSaveBtn);
+        (progressionShortcutRow || homeUtilityRow).appendChild(copySaveCodeBtn);
     }
 
     const brickRushBtn = document.createElement('button');
