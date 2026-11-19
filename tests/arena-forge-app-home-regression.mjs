@@ -81,18 +81,21 @@ check('PLAY clicks the existing #startMatch button', game.includes("document.get
 // App home optimize (2026-11-18): the hero tap opens the NATIVE Fighters
 // view now — the web gallery overlay (brawlerBtn.click()) is no longer
 // the app path.
-check('hero tap opens the native Fighters view', game.includes("document.getElementById('appHomeHero')?.addEventListener('click', () => { setAppHomeTab('fighters'); });"));
+// Phase 4: the handler also buzzes (appBuzz) — same tap, same destination.
+check('hero tap opens the native Fighters view', game.includes("document.getElementById('appHomeHero')?.addEventListener('click', () => { appBuzz(10); setAppHomeTab('fighters'); });"));
 check('Fighters tab builds the native Fighters view', game.includes("if (tab === 'fighters') buildAppFightersView();"));
 check('Shop tab reuses openHomeShop()', game.includes("if (tab === 'shop') { if (typeof openHomeShop === 'function') openHomeShop(); return; }"));
 // App home optimize: Home/Events tabs switch the NATIVE app views now —
 // the web setHomeTab is no longer the app tab path.
 check('Home/Events tabs switch the native app views (no web setHomeTab)', game.includes("if (tab === 'fighters' || tab === 'events' || tab === 'home') {") && game.includes("if (tab === 'events') buildAppEventsView();") && !game.includes("setHomeTab(tab === 'events' ? 'events' : 'home');"));
-check('event chip tap goes to the Events tab', game.includes("document.getElementById('appHomeEventChip')?.addEventListener('click', () => setAppHomeTab('events'));"));
+// Phase 4: the handler also buzzes (appBuzz) — same tap, same destination.
+check('event chip tap goes to the Events tab', game.includes("document.getElementById('appHomeEventChip')?.addEventListener('click', () => { appBuzz(10); setAppHomeTab('events'); });"));
 // App home optimize: the landscape hero's dead blue space now holds real
 // content — the UP NEXT event card + the tournament card — and their
 // clicks stopPropagation so they never trigger the hero's fighters tap.
 check('hero side column shows UP NEXT event + tournament in landscape', game.includes('app-hero-side') && game.includes('data-hero-side="events"') && game.includes('data-hero-side="tournament"'));
-check('hero side cards stopPropagation so they never open Fighters', game.includes("event.stopPropagation(); setAppHomeTab('events');") && game.includes("event.stopPropagation(); if (typeof openTournamentHub === 'function') openTournamentHub();"));
+// Phase 4: the handlers also buzz (appBuzz) — stopPropagation still first.
+check('hero side cards stopPropagation so they never open Fighters', game.includes("event.stopPropagation(); appBuzz(10); setAppHomeTab('events');") && game.includes("event.stopPropagation(); appBuzz(10); if (typeof openTournamentHub === 'function') openTournamentHub();"));
 
 // --- Sync: hero stays fresh, tab follows web tab state, visibility follows home ---
 check('syncAppHome is hooked at the end of renderHomeBrawlerCard', (() => { const start = game.indexOf('function renderHomeBrawlerCard() {'); const hook = game.indexOf('syncAppHome();', start); const next = game.indexOf('const FASTPASS_MOMENTUM_PER_HIT', start); return start !== -1 && hook !== -1 && hook < next; })());

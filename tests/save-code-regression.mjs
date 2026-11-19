@@ -90,7 +90,8 @@ check('web COPY SAVE CODE button sits next to DOWNLOAD/IMPORT SAVE',
     game.includes('(progressionShortcutRow || homeUtilityRow).appendChild(copySaveCodeBtn);'));
 check('app top strip has a save button wired to the same modal',
     game.includes('id="appHomeSaveBtn"') &&
-    game.includes("document.getElementById('appHomeSaveBtn')?.addEventListener('click', () => openSaveCodeModal());"));
+    // Phase 4: the handler also buzzes (appBuzz) — same modal, same wiring.
+    game.includes("document.getElementById('appHomeSaveBtn')?.addEventListener('click', () => { appBuzz(10); openSaveCodeModal(); });"));
 check('modal has export textarea + COPY and import textarea + IMPORT',
     game.includes('id="saveCodeExport"') && game.includes('id="saveCodeCopyBtn"') &&
     game.includes('id="saveCodeImport"') && game.includes('id="saveCodeImportBtn"'));

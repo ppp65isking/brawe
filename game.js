@@ -457,6 +457,38 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         @media (max-width:430px){.native-app .home-currency-pill{font-size:11px !important;padding:4px 9px !important}}
         /* Tab bar: four buttons crowd a <=360px phone. */
         @media (max-width:360px){#appHomeTabs{gap:4px}#appHomeTabs button{font-size:13px;padding:8px 2px}#appHomeTabs button small{font-size:9px}}
+        /* ---- Arena Forge app redesign phase 4 (2026-11-19): Fighters
+           nav bar compaction, kit detail sheet, view transitions, tap
+           haptics. App/touch mode only; the website is untouched. ---- */
+        /* Fighters toolbar: one compact row — search + role chips share
+           the row instead of stacking two rows. Saves ~40px of chrome so
+           the cards + detail get more room, portrait and landscape. */
+        .app-fighters-toolbar{flex-direction:row;align-items:center;gap:8px;padding:2px 2px 8px}
+        .app-fighters-search{flex:1 1 150px;min-width:0;width:auto;padding:9px 12px}
+        .app-fighters-roles{flex:1 1 auto;min-width:0;padding-bottom:0}
+        .app-fighters-role{padding:6px 10px}
+        #appFightersStrip{padding:2px 2px 6px}
+        /* Kit detail sheet (bottom sheet, app style). */
+        .app-kit-sheet-overlay{position:fixed;inset:0;z-index:100;display:flex;align-items:flex-end;justify-content:center;background:rgba(2,8,18,.62);backdrop-filter:blur(3px)}
+        .app-kit-sheet{width:100%;max-width:560px;max-height:82dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;box-sizing:border-box;padding:16px 16px calc(16px + env(safe-area-inset-bottom));border-radius:20px 20px 0 0;border:2px solid rgba(255,255,255,.2);border-bottom:0;background:linear-gradient(160deg,#0a2140,#06101f);color:#fff;font-family:inherit;animation:appKitSheetIn .18s ease-out}
+        @keyframes appKitSheetIn{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}
+        .app-kit-sheet-label{font-size:11px;font-weight:1000;letter-spacing:.1em;color:#8fdfff}
+        .app-kit-sheet h3{margin:4px 0 2px;font-size:22px;text-transform:uppercase;line-height:1.05}
+        .app-kit-sheet-sub{font-size:12px;font-weight:1000;color:#9fc6e8}
+        .app-kit-sheet-desc{font-size:14px;line-height:1.5;color:#d7ecff;margin:10px 0 12px}
+        .app-kit-sheet-rows{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+        .app-kit-sheet-row{display:flex;justify-content:space-between;gap:10px;padding:9px 10px;border-radius:10px;background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.12);font-size:13px;font-weight:800}
+        .app-kit-sheet-row small{color:#8fdfff;font-weight:1000;white-space:nowrap}
+        .app-kit-sheet-row span{text-align:right}
+        .app-kit-sheet-actions{display:flex;gap:8px}
+        .app-kit-sheet-actions button{flex:1;padding:13px 16px;border:0;border-radius:12px;font-weight:1000;font-size:15px;cursor:pointer}
+        .app-kit-sheet-select{background:linear-gradient(#7dff6a,#37c837);color:#062b07}
+        .app-kit-sheet-select:disabled{background:#555;color:#ddd;cursor:not-allowed}
+        .app-kit-sheet-close{background:rgba(255,255,255,.12);color:#cfe6ff;border:1px solid rgba(255,255,255,.25)}
+        /* View transitions: switching app tabs fades the new view in
+           instead of hard-cutting. Pure CSS, .16s. */
+        #appHomeHeroView.is-active,#appHomeEventsHost.is-active,#appHomeFightersView.is-active,#appHomeEventsView.is-active,#appHomeSettingsView.is-active{animation:appViewIn .16s ease-out}
+        @keyframes appViewIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
         `;
         document.head.appendChild(styleSheet);
 
@@ -5932,23 +5964,25 @@ const bolznstienPendingStrikes = [];
         const eventsView = document.getElementById('homeEventsView');
         const eventsHost = document.getElementById('appHomeEventsHost');
         if (eventsView && eventsHost) eventsHost.appendChild(eventsView);
-        document.getElementById('appHomeHero')?.addEventListener('click', () => { setAppHomeTab('fighters'); });
+        document.getElementById('appHomeHero')?.addEventListener('click', () => { appBuzz(10); setAppHomeTab('fighters'); });
         document.getElementById('appHomeHero')?.addEventListener('keydown', (event) => {
             if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setAppHomeTab('fighters'); }
         });
         document.getElementById('appHomePlay')?.addEventListener('click', () => {
+            appBuzz(12);
             document.getElementById('startMatch')?.click();
         });
-        document.getElementById('appHomeEventChip')?.addEventListener('click', () => setAppHomeTab('events'));
+        document.getElementById('appHomeEventChip')?.addEventListener('click', () => { appBuzz(10); setAppHomeTab('events'); });
         // Phase 2: the player + season chips were dead in app mode (no
         // tap handler) even though the profile + pass overlays exist —
         // wire them to the existing openers. The quick row exposes the
         // home features that lived inside the hidden web home.
-        document.getElementById('appHomePlayer')?.addEventListener('click', () => { if (typeof openPlayerProfile === 'function') openPlayerProfile(); });
-        document.getElementById('appHomeSeasonChip')?.addEventListener('click', () => { if (typeof openSeasonPass === 'function') openSeasonPass(); });
+        document.getElementById('appHomePlayer')?.addEventListener('click', () => { appBuzz(10); if (typeof openPlayerProfile === 'function') openPlayerProfile(); });
+        document.getElementById('appHomeSeasonChip')?.addEventListener('click', () => { appBuzz(10); if (typeof openSeasonPass === 'function') openSeasonPass(); });
         document.getElementById('appHomeQuickRow')?.addEventListener('click', (event) => {
             const btn = event.target.closest('[data-app-quick]');
             if (!btn) return;
+            appBuzz(10);
             const action = btn.dataset.appQuick;
             if (action === 'quests') { if (typeof openQuestBoard === 'function') openQuestBoard(); }
             else if (action === 'pass') { if (typeof openQuestBoard === 'function') openQuestBoard('season'); }
@@ -5961,9 +5995,22 @@ const bolznstienPendingStrikes = [];
         const brickRushBtn = document.getElementById('dailyBrickRushBtn');
         const quickRow = document.getElementById('appHomeQuickRow');
         if (brickRushBtn && quickRow) quickRow.appendChild(brickRushBtn);
-        document.getElementById('appHomeSaveBtn')?.addEventListener('click', () => openSaveCodeModal());
+        document.getElementById('appHomeSaveBtn')?.addEventListener('click', () => { appBuzz(10); openSaveCodeModal(); });
         appHomeEl.querySelectorAll('[data-app-tab]').forEach((button) => {
-            button.addEventListener('click', () => setAppHomeTab(button.dataset.appTab));
+            button.addEventListener('click', () => { appBuzz(10); setAppHomeTab(button.dataset.appTab); });
+        });
+        // Phase 4: tap haptics for the web overlays the app reuses (shop,
+        // quest board, tournament, profile). One delegated listener, app
+        // mode only — the overlays themselves are shared web code, so the
+        // buzz lives here, not in them. Buttons only; backdrops and
+        // inputs stay silent. buildAppHome runs once (guarded above), so
+        // this registers once. The save-code modal is excluded on
+        // purpose: it is untouched by this redesign.
+        document.addEventListener('click', (event) => {
+            try {
+                if (!isNativeAppMode()) return;
+                if (event.target.closest('.brawe-shop-overlay button, #questBoardOverlay button, .app-tournament-overlay button, .brick-bon-v2-overlay button')) appBuzz(10);
+            } catch (_) {}
         });
         syncAppHomeVisibility();
         try {
@@ -6031,8 +6078,8 @@ const bolznstienPendingStrikes = [];
             <span class="app-hero-fighters">👤 FIGHTERS — TAP TO CHANGE</span>
           </div>
           ${heroSideHtml}`;
-        hero.querySelector('[data-hero-side="events"]')?.addEventListener('click', (event) => { event.stopPropagation(); setAppHomeTab('events'); });
-        hero.querySelector('[data-hero-side="tournament"]')?.addEventListener('click', (event) => { event.stopPropagation(); if (typeof openTournamentHub === 'function') openTournamentHub(); });
+        hero.querySelector('[data-hero-side="events"]')?.addEventListener('click', (event) => { event.stopPropagation(); appBuzz(10); setAppHomeTab('events'); });
+        hero.querySelector('[data-hero-side="tournament"]')?.addEventListener('click', (event) => { event.stopPropagation(); appBuzz(10); if (typeof openTournamentHub === 'function') openTournamentHub(); });
     }
     function renderAppHomeTop() {
         const nameEl = document.getElementById('appHomePlayerName');
@@ -6137,7 +6184,7 @@ const bolznstienPendingStrikes = [];
             if (!appFightersState.focused) appFightersState.focused = selectedBrawler;
             view.innerHTML = `
               <div class="app-fighters-toolbar">
-                <input id="appFightersSearch" class="app-fighters-search" type="search" placeholder="🔎 Search fighters…" autocomplete="off">
+                <input id="appFightersSearch" class="app-fighters-search" type="search" placeholder="🔎 Search fighters…" autocomplete="off" enterkeyhint="search">
                 <div id="appFightersRoles" class="app-fighters-roles"></div>
               </div>
               <div id="appFightersStrip"></div>
@@ -6149,6 +6196,10 @@ const bolznstienPendingStrikes = [];
             view.querySelector('#appFightersRoles')?.addEventListener('click', (event) => {
                 const chip = event.target.closest('[data-app-role]');
                 if (!chip) return;
+                appBuzz(10);
+                // Dismiss the phone keyboard: the filter is applied, the
+                // search field no longer needs focus.
+                view.querySelector('#appFightersSearch')?.blur();
                 appFightersState.role = chip.dataset.appRole;
                 renderAppFightersRoles();
                 renderAppFightersStrip();
@@ -6156,6 +6207,8 @@ const bolznstienPendingStrikes = [];
             view.querySelector('#appFightersStrip')?.addEventListener('click', (event) => {
                 const card = event.target.closest('[data-app-fighter]');
                 if (!card) return;
+                appBuzz(10);
+                view.querySelector('#appFightersSearch')?.blur();
                 appFightersState.focused = card.dataset.appFighter;
                 renderAppFightersStrip();
                 renderAppFightersDetail();
@@ -6168,9 +6221,12 @@ const bolznstienPendingStrikes = [];
             });
             view.querySelector('#appFightersDetail')?.addEventListener('click', (event) => {
                 const kitBtn = event.target.closest('[data-app-kit]');
-                if (kitBtn && !kitBtn.disabled) { appFightersKitPick(appFightersState.focused, kitBtn.dataset.appKit); return; }
-                if (event.target.closest('[data-app-action="play"]')) { appFightersPlay(appFightersState.focused); return; }
-                if (event.target.closest('[data-app-action="upgrade"]')) { appFightersUpgrade(appFightersState.focused); return; }
+                // Phase 4: a kit tap opens the detail sheet (name + full
+                // description + real data); the sheet's SELECT button is
+                // what performs the pick, via appFightersKitPick.
+                if (kitBtn) { openAppKitSheet(appFightersState.focused, kitBtn.dataset.appKit); return; }
+                if (event.target.closest('[data-app-action="play"]')) { appBuzz(10); appFightersPlay(appFightersState.focused); return; }
+                if (event.target.closest('[data-app-action="upgrade"]')) { appBuzz(10); appFightersUpgrade(appFightersState.focused); return; }
             });
         }
         renderAppFightersRoles();
@@ -6201,6 +6257,24 @@ const bolznstienPendingStrikes = [];
             </button>`;
         }).join('');
     }
+    // Kit name/description split (phase 3): the data carries descriptions
+    // two ways — "Name (description)" and "Name: description" — and
+    // kitName used to strip both, so slots showed a bare name. Split on
+    // whichever delimiter comes first ("Thermite Canister: ... (1100 px)
+    // ..." proves the colon can precede the paren). Phase 4 hoist: this
+    // used to live inside renderAppFightersDetail; the kit detail sheet
+    // needs the same split, so it lives here now — one definition.
+    const kitSplit = (raw) => {
+        if (!raw) return { name: '', desc: '' };
+        const s = String(raw);
+        const pi = s.indexOf('('), ci = s.indexOf(': ');
+        if (pi === -1 && ci === -1) return { name: s.trim(), desc: '' };
+        if (ci !== -1 && (pi === -1 || ci < pi)) return { name: s.slice(0, ci).trim(), desc: s.slice(ci + 2).trim() };
+        const m = s.match(/\(([^)]*)\)/);
+        return { name: s.slice(0, pi).trim(), desc: m ? m[1].trim() : '' };
+    };
+    const kitName = (raw, fallback) => raw ? kitSplit(raw).name : fallback;
+    const kitDesc = (raw) => raw ? kitSplit(raw).desc : '';
     function renderAppFightersDetail() {
         const detail = document.getElementById('appFightersDetail');
         if (!detail) return;
@@ -6217,25 +6291,13 @@ const bolznstienPendingStrikes = [];
         const isHero = selectedBrawler === id;
         let portrait = `<span style="font-size:64px">${data.emoji || '🙂'}</span>`;
         try { portrait = getBrawlerPortraitMarkup(id); } catch (_) {}
-        // Phase 3: kit descriptions render under the name. The data carries
-        // them two ways — "Name (description)" and "Name: description" —
-        // and kitName used to strip both, so slots showed a bare name.
-        // Split on whichever delimiter comes first ("Thermite Canister:
-        // ... (1100 px) ..." proves the colon can precede the paren).
-        // Bare names (Rager all four, Outlit g1/g2) genuinely have no
-        // description text anywhere — reported, never invented.
-        const kitSplit = (raw) => {
-            if (!raw) return { name: '', desc: '' };
-            const s = String(raw);
-            const pi = s.indexOf('('), ci = s.indexOf(': ');
-            if (pi === -1 && ci === -1) return { name: s.trim(), desc: '' };
-            if (ci !== -1 && (pi === -1 || ci < pi)) return { name: s.slice(0, ci).trim(), desc: s.slice(ci + 2).trim() };
-            const m = s.match(/\(([^)]*)\)/);
-            return { name: s.slice(0, pi).trim(), desc: m ? m[1].trim() : '' };
-        };
-        const kitName = (raw, fallback) => raw ? kitSplit(raw).name : fallback;
-        const kitDesc = (raw) => raw ? kitSplit(raw).desc : '';
-        const kitSlotHtml = (key, label, name, isLocked, lockedText, equipped, desc = '') => `<button type="button" class="app-kit-slot${equipped ? ' is-equipped' : ''}${isLocked ? ' is-locked' : ''}" data-app-kit="${key}" ${isLocked ? 'disabled' : ''}>
+        // kitSplit / kitName / kitDesc live at Fighters-view scope now
+        // (phase 4 hoist) so the kit detail sheet splits names the same
+        // way — one definition, no drift.
+        // Phase 4: locked slots are NOT disabled — a tap opens the sheet
+        // (name + desc + unlock requirement) instead of doing nothing.
+        // aria-disabled marks them; the sheet has no SELECT button.
+        const kitSlotHtml = (key, label, name, isLocked, lockedText, equipped, desc = '') => `<button type="button" class="app-kit-slot${equipped ? ' is-equipped' : ''}${isLocked ? ' is-locked' : ''}" data-app-kit="${key}" aria-disabled="${isLocked ? 'true' : 'false'}">
           <small>${label}${equipped ? ' · EQUIPPED' : ''}</small>
           <b>${isLocked ? lockedText : name}</b>${!isLocked && desc ? `
           <span class="app-kit-desc">${desc}</span>` : ''}
@@ -6294,6 +6356,76 @@ const bolznstienPendingStrikes = [];
         renderAppFightersDetail();
         updateGadgetInfo();
         updateGadgetButton();
+    }
+    // ---- Kit detail sheet (phase 4) ----
+    // Tapping a kit slot opens a bottom sheet with EVERYTHING the code
+    // actually has about it: name + full description (kitSplit desc,
+    // present for all 416 slots) + gadget cooldown from
+    // getGadgetCooldownMsForBrawler + unlock/equipped status. Nothing is
+    // invented: star powers have no cooldown row, and a slot with no
+    // description text shows no desc line. The sheet's SELECT button is
+    // the only path that changes a pick — it calls appFightersKitPick,
+    // the same flow PR #141 wired (verified: it writes the live
+    // playerData progress object and saveProgress()). Core Surge stays
+    // display-only (phase 1 decision): the sheet shows its full
+    // description but no SELECT button.
+    function openAppKitSheet(id, key) {
+        const data = brawlerData[id];
+        if (!data || !key) return;
+        closeAppKitSheet();
+        try { document.getElementById('appFightersSearch')?.blur(); } catch (_) {}
+        const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        const pData = getEffectiveBrawlerProgress(id);
+        const isGadget = key === 'g1' || key === 'g2';
+        const isStar = key === 'sp1' || key === 'sp2';
+        const isHyper = key === 'hyper';
+        const label = isGadget ? (key === 'g1' ? 'TOOL 1' : 'TOOL 2') : isStar ? (key === 'sp1' ? 'TALENT 1' : 'TALENT 2') : 'CORE SURGE';
+        const powerReq = isHyper ? 11 : isGadget ? 7 : 9;
+        const unlocked = isHyper ? !!pData.hyperchargeUnlocked : isGadget ? !!pData.gadgetUnlocked : !!pData.starPowerUnlocked;
+        const equipped = isGadget ? pData.selectedGadget === key : isStar ? pData.selectedStar === (key === 'sp1' ? 'slow' : 'long') : false;
+        let name = '', desc = '';
+        if (isHyper) {
+            name = 'Core Surge';
+            try { desc = getCoreSurgeDescription(id) || ''; } catch (_) { desc = ''; }
+        } else {
+            const split = kitSplit(data[key] || '');
+            name = split.name || (isGadget ? 'Gadget' : 'Star Power');
+            desc = split.desc;
+        }
+        const rows = [];
+        if (isGadget) {
+            let cdMs = 0;
+            try { cdMs = getGadgetCooldownMsForBrawler(id, key) || 0; } catch (_) {}
+            if (cdMs > 0) rows.push({ k: 'COOLDOWN', v: `${Math.round(cdMs / 1000)}s` });
+        }
+        rows.push({ k: 'STATUS', v: !unlocked ? `LOCKED · POWER ${powerReq}` : equipped ? 'EQUIPPED' : 'UNLOCKED' });
+        if (!unlocked) rows.push({ k: 'UNLOCKS AT', v: `Power ${powerReq}` });
+        const canSelect = (isGadget || isStar) && unlocked && !equipped;
+        const overlay = document.createElement('div');
+        overlay.className = 'app-kit-sheet-overlay';
+        overlay.id = 'appKitSheetOverlay';
+        overlay.innerHTML = `
+          <div class="app-kit-sheet" role="dialog" aria-label="${esc(name)}">
+            <div class="app-kit-sheet-label">${label} · ${esc((data.name || id || '').toUpperCase())}</div>
+            <h3>${esc(name)}</h3>
+            ${desc ? `<div class="app-kit-sheet-desc">${esc(desc)}</div>` : ''}
+            <div class="app-kit-sheet-rows">${rows.map((r) => `<div class="app-kit-sheet-row"><small>${r.k}</small><span>${esc(r.v)}</span></div>`).join('')}</div>
+            <div class="app-kit-sheet-actions">
+              ${canSelect ? `<button type="button" class="app-kit-sheet-select" data-app-kit-select="${key}">✓ SELECT ${label}</button>` : ''}
+              ${equipped ? `<button type="button" class="app-kit-sheet-select" disabled>✓ EQUIPPED</button>` : ''}
+              <button type="button" class="app-kit-sheet-close" data-app-kit-close="1">CLOSE</button>
+            </div>
+          </div>`;
+        overlay.addEventListener('click', (event) => {
+            if (event.target === overlay || event.target.closest('[data-app-kit-close]')) { closeAppKitSheet(); return; }
+            const sel = event.target.closest('[data-app-kit-select]');
+            if (sel) { appBuzz(15); appFightersKitPick(id, key); closeAppKitSheet(); }
+        });
+        document.body.appendChild(overlay);
+        appBuzz(10);
+    }
+    function closeAppKitSheet() {
+        document.getElementById('appKitSheetOverlay')?.remove();
     }
     function appFightersPlay(id) {
         if (!brawlerData[id]) return;
@@ -6368,9 +6500,10 @@ const bolznstienPendingStrikes = [];
             appEventsBuilt = true;
             view.addEventListener('click', (event) => {
                 const slot = event.target.closest('[data-app-event]');
-                if (slot) { appEventSlotTap(slot.dataset.appEvent); return; }
+                if (slot) { appBuzz(10); appEventSlotTap(slot.dataset.appEvent); return; }
                 const feat = event.target.closest('[data-app-featured]');
                 if (!feat) return;
+                appBuzz(10);
                 if (feat.dataset.appFeatured === 'season') { if (typeof openSeasonPass === 'function') openSeasonPass(); }
                 else if (feat.dataset.appFeatured === 'tournament') { if (typeof openTournamentHub === 'function') openTournamentHub(); }
             });
@@ -6470,6 +6603,7 @@ const bolznstienPendingStrikes = [];
             view.addEventListener('click', (event) => {
                 const btn = event.target.closest('[data-app-settings]');
                 if (!btn) return;
+                appBuzz(10);
                 const action = btn.dataset.appSettings;
                 if (action === 'back') { setAppHomeTab('home'); return; }
                 if (action === 'save') { if (typeof openSaveCodeModal === 'function') openSaveCodeModal(); return; }
@@ -11311,10 +11445,10 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
         attack: 'Timber Slam',
         super: 'Raged Area',
         hyper: 'Primal Frenzy',
-        g1: 'Cleave Timber',
-        g2: 'Battle Cry',
-        sp1: 'Splinter Shrapnel',
-        sp2: 'Bloodlust Resurgence'
+        g1: 'Cleave Timber (360° cleave around you, 950 damage + knockback)',
+        g2: 'Battle Cry (Allies gain +20% speed and +30% Super charge for 3s)',
+        sp1: 'Splinter Shrapnel (Timber bursts into 4 splinter darts on hit, 650 damage each)',
+        sp2: 'Bloodlust Resurgence (Heal 40% of damage dealt while inside your totem)'
     },
     'carmela_fudge': {
           name: 'Carmela & Fudge',
@@ -11503,7 +11637,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
       'demon': { name:'Demon', role:'Assassin', desc:'A demonic blade assassin who recalls his weapon or glides to its landing point.', color:'#d44763', attack:'Hellblade', attackDesc:'Throw a blade. For 1 second after it lands, move toward it to glide and retrieve it; otherwise it recalls and damages again.', super:'Demonic Doom', superDesc:'Create three blade clones that hook up to three enemies and pull them toward Demon.', hyper:'Doom’s Embrace: Fire a second spectral blade. During Demonic Doom’s pull, Demon gains 60% damage reduction.', g1:'Blade Swap (Instantly teleport to the grounded blade)', g2:'Barbed Recall (Next recall slows and heals on hit)', sp1:'Cut Both Ways (Outgoing plus returning hit deals 700 bonus)', sp2:'Hellbound Landing (Gliding grants a 1400 shield)' },
       'paradox': { name: 'Paradox', role: 'Controller', desc: 'A legendary Time Weaver who tunnels space-time, slows enemy fire, and rewinds position.', color: '#a8a2ff', attack: 'Temporal Skip', attackDesc: 'Fires a skip shot. Disappears instantly and teleports to max range, detonating in a splash explosion.', super: 'Relativity Zone', superDesc: 'Aim and place a large dome. Allied shots fly 10% faster; enemy shots fly 30% slower and track 30% less accurately.', hyper: 'Double Paradox: Places a stationary dome at the aim point and attaches a second mobile dome to Paradox. Attack skips twice as fast and stuns for 0.5s.', g1: 'Chronoshift (Rewind position 2 seconds ago and heal 1500 HP)', g2: 'Paradox Charge (Next attack sweeps full path for double damage)', sp1: 'Quantum Tangle (Skipped middle path pulls enemies towards explosion)', sp2: 'Temporal Fracture (Using Super grants 8s of side shots and a piercing middle sweep)' },
       'beam': { name: 'Beam', role: 'Damage Dealer', desc: 'A continuous laser weapon that ramps up damage the longer it hits.', color: '#ffd700', attack: 'Focus Beam', attackDesc: 'Fires a continuous laser. Damage ramps up through 6 stages while firing.', super: 'The Golden Beam', superDesc: 'Turns the beam golden! Grants +20% movement speed, refuels ammo, and stuns enemies hit for 0.75s.', hyper: 'Purple Ray of Roar: +23% range, faster ramp, last 25% ammo does +50% dmg.', g1: 'Prism Split (Wide 3-laser cone for 4s)', g2: 'Emergency Cooling (Consume 30% ammo to heal 2000 HP)', sp1: 'Thermal Resonance (25% shield at max ramp)', sp2: 'Crystal Refraction (+30% dmg to slowed targets & refracts into secondary lasers on wall/crystal hit)' },
-      'outlit': { name: 'Outlit', role: 'Close-range', desc: 'Shotgun blast with strong point-blank damage.', color: '#ff9b42', attack: 'Scatter Pump', attackDesc: 'A compact shotgun blast with a tight spread and strong point-blank damage.', super: 'Boom Break', superDesc: 'Fires 3 oversized shock pellets that smoothly knock enemies back. Hitting metal arcs through up to 5 walls for 90%, 80%, 70%, 60%, then 50% damage.', hyper: 'Boom Break pierces enemies; Scatter Pump becomes tighter and faster.', g1: 'Next Shot Pierce', g2: 'Healing Pod', sp1: 'Shell Chill (Slows)', sp2: 'Long Boom (+35% Super Range)' },
+      'outlit': { name: 'Outlit', role: 'Close-range', desc: 'Shotgun blast with strong point-blank damage.', color: '#ff9b42', attack: 'Scatter Pump', attackDesc: 'A compact shotgun blast with a tight spread and strong point-blank damage.', super: 'Boom Break', superDesc: 'Fires 3 oversized shock pellets that smoothly knock enemies back. Hitting metal arcs through up to 5 walls for 90%, 80%, 70%, 60%, then 50% damage.', hyper: 'Boom Break pierces enemies; Scatter Pump becomes tighter and faster.', g1: 'Next Shot Pierce (Next shot pierces enemies)', g2: 'Healing Pod (Deploy a 2250 HP pod that heals nearby allies)', sp1: 'Shell Chill (Slows)', sp2: 'Long Boom (+35% Super Range)' },
       'echo': { name: 'Echo', role: 'Controller', desc: 'Fires expanding sound rings that control the battlefield.', color: '#ccaaff', attack: 'Sound Wave', attackDesc: 'Shoots a ring that grows in size as it travels.', super: 'Resonance', superDesc: 'Unleashes massive sound waves that pierce through enemies.', hyper: 'Super sound rings expand twice for double hits.', g1: 'Amplify (Bigger ring, less dmg)', g2: 'Shielding (Take reduced damage)', sp1: 'Reverb Heal (Heal 334 HP on hit)', sp2: 'Double Wave (Super shoots backwards too)' },
       'cheseypuff': { name: 'Cheseypuff', role: 'Marksman', desc: 'Long-range sniper that evolves projectiles.', color: '#ffdc78', attack: 'Cheese Ball', attackDesc: 'Fires a multi-stage projectile with 35% more range and 30% larger stages.', super: 'Cheese Aura', superDesc: 'Gains 30% damage reduction and damages nearby enemies over time.', hyper: 'Extra Aged: Cheese Ball no longer shrinks and its final stage bursts for 650 damage. Super lasts longer with 50% damage reduction and a trailing aura.', g1: 'Big Puff (Empowered shot)', g2: 'Cheese Trap (Slow field)', sp1: 'Sticky Cheese (Super drops fields)', sp2: 'Aged Cheese (Third attack stage)' },
       'decayer': { name: 'Decayer', role: 'Controller', desc: 'Builds a personal shield with every Decay Shot hit, then surrounds himself with a Dark Orbit of shield shots.', color: '#9dff57', attack: 'Decay Shot', attackDesc: 'Fires a piercing shot that builds Decayer a shield on hit.', super: 'Dark Orbit', superDesc: 'For a short duration, Decayer also fires a ring of orbiting shield shots around his aim direction.', hyper: 'Main attack homes in on enemies. Hyper Super fires 3 ally shots granting 2500 shield and Decayer gains +1000 damage on his next shot.', g1: 'Homing Shot (Next Decay Shot homes in and slows)', g2: 'Slowing Shot (Next Decay Shot slows 80% for 1s on impact)', sp1: 'Accelerating Decay (At 50%+ shield, Decay Shots speed up as they travel)', sp2: 'Shield Aura (After Super, allies within 260px gain 100 shield every 0.6s; not Decayer)' },

@@ -37,7 +37,7 @@ check('kit slots render a description line', game.includes('class="app-kit-desc"
 check('gadget + star power slots pass their descriptions', game.includes("kitDesc(data.g1)") && game.includes("kitDesc(data.g2)") && game.includes("kitDesc(data.sp1)") && game.includes("kitDesc(data.sp2)"));
 // Behavior mirror: run the real kitSplit against the real data shapes.
 {
-    const m = game.match(/const kitSplit = \(raw\) => \{[\s\S]*?\n        \};/);
+    const m = game.match(/const kitSplit = \(raw\) => \{[\s\S]*?\n    \};/);
     check('kitSplit extracts cleanly for execution', !!m);
     if (m) {
         const kitSplit = eval(`(${m[0].replace('const kitSplit = ', '').replace(/;\s*$/, '')})`);
