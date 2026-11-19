@@ -61,12 +61,12 @@ check('help overlay padding uses safe-area insets',
 
 // --- H1: shop tab highlight is honest, resets when the shop closes ---
 check('opening shop sets the tab state honestly',
-    game.includes("if (tab === 'shop') { appHomeTab = tab; syncAppHome(); watchAppShopClose(); }") &&
+    game.includes("if (tab === 'shop') { appHomeTab = tab; syncAppHome(); watchAppShopClose(); setAppDeepLink('shop'); }") &&
     game.includes("if (tab === 'shop') { if (typeof openHomeShop === 'function') openHomeShop(); return; }"));
 check('shop close is watched and hands the tab back to home',
     game.includes("function watchAppShopClose() {") &&
     game.includes("new MutationObserver(() => {") &&
-    game.includes("if (appHomeTab === 'shop') { appHomeTab = 'home'; syncAppHome(); }") &&
+    game.includes("if (appHomeTab === 'shop') { appHomeTab = 'home'; syncAppHome(); setAppDeepLink('home'); }") &&
     game.includes("appShopCloseObserver.observe(document.body, { childList: true, subtree: false });"));
 
 // --- H2: cold-start fallback ---
