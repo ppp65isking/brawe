@@ -6125,7 +6125,10 @@ const bolznstienPendingStrikes = [];
             appBuzz(10);
             const action = btn.dataset.appQuick;
             if (action === 'quests') { if (typeof openQuestBoard === 'function') openQuestBoard(); }
-            else if (action === 'pass') { if (typeof openQuestBoard === 'function') openQuestBoard('season'); }
+            // Round 2: the SEASON PASS quick button opens the revived tier
+            // road, not the quest list — the road's MISSIONS button links
+            // back to the board, and QUESTS above still opens it directly.
+            else if (action === 'pass') { if (typeof openSeasonPass === 'function') openSeasonPass(); }
             else if (action === 'settings') { setAppHomeTab('settings'); }
         });
         // Move the live Brick Rush button into the app quick row: its 1s
@@ -6154,6 +6157,11 @@ const bolznstienPendingStrikes = [];
                 // delegate too — RETURN TO LOBBY was silent. Kept as a
                 // second check so the phase-4 selector above stays verbatim.
                 if (event.target.closest('.match-results-overlay button')) appBuzz(10);
+                // Arena Forge app overhaul round 2: the revived Circuit Pass
+                // road joins the delegate too — its claim / tab / premium
+                // buttons were silent. Kept as a third check so the phase-4
+                // and results selectors above stay verbatim.
+                if (event.target.closest('#circuitPassOverlay button')) appBuzz(10);
             } catch (_) {}
         });
         syncAppHomeVisibility();
@@ -92892,10 +92900,23 @@ function checkHit(target, b, i){
       return pretty || 'Profile Cosmetic';
   }
 
+  // Arena Forge app overhaul round 2: premium / token-spend confirms use the
+  // app confirm sheet in app mode (native confirm() only on the website,
+  // which has no sheet). Same prompt, same cost — only the UI differs.
+  function confirmCircuitPassAction(message, onConfirm) {
+      if (isNativeAppMode() && typeof showAppConfirmSheet === 'function') {
+          showAppConfirmSheet({ title: 'SEASON PASS', message, confirmText: 'CONFIRM', cancelText: 'CANCEL', onConfirm });
+          return;
+      }
+      if (typeof confirm === 'function' && confirm(message)) onConfirm();
+  }
+
   function openSeasonPass() {
-      // Season 6 update: the Pass lives ONLY in the Quests tab now.
-      openQuestBoard('season');
-      return;
+      // Arena Forge app overhaul round 2: the Circuit Pass tier road is live
+      // again (it was dead code behind an early return to the Quest Board).
+      // The Quest Board stays the missions view — the road's MISSIONS button
+      // links back to it, and the board's season tab keeps its own tier
+      // ladder. Both views read the same season-pass state.
       if (!ENABLE_SEASON_PASS) { openQuestBoard(); return; }
       ensureSeasonPassState();
       const previousFocus = document.activeElement;
@@ -92938,14 +92959,18 @@ function checkHit(target, b, i){
               premium.innerHTML=`<div><b>${pass.premiumUnlocked?'PREMIUM ACTIVE':'UPGRADE YOUR CIRCUIT'}</b><small>${pass.premiumUnlocked?'Both reward tracks are yours.':'Unlock the gold track, including every previously reached tier.'}</small></div>`;
               if(!pass.premiumUnlocked && active) for(const [currency,cost,label] of [['gems',SEASON_PREMIUM_UNLOCK_GEMS,'Gems'],['coins',SEASON_PREMIUM_UNLOCK_COINS,'Coins']]) {
                   const button=document.createElement('button');button.textContent=`${cost.toLocaleString()} ${label}`;button.disabled=(playerData[currency]||0)<cost;
-                  button.onclick=()=>{if(confirm(`Unlock Premium for ${cost.toLocaleString()} ${label}?`) && unlockSeasonPremium(currency))render();};premium.appendChild(button);
+                  button.onclick=()=>{confirmCircuitPassAction(`Unlock Premium for ${cost.toLocaleString()} ${label}?`,()=>{if(unlockSeasonPremium(currency))render();});};premium.appendChild(button);
               }
               content.appendChild(premium);
-              const road=document.createElement('div');road.className='circuit-road';road.setAttribute('aria-label','Scroll through 25 reward tiers');
+              const road=document.createElement('div');road.className='circuit-road';road.setAttribute('aria-label','Reward road: 25 tiers');
               for(const tier of getActiveSeasonPassTiers()){
                   const column=document.createElement('article');column.className='circuit-tier'+(pass.level>=tier.tier?' unlocked':'');
                   const heading=document.createElement('h2');heading.textContent=String(tier.tier).padStart(2,'0');column.appendChild(heading);
                   const title=document.createElement('h3');title.textContent=tier.title;column.appendChild(title);
+                  // Round 2: free + premium cards share one row wrapper so the
+                  // phone layout can put them side by side (desktop keeps the
+                  // stacked look — .circuit-tier-cards is only a grid in app mode).
+                  const cards=document.createElement('div');cards.className='circuit-tier-cards';column.appendChild(cards);
                   for(const track of ['premium','free']){
                       const claimed=pass[track==='free'?'claimedFreeRewards':'claimedPremiumRewards'].includes(tier.tier);
                       const ready=active && pass.level>=tier.tier && (track==='free'||pass.premiumUnlocked);
@@ -92954,27 +92979,30 @@ function checkHit(target, b, i){
                       const name=document.createElement('strong');name.textContent=describeCircuitReward(tier[track]);card.appendChild(name);
                       const button=document.createElement('button');button.textContent=claimed?'✓ CLAIMED':ready?'CLAIM':track==='premium'&&!pass.premiumUnlocked?'PREMIUM LOCKED':'LEVEL '+tier.tier;
                       button.disabled=claimed||!ready;
-                      button.onclick=()=>{scrollLeft=road.scrollLeft;if(claimSeasonPassTrackReward(tier.tier,track))render();};
-                      card.appendChild(button);column.appendChild(card);
+                      button.onclick=()=>{scrollLeft=road.scrollLeft;if(claimSeasonPassTrackReward(tier.tier,track)){if(typeof showToast==='function')showToast('Claimed '+describeCircuitReward(tier[track]));render();}};
+                      card.appendChild(button);cards.appendChild(card);
                   }road.appendChild(column);
               }content.appendChild(road);road.scrollLeft=scrollLeft;
           } else {
               const note=document.createElement('p');note.className='circuit-shop-note';note.textContent='Choose your rewards. Tokens are earned, not purchased. Offers have seasonal limits; skins are permanent.';content.appendChild(note);
               const grid=document.createElement('div');grid.className='circuit-shop';
               for(const offer of BrawePassTokens.offers){
-                  const owned=offer.reward.type==='skin' && (playerData.ownedSkins?.[skinsDatabase[offer.reward.id].brawler]||[]).includes(offer.reward.id);
+                  // Round 2: guard the skin lookups — a missing skin id used to
+                  // throw inside render() and kill the whole exchange tab.
+                  const skin=offer.reward.type==='skin'?skinsDatabase[offer.reward.id]:null;
+                  const owned=!!skin && (playerData.ownedSkins?.[skin.brawler]||[]).includes(offer.reward.id);
                   const bought=pass.tokenPurchases[offer.id]||0;
                   const card=document.createElement('article');
-                  const skin=offer.reward.type==='skin'?skinsDatabase[offer.reward.id]:null;
-                  if(skin)card.innerHTML=BraweRosterVisuals.portrait(skin.brawler,skin.id);
+                  const portraitHtml=(skin && typeof BraweRosterVisuals!=='undefined' && BraweRosterVisuals?.portrait)?BraweRosterVisuals.portrait(skin.brawler,skin.id):'';
+                  if(portraitHtml)card.innerHTML=portraitHtml;
                   else {const icon=document.createElement('div');icon.className='circuit-offer-icon';icon.textContent=offer.icon;card.appendChild(icon);}
                   const title=document.createElement('h3');title.textContent=offer.name;card.appendChild(title);
                   const detail=document.createElement('p');detail.textContent=describeCircuitReward(offer.reward)+' · '+Math.max(0,offer.limit-bought)+' left';card.appendChild(detail);
                   const button=document.createElement('button');button.textContent=owned?'OWNED':bought>=offer.limit?'SOLD OUT':'◈ '+offer.cost.toLocaleString();
                   button.disabled=owned||bought>=offer.limit||pass.tokenWallet<offer.cost||!active;
-                  button.onclick=()=>{if(!confirm(`Spend ${offer.cost} Pass Tokens on ${offer.name}?`))return;
-                      if(BrawePassTokens.purchase(pass,offer.id,reward=>{grantSeasonReward(reward);return true;})){saveProgress();render();}
-                  };card.appendChild(button);grid.appendChild(card);
+                  button.onclick=()=>{confirmCircuitPassAction(`Spend ${offer.cost} Pass Tokens on ${offer.name}?`,()=>{
+                      if(BrawePassTokens.purchase(pass,offer.id,reward=>{grantSeasonReward(reward);return true;})){saveProgress();if(typeof showToast==='function')showToast('Bought '+offer.name);render();}
+                  });};card.appendChild(button);grid.appendChild(card);
               }content.appendChild(grid);
           }
       };
