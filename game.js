@@ -358,7 +358,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         .app-quick-btn small{display:block;font-size:9px;font-weight:1000;letter-spacing:.08em;color:#9fc6e8}
         .app-quick-badge{position:absolute;top:-7px;right:-4px;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:#5df2c2;color:#04111a;font-size:11px;font-weight:1000;display:grid;place-items:center}
         .app-quick-badge[hidden]{display:none}
-        .native-app #appHomeQuickRow #dailyBrickRushBtn{flex:1 1 0;min-width:96px;padding:10px 8px !important;border-radius:12px !important;font-size:13px !important}
+        .native-app #appHomeQuickRow #dailyBrickRushBtn{flex:1 1 0;min-width:96px;padding:10px 8px !important;border-radius:12px !important;font-size:13px !important;white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important}
         /* Settings view (phase 2): native rows, same card language. */
         #appHomeSettingsView{flex:1 1 auto;min-height:0;display:none;flex-direction:column;overflow-y:auto}
         #appHomeSettingsView.is-active{display:flex}
@@ -541,6 +541,38 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
            instead of hard-cutting. Pure CSS, .16s. */
         #appHomeHeroView.is-active,#appHomeEventsHost.is-active,#appHomeFightersView.is-active,#appHomeEventsView.is-active,#appHomeSettingsView.is-active{animation:appViewIn .16s ease-out}
         @keyframes appViewIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+        /* ---- Arena Forge app polish pass (2026-11-19): one font, press
+           feedback, safe areas, shop single-column, quest tab row scroll.
+           App/touch mode only; the website is untouched — shared web
+           overlays are restyled through .native-app rules, never by
+           editing their inline styles. ---- */
+        /* X4: ONE font — the Trebuchet stack, matching #appHome. The
+           shared overlays set their own inline fonts, so these
+           .native-app rules (with !important) win over the inline
+           styles in app mode only; the website keeps its own fonts. */
+        .native-app .brawe-shop-overlay,.native-app #questBoardOverlay,.native-app .app-tournament-overlay,.native-app #saveCodeModal,.native-app #solo-td-panel{font-family:'Trebuchet MS','Gill Sans','Verdana',sans-serif !important}
+        /* X6: press feedback on every tappable app surface — transform +
+           brightness only, CSS-only, no JS. PLAY and the results-home
+           button already pressed in; these were the silent ones. */
+        #appHomeTabs button:active{transform:scale(.96);filter:brightness(1.18)}
+        .app-quick-btn:active{transform:scale(.96);filter:brightness(1.22)}
+        .app-kit-slot:active{transform:scale(.97);filter:brightness(1.25)}
+        .app-event-slot:active{transform:scale(.98);filter:brightness(1.2)}
+        .native-app .brawe-shop-card:active{transform:scale(.98);filter:brightness(1.22)}
+        /* X5: tournament overlay safe areas — overrides the phase-2
+           14px/10px padding above (same specificity, later wins; the JS
+           also sets a fixed 60px/40px vertical pad inline, which this
+           !important rule beats in app mode). */
+        .native-app .app-tournament-overlay{padding:max(14px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(14px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left)) !important}
+        /* P2: quest-board tabs scroll horizontally like the shop sidebar
+           instead of wrapping to 2–3 rows. */
+        .native-app #questBoardOverlay .app-quest-tabrow{flex-wrap:nowrap !important;overflow-x:auto !important;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;scrollbar-width:none}
+        .native-app #questBoardOverlay .app-quest-tabrow::-webkit-scrollbar{display:none}
+        .native-app #questBoardOverlay .app-quest-tabrow button{flex:none !important}
+        /* S1: shop cards go single-column on narrow phones (two 160px
+           columns on a 360px phone read as a squeezed desktop panel);
+           the header tightens so its wrap reads cleanly. */
+        @media (max-width:400px){.native-app .brawe-shop-content>div{grid-template-columns:1fr !important}.native-app .brawe-shop-title{font-size:16px !important}.native-app .brawe-shop-header{padding:10px !important;gap:6px}}
         `;
         document.head.appendChild(styleSheet);
 
@@ -5964,6 +5996,7 @@ const bolznstienPendingStrikes = [];
     // below. Never call syncAppHome (or read game state) synchronously here.
     let appHomeEl = null;
     let appHomeTab = 'home';
+    let appShopCloseObserver = null;
     function buildAppHome() {
         if (appHomeEl || !isNativeAppMode()) return;
         const homeScreenEl = document.getElementById('homeScreen');
@@ -5986,7 +6019,7 @@ const bolznstienPendingStrikes = [];
                 <button id="appHomePlay" type="button">▶ PLAY</button>
               </div>
               <div id="appHomeQuickRow">
-                <button type="button" class="app-quick-btn" data-app-quick="quests">📜 QUESTS<small>CONTRACTS</small><span class="app-quick-badge" id="appQuestsBadge" hidden></span></button>
+                <button type="button" class="app-quick-btn" data-app-quick="quests">📜 QUESTS<small>QUEST BOARD</small><span class="app-quick-badge" id="appQuestsBadge" hidden></span></button>
                 <button type="button" class="app-quick-btn" data-app-quick="pass">🎁 SEASON PASS<small>REWARDS</small><span class="app-quick-badge" id="appPassBadge" hidden></span></button>
                 <button type="button" class="app-quick-btn" data-app-quick="settings">⚙️ SETTINGS<small>SAVE · GUIDE</small></button>
               </div>
@@ -6052,16 +6085,20 @@ const bolznstienPendingStrikes = [];
             button.addEventListener('click', () => { appBuzz(10); setAppHomeTab(button.dataset.appTab); });
         });
         // Phase 4: tap haptics for the web overlays the app reuses (shop,
-        // quest board, tournament, profile). One delegated listener, app
-        // mode only — the overlays themselves are shared web code, so the
-        // buzz lives here, not in them. Buttons only; backdrops and
-        // inputs stay silent. buildAppHome runs once (guarded above), so
-        // this registers once. The save-code modal is excluded on
-        // purpose: it is untouched by this redesign.
+        // quest board, tournament, profile) plus the match-results screen.
+        // One delegated listener, app mode only — the overlays themselves
+        // are shared web code, so the buzz lives here, not in them.
+        // Buttons only; backdrops and inputs stay silent. buildAppHome
+        // runs once (guarded above), so this registers once. The save-code
+        // modal is excluded on purpose: it is untouched by this redesign.
         document.addEventListener('click', (event) => {
             try {
                 if (!isNativeAppMode()) return;
                 if (event.target.closest('.brawe-shop-overlay button, #questBoardOverlay button, .app-tournament-overlay button, .brick-bon-v2-overlay button')) appBuzz(10);
+                // App polish pass (X7): the match-results buttons join the
+                // delegate too — RETURN TO LOBBY was silent. Kept as a
+                // second check so the phase-4 selector above stays verbatim.
+                if (event.target.closest('.match-results-overlay button')) appBuzz(10);
             } catch (_) {}
         });
         syncAppHomeVisibility();
@@ -6145,11 +6182,20 @@ const bolznstienPendingStrikes = [];
         const modeEntry = HOME_MODE_DATA?.[showdownMode] || HOME_MODE_DATA?.solo || [showdownMode, '⚔', 'Battle', 'Enter the arena'];
         chip.innerHTML = `<span aria-hidden="true">${modeEntry[1] || '⚔'}</span><b>${modeEntry[2] || 'Battle'}</b><small>${modeEntry[3] || ''}</small><i>CHANGE</i>`;
     }
+    // App polish pass (H2): cold-start fallback. If the hero render
+    // throws (bad save data, a missing portrait), the home screen must
+    // still show a tappable hero instead of the empty static shell.
+    function renderAppHomeHeroFallback() {
+        const hero = document.getElementById('appHomeHero');
+        if (!hero) return;
+        const name = String((brawlerData[selectedBrawler] || {}).name || selectedBrawler || 'Outlit');
+        hero.innerHTML = `<div class="app-hero-portrait app-hero-fallback">${(name || '?').substring(0, 2).toUpperCase()}</div><div class="app-hero-info"><small>READY TO BRAWL</small><strong>${name.toUpperCase()}</strong><span class="app-hero-fighters">👤 FIGHTERS — TAP TO CHANGE</span></div>`;
+    }
     function syncAppHome() {
         if (!appHomeEl || !isNativeAppMode()) return;
-        renderAppHomeHero();
-        renderAppHomeTop();
-        renderAppHomeEventChip();
+        try { renderAppHomeHero(); } catch (_) { try { renderAppHomeHeroFallback(); } catch (_) {} }
+        try { renderAppHomeTop(); } catch (_) {}
+        try { renderAppHomeEventChip(); } catch (_) {}
         // Quick-row badges: the web quest button's badge is maintained
         // by updateQuestBadge, so read its live value; the pass badge
         // comes from the same counter the quest board tabs use.
@@ -6181,8 +6227,31 @@ const bolznstienPendingStrikes = [];
             button.classList.toggle('is-active', button.dataset.appTab === appHomeTab);
         });
     }
+    // App polish pass (H1): the shop overlay is a direct document.body
+    // child (openGemShop appends it there) and is removed on close, so a
+    // one-shot MutationObserver sees the close and hands the tab back to
+    // home. The callback is a microtask, so a synchronous remove +
+    // re-add inside the shop can never trip a false reset.
+    function watchAppShopClose() {
+        try {
+            if (appShopCloseObserver) appShopCloseObserver.disconnect();
+            let sawShop = !!document.querySelector('.brawe-shop-overlay');
+            appShopCloseObserver = new MutationObserver(() => {
+                if (document.querySelector('.brawe-shop-overlay')) { sawShop = true; return; }
+                if (!sawShop) return;
+                appShopCloseObserver.disconnect();
+                appShopCloseObserver = null;
+                if (appHomeTab === 'shop') { appHomeTab = 'home'; syncAppHome(); }
+            });
+            appShopCloseObserver.observe(document.body, { childList: true, subtree: false });
+        } catch (_) {}
+    }
     function setAppHomeTab(tab) {
         if (!appHomeEl) return;
+        // H1: opening Shop sets the tab state honestly (SHOP highlights
+        // while the overlay is open) and arms the close-watcher; the open
+        // itself still reuses openHomeShop() exactly as before.
+        if (tab === 'shop') { appHomeTab = tab; syncAppHome(); watchAppShopClose(); }
         if (tab === 'shop') { if (typeof openHomeShop === 'function') openHomeShop(); return; }
         // The Events countdown ticks every 1s — stop it whenever the
         // Events view hides (home / fighters / settings). Shop is an
@@ -6732,6 +6801,10 @@ const bolznstienPendingStrikes = [];
     // flag, wired to nothing) and no progress reset exists.
     let appSettingsBuilt = false;
     const APP_HAPTICS_KEY = 'arenaForgeHapticsV1';
+    // App polish pass (SE2): the APK version has no source of truth
+    // anywhere (no build stamp is injected into the WebView), so it lives
+    // here as one named constant — bump this one line for a new release.
+    const APP_VERSION_LABEL = 'APK v1.0';
     function appHapticsOn() {
         try { return localStorage.getItem(APP_HAPTICS_KEY) !== '0'; } catch (_) { return true; }
     }
@@ -6901,12 +6974,12 @@ const bolznstienPendingStrikes = [];
             <button type="button" data-app-settings="guide">SHOW</button>
           </div>
           <div class="app-settings-row">
-            <span class="app-settings-label"><b>📳 BUTTON HAPTICS</b><small>Small vibration when you tap the in-match buttons.</small></span>
+            <span class="app-settings-label"><b>📳 BUTTON HAPTICS</b><small>Small vibration when you tap buttons, in the app and in matches.</small></span>
             <button type="button" class="${hapticsOn ? '' : 'is-off'}" data-app-settings="haptics">${hapticsOn ? 'ON' : 'OFF'}</button>
           </div>
           <div class="app-settings-about">
             <b>ABOUT</b><br>
-            Arena Forge · APK v1.0<br>
+            Arena Forge · ${APP_VERSION_LABEL}<br>
             ${fighterCount} fighters · Season ${season ? `${season.seasonNumber} · ${season.name}` : '—'}<br>
             Save backup covers progress + season pass. Tournament runs don't transfer yet.
           </div>`;
@@ -10857,7 +10930,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           top.style.justifyContent = 'space-between';
           top.style.alignItems = 'center';
           const title = document.createElement('h1');
-          title.textContent = 'Contract Board';
+          title.textContent = 'Quest Board';
           title.className = 'dialog-title';
           title.style.color = '#8fd8ff';
           const close = document.createElement('button');
@@ -10877,7 +10950,8 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           tabRow.className = 'app-quest-tabrow';
           tabRow.style.display = 'flex';
           tabRow.style.gap = '8px';
-          tabRow.style.flexWrap = 'wrap';
+          tabRow.style.flexWrap = 'nowrap';
+          tabRow.style.overflowX = 'auto';
 
           const content = document.createElement('div');
           content.className = 'app-quest-content';
@@ -11056,6 +11130,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
                   claimBtn.textContent = rewardClaimed ? 'Claimed' : (done ? 'Claim Quest Reward' : 'Locked');
                   claimBtn.style.marginTop = '8px';
                   claimBtn.style.padding = '6px 10px';
+                  claimBtn.style.minHeight = '40px';
                   claimBtn.style.width = '100%';
                   claimBtn.style.border = 'none';
                   claimBtn.style.borderRadius = '7px';
@@ -11555,7 +11630,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           panel.appendChild(top);
           const boardSubtitle = document.createElement('div');
           boardSubtitle.className = 'app-quest-subtitle';
-          boardSubtitle.textContent = 'Complete contracts, claim rewards, and climb the Core Circuit Pass.';
+          boardSubtitle.textContent = 'Complete quests, claim rewards, and climb the Core Circuit Pass.';
           boardSubtitle.style.fontSize = '12px';
           boardSubtitle.style.color = '#95b8d4';
           panel.appendChild(boardSubtitle);
@@ -31663,7 +31738,7 @@ let heistFeverActive = false;
         try { localStorage.setItem(ARENA_FORGE_HELP_COUNT_KEY, String(views + 1)); } catch (err) {}
 
         const overlay = document.createElement('div');
-        overlay.style.cssText = 'position:fixed;inset:0;z-index:6200;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(2,8,18,.82);backdrop-filter:blur(6px);font-family:sans-serif';
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:6200;display:flex;align-items:center;justify-content:center;padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));background:rgba(2,8,18,.82);backdrop-filter:blur(6px);font-family:sans-serif';
         const panel = document.createElement('div');
         panel.style.cssText = 'width:min(680px,96vw);max-height:92vh;overflow:auto;padding:22px;border-radius:24px;border:3px solid #ffca57;background:linear-gradient(155deg,#102a3c,#071321 70%);box-shadow:0 28px 95px rgba(0,0,0,.72);color:#effaff';
         panel.innerHTML = `
@@ -58347,7 +58422,7 @@ isBrawlerLabMode = false;
         if (!modal) {
             modal = document.createElement('div');
             modal.id = 'saveCodeModal';
-            modal.style.cssText = 'position:fixed;inset:0;z-index:1200;display:flex;align-items:center;justify-content:center;background:rgba(8,17,31,.92);padding:12px;box-sizing:border-box';
+            modal.style.cssText = 'position:fixed;inset:0;z-index:1200;display:flex;align-items:center;justify-content:center;background:rgba(8,17,31,.92);padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));box-sizing:border-box';
             modal.innerHTML = `
               <div id="saveCodePanel" style="width:min(560px,94vw);max-height:88vh;overflow-y:auto;background:#0b1c33;border:2px solid rgba(120,190,255,.4);border-radius:14px;padding:16px;box-sizing:border-box;color:#fff;font-family:'Trebuchet MS','Gill Sans','Verdana',sans-serif">
                 <div style="display:flex;align-items:center;gap:8px"><b style="font-size:18px">💾 SAVE CODE</b><button id="saveCodeCloseBtn" type="button" aria-label="Close" style="margin-left:auto;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:8px;padding:4px 10px;cursor:pointer;font-weight:800">✕</button></div>
@@ -58361,6 +58436,11 @@ isBrawlerLabMode = false;
               </div>`;
             document.body.appendChild(modal);
             modal.addEventListener('click', (event) => { if (event.target === modal) closeSaveCodeModal(); });
+            // App polish pass: Escape closes the save modal, like the
+            // profile and quest-board overlays. Registered once, at
+            // creation; the display check keeps it inert while closed.
+            const saveCodeEscape = (event) => { if (event.key === 'Escape' && modal.style.display !== 'none') { event.stopPropagation(); closeSaveCodeModal(); } };
+            document.addEventListener('keydown', saveCodeEscape);
             document.getElementById('saveCodeCloseBtn')?.addEventListener('click', closeSaveCodeModal);
             document.getElementById('saveCodeCopyBtn')?.addEventListener('click', async () => {
                 const text = document.getElementById('saveCodeExport')?.value || '';
