@@ -24,7 +24,12 @@ assert.match(game, /starrDropsToday: playerData\.starrDropsToday/, 'daily Tapper
 assert.match(game, /playerData\.starrDropsToday = data\.persistent\.starrDropsToday/, 'daily Tapper count is restored');
 assert.match(game, /ownedSkins: playerData\.ownedSkins/, 'owned skins are serialized in the canonical save');
 assert.match(game, /selectedSkins: playerData\.selectedSkins/, 'selected skins are serialized in the canonical save');
-assert.doesNotMatch(game, /TROPHIES|Total Trophies|trophyDelta/, 'BRAWE progression must remain Brick-based without a trophy system');
+// Trophies (round 2, 2026-11-19): Anthony ordered a trophy display in the
+// profile. Trophies are display-only, derived from tracked wins — Bricks
+// remain the progression currency, so no trophy spend/reward path exists.
+assert.match(game, /TROPHY_PER_WIN = 10/, 'trophies award 10 per win');
+assert.match(game, /recordTrophyMatchResult\(completedMatchFighter, won/, 'trophies are recorded at the match-end settlement');
+assert.doesNotMatch(game, /trophyDelta/, 'no trophy delta/reward currency path exists');
 assert.match(game, /profile\.favorites=.*slice\(0,3\)/, 'Profile favorites are capped at three');
 assert.match(game, /showcaseBadges=.*slice\(0,3\)/, 'showcase badges are capped at three');
 assert.match(game, /endCareer\.matchesPlayed \+= 1/, 'new matches update Career stats');
