@@ -323,6 +323,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         .app-event-slot small{font-size:11px;color:#bcd9f2}
         .app-event-slot .app-event-tag{position:absolute;top:10px;right:10px;font-size:9px;font-weight:1000;letter-spacing:.08em;padding:3px 7px;border-radius:6px;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.25)}
         .app-event-slot .app-event-countdown{font-size:11px;font-weight:1000;color:#ffd166}
+        .app-event-slot .app-event-map{font-size:11px;font-weight:700;color:#ffd166}
         .app-event-slot.is-featured{border-color:#ffd166;background:linear-gradient(150deg,rgba(255,209,102,.22),rgba(8,20,42,.8))}
         .app-event-slot.is-active-mode{border-color:#5df2c2;box-shadow:0 0 0 2px rgba(93,242,194,.45)}
         #appHomeHero{flex:1 1 auto;min-height:0;display:flex;align-items:center;gap:18px;padding:10px 14px;border-radius:22px;border:3px solid rgba(255,255,255,.75);background:linear-gradient(155deg,color-mix(in srgb,var(--hero-color,#0b69bd) 68%,#0b69bd),#06428c 72%);box-shadow:0 8px 0 #042960,0 18px 35px rgba(0,28,75,.4),inset 0 3px rgba(255,255,255,.28);overflow:hidden;cursor:pointer}
@@ -434,6 +435,11 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
            cards, so the text wrapped into a mess. Same cards, roomier text. */
         .native-app .app-tournament-league-grid>div{padding:12px !important}
         .native-app .app-tournament-picker-grid>div{width:min(150px,calc(50vw - 24px)) !important;padding:12px !important}
+        /* Tournament picker cards: portrait disc (SVG art or emoji
+           fallback), sized by the wrapper so one bad portrait can't
+           blow the 150px card out. */
+        .app-tournament-picker-portrait{width:84px;height:84px;margin:0 auto 8px;border-radius:50%;display:grid;place-items:center;overflow:hidden;font-size:44px;background:rgba(255,255,255,.08);border:3px solid rgba(255,255,255,.35)}
+        .app-tournament-picker-portrait svg{width:92%;height:92%;display:block}
         .native-app .app-tournament-rounds{-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;scrollbar-width:none}
         .native-app .app-tournament-rounds::-webkit-scrollbar{display:none}
         /* Profile overlay: full-bleed in app mode (was a centered panel
@@ -6178,6 +6184,10 @@ const bolznstienPendingStrikes = [];
     function setAppHomeTab(tab) {
         if (!appHomeEl) return;
         if (tab === 'shop') { if (typeof openHomeShop === 'function') openHomeShop(); return; }
+        // The Events countdown ticks every 1s — stop it whenever the
+        // Events view hides (home / fighters / settings). Shop is an
+        // overlay over the still-active view, so it keeps ticking.
+        if (tab !== 'events') stopAppEventsCountdown();
         if (tab === 'settings') { appHomeTab = tab; buildAppSettingsView(); syncAppHome(); return; }
         if (tab === 'fighters' || tab === 'events' || tab === 'home') {
             appHomeTab = tab;
@@ -6560,6 +6570,17 @@ const bolznstienPendingStrikes = [];
     // dispatch the web events view uses. App mode only.
     let appEventsBuilt = false;
     let appEventsCountdownTimer = null;
+    function startAppEventsCountdown() {
+        if (typeof setInterval === 'function' && !appEventsCountdownTimer) {
+            appEventsCountdownTimer = setInterval(tickAppEventCountdowns, 1000);
+        }
+    }
+    function stopAppEventsCountdown() {
+        if (appEventsCountdownTimer) {
+            if (typeof clearInterval === 'function') clearInterval(appEventsCountdownTimer);
+            appEventsCountdownTimer = null;
+        }
+    }
     function appEventModeTag(id) {
         if (id === 'solo' || id === 'slop_sushi' || id === 'slop_sushi_plus') return 'FFA';
         if (id === 'slop_sushi_gauntlet') return '20F';
@@ -6576,15 +6597,43 @@ const bolznstienPendingStrikes = [];
         if (id === 'mirror') return '4V4';
         return '3V3';
     }
+    function appEventMapName(id) {
+        // Real map name for an event slot, mirroring the in-match HUD
+        // map label (same names, same fallbacks). Showdown-family modes
+        // play on the rotating showdown map; the special-cased modes
+        // have their own named arenas. Duels / Tower Duels / Fused play
+        // on the plain Duels cross-walls arena and Friendly Battle picks
+        // its map at launch — neither has a named map in code, so no
+        // invented name goes on those slots (null = no map line).
+        try {
+            if (id === 'construction') return getConstructionMapName();
+            if (id === 'mirror') return 'Mirror Arena';
+            if (id === 'damage_filler') return 'Damage Filler Arena';
+            if (id === 'brick_vault') return 'Vault Siege Arena';
+            if (id === 'arena_forge' || id === 'arena_forge_overclocked' || id === 'arena_forge_minion_surge' || id === 'arena_forge_hyper') return 'Three-Lane Foundry';
+            if (id === 'marked_mayhem') return 'Target Circuit';
+            if (id === 'tug_zone') return 'Open Tug Field';
+            if (id === 'knock_donate') return 'Knock n Donate Arena';
+            if (id === 'prop_hunt') return 'Prop Hunt — Crown Collapse';
+            if (id === 'trio') return 'Trio Showdown Arena';
+            if (id === 'tournament') return TOURNAMENT_MAP_NAME;
+            if (id === 'duels' || id === 'tower_duels' || id === 'fused' || id === 'custom_clash') return null;
+            return getActiveShowdownTheme().name || null;
+        } catch (_) { return null; }
+    }
     function appEventSlotHtml(id, opts = {}) {
         const entry = HOME_MODE_DATA[id];
         if (!entry) return '';
         const [, emoji, name, subtitle] = entry;
+        const mapName = appEventMapName(id);
+        const countdown = opts.countdown === 'daily' ? '<span class="app-event-countdown" data-app-countdown="daily"></span>' : '';
         return `<button type="button" class="app-event-slot${opts.featured ? ' is-featured' : ''}${showdownMode === id ? ' is-active-mode' : ''}" data-app-event="${id}">
           <span class="home-mode-map-preview theme-${id}" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
           <span class="app-event-tag">${appEventModeTag(id)}</span>
           <b>${emoji} ${name}</b>
           <small>${subtitle || ''}</small>
+          ${mapName ? `<span class="app-event-map">🗺 ${mapName}</span>` : ''}
+          ${countdown}
         </button>`;
     }
     function buildAppEventsView() {
@@ -6601,10 +6650,10 @@ const bolznstienPendingStrikes = [];
                 if (feat.dataset.appFeatured === 'season') { if (typeof openSeasonPass === 'function') openSeasonPass(); }
                 else if (feat.dataset.appFeatured === 'tournament') { if (typeof openTournamentHub === 'function') openTournamentHub(); }
             });
-            if (typeof setInterval === 'function' && !appEventsCountdownTimer) {
-                appEventsCountdownTimer = setInterval(tickAppEventCountdowns, 1000);
-            }
         }
+        // Re-armed on every visit: the interval is cleared when the
+        // Events view hides (setAppHomeTab), so a return visit restarts it.
+        startAppEventsCountdown();
         renderAppEventsView();
     }
     function renderAppEventsView() {
@@ -6622,7 +6671,7 @@ const bolznstienPendingStrikes = [];
         const popular = (HOME_POPULAR_MODE_IDS || []).filter((id) => HOME_MODE_DATA[id]).map((id) => appEventSlotHtml(id)).join('');
         let rotationIds = [];
         try { rotationIds = getHomeDailyRotationIds(); } catch (_) {}
-        const rotating = rotationIds.filter((id) => HOME_MODE_DATA[id]).map((id) => appEventSlotHtml(id)).join('');
+        const rotating = rotationIds.filter((id) => HOME_MODE_DATA[id]).map((id) => appEventSlotHtml(id, { countdown: 'daily' })).join('');
         view.innerHTML = `
           <div class="app-events-section">FEATURED EVENTS</div>
           <div class="app-events-grid">
@@ -14069,7 +14118,12 @@ const TOWER_DUELS_ACTIVE_TOWER_POWERS = 8;
           card.style.borderRadius = '16px'; card.style.padding = '24px';
           card.style.width = '150px'; card.style.cursor = 'pointer'; card.style.textAlign = 'center';
           const displayName = (brawlerData[id] && brawlerData[id].name) || id;
-          card.innerHTML = `<h3>${displayName}</h3><div style="font-size:11px;color:#a8c8ef">${id.toUpperCase()}</div>`;
+          const role = (brawlerData[id] && brawlerData[id].role) || 'Fighter';
+          let power = 1;
+          try { power = (getEffectiveBrawlerProgress(id) || {}).level || 1; } catch (_) {}
+          let portrait = '';
+          try { portrait = getBrawlerPortraitMarkup(id) || ''; } catch (_) { portrait = ''; }
+          card.innerHTML = `<div class="app-tournament-picker-portrait">${portrait}</div><h3>${displayName}</h3><div style="font-size:11px;color:#a8c8ef">${id.toUpperCase()}</div><div style="font-size:11px;font-weight:700;color:#ffd44f;margin-top:4px">${role} · POWER ${power}</div>`;
           card.onclick = () => {
               picked = id;
               pickedLabel.textContent = `Picked: ${displayName} — LOCKED for the tournament`;
@@ -14157,6 +14211,7 @@ const TOWER_DUELS_ACTIVE_TOWER_POWERS = 8;
       }
       const roundsWrap = document.createElement('div');
       roundsWrap.classList.add('app-tournament-rounds');
+      let playerMatchBox = null;
       roundsWrap.style.display = 'flex'; roundsWrap.style.gap = '12px';
       roundsWrap.style.overflowX = 'auto'; roundsWrap.style.maxWidth = '1100px';
       roundsWrap.style.width = '100%'; roundsWrap.style.padding = '0 12px';
@@ -14188,10 +14243,27 @@ const TOWER_DUELS_ACTIVE_TOWER_POWERS = 8;
                       return `<div style="padding:4px 6px;border-radius:6px;background:${won ? 'rgba(93,242,194,0.22)' : 'rgba(255,255,255,0.04)'};opacity:${lost ? 0.45 : 1};font-size:12px;font-weight:${won || e.isPlayer ? 900 : 400};color:${won ? '#5df2c2' : '#e8f4ff'}">${won ? '✓ ' : ''}${label.name} <span style="color:#a8c8ef;font-weight:400">• ${label.brawler}</span> <span style="font-size:10px;font-weight:900;color:${label.tierColor};border:1px solid ${label.tierColor}55;border-radius:4px;padding:2px 5px">${label.tierLabel}</span></div>`;
                   }).join('<div style="text-align:center;font-size:9px;color:#89b5d9;padding:1px 0">vs</div>');
                   box.innerHTML = rows + (isNext ? '<div style="text-align:center;font-size:10px;font-weight:900;color:#ffd44f;margin-top:4px">▶ YOUR NEXT MATCH</div>' : '');
+                  if (isNext) playerMatchBox = box;
                   col.appendChild(box);
               });
           }
           roundsWrap.appendChild(col);
+      }
+      // Jump to my match: the bracket is a sideways-scrolling strip
+      // (five 190px columns), so the player's next match can sit off
+      // screen — one tap scrolls it into the center of the strip.
+      if (playerMatch && playerMatchBox) {
+          const jumpBtn = document.createElement('button');
+          jumpBtn.textContent = '◎ JUMP TO MY MATCH';
+          jumpBtn.style.padding = '10px 18px'; jumpBtn.style.borderRadius = '10px';
+          jumpBtn.style.cursor = 'pointer'; jumpBtn.style.fontWeight = '900';
+          jumpBtn.style.fontSize = '13px'; jumpBtn.style.marginTop = '18px';
+          jumpBtn.style.background = '#ffd44f'; jumpBtn.style.border = '0'; jumpBtn.style.color = '#241a02';
+          jumpBtn.onclick = () => {
+              try { playerMatchBox.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }); }
+              catch (_) { try { playerMatchBox.scrollIntoView(); } catch (_) {} }
+          };
+          overlay.appendChild(jumpBtn);
       }
       overlay.appendChild(roundsWrap);
       const btnRow = document.createElement('div');
