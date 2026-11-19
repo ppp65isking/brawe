@@ -74,6 +74,28 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
       if (repaired[0] === repaired[2] && repaired[1] === repaired[3]) repaired[2] += 1;
       return nativeCreateLinearGradient(repaired[0], repaired[1], repaired[2], repaired[3]);
   };
+  // Radial twin of the linear-gradient guard above (2026-11-19): the same
+  // crash — one non-finite coordinate/radius kills the render loop — can come
+  // from any of the 64 createRadialGradient sites, and the four explosion
+  // branches (rankedRocketeerBurst, jackTradeHealing, fastpassLane,
+  // emperor-overlord core) pass ex.radius/progress raw. Repair non-finite
+  // args, log the first offender so the upstream NaN source stays
+  // diagnosable.
+  const nativeCreateRadialGradient = ctx.createRadialGradient.bind(ctx);
+  let warnedAboutInvalidRadialGradient = false;
+  ctx.createRadialGradient = function safeCreateRadialGradient(x0, y0, r0, x1, y1, r1) {
+      const raw = [x0, y0, r0, x1, y1, r1];
+      const repaired = raw.map((value) => Number.isFinite(Number(value)) ? Number(value) : 0);
+      if (raw.some((value) => !Number.isFinite(Number(value)))) {
+          if (!warnedAboutInvalidRadialGradient) {
+              warnedAboutInvalidRadialGradient = true;
+              console.warn('[GradientGuard] Repaired non-finite radial-gradient arguments.', raw, new Error().stack);
+          }
+      }
+      repaired[2] = Math.max(0, repaired[2]);
+      repaired[5] = Math.max(1, repaired[5]);
+      return nativeCreateRadialGradient(repaired[0], repaired[1], repaired[2], repaired[3], repaired[4], repaired[5]);
+  };
   const gadgetBtn = document.getElementById('gadget');
   const signatureBtn = document.getElementById('signature');
   const superBtn = document.getElementById('super');
@@ -589,6 +611,22 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         .app-kit-sheet-row{display:flex;justify-content:space-between;gap:10px;padding:9px 10px;border-radius:10px;background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.12);font-size:13px;font-weight:800}
         .app-kit-sheet-row small{color:#8fdfff;font-weight:1000;white-space:nowrap}
         .app-kit-sheet-row span{text-align:right}
+        /* Tapper sheet (2026-11-19): app home entry point for Tapper
+           Uppers — the web open buttons live on the hidden web home, so
+           app mode had no way to open tappers. Bottom-sheet language
+           matches the kit sheet above. */
+        .app-tapper-sheet{position:fixed;inset:0;z-index:100;display:flex;align-items:flex-end;justify-content:center;background:rgba(2,8,18,.62);backdrop-filter:blur(3px)}
+        .app-tapper-card{width:100%;max-width:560px;max-height:82dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;box-sizing:border-box;padding:16px 16px calc(16px + env(safe-area-inset-bottom));border-radius:20px 20px 0 0;border:2px solid rgba(255,255,255,.2);border-bottom:0;background:linear-gradient(160deg,#0a2140,#06101f);color:#fff;font-family:inherit;animation:appKitSheetIn .18s ease-out}
+        .app-tapper-card h2{margin:2px 0;font-size:22px;text-transform:uppercase;line-height:1.05}
+        .app-tapper-sub{font-size:13px;line-height:1.4;color:#9fc6e8;margin:4px 0 12px}
+        .app-tapper-btn{display:block;width:100%;margin-bottom:8px;padding:13px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff;font-weight:1000;font-size:15px;cursor:pointer;text-align:left}
+        .app-tapper-btn span{float:right;color:#ffd166}
+        .app-tapper-btn:disabled{opacity:.45;cursor:default}
+        .app-tapper-btn:active:not(:disabled){transform:scale(.98);filter:brightness(1.2)}
+        .app-tapper-bulk{background:linear-gradient(135deg,#5df2c2,#29c996);color:#041810;border:0;text-align:center}
+        .app-tapper-bulk span{color:#041810}
+        .app-tapper-empty{font-size:13px;color:#9fc6e8;text-align:center;margin:6px 0 12px}
+        .app-tapper-close{display:block;width:100%;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:transparent;color:#cfe6ff;font-weight:1000;font-size:14px;cursor:pointer}
         .app-kit-sheet-actions{display:flex;gap:8px}
         .app-kit-sheet-actions button{flex:1;padding:13px 16px;border:0;border-radius:12px;font-weight:1000;font-size:15px;cursor:pointer}
         .app-kit-sheet-select{background:linear-gradient(#7dff6a,#37c837);color:#062b07}
@@ -6739,6 +6777,7 @@ const bolznstienPendingStrikes = [];
               <div id="appHomeQuickRow">
                 <button type="button" class="app-quick-btn" data-app-quick="quests">📜 QUESTS<small>QUEST BOARD</small><span class="app-quick-badge" id="appQuestsBadge" hidden></span></button>
                 <button type="button" class="app-quick-btn" data-app-quick="pass">🎁 SEASON PASS<small>REWARDS</small><span class="app-quick-badge" id="appPassBadge" hidden></span></button>
+                <button type="button" class="app-quick-btn" data-app-quick="tappers">⭐ TAPPERS<small>OPEN DROPS</small><span class="app-quick-badge" id="appTapperBadge" hidden></span></button>
                 <button type="button" class="app-quick-btn" data-app-quick="settings">⚙️ SETTINGS<small>SAVE · GUIDE</small></button>
               </div>
             </div>
@@ -6797,7 +6836,9 @@ const bolznstienPendingStrikes = [];
             // Round 2: the SEASON PASS quick button opens the revived tier
             // road, not the quest list — the road's MISSIONS button links
             // back to the board, and QUESTS above still opens it directly.
-            else if (action === 'pass') { if (typeof openSeasonPass === 'function') openSeasonPass(); setAppDeepLink('pass'); }            else if (action === 'settings') { setAppHomeTab('settings'); }
+            else if (action === 'pass') { if (typeof openSeasonPass === 'function') openSeasonPass(); setAppDeepLink('pass'); }
+            else if (action === 'settings') { setAppHomeTab('settings'); }
+            else if (action === 'tappers') { if (typeof openAppTapperSheet === 'function') openAppTapperSheet(); }
         });
         // Move the live Brick Rush button into the app quick row: its 1s
         // interval (updateDailyBrickRushButton) keeps updating it by
@@ -6837,6 +6878,54 @@ const bolznstienPendingStrikes = [];
             new MutationObserver(syncAppHomeVisibility).observe(homeScreenEl, { attributes: true, attributeFilter: ['style'] });
         } catch (_) {}
         if (typeof setTimeout === 'function') setTimeout(syncAppHome, 0);
+    }
+    // Tapper Upper in the app (2026-11-19, Anthony: "idk if I can open
+    // tapper uppers here"): the open buttons live on the web home screen
+    // statsDiv, which the app home shell covers — so app mode had NO way
+    // to open tappers. The TAPPERS quick button opens this sheet with
+    // live counts; the buttons call the same openers the web buttons use
+    // (openStarrDrop / openSuperStarrDrop / openHyperStarrDrop /
+    // openAllTappers). The sheet closes first — the open overlays are
+    // full-screen and take over from there.
+    function openAppTapperSheet() {
+        if (!isNativeAppMode()) return;
+        appBuzz(10);
+        document.getElementById('appTapperSheet')?.remove();
+        const reg = playerData.starrDrops || 0;
+        const sup = playerData.superTapperCount || 0;
+        const hyp = playerData.hyperTapperCount || 0;
+        const total = reg + sup + hyp;
+        const sheet = document.createElement('div');
+        sheet.id = 'appTapperSheet';
+        sheet.className = 'app-tapper-sheet';
+        const row = (label, count, which, enabled) => `
+            <button type="button" class="app-tapper-btn" data-app-tapper="${which}" ${enabled ? '' : 'disabled'}>
+                ${label} <span>(${count})</span>
+            </button>`;
+        sheet.innerHTML = `
+            <div class="app-tapper-card">
+                <h2>⭐ TAPPERS</h2>
+                <p class="app-tapper-sub">Open your Tapper Uppers — same rewards as on the website.</p>
+                ${row('⭐ Open Tapper Upper', reg, 'reg', reg > 0)}
+                ${row('✦ Open SUPER TAPPER', sup, 'super', sup > 0)}
+                ${row('⚡ Open SURGE TAPPER', hyp, 'hyper', hyp > 0)}
+                ${total > 1 ? `<button type="button" class="app-tapper-btn app-tapper-bulk" data-app-tapper="bulk">🎁 BULK OPEN (${total})</button>` : ''}
+                ${total === 0 ? `<p class="app-tapper-empty">No tappers yet — earn them from milestones, quests and the Season Pass.</p>` : ''}
+                <button type="button" class="app-tapper-close" data-app-tapper="close">CLOSE</button>
+            </div>`;
+        sheet.addEventListener('click', (event) => {
+            const btn = event.target.closest('[data-app-tapper]');
+            if (!btn) return;
+            appBuzz(10);
+            const which = btn.dataset.appTapper;
+            sheet.remove();
+            if (which === 'reg' && typeof openStarrDrop === 'function') openStarrDrop();
+            else if (which === 'super' && typeof openSuperStarrDrop === 'function') openSuperStarrDrop();
+            else if (which === 'hyper' && typeof openHyperStarrDrop === 'function') openHyperStarrDrop();
+            else if (which === 'bulk' && typeof openAllTappers === 'function') openAllTappers();
+            try { syncAppHome(); } catch (_) {}
+        });
+        document.body.appendChild(sheet);
     }
     function syncAppHomeVisibility() {
         if (!appHomeEl) return;
@@ -6943,6 +7032,14 @@ const bolznstienPendingStrikes = [];
                 const n = (typeof getClaimableSeasonRewardCount === 'function') ? (getClaimableSeasonRewardCount() || 0) : 0;
                 pBadge.hidden = n <= 0;
                 pBadge.textContent = String(n);
+            }
+            // Tapper badge (2026-11-19): total unopened Tappers + Super +
+            // Surge, same live-count pattern as the quest/pass badges.
+            const tBadge = document.getElementById('appTapperBadge');
+            if (tBadge) {
+                const n = (playerData.starrDrops || 0) + (playerData.superTapperCount || 0) + (playerData.hyperTapperCount || 0);
+                tBadge.hidden = n <= 0;
+                tBadge.textContent = String(n);
             }
         } catch (_) {}
         // The app tab is the source of truth (home / fighters / events):
@@ -21420,6 +21517,11 @@ let heistFeverActive = false;
       let totalCorePieces = 0;
       const unlockedSkins = [];
       const unlockedHypers = [];
+      // Skin-vault-complete fallback lines (2026-11-19): rollTapperSkinDrop
+      // grants +750 coins itself and returns {fallback:true}; single open
+      // shows the line, bulk used to drop it silently. Coins were never
+      // lost — only the line was missing.
+      const fallbackSkinLines = [];
 
       const regRarities = [
           { name: 'Rare', coinMin: 15, coinMax: 30 },
@@ -21445,7 +21547,7 @@ let heistFeverActive = false;
           totalSouls += souls;
           if (Math.random() < 0.15) totalCorePieces += 2 + Math.floor(Math.random() * 9);
           const bulkSkin = rollTapperSkinDrop(0.02);
-          if (bulkSkin && !bulkSkin.fallback) unlockedSkins.push(bulkSkin.name);
+          if (bulkSkin) { if (bulkSkin.fallback) fallbackSkinLines.push(bulkSkin.name); else unlockedSkins.push(bulkSkin.name); }
       }
 
       const superRarities = [
@@ -21478,7 +21580,7 @@ let heistFeverActive = false;
           totalSouls += souls;
           for (let s2 = 0; s2 < splits; s2++) if (Math.random() < 0.15) totalCorePieces += 2 + Math.floor(Math.random() * 4);
           const bulkSkin2 = rollTapperSkinDrop(0.04);
-          if (bulkSkin2 && !bulkSkin2.fallback) unlockedSkins.push(bulkSkin2.name);
+          if (bulkSkin2) { if (bulkSkin2.fallback) fallbackSkinLines.push(bulkSkin2.name); else unlockedSkins.push(bulkSkin2.name); }
 
       }
 
@@ -21486,6 +21588,10 @@ let heistFeverActive = false;
           const isHyper = Math.random() < 0.65;
           const souls = rollSoulReward(45, 80);
           totalSouls += souls;
+          // Surge parity (2026-11-19): single open gives +8 gems on EVERY
+          // Surge tapper — unlock, all-unlocked overflow, and the 35%
+          // overflow branch. Bulk used to pay them only on an unlock.
+          totalGems += 8;
 
           if (isHyper) {
               const lockedHyperBrawlers = allBrawlers.filter((bid) => {
@@ -21497,7 +21603,6 @@ let heistFeverActive = false;
                   const chosenId = lockedHyperBrawlers[Math.floor(Math.random() * lockedHyperBrawlers.length)];
                   const chosenProg = getOrCreateProgress(chosenId);
                   chosenProg.hyperchargeUnlocked = true;
-                  totalGems += 8;
                   const chosenName = (brawlerData[chosenId] && brawlerData[chosenId].name) || chosenId;
                   unlockedHypers.push(chosenName);
               } else {
@@ -21562,6 +21667,7 @@ let heistFeverActive = false;
           <div style="color: #b983ff; font-weight: 800;">🧪 +${totalSouls.toLocaleString()} SOULS</div>
           ${totalCorePieces ? `<div style="color: #59f2d6; font-weight: 800;">💠 +${totalCorePieces.toLocaleString()} CORE PIECES</div>` : ''}
           ${unlockedSkins.length ? `<div style="color: #ff9ff3; font-weight: 800;">🎁 SKIN DROPS: ${unlockedSkins.join(', ')}</div>` : ''}
+          ${fallbackSkinLines.length ? `<div style="color: #ff9ff3; font-weight: 800;">🎁 ${fallbackSkinLines.join('<br>')}</div>` : ''}
           ${hypersText}
       `;
       overlay.appendChild(results);
@@ -71152,6 +71258,10 @@ function checkHit(target, b, i){
     }
 
     for(let i=explosions.length-1; i>=0; i--){
+        // Gradient-crash repair (2026-11-19): a NaN life/maxLife never
+        // satisfies life >= maxLife, so a corrupt entry would linger forever
+        // and throw every frame it renders. Drop it outright.
+        if (!Number.isFinite(Number(explosions[i].life)) || !Number.isFinite(Number(explosions[i].maxLife))) { explosions.splice(i, 1); continue; }
         explosions[i].life += dt;
         if (typeof explosions[i].vx === 'number') explosions[i].x += explosions[i].vx * dt;
         if (typeof explosions[i].vy === 'number') explosions[i].y += explosions[i].vy * dt;
@@ -89798,6 +89908,14 @@ function checkHit(target, b, i){
     for(const ex of explosions){
         const visualRadius = Math.max(80, Number(ex?.radius) || 0) + 80;
         if (!ex || !isWorldVisualVisible(ex.x, ex.y, visualRadius)) continue;
+        // Gradient-crash repair (2026-11-19): a corrupt explosion entry
+        // (non-finite radius/life/maxLife) throws inside createRadialGradient
+        // and kills the render loop. Repair in place so it renders harmlessly
+        // once (alpha 0 when life is forced to maxLife) and expires on the
+        // next update tick instead of lingering.
+        if (!Number.isFinite(Number(ex.radius))) ex.radius = 18;
+        if (!Number.isFinite(Number(ex.maxLife))) ex.maxLife = 0.2;
+        if (!Number.isFinite(Number(ex.life))) ex.life = ex.maxLife;
         if ((ex.isParticle || ex.isSteamPuff) && decorativeFxStride > 1 && (decorativeFxSeen++ % decorativeFxStride) !== 0) continue;
         const preserveWarningDetail = /warning|telegraph/i.test(String(ex.fxKind || '')) || !!ex.isBolznstienStrike;
         if (simplifyExplosionFx && !preserveWarningDetail && !ex.isParticle && !ex.isSteamPuff) {
