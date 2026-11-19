@@ -161,9 +161,9 @@ check('exchange note states the honest rule: tokens are earned, not purchased',
 
 // --- 5. Entry points: every season entry opens the ROAD now ---
 check('season chip opens the road',
-    game.includes("document.getElementById('appHomeSeasonChip')?.addEventListener('click', () => { appBuzz(10); if (typeof openSeasonPass === 'function') openSeasonPass(); });"));
+    game.includes("document.getElementById('appHomeSeasonChip')?.addEventListener('click', () => { appBuzz(10); if (typeof openSeasonPass === 'function') openSeasonPass(); setAppDeepLink('pass'); });")); // web-parity rebase: tier2-systems (PR #161) added the deep-link call to both handlers — the road open is unchanged
 check('SEASON PASS quick-row button opens the road (not the quest list)',
-    game.includes("else if (action === 'pass') { if (typeof openSeasonPass === 'function') openSeasonPass(); }"));
+    game.includes("else if (action === 'pass') { if (typeof openSeasonPass === 'function') openSeasonPass(); setAppDeepLink('pass'); }"));
 check('QUESTS quick-row button still opens the Quest Board directly',
     game.includes("if (action === 'quests') { if (typeof openQuestBoard === 'function') openQuestBoard(); }"));
 check('home SEASON PASS button (with level badge) opens the road',

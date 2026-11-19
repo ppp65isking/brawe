@@ -1,11 +1,14 @@
 package com.ppp65isking.arenaforge;
 
+import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
+
+import androidx.core.view.WindowCompat;
 
 import com.google.android.gms.games.PlayGames;
 import com.google.android.gms.games.PlayGamesSdk;
@@ -17,6 +20,7 @@ public class MainActivity extends BridgeActivity {
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+		applyEdgeToEdge();
 		applyImmersiveMode();
 		initPlayGames();
 	}
@@ -48,6 +52,24 @@ public class MainActivity extends BridgeActivity {
 		} catch (Exception e) {
 			Log.w(TAG, "Play Games initialization failed", e);
 		}
+	}
+
+	// Edge-to-edge (2026-11-19, status-bar gray fix): the app targets SDK
+	// 34, so the system does NOT force edge-to-edge — by default the
+	// WebView is laid out BELOW the status bar and the strip around the
+	// camera cutout paints the window background, which came from the
+	// Light theme (light gray). Opting out of decor-fits-system-windows
+	// + transparent bar colors lets the WebView draw under the bars and
+	// into the cutout, where the app's own dark background paints
+	// instead. The web shell keeps content below the cutout with
+	// safe-area-inset-top padding (#appHome), so nothing overlaps the
+	// status bar or camera. The bars stay hidden by applyImmersiveMode;
+	// when they transiently appear (swipe), they overlay the dark app
+	// background, not gray.
+	private void applyEdgeToEdge() {
+		WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+		getWindow().setStatusBarColor(Color.TRANSPARENT);
+		getWindow().setNavigationBarColor(Color.TRANSPARENT);
 	}
 
 	private void applyImmersiveMode() {
