@@ -30,3 +30,28 @@
 .fighter-gallery:not(.brawler-detail-view) .brawler-browser__grid{grid-template-columns:repeat(auto-fill,minmax(210px,1fr))!important;gap:16px!important}
 .fighter-gallery .brawler-card__trophies{font:800 11px/1.4 system-ui!important;color:#ffd763!important;margin-top:8px!important}
 @media(min-width:1100px){.fighter-gallery:not(.brawler-detail-view) .brawler-browser__grid{grid-template-columns:repeat(auto-fill,minmax(230px,1fr))!important;gap:18px!important}.fighter-gallery .brawler-card{padding:16px!important}.fighter-gallery .brawler-card__portrait{height:140px!important}.fighter-gallery .brawler-card__emoji svg{width:128px!important;height:128px!important}.fighter-gallery .brawler-card__name{font-size:18px!important}}
+
+/* ---- Brawl Space v2 web roster (2026-11-19) ----
+   Reference: brawlers-grid screenshot — wide landscape cards, the
+   portrait filling the card, name bottom-right in outline type,
+   trophy chip bottom-left, the kit bar as a right strip with the power
+   badge on top. Role / abilities / rank / traits live in the detail
+   view, not on the card. PIN stays (top-left chips row). */
+.fighter-gallery:not(.brawler-detail-view){background:linear-gradient(180deg,#1e7fe0,#0f5fc4) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='84' viewBox='0 0 84 84'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M42 12c-13 0-22 9-22 21 0 8 4 14 9 17v8a4 4 0 0 0 4 4h18a4 4 0 0 0 4-4v-8c5-3 9-9 9-17 0-12-9-21-22-21z'/%3E%3Ccircle cx='33' cy='32' r='5' fill='%23125fc0' fill-opacity='0.45'/%3E%3Ccircle cx='51' cy='32' r='5' fill='%23125fc0' fill-opacity='0.45'/%3E%3C/g%3E%3C/svg%3E") repeat!important}
+.fighter-gallery:not(.brawler-detail-view) .brawler-browser__grid{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))!important;gap:12px!important}
+@media(min-width:1100px){.fighter-gallery:not(.brawler-detail-view) .brawler-browser__grid{grid-template-columns:repeat(auto-fill,minmax(320px,1fr))!important;gap:14px!important}}
+.fighter-gallery .brawler-card{position:relative!important;aspect-ratio:16/10!important;padding:0!important;border:3px solid #0a1428!important;border-radius:12px!important;overflow:hidden!important;box-shadow:0 4px 0 rgba(0,0,0,.45)!important}
+.fighter-gallery .brawler-card__portrait{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;margin:0!important;border:0!important;border-radius:0!important}
+.fighter-gallery .brawler-card__emoji svg{width:120px!important;height:120px!important}
+.fighter-gallery .brawler-card__name{position:absolute!important;right:42px!important;bottom:6px!important;z-index:2!important;margin:0!important;font:1000 15px/1.2 system-ui!important;color:#fff!important;text-shadow:0 2px 0 #000,2px 0 0 #000,-2px 0 0 #000!important;text-align:right!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;max-width:calc(100% - 120px)!important}
+.fighter-gallery .brawler-card__trophies{position:absolute!important;left:6px!important;bottom:6px!important;z-index:2!important;margin:0!important;padding:2px 8px!important;border-radius:999px!important;background:rgba(10,16,32,.88)!important;border:2px solid #ff9f1c!important;font:1000 11px/1.4 system-ui!important;color:#ffd763!important}
+.fighter-gallery .brawler-card__role,.fighter-gallery .brawler-card__traits,.fighter-gallery .brawler-card__rank,.fighter-gallery .brawler-card__rankbar{display:none!important}
+.fighter-gallery .brawler-card__special-triangle{display:none!important}
+.fighter-gallery .brawler-card__chips{position:absolute!important;top:6px!important;left:8px!important;z-index:3!important;display:flex!important;gap:6px!important;margin:0!important}
+.fighter-gallery .brawler-card__chips>div{font-size:9px!important;padding:3px 8px!important}
+.fighter-gallery .brawler-card__abilities{position:absolute!important;top:44px!important;right:0!important;bottom:8px!important;width:34px!important;display:flex!important;flex-direction:column!important;align-items:center!important;gap:5px!important;margin:0!important;padding:0!important;min-height:0!important;border:0!important;border-radius:0!important;box-shadow:none!important}
+.fighter-gallery .brawler-card__abilities>div{flex:none!important}
+.fighter-gallery .brawler-card__abilities>div:first-child{position:static!important;transform:none!important;width:34px!important;height:34px!important;border:2px solid #fff!important;font-size:15px!important;box-shadow:0 0 12px rgba(168,85,247,.9)!important}
+.fighter-gallery .brawler-card__abilities>div:not(:first-child){width:24px!important;height:24px!important;border-radius:7px!important}
+.fighter-gallery .brawler-card__status{top:50%!important;transform:translate(-50%,-50%)!important}
+.fighter-gallery .brawler-card:has(.brawler-card__status--locked) .brawler-card__portrait{filter:grayscale(.75) brightness(.55)!important}

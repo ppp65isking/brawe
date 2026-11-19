@@ -815,19 +815,30 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
            pan-y means a vertical drag can never be stolen by a
            horizontal strip — that was the "hard to move" bug. */
         #appHomeFightersView{touch-action:pan-y}
-        #appFightersStrip{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px;overflow:visible;position:static;touch-action:pan-y;padding:4px 2px 12px;background:transparent;border-radius:0}
-        @media (orientation:landscape){#appFightersStrip{grid-template-columns:repeat(auto-fill,minmax(168px,1fr))}}
+        #appFightersStrip{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;overflow:visible;position:static;touch-action:pan-y;padding:4px 2px 12px;background:transparent;border-radius:0}
+        @media (orientation:landscape){#appFightersStrip{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}}
         @media (orientation:portrait) and (max-width:560px){#appFightersStrip{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}}
-        .app-fighter-card{width:auto;padding:0 0 10px;border-radius:16px;overflow:hidden;text-align:left}
-        .app-fighter-card .app-fighter-portrait{width:100%;height:118px;margin:0;border-radius:0;border:0}
-        .app-fighter-card .app-fighter-portrait svg{width:88%;height:88%}
-        .app-fighter-card b{display:block;font-size:14px;padding:8px 10px 0}
-        .app-fighter-card small{display:block;font-size:11px;padding:2px 10px 0}
-        .app-fighter-card .app-fighter-fav{top:8px;right:10px}
-        .app-fighter-power{position:absolute;top:8px;left:8px;z-index:2;min-width:30px;height:30px;padding:0 7px;display:grid;place-items:center;border-radius:999px;background:rgba(5,10,22,.8);border:2px solid #ffd166;color:#ffd166;font-size:13px;font-weight:1000}
-        .app-fighter-trophies{display:block;font-size:11px;font-weight:1000;color:#ffd166;padding:2px 10px 0}
-        .app-fighter-rarity{position:absolute;top:0;right:0;bottom:0;width:6px;background:var(--rarity-color,#9fb4c7);box-shadow:0 0 10px var(--rarity-color,#9fb4c7);opacity:.9}
-        .app-fighter-cost{padding:2px 10px 0}
+        .app-fighter-card{position:relative;width:auto;padding:0;border-radius:12px;overflow:hidden;text-align:left;border:3px solid #0a1428;box-shadow:0 4px 0 rgba(0,0,0,.45);aspect-ratio:16/10;background:var(--card-color,#0b69bd)}
+        .app-fighter-card .app-fighter-portrait{position:absolute;inset:0;width:100%;height:100%;margin:0;border:0;border-radius:0;display:grid;place-items:center}
+        .app-fighter-card .app-fighter-portrait svg{width:82%;height:82%}
+        .app-fighter-card b{position:absolute;right:42px;bottom:6px;z-index:2;max-width:calc(100% - 120px);font-size:15px;color:#fff;text-shadow:0 2px 0 #000,2px 0 0 #000,-2px 0 0 #000,0 -1px 0 #000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right}
+        .app-fighter-card small{display:none}
+        .app-fighter-card.is-locked small{display:flex;position:absolute;left:0;right:36px;top:50%;transform:translateY(-130%);z-index:3;justify-content:center;font-size:13px;font-weight:1000;color:#fff;text-shadow:0 2px 0 #000,2px 0 0 #000,-2px 0 0 #000}
+        .app-fighter-card.is-locked .app-fighter-portrait{filter:grayscale(.75) brightness(.55)}
+        .app-fighter-card .app-fighter-fav{top:6px;left:8px;right:auto}
+        .app-fighter-power{position:absolute;top:5px;right:3px;z-index:3;width:34px;height:34px;padding:0;display:grid;place-items:center;border-radius:999px;background:radial-gradient(circle at 35% 30%,#e9a7ff,#a855f7 60%,#7c3aed);border:2px solid #fff;color:#fff;font-size:15px;font-weight:1000;box-shadow:0 0 12px rgba(168,85,247,.9),0 2px 0 rgba(0,0,0,.5)}
+        .app-fighter-trophies{position:absolute;left:6px;bottom:6px;z-index:2;display:block;padding:2px 8px;border-radius:999px;background:rgba(10,16,32,.88);border:2px solid #ff9f1c;font-size:12px;font-weight:1000;color:#ffd166}
+        .app-fighter-rarity{position:absolute;top:0;right:0;bottom:0;width:34px;background:var(--rarity-color,#9fb4c7);box-shadow:inset 2px 0 0 rgba(0,0,0,.35);opacity:1}
+        .app-fighter-cost{position:absolute;left:0;right:36px;top:50%;transform:translateY(10%);z-index:3;display:block;text-align:center;font-size:11px;font-weight:1000;color:#ffd166;text-shadow:0 2px 0 #000,1px 0 0 #000,-1px 0 0 #000}
+        .app-fighter-kit{position:absolute;top:44px;right:0;bottom:8px;width:34px;z-index:2;display:flex;flex-direction:column;align-items:center;gap:5px}
+        .app-fighter-kit-icons{display:flex;flex-direction:column;align-items:center;gap:5px}
+        .app-fighter-kit-icons i{display:grid;place-items:center;width:24px;height:24px;border-radius:7px;background:rgba(10,16,32,.55);border:2px solid rgba(255,255,255,.35);font-size:12px;font-style:normal;filter:grayscale(1);opacity:.55}
+        .app-fighter-kit-icons i.on{filter:none;opacity:1;border-color:#fff;box-shadow:0 0 8px rgba(255,255,255,.5)}
+        .app-fighter-kit-icons i.kit-tool.on{background:#22c55e}
+        .app-fighter-kit-icons i.kit-talent.on{background:#eab308}
+        .app-fighter-kit-icons i.kit-surge.on{background:#ec4899}
+        .app-fighter-upg{margin-top:auto;min-width:22px;height:22px;padding:0 4px;display:grid;place-items:center;border-radius:999px;background:#ff3b30;border:2px solid #fff;color:#fff;font-size:12px;font-weight:1000;box-shadow:0 2px 0 rgba(0,0,0,.5)}
+        @media (orientation:portrait) and (max-width:560px){.app-fighter-card b{font-size:12px;right:40px}.app-fighter-trophies{font-size:11px;padding:1px 6px}.app-fighter-power{width:30px;height:30px;font-size:13px}.app-fighter-kit{top:40px}}
         /* FIGHTERS DETAIL SHOWCASE: big stage portrait, stats chips,
            kit slots as a 2-column grid. Portrait stacks, landscape
            puts the portrait left. */
@@ -908,6 +919,88 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         .ranked-queue-panel{border-color:rgba(0,245,212,.55) !important;box-shadow:0 0 42px rgba(0,245,212,.3),0 0 90px rgba(168,85,247,.22) !important}
         .ranked-pass-overlay{background:radial-gradient(ellipse at 50% 0%,rgba(88,28,135,.5),rgba(2,0,20,.97) 60%) !important}
         .ranked-pass-panel{border-color:rgba(0,245,212,.55) !important;box-shadow:0 0 42px rgba(0,245,212,.3),0 0 90px rgba(168,85,247,.22) !important}
+        /* ---- Brawl Space v2: exact-layout match to the reference screens (2026-11-19) ---- */
+        /* BS look: bright blue + faint skull pattern, chunky outline type, dark-navy buttons with a hard bottom shadow, yellow PLAY. */
+        #appHome{background:linear-gradient(180deg,#1e7fe0,#0f5fc4)}
+        .native-app #appHome{background:linear-gradient(180deg,#1e7fe0,#0f5fc4)}
+        #appHomeHeroView{background:transparent}
+        #appHomeFightersView{background:linear-gradient(180deg,#1e7fe0,#0f5fc4) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='84' viewBox='0 0 84 84'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M42 12c-13 0-22 9-22 21 0 8 4 14 9 17v8a4 4 0 0 0 4 4h18a4 4 0 0 0 4-4v-8c5-3 9-9 9-17 0-12-9-21-22-21z'/%3E%3Ccircle cx='33' cy='32' r='5' fill='%23125fc0' fill-opacity='0.45'/%3E%3Ccircle cx='51' cy='32' r='5' fill='%23125fc0' fill-opacity='0.45'/%3E%3C/g%3E%3C/svg%3E") repeat}
+        #appHomeEventsView{background:linear-gradient(180deg,#1e7fe0,#0f5fc4) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='84' viewBox='0 0 84 84'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M42 12c-13 0-22 9-22 21 0 8 4 14 9 17v8a4 4 0 0 0 4 4h18a4 4 0 0 0 4-4v-8c5-3 9-9 9-17 0-12-9-21-22-21z'/%3E%3Ccircle cx='33' cy='32' r='5' fill='%23125fc0' fill-opacity='0.45'/%3E%3Ccircle cx='51' cy='32' r='5' fill='%23125fc0' fill-opacity='0.45'/%3E%3C/g%3E%3C/svg%3E") repeat}
+        #appHomeHero{position:relative;border-color:#0a1428;box-shadow:0 6px 0 rgba(0,0,0,.4)}
+        .app-home-chip{padding:8px 12px;border-radius:999px;background:rgba(10,16,32,.85);border:2px solid #0a1428;font-weight:1000;font-size:13px;color:#fff;box-shadow:0 3px 0 rgba(0,0,0,.4);white-space:nowrap}
+        #appHomeRankedChip{--ranked-color:#00f5d4;color:var(--ranked-color)}
+        #appHomeMenuBtn{width:42px;height:42px;flex:none;border-radius:10px;background:#0a1428;border:2px solid rgba(255,255,255,.25);color:#fff;font-size:18px}
+        #appHomePlayRow{flex-wrap:wrap}
+        .app-home-xp{flex:1 1 100%;text-align:center;padding:8px 12px;border-radius:999px;background:rgba(10,16,32,.85);border:2px solid #0a1428;font-weight:1000;font-size:12px;color:#ffd166}
+        .app-hero-trophy{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:3;display:flex;align-items:center;gap:8px;padding:4px 10px;border-radius:999px;background:rgba(10,16,32,.85);border:2px solid #0a1428;font-weight:1000;color:#ffd166;box-shadow:0 3px 0 rgba(0,0,0,.4)}
+        .app-hero-trophy span{display:grid;place-items:center;width:26px;height:26px;border-radius:999px;background:radial-gradient(circle at 35% 30%,#e9a7ff,#a855f7 60%,#7c3aed);border:2px solid #fff;color:#fff;font-size:12px}
+        .app-home-map-count{display:block;font-size:11px;color:#ffd166;font-weight:800}
+        #appHomeSideRight{display:none;flex-direction:column;gap:12px}
+        .app-side-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:12px 8px;border-radius:14px;background:#0a1428;border:3px solid #0a1428;color:#fff;font-size:20px;font-weight:1000;box-shadow:0 4px 0 rgba(0,0,0,.45);cursor:pointer}
+        .app-side-btn small{font-size:11px;letter-spacing:.06em}
+        #appHomePlay{min-height:64px;font-size:26px;background:linear-gradient(180deg,#ffe14d,#ffb400);color:#231303;border:3px solid #0a1428;box-shadow:0 6px 0 rgba(0,0,0,.45);text-shadow:0 2px 0 rgba(255,255,255,.5)}
+        @media (orientation:landscape){
+          #appHomeHeroView.is-active{display:grid;grid-template-columns:minmax(140px,220px) minmax(0,1fr) minmax(140px,220px);grid-template-rows:minmax(0,1fr) auto;gap:12px}
+          #appHomeQuickRow{grid-column:1;grid-row:1;flex-direction:column;align-items:stretch}
+          #appHomeHero{grid-column:2;grid-row:1;min-height:0}
+          #appHomeSideRight{display:flex;grid-column:3;grid-row:1}
+          #appHomePlayRow{grid-column:1/-1;grid-row:2}
+        }
+        /* Events: big outlined title + sticky bottom tabs. */
+        .app-events-title{text-align:center;padding:18px 8px 4px}
+        .app-events-title span{font-size:30px;font-weight:1000;color:#ffd166;text-shadow:0 3px 0 #000,3px 0 0 #000,-3px 0 0 #000,0 -2px 0 #000,2px 2px 0 #000,-2px -2px 0 #000;letter-spacing:.02em}
+        .app-events-title small{display:block;margin-top:6px;font-size:12px;font-weight:1000;color:#fff;text-shadow:0 2px 0 #000}
+        .app-events-tabs{position:sticky;bottom:0;z-index:5;display:flex;gap:6px;margin:12px 0 0;padding:10px 0 0;background:transparent}
+        .app-events-tabs button{flex:1;padding:9px 4px;border-radius:8px;background:#16233d;border:2px solid rgba(255,255,255,.2);color:#fff;font-size:11px;font-weight:1000;cursor:pointer}
+        /* Ranked: pass card left, emblem center, PLAY foot — neon kept. */
+        .ranked-hub-panel{width:min(1100px,100%)}
+        .ranked-hub-overlay{background:radial-gradient(ellipse at 50% 0%,rgba(0,245,212,.28),transparent 55%),radial-gradient(ellipse at 85% 100%,rgba(168,85,247,.35),transparent 60%),repeating-linear-gradient(115deg,transparent 0 46px,rgba(255,255,255,.05) 46px 50px),rgba(4,8,20,.86)}
+        .ranked-hub-back{width:40px;height:40px;flex:none;border-radius:10px;background:#0a1428;border:2px solid rgba(255,255,255,.3);color:#fff;font-size:22px;font-weight:1000;cursor:pointer}
+        .ranked-hub-top{display:flex;align-items:center;gap:12px}
+        .ranked-hub-top>div{flex:1;text-align:left}
+        .ranked-hub-body{display:grid;grid-template-columns:280px minmax(0,1fr);gap:18px}
+        .ranked-hub-pass{flex-direction:column;align-items:center;gap:8px;padding:22px 16px;text-align:center;position:relative;background:linear-gradient(180deg,#ffd166,#ffb400);color:#231303;border:3px solid #0a1428;box-shadow:0 6px 0 rgba(0,0,0,.45)}
+        .ranked-hub-pass-clip{width:46px;height:16px;border-radius:8px;background:#0a1428;box-shadow:inset 0 0 0 2px rgba(255,255,255,.25)}
+        .ranked-hub-pass-title{font-size:15px;font-weight:1000;letter-spacing:.06em}
+        .ranked-hub-pass b{font-size:15px}
+        .ranked-hub-pass small{font-size:12px;color:#5b3a00}
+        .ranked-hub-pass-go{margin-left:0 !important;background:#0a1428;color:#fff;border-radius:999px;padding:6px 14px;font-size:12px;font-weight:1000}
+        .ranked-hub-main{justify-content:center}
+        .ranked-hub-season{display:flex;justify-content:space-between;font-size:12px;font-weight:1000;color:#8eaad0;letter-spacing:.08em}
+        .ranked-hub-ticks{display:flex;justify-content:space-between;font-size:11px;font-weight:1000;color:#8eaad0;margin-top:4px}
+        .ranked-hub-foot{display:flex;align-items:center;gap:14px;margin-top:18px}
+        .ranked-hub-boost{font-size:13px;font-weight:1000;color:#00f5d4;text-shadow:0 0 12px rgba(0,245,212,.8);white-space:nowrap}
+        .ranked-hub-play{flex:1}
+        @media (max-width:640px){.ranked-hub-body{grid-template-columns:1fr}.ranked-hub-pass{flex-direction:row}.ranked-hub-foot{flex-direction:column;align-items:stretch}.ranked-hub-boost{text-align:center}}
+        /* Pass: hero fighter + GET at the road's left. */
+        .circuit-road-wrap{display:flex;gap:16px;align-items:stretch}
+        .circuit-road-wrap .circuit-road{flex:1 1 auto;min-width:0}
+        .circuit-hero{flex:0 0 190px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:12px;background:rgba(10,16,32,.55);border:2px solid rgba(255,255,255,.15);border-radius:14px}
+        .circuit-hero-portrait{width:150px;height:150px;display:grid;place-items:center}
+        .circuit-hero-portrait svg{width:100%;height:100%}
+        .circuit-hero-get{padding:10px 28px;border-radius:12px;background:linear-gradient(180deg,#ffe14d,#ffb400);border:3px solid #0a1428;color:#231303;font-size:18px;font-weight:1000;box-shadow:0 4px 0 rgba(0,0,0,.45);cursor:pointer}
+        .circuit-hero-get:disabled{filter:grayscale(1);opacity:.55;cursor:default}
+        .circuit-hero small{font-size:11px;font-weight:1000;color:#ffd166;letter-spacing:.06em}
+        @media (max-width:640px){.circuit-road-wrap{flex-direction:column}.circuit-hero{flex:0 0 auto;flex-direction:row;align-items:center}.circuit-hero-portrait{width:90px;height:90px}}
+        /* Profile: diagonal split, ranked panel, hex favorites, prestige shield. */
+        .brick-bon-v2.profile-view>main{background:linear-gradient(115deg,#1e7fe0 0 46%,#6d4bd8 46% 100%)}
+        .brick-bon-v2.profile-view>main>.profile-hero{grid-column:1;grid-row:1/4}
+        .brick-bon-v2.profile-view>main>.profile-trophies{grid-column:2;grid-row:1}
+        .brick-bon-v2.profile-view>main>.profile-ranked{grid-column:2;grid-row:2}
+        .brick-bon-v2.profile-view>main>.profile-favorites-section{grid-column:2;grid-row:3}
+        .brick-bon-v2.profile-view>main>section:not(.profile-hero):not(.profile-trophies):not(.profile-ranked):not(.profile-favorites-section){grid-column:1/-1}
+        .profile-ranked-boxes{display:flex;gap:10px}
+        .profile-ranked-boxes>div{flex:1;display:flex;flex-direction:column;gap:2px;padding:12px;border-radius:10px;background:rgba(10,16,32,.6);border:1.5px solid rgba(255,255,255,.2)}
+        .profile-ranked-boxes small{font-size:10px;font-weight:1000;letter-spacing:.08em;color:#8eaad0}
+        .profile-ranked-boxes b{font-size:16px}
+        .profile-ranked-boxes span{font-size:12px;color:#ffd166;font-weight:800}
+        .profile-favorites-section{position:relative}
+        .profile-favorites-section .profile-favorite-icon{clip-path:polygon(50% 0,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%)}
+        .profile-prestige-shield{position:absolute;top:-14px;right:10px;display:flex;flex-direction:column;align-items:center;padding:6px 10px;border-radius:10px 10px 2px 2px;background:linear-gradient(180deg,#ffd166,#ffb400);border:2px solid #0a1428;color:#231303;box-shadow:0 3px 0 rgba(0,0,0,.4)}
+        .profile-prestige-shield b{font-size:16px}
+        .profile-prestige-shield small{font-size:8px;font-weight:1000;letter-spacing:.05em}
+        .profile-show-more{margin-top:10px;padding:8px 18px;border-radius:10px;background:#0a1428;border:2px solid rgba(255,255,255,.3);color:#fff;font-size:12px;font-weight:1000;cursor:pointer}
+
         `;
         document.head.appendChild(styleSheet);
 
@@ -2168,6 +2261,26 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         if (won) c.brawlerWins[fighterId] = Math.max(0, Math.floor(c.brawlerWins[fighterId] || 0)) + 1;
         return true;
     }
+    // Brawl Space v2: the profile's RANKED panel — current tier + RP and
+    // the highest tier reached (playerData.ranked.highPoints is kept by
+    // ensureRankedSeasonState). Same data as the hub, no new ranks.
+    function createRankedProfileSection() {
+        const section = document.createElement('section');
+        section.className = 'profile-section profile-ranked';
+        let cur = null, high = null;
+        try { cur = getRankedTierInfo((playerData.ranked && playerData.ranked.points) || 0); } catch (_) {}
+        try { high = getRankedTierInfo((playerData.ranked && playerData.ranked.highPoints) || 0); } catch (_) {}
+        section.innerHTML = `<h3>🏆 RANKED</h3><div class="profile-ranked-boxes"><div><small>CURRENT</small><b>${cur ? cur.label : '—'}</b><span>${((playerData.ranked && playerData.ranked.points) || 0).toLocaleString()} RP</span></div><div><small>HIGHEST</small><b>${high ? high.label : '—'}</b><span>${((playerData.ranked && playerData.ranked.highPoints) || 0).toLocaleString()} RP</span></div></div>`;
+        return section;
+    }
+    // Brawl Space v2: SHOW MORE closes the profile and opens the
+    // Fighters roster (app tab, or the web gallery) — the same route
+    // the home screen's fighter button uses.
+    function goProfileFighters() {
+        document.querySelector('.brick-bon-v2-overlay .brick-bon-close')?.click();
+        if (typeof isNativeAppMode === 'function' && isNativeAppMode()) { if (typeof setAppHomeTab === 'function') setAppHomeTab('fighters'); }
+        else { document.getElementById('brawlerBtn')?.click(); }
+    }
     function createTrophySection() {
         const total = getTotalTrophies(), trophyWins = getTotalTrophyWins(), top = getTopBrawlersByTrophies(5);
         const section = document.createElement('section');
@@ -2204,7 +2317,11 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         const hero=document.createElement('section');hero.className=`profile-hero ${profile.equippedProfileFrame||''} ${profile.equippedProfileBackground||''}`;hero.innerHTML=`<div><small>PLAYER PROFILE</small><h2>${profile.playerName}</h2><strong>${title}</strong></div><div class="profile-summary"><span><b>${s.totalBricks}</b>LIFETIME BRICKS</span><span><b>${s.prestiged}</b>PRESTIGED BRAWLERS</span><span><b>P${s.highestPrestige}</b>HIGHEST PRESTIGE</span></div>`;
         const edit=document.createElement('button');edit.textContent='EDIT PROFILE';edit.onclick=()=>openProfileEditor(()=>renderProfileCareer(container));hero.appendChild(edit);container.appendChild(hero);
         container.appendChild(createTrophySection());
-        const favorites=document.createElement('section');favorites.className='profile-section';favorites.innerHTML='<h3>FAVORITE BRAWLERS</h3>';const favrow=document.createElement('div');favrow.className='profile-favorites';profile.favorites.forEach((id,i)=>favrow.appendChild(createProfileBrawlerCard(id,i===0)));if(!profile.favorites.length)favrow.innerHTML='<p>No favorites selected yet.</p>';favorites.appendChild(favrow);container.appendChild(favorites);
+        container.appendChild(createRankedProfileSection());
+        const favorites=document.createElement('section');favorites.className='profile-section profile-favorites-section';favorites.innerHTML='<h3>FAVORITE FIGHTERS</h3>';const favrow=document.createElement('div');favrow.className='profile-favorites';profile.favorites.forEach((id,i)=>favrow.appendChild(createProfileBrawlerCard(id,i===0)));if(!profile.favorites.length)favrow.innerHTML='<p>No favorites selected yet.</p>';favorites.appendChild(favrow);
+        const shieldC=document.createElement('div');shieldC.className='profile-prestige-shield';shieldC.innerHTML=`<b>${s.prestiged}</b><small>TOTAL PRESTIGE</small>`;favorites.appendChild(shieldC);
+        const showMoreC=document.createElement('button');showMoreC.type='button';showMoreC.className='profile-show-more';showMoreC.textContent='SHOW MORE';showMoreC.onclick=()=>goProfileFighters();favorites.appendChild(showMoreC);
+        container.appendChild(favorites);
         const showcase=document.createElement('section');showcase.className='profile-section';showcase.innerHTML='<h3>BADGE SHOWCASE</h3>';const badgeRow=document.createElement('div');badgeRow.className='profile-badges';profile.showcaseBadges.forEach(id=>{const d=PROFILE_BADGE_DEFS[id];if(d){const badge=document.createElement('div');badge.innerHTML=`<b>${d.icon}</b><small>${d.name}</small>`;badgeRow.appendChild(badge)}});if(!badgeRow.children.length)badgeRow.innerHTML='<p>Edit your profile to showcase unlocked badges.</p>';showcase.appendChild(badgeRow);container.appendChild(showcase);
         const top=document.createElement('section');top.className='profile-section';top.innerHTML='<div class="profile-section-head"><h3>TOP BRAWLERS BY LIFETIME BRICKS</h3></div><div class="profile-top-list"></div>';const list=top.querySelector('.profile-top-list');getTopProfileBrawlers().forEach((b,i)=>{const row=document.createElement('div');row.className=i<3?`podium-${i+1}`:'';row.innerHTML=`<b>#${i+1}</b><span><i class="fighter-inline-portrait">${getBrawlerPortraitMarkup(b.id)}</i>${b.name}</span><small>${b.bricks} Bricks</small><small>Prestige ${b.prestige}</small>`;list.appendChild(row)});container.appendChild(top);
         const career=document.createElement('section');career.className='profile-section';const c=profile.careerStats;career.innerHTML=`<h3>CAREER STATS</h3><div class="career-grid"><span><b>${s.totalBricks}</b>Lifetime Bricks</span><span><b>${s.highestPrestige}</b>Highest Prestige</span><span><b>${s.prestiged}</b>Prestiged Brawlers</span><span><b>${playerData.bestWinStreak||0}</b>Highest Win Streak</span><span><b>${c.matchesPlayed}</b>Matches Played*</span><span><b>${c.soloWins}</b>Solo Wins*</span><span><b>${c.teamWins}</b>Team Wins*</span><span><b>${c.rankedWins}</b>Ranked Wins*</span><span><b>${c.eliminations}</b>Eliminations*</span></div><p>* Tracked since Profile Update</p>`;container.appendChild(career);
@@ -2262,13 +2379,15 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         career.innerHTML = `<h3>CAREER STATS</h3><div class="career-grid"><span><b>${s.totalBricks}</b>Lifetime Bricks</span><span><b>${s.highestPrestige}</b>Highest Prestige</span><span><b>${s.prestiged}</b>Prestiged Brawlers</span><span><b>${playerData.bestWinStreak || 0}</b>Highest Win Streak</span><span><b>${c.matchesPlayed}</b>Matches Played*</span><span><b>${c.soloWins}</b>Solo Wins*</span><span><b>${c.teamWins}</b>Team Wins*</span><span><b>${c.rankedWins}</b>Ranked Wins*</span><span><b>${c.eliminations}</b>Eliminations*</span><span><b>${fightersUnlocked}</b>Fighters Unlocked</span><span><b>${playerData.winStreak || 0}</b>Current Win Streak</span></div><p>* Tracked since Profile Update</p>`;
         main.appendChild(career);
         const favorites = document.createElement('section');
-        favorites.className = 'profile-section';
-        favorites.innerHTML = '<h3>FAVORITE BRAWLERS</h3>';
+        favorites.className = 'profile-section profile-favorites-section';
+        favorites.innerHTML = '<h3>FAVORITE FIGHTERS</h3>';
         const favrow = document.createElement('div');
         favrow.className = 'profile-favorites';
         profile.favorites.forEach((id, i) => favrow.appendChild(createProfileBrawlerCard(id, i === 0)));
         if (!profile.favorites.length) favrow.innerHTML = '<p>No favorites yet — set them in Edit Profile.</p>';
         favorites.appendChild(favrow);
+        const shieldO = document.createElement('div'); shieldO.className = 'profile-prestige-shield'; shieldO.innerHTML = `<b>${s.prestiged}</b><small>TOTAL PRESTIGE</small>`; favorites.appendChild(shieldO);
+        const showMoreO = document.createElement('button'); showMoreO.type = 'button'; showMoreO.className = 'profile-show-more'; showMoreO.textContent = 'SHOW MORE'; showMoreO.onclick = () => goProfileFighters(); favorites.appendChild(showMoreO);
         main.appendChild(favorites);
         const showcase = document.createElement('section');
         showcase.className = 'profile-section';
@@ -2339,10 +2458,14 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         main.appendChild(road);
         const rankedPoints = (playerData.ranked && playerData.ranked.points) || 0;
         const rankedInfo = (typeof getRankedTierInfo === 'function') ? getRankedTierInfo(rankedPoints) : { label: 'Brick Bronze I', color: '#b97845', nextLabel: 'Brick Bronze II', nextThreshold: 100 };
+        // Brawl Space v2: the profile's RANKED panel shows the highest tier
+        // reached too, like the reference profile screen.
+        const rankedHighPoints = (playerData.ranked && playerData.ranked.highPoints) || 0;
+        const rankedHighInfo = (typeof getRankedTierInfo === 'function') ? getRankedTierInfo(rankedHighPoints) : rankedInfo;
         const rankedStreak = (playerData.ranked && playerData.ranked.winStreak) || 0;
         const ranked = document.createElement('section');
-        ranked.className = 'profile-section';
-        ranked.innerHTML = `<h3>RANKED</h3><div><b style="color:${rankedInfo.color};">${rankedInfo.label}</b><span> · ${rankedPoints} RP</span></div><div>${rankedInfo.nextLabel ? `Next: ${rankedInfo.nextLabel} at ${rankedInfo.nextThreshold} RP` : 'Top division reached.'}</div><div>Ranked Win Streak: ${rankedStreak}</div>`;
+        ranked.className = 'profile-section profile-ranked';
+        ranked.innerHTML = `<h3>🏆 RANKED</h3><div><b style="color:${rankedInfo.color};">${rankedInfo.label}</b><span> · ${rankedPoints} RP</span></div><div>Highest: ${rankedHighInfo.label} · ${rankedHighPoints} RP</div><div>${rankedInfo.nextLabel ? `Next: ${rankedInfo.nextLabel} at ${rankedInfo.nextThreshold} RP` : 'Top division reached.'}</div><div>Ranked Win Streak: ${rankedStreak}</div>`;
         const rankedBtn2 = document.createElement('button');
         rankedBtn2.textContent = 'PLAY RANKED';
         rankedBtn2.onclick = () => { close(); if (typeof openRankedQueueUI === 'function') openRankedQueueUI(); };
@@ -6905,13 +7028,17 @@ const bolznstienPendingStrikes = [];
           <div id="appHomeTop">
             <div id="appHomePlayer"><span aria-hidden="true">👤</span><span id="appHomePlayerName">BRAWLER</span></div>
             <div id="appHomeSeasonChip">SEASON</div>
+            <div id="appHomeTrophyChip" class="app-home-chip">🏆 0</div>
+            <div id="appHomeRankedChip" class="app-home-chip">🏆 RANKED</div>
             <div id="appHomeCurrencies"></div>
             <button id="appHomeSaveBtn" type="button" aria-label="Save code">💾</button>
+            <button id="appHomeMenuBtn" type="button" aria-label="More options">☰</button>
           </div>
           <div id="appHomeBody">
             <div id="appHomeHeroView" class="is-active">
               <div id="appHomeHero" role="button" tabindex="0" aria-label="Change fighter"></div>
               <div id="appHomePlayRow">
+                <div id="appHomeXpChip" class="app-home-xp" hidden>🎫 LV 1</div>
                 <button id="appHomeEventChip" type="button" aria-label="Change event"></button>
                 <button id="appHomePlay" type="button">▶ PLAY</button>
               </div>
@@ -6921,6 +7048,10 @@ const bolznstienPendingStrikes = [];
                 <button type="button" class="app-quick-btn" data-app-quick="tappers">⭐ TAPPERS<small>OPEN DROPS</small><span class="app-quick-badge" id="appTapperBadge" hidden></span></button>
                 <button type="button" class="app-quick-btn" data-app-quick="more">☰ MORE<small>TOOLS · EXTRAS</small></button>
                 <button type="button" class="app-quick-btn" data-app-quick="settings">⚙️ SETTINGS<small>SAVE · GUIDE</small></button>
+              </div>
+              <div id="appHomeSideRight">
+                <button type="button" class="app-side-btn" data-app-side="ranked">🏆<small>RANKED</small></button>
+                <button type="button" class="app-side-btn" data-app-side="news">📰<small>NEWS</small></button>
               </div>
             </div>
             <div id="appHomeFightersView"></div>
@@ -6958,6 +7089,11 @@ const bolznstienPendingStrikes = [];
         document.getElementById('appHomeHero')?.addEventListener('keydown', (event) => {
             if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); playAppHeroVoiceLine(); setAppHomeTab('fighters'); }
         });
+        // Brawl Space v2: home side buttons — same targets as the MORE
+        // sheet / quick row, no new features. Menu opens the MORE sheet.
+        document.getElementById('appHomeMenuBtn')?.addEventListener('click', () => { appBuzz(10); if (typeof openAppMoreSheet === 'function') openAppMoreSheet(); });
+        document.querySelector('[data-app-side="ranked"]')?.addEventListener('click', () => { appBuzz(10); if (typeof openRankedQueueUI === 'function') openRankedQueueUI(); });
+        document.querySelector('[data-app-side="news"]')?.addEventListener('click', () => { appBuzz(10); if (typeof openBalanceBlog === 'function') openBalanceBlog(); });
         document.getElementById('appHomePlay')?.addEventListener('click', () => {
             appBuzz(12);
             document.getElementById('startMatch')?.click();
@@ -7180,7 +7316,14 @@ const bolznstienPendingStrikes = [];
               <span class="app-hero-side-tag">OPEN</span>
             </button>
           </div>`;
+        // Brawl Space v2: the trophy chip floats above the hero's head,
+        // like the reference home screen — this fighter's trophies plus
+        // the power badge. Guarded: trophies default to 0, never blank.
+        let heroTrophies = 0;
+        try { heroTrophies = (typeof getBrawlerTrophies === 'function') ? getBrawlerTrophies(selectedBrawler) : 0; } catch (_) { heroTrophies = 0; }
+        const heroTrophyHtml = `<div class="app-hero-trophy" aria-hidden="true">🏆 ${heroTrophies.toLocaleString()}<span>${level}</span></div>`;
         hero.innerHTML = `
+          ${heroTrophyHtml}
           ${portraitHtml}
           <div class="app-hero-info">
             <small>READY TO BRAWL</small>
@@ -7203,12 +7346,35 @@ const bolznstienPendingStrikes = [];
         if (nameEl) nameEl.textContent = String(playerData?.profile?.playerName || playerData?.playerName || 'BRAWLER').trim().slice(0, 18) || 'BRAWLER';
         const seasonEl = document.getElementById('appHomeSeasonChip');
         if (seasonEl) { const s = getActiveSeasonProfile(); seasonEl.textContent = `Season ${s.seasonNumber} · ${s.name}`; }
+        // Brawl Space v2: the top bar carries the same chips as the
+        // reference home screen — total trophies, current ranked tier,
+        // and the season-pass XP chip in the play row. All guarded:
+        // a missing helper must never blank the top bar.
+        try {
+            const trophyEl = document.getElementById('appHomeTrophyChip');
+            if (trophyEl && typeof getTotalTrophies === 'function') trophyEl.textContent = `🏆 ${getTotalTrophies().toLocaleString()}`;
+            const rankedEl = document.getElementById('appHomeRankedChip');
+            if (rankedEl && typeof getRankedTierInfo === 'function') {
+                const rp = playerData?.ranked?.points || 0;
+                const ti = getRankedTierInfo(rp);
+                rankedEl.textContent = `🏆 ${ti.label} · ${rp.toLocaleString()} RP`;
+                rankedEl.style.setProperty('--ranked-color', ti.color || '#00f5d4');
+            }
+            const xpEl = document.getElementById('appHomeXpChip');
+            if (xpEl && playerData?.seasonPass) {
+                const pass = playerData.seasonPass;
+                xpEl.textContent = `🎫 LV ${pass.level} · ${Math.min(100, pass.xp % 100)}/100`;
+                xpEl.hidden = false;
+            } else if (xpEl) xpEl.hidden = true;
+        } catch (_) {}
     }
     function renderAppHomeEventChip() {
         const chip = document.getElementById('appHomeEventChip');
         if (!chip) return;
         const modeEntry = HOME_MODE_DATA?.[showdownMode] || HOME_MODE_DATA?.solo || [showdownMode, '⚔', 'Battle', 'Enter the arena'];
-        chip.innerHTML = `<span aria-hidden="true">${modeEntry[1] || '⚔'}</span><b>${modeEntry[2] || 'Battle'}</b><small>${modeEntry[3] || ''}</small><i>CHANGE</i>`;
+        let mapCountdown = '';
+        try { mapCountdown = `New map in: ${formatHomeEventCountdown(getHomeDailyRotationEndsAt() - Date.now())}`; } catch (_) {}
+        chip.innerHTML = `<span aria-hidden="true">${modeEntry[1] || '⚔'}</span><b>${modeEntry[2] || 'Battle'}</b><small>${modeEntry[3] || ''}</small><small class="app-home-map-count">${mapCountdown}</small><i>CHANGE</i>`;
     }
     // App polish pass (H2): cold-start fallback. If the hero render
     // throws (bad save data, a missing portrait), the home screen must
@@ -7579,10 +7745,16 @@ const bolznstienPendingStrikes = [];
             try { trophies = (typeof getBrawlerTrophies === 'function') ? getBrawlerTrophies(id) : 0; } catch (_) { trophies = 0; }
             let portrait = `<span style="font-size:26px">${data.emoji || '🙂'}</span>`;
             try { portrait = getBrawlerPortraitMarkup(id); } catch (_) {}
+            // Brawl Space v2: the right strip shows the real kit state —
+            // tool / talent / Core Surge unlocked or not — and the red
+            // badge counts the kit pieces still to unlock (0 hides it).
+            const kitTool = !!pData.gadgetUnlocked, kitTalent = !!pData.starPowerUnlocked, kitSurge = !!pData.hyperchargeUnlocked;
+            const kitUpg = (kitTool ? 0 : 1) + (kitTalent ? 0 : 1) + (kitSurge ? 0 : 1);
             return `<button type="button" class="app-fighter-card${appFightersState.focused === id ? ' is-selected' : ''}${locked ? ' is-locked' : ''}" data-app-fighter="${id}" style="--card-color:${data.color || '#0b69bd'}">
               <span class="app-fighter-portrait">${portrait}</span>
               <span class="app-fighter-power">${pData.level || 1}</span>
               <span class="app-fighter-rarity" style="--rarity-color:${rarityColor}" aria-hidden="true"></span>
+              <span class="app-fighter-kit" aria-hidden="true"><span class="app-fighter-kit-icons"><i class="kit-tool${kitTool ? ' on' : ''}">🔧</i><i class="kit-talent${kitTalent ? ' on' : ''}">⭐</i><i class="kit-surge${kitSurge ? ' on' : ''}">⚡</i></span>${kitUpg > 0 ? `<span class="app-fighter-upg">${kitUpg}</span>` : ''}</span>
               <span class="app-fighter-fav${isFavoriteBrawler(id) ? ' is-fav' : ''}" data-app-favorite="${id}" role="button" aria-label="Favorite ${data.name || id}">${isFavoriteBrawler(id) ? '★' : '☆'}</span>
               <b>${data.name || id}</b>
               <small>${locked ? '🔒 LOCKED' : `POWER ${pData.level || 1}`}</small>${soulCost > 0 ? `
@@ -7989,6 +8161,8 @@ const bolznstienPendingStrikes = [];
                 if (slot) { appBuzz(10); appEventSlotTap(slot.dataset.appEvent); return; }
                 const od = event.target.closest('[data-app-overdrive]');
                 if (od) { appBuzz(10); if (typeof openQuestBoard === 'function') openQuestBoard('overdrive'); return; }
+                const tab = event.target.closest('[data-app-events-tab]');
+                if (tab) { appBuzz(10); const target = view.querySelector(`[data-app-events-section="${tab.dataset.appEventsTab}"]`) || view.querySelector(`[data-app-featured="${tab.dataset.appEventsTab}"]`); target?.scrollIntoView({ block: 'start', behavior: 'smooth' }); return; }
                 const feat = event.target.closest('[data-app-featured]');
                 if (!feat) return;
                 appBuzz(10);
@@ -8027,7 +8201,7 @@ const bolznstienPendingStrikes = [];
                 const odMain = getOverdriveMainTier();
                 const odDaily = getOverdriveDailyTier();
                 overdriveHtml = `
-          <div class="app-events-section">CORE SURGE OVERDRIVE</div>
+          <div class="app-events-section" data-app-events-section="overdrive">CORE SURGE OVERDRIVE</div>
           <div class="app-events-grid">
             <button type="button" class="app-event-slot is-featured" data-app-overdrive="1">
               <span class="home-mode-map-preview theme-season" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
@@ -8039,7 +8213,8 @@ const bolznstienPendingStrikes = [];
             }
         } catch (_) { overdriveHtml = ''; }
         view.innerHTML = `
-          <div class="app-events-section">FEATURED EVENTS</div>
+          <div class="app-events-title"><span>PLAY TO PROGRESS!</span><small>${seasonCountdown}</small></div>
+          <div class="app-events-section" data-app-events-section="featured">FEATURED EVENTS</div>
           <div class="app-events-grid">
             <button type="button" class="app-event-slot is-featured" data-app-featured="season">
               <span class="home-mode-map-preview theme-season" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
@@ -8056,10 +8231,16 @@ const bolznstienPendingStrikes = [];
             </button>
           </div>
           ${overdriveHtml}
-          <div class="app-events-section">POPULAR EVENTS</div>
+          <div class="app-events-section" data-app-events-section="popular">POPULAR EVENTS</div>
           <div class="app-events-grid">${popular}</div>
-          <div class="app-events-section">ROTATING EVENTS · <span class="app-event-countdown" data-app-countdown="daily"></span></div>
-          <div class="app-events-grid">${rotating || '<div class="app-fighters-empty">No rotating events right now.</div>'}</div>`;
+          <div class="app-events-section" data-app-events-section="rotating">ROTATING EVENTS · <span class="app-event-countdown" data-app-countdown="daily"></span></div>
+          <div class="app-events-grid">${rotating || '<div class="app-fighters-empty">No rotating events right now.</div>'}</div>
+          <div class="app-events-tabs" role="tablist" aria-label="Event sections">
+            <button type="button" data-app-events-tab="featured">FEATURED</button>
+            <button type="button" data-app-events-tab="popular">POPULAR</button>
+            <button type="button" data-app-events-tab="rotating">ROTATING</button>
+            <button type="button" data-app-events-tab="tournament">TOURNAMENT</button>
+          </div>`;
         tickAppEventCountdowns();
     }
     function tickAppEventCountdowns() {
@@ -23090,7 +23271,7 @@ let heistFeverActive = false;
               <div style="font-size:clamp(16px, 2.4vw, 20px);font-weight:900;letter-spacing:0.04em;background:linear-gradient(90deg,#ffd166,#ff9f43);-webkit-background-clip:text;-webkit-text-fill-color:transparent;display:flex;align-items:center;gap:6px;">
                   🏆 BRICK ROAD · BRICK LEAGUES
               </div>
-              <div style="font-size:11px;color:#8eaad0;margin-top:1px;">Earn Bricks with any fighter to unlock epic milestone rewards</div>
+              <div style="font-size:11px;color:#8eaad0;margin-top:1px;">${league.name.toUpperCase()} · Earn Bricks with any fighter to unlock epic milestone rewards</div>
           `;
 
           const headerRight = document.createElement('div');
@@ -23105,6 +23286,10 @@ let heistFeverActive = false;
           closeBtn.style.cssText = 'width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);color:#dbe8ff;font-size:15px;font-weight:bold;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.18s;flex-shrink:0;';
           closeBtn.onclick = closeBrickRoad;
 
+          const brickChip = document.createElement('div');
+          brickChip.style.cssText = 'background:rgba(255,209,102,.14);border:1.5px solid #ffd166;padding:6px 12px;border-radius:999px;font-weight:900;color:#ffd166;font-size:13px;display:flex;align-items:center;gap:5px;';
+          brickChip.textContent = `🧱 ${totalBricks.toLocaleString()}`;
+          headerRight.appendChild(brickChip);
           headerRight.appendChild(leagueBadge);
           headerRight.appendChild(closeBtn);
           header.appendChild(titleBox);
@@ -23143,7 +23328,7 @@ let heistFeverActive = false;
 
           // Milestones Vertical Road Track
           const trackContainer = document.createElement('div');
-          trackContainer.style.cssText = 'display:flex;flex-direction:row;gap:12px;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;padding:6px 2px 14px;box-sizing:border-box;';
+          trackContainer.style.cssText = 'position:relative;display:flex;flex-direction:row;gap:12px;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;padding:6px 2px 14px;box-sizing:border-box;';
 
           BRICK_ROAD_MILESTONES.forEach((m, idx) => {
               const isReached = totalBricks >= m.bricks;
@@ -23151,13 +23336,19 @@ let heistFeverActive = false;
               const canClaim = isReached && !isClaimed;
 
               const mCard = document.createElement('div');
-              mCard.style.cssText = `flex:0 0 208px;scroll-snap-align:start;display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding:16px 12px;border-radius:14px;background:${canClaim ? 'linear-gradient(135deg,rgba(30,60,95,0.9),rgba(14,30,55,0.9))' : isClaimed ? 'rgba(10,20,38,0.5)' : 'rgba(8,14,28,0.7)'};border:1.5px solid ${canClaim ? '#5df2c2' : isClaimed ? 'rgba(93,242,194,0.3)' : isReached ? '#ffd166' : 'rgba(255,255,255,0.08)'};transition:all 0.2s;box-sizing:border-box;`;
+              mCard.style.cssText = `position:relative;flex:0 0 150px;scroll-snap-align:start;display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:0 4px 12px;background:transparent;border:0;box-sizing:border-box;`;
+              // Brawl Space v2: each node draws its own rail segment —
+              // gold once reached, dim beyond — so the segments join
+              // into one continuous rail behind the icon circles.
+              const railSeg = document.createElement('div');
+              railSeg.style.cssText = `position:absolute;left:-6px;right:-6px;top:28px;height:8px;border-radius:4px;background:${isReached ? '#ffd166' : 'rgba(255,255,255,.14)'};`;
+              mCard.appendChild(railSeg);
 
               const mLeft = document.createElement('div');
               mLeft.style.cssText = 'display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;min-width:0;';
 
               const iconBadge = document.createElement('div');
-              iconBadge.style.cssText = `width:58px;height:58px;border-radius:12px;background:radial-gradient(circle,rgba(255,209,102,0.2),rgba(8,16,32,0.9));border:1.5px solid ${canClaim ? '#5df2c2' : '#ffd166'};display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0;`;
+              iconBadge.style.cssText = `position:relative;z-index:1;width:64px;height:64px;border-radius:50%;background:radial-gradient(circle,rgba(255,209,102,0.25),rgba(8,16,32,0.95));border:2px solid ${canClaim ? '#5df2c2' : '#ffd166'};box-shadow:0 0 0 3px rgba(0,0,0,.4),0 0 16px ${canClaim ? 'rgba(93,242,194,.5)' : 'rgba(255,209,102,.35)'};display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0;`;
               iconBadge.textContent = m.icon;
 
               const info = document.createElement('div');
@@ -23190,11 +23381,39 @@ let heistFeverActive = false;
 
               mCard.appendChild(mLeft);
               mCard.appendChild(mRight);
-              if ((canClaim || !isReached) && !trackContainer.querySelector('[data-brick-road-next]')) mCard.setAttribute('data-brick-road-next', '1');
+              if ((canClaim || !isReached) && !trackContainer.querySelector('[data-brick-road-next]')) { mCard.setAttribute('data-brick-road-next', '1'); const nextGoal = document.createElement('div'); nextGoal.style.cssText = 'font-size:11px;font-weight:1000;color:#fff;background:rgba(10,16,32,.85);border:1.5px solid #ffd166;border-radius:6px;padding:2px 8px;'; nextGoal.textContent = 'NEXT GOAL'; mCard.appendChild(nextGoal); }
               trackContainer.appendChild(mCard);
           });
 
           body.appendChild(trackContainer);
+          // Brawl Space v2: the hero fighter stands under the road with
+          // the total-bricks tag, the next big reward card, and the
+          // numbered tier row — same data as the summary card above.
+          const roadStage = document.createElement('div');
+          roadStage.style.cssText = 'display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;box-sizing:border-box;';
+          let stagePortrait = '';
+          try { stagePortrait = (typeof getBrawlerPortraitMarkup === 'function') ? getBrawlerPortraitMarkup(selectedBrawler) : ''; } catch (_) {}
+          const stageChar = document.createElement('div');
+          stageChar.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:6px;';
+          stageChar.innerHTML = `<div style="width:110px;height:110px;display:grid;place-items:center;">${stagePortrait || '🧱'}</div><span style="font-size:13px;font-weight:1000;color:#041810;background:linear-gradient(135deg,#ffd166,#ff9f43);padding:5px 12px;border-radius:8px;">🧱 ${totalBricks.toLocaleString()} BRICKS</span>`;
+          roadStage.appendChild(stageChar);
+          const nextBig = document.createElement('div');
+          nextBig.style.cssText = 'background:linear-gradient(135deg,#ffd166,#ffb400);border:2px solid #0a1428;border-radius:12px;padding:12px 16px;color:#231303;box-shadow:0 4px 0 rgba(0,0,0,.45);';
+          nextBig.innerHTML = `<div style="font-size:10px;font-weight:1000;letter-spacing:.08em;">NEXT BIG REWARD</div><div style="font-size:18px;font-weight:1000;">🏆 ${nextMilestone.bricks.toLocaleString()} BRICKS</div><div style="font-size:13px;font-weight:800;">${nextMilestone.label}</div>`;
+          roadStage.appendChild(nextBig);
+          body.appendChild(roadStage);
+          const tierRow = document.createElement('div');
+          tierRow.style.cssText = 'display:flex;gap:8px;overflow-x:auto;overscroll-behavior-x:contain;padding:4px 2px 8px;box-sizing:border-box;';
+          BRICK_ROAD_MILESTONES.forEach((m, i) => {
+              const reached = totalBricks >= m.bricks;
+              const dot = document.createElement('button');
+              dot.type = 'button';
+              dot.textContent = String(i + 1);
+              dot.style.cssText = `flex:0 0 34px;width:34px;height:34px;border-radius:50%;border:2px solid ${reached ? '#ffd166' : 'rgba(255,255,255,.25)'};background:${reached ? '#ffd166' : '#16233d'};color:${reached ? '#231303' : '#8eaad0'};font-weight:1000;font-size:13px;cursor:pointer;`;
+              dot.onclick = () => { trackContainer.children[i]?.scrollIntoView({ inline: 'center', block: 'nearest' }); };
+              tierRow.appendChild(dot);
+          });
+          body.appendChild(tierRow);
           try { trackContainer.querySelector('[data-brick-road-next]')?.scrollIntoView({ inline: 'center', block: 'nearest' }); } catch (_) {}
           panel.appendChild(body);
       }
@@ -56143,28 +56362,36 @@ let heistFeverActive = false;
         hub.innerHTML = `
           <div class="ranked-hub-panel" style="--ranked-color:${tierInfo.color || '#00f5d4'}">
             <div class="ranked-hub-top">
-              <div><h2>🏆 RANKED</h2><small>SEASONAL RANKED · 3-MONTH SEASON 1</small></div>
+              <button type="button" class="ranked-hub-back" data-ranked-hub="close" aria-label="Back">‹</button>
+              <div><h2>RANKED</h2><small>SEASONAL RANKED · 3-MONTH SEASON 1</small></div>
               <button type="button" class="ranked-hub-close" data-ranked-hub="close" aria-label="Close ranked">✕</button>
             </div>
             <div class="ranked-hub-body">
-              <div class="ranked-hub-emblem">
-                <span class="ranked-hub-glyph" aria-hidden="true">🏆</span>
-                <b>${tierInfo.label}</b>
-                <span>${tierInfo.points} RP · DIVISION ${tierInfo.index + 1} OF ${RANKED_DIVISIONS.length}</span>
-              </div>
+              <button type="button" class="ranked-hub-pass" data-ranked-hub="pass">
+                <span class="ranked-hub-pass-clip" aria-hidden="true"></span>
+                <span class="ranked-hub-pass-title">RANKED PASS</span>
+                <span aria-hidden="true" style="font-size:44px">⭐</span>
+                <span style="min-width:0"><b>TIER ${passProgress.unlockedTiers} / ${RANKED_PASS_TIERS}</b><small>${passProgress.currentTierXp}/${passProgress.xpPerTier} XP to the next tier · ${passProgress.xp} total Ranked XP</small></span>
+                <span class="ranked-hub-pass-go">OPEN PASS ›</span>
+              </button>
               <div class="ranked-hub-main">
+                <div class="ranked-hub-season"><span>SEASON 1</span><span>3-MONTH SEASON</span></div>
+                <div class="ranked-hub-emblem">
+                  <span class="ranked-hub-glyph" aria-hidden="true">🏆</span>
+                  <b>${tierInfo.label}</b>
+                  <span>${tierInfo.points} RP · DIVISION ${tierInfo.index + 1} OF ${RANKED_DIVISIONS.length}</span>
+                </div>
                 <div>
                   <div class="ranked-hub-bar-label"><span>${tierInfo.label.toUpperCase()}</span><span>${tierInfo.nextLabel ? `NEXT: ${tierInfo.nextLabel.toUpperCase()} · ${tierInfo.nextThreshold} RP` : 'MAX DIVISION'}</span></div>
                   <div class="ranked-hub-bar" role="progressbar" aria-valuenow="${divisionPct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${divisionPct}%"></i></div>
+                  <div class="ranked-hub-ticks"><span>${floor} RP</span><span>${tierInfo.points} RP</span><span>${tierInfo.nextThreshold ? tierInfo.nextThreshold + ' RP' : 'MAX'}</span></div>
                 </div>
                 <div class="ranked-hub-meta">${tierInfo.nextLabel ? `${Math.max(0, tierInfo.nextThreshold - tierInfo.points)} RP to ${tierInfo.nextLabel} · ` : ''}Division safety floor: ${floor} RP · Weekly Pass XP: ${(playerData.ranked.weeklyPassXp || 0)}/2000${playerData.ranked.weeklyMaxed ? ' · 🏆 WEEKLY MAXED' : ''}</div>
-                <button type="button" class="ranked-hub-pass" data-ranked-hub="pass">
-                  <span aria-hidden="true" style="font-size:26px">⭐</span>
-                  <span style="min-width:0"><b>RANKED PASS · TIER ${passProgress.unlockedTiers} / ${RANKED_PASS_TIERS}</b><small>${passProgress.currentTierXp}/${passProgress.xpPerTier} XP to the next tier · ${passProgress.xp} total Ranked XP</small></span>
-                  <span class="ranked-hub-pass-go">OPEN ›</span>
-                </button>
-                <button type="button" class="ranked-hub-play" data-ranked-hub="play">▶ PLAY RANKED</button>
               </div>
+            </div>
+            <div class="ranked-hub-foot">
+              <span class="ranked-hub-boost">RANK BOOST!</span>
+              <button type="button" class="ranked-hub-play" data-ranked-hub="play">▶ PLAY RANKED</button>
             </div>
           </div>`;
         hub.addEventListener('click', (event) => {
@@ -94763,7 +94990,18 @@ function checkHit(target, b, i){
                       button.onclick=()=>{scrollLeft=road.scrollLeft;if(claimSeasonPassTrackReward(tier.tier,track)){if(typeof showToast==='function')showToast('Claimed '+describeCircuitReward(tier[track]));render();}};
                       card.appendChild(button);cards.appendChild(card);
                   }road.appendChild(column);
-              }content.appendChild(road);road.scrollLeft=scrollLeft;
+              }
+// Brawl Space v2: the hero fighter stands at the left of
+              // the road with a GET button that claims the next ready
+              // reward (free first, then premium). Same claim path as
+              // the tier cards — no new rewards or currencies.
+              const heroWrap=document.createElement('div');heroWrap.className='circuit-road-wrap';
+              const heroAside=document.createElement('aside');heroAside.className='circuit-hero';
+              let heroPortrait='';try{heroPortrait=(typeof getBrawlerPortraitMarkup==='function')?getBrawlerPortraitMarkup(selectedBrawler):'';}catch(_){}
+              const nextClaim=(()=>{for(const t of getActiveSeasonPassTiers()){for(const tr of ['free','premium']){const cl=pass[tr==='free'?'claimedFreeRewards':'claimedPremiumRewards'].includes(t.tier);const rd=active&&pass.level>=t.tier&&(tr==='free'||pass.premiumUnlocked);if(!cl&&rd)return{tier:t.tier,track:tr};}}return null;})();
+              heroAside.innerHTML=`<div class="circuit-hero-portrait">${heroPortrait||'🎁'}</div><button type="button" class="circuit-hero-get"${nextClaim?'':' disabled'}>GET</button><small>${nextClaim?`TIER ${String(nextClaim.tier).padStart(2,'0')} READY`:'NEXT LEVEL'}</small>`;
+              heroAside.querySelector('.circuit-hero-get')?.addEventListener('click',()=>{if(!nextClaim)return;const tierObj=getActiveSeasonPassTiers().find(t=>t.tier===nextClaim.tier);if(claimSeasonPassTrackReward(nextClaim.tier,nextClaim.track)){if(typeof showToast==='function')showToast('Claimed '+(tierObj?describeCircuitReward(tierObj[nextClaim.track]):'reward'));render();}});
+              heroWrap.appendChild(heroAside);heroWrap.appendChild(road);content.appendChild(heroWrap);road.scrollLeft=scrollLeft;
           } else {
               const note=document.createElement('p');note.className='circuit-shop-note';note.textContent='Choose your rewards. Tokens are earned, not purchased. Offers have seasonal limits; skins are permanent.';content.appendChild(note);
               const grid=document.createElement('div');grid.className='circuit-shop';

@@ -48,7 +48,7 @@ function sliceBetween(startMarker, endMarker) {
 
 // --- (1) Fighters grid + one scroller ---
 check('fighters: strip is a grid (auto-fill portrait cards, not a flex strip)',
-    game.includes("#appFightersStrip{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px;overflow:visible;position:static;touch-action:pan-y;padding:4px 2px 12px;background:transparent;border-radius:0}"));
+    game.includes("#appFightersStrip{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;overflow:visible;position:static;touch-action:pan-y;padding:4px 2px 12px;background:transparent;border-radius:0}"));
 check('fighters: grid is NOT a scroller — old sticky overflow-x strip rule is gone',
     game.includes('overflow:visible;position:static;touch-action:pan-y') &&
     !game.includes('#appFightersStrip{flex:none;overflow-x:auto;'));
@@ -57,7 +57,7 @@ check('fighters: view is the one scroller (touch-action pan-y, momentum kept)',
     game.includes('#appHomeFightersView{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}'));
 check('fighters: portrait = 2-column grid, landscape = wider cards',
     game.includes("@media (orientation:portrait) and (max-width:560px){#appFightersStrip{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}}") &&
-    game.includes("@media (orientation:landscape){#appFightersStrip{grid-template-columns:repeat(auto-fill,minmax(168px,1fr))}}"));
+    game.includes("@media (orientation:landscape){#appFightersStrip{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}}"));
 check('fighters: container carries the grid class',
     game.includes('<div id="appFightersStrip" class="app-fighters-grid"></div>'));
 check('fighters: card has power badge, trophy chip, rarity strip in markup',
@@ -65,11 +65,11 @@ check('fighters: card has power badge, trophy chip, rarity strip in markup',
     game.includes('<span class="app-fighter-rarity" style="--rarity-color:${rarityColor}" aria-hidden="true"></span>') &&
     game.includes('<span class="app-fighter-trophies">🏆 ${trophies.toLocaleString()}</span>'));
 check('fighters: power badge top-left, rarity strip right edge (CSS)',
-    game.includes('.app-fighter-power{position:absolute;top:8px;left:8px;') &&
-    game.includes('.app-fighter-rarity{position:absolute;top:0;right:0;bottom:0;width:6px;'));
+    game.includes('.app-fighter-power{position:absolute;top:5px;right:3px;') &&
+    game.includes('.app-fighter-rarity{position:absolute;top:0;right:0;bottom:0;width:34px;'));
 check('fighters: card is a big portrait card (full-width portrait, not 92px)',
-    game.includes('.app-fighter-card{width:auto;padding:0 0 10px;border-radius:16px;overflow:hidden;text-align:left}') &&
-    game.includes('.app-fighter-card .app-fighter-portrait{width:100%;height:118px;margin:0;border-radius:0;border:0}'));
+    game.includes('.app-fighter-card{position:relative;width:auto;padding:0;border-radius:12px;overflow:hidden;text-align:left;border:3px solid #0a1428;box-shadow:0 4px 0 rgba(0,0,0,.45);aspect-ratio:16/10;') &&
+    game.includes('.app-fighter-card .app-fighter-portrait{position:absolute;inset:0;width:100%;height:100%;margin:0;border:0;border-radius:0;display:grid;place-items:center}'));
 check('fighters: search + sort + role chips + owned count still present',
     game.includes('id="appFightersSearch"') && game.includes('id="appFightersSort"') &&
     game.includes('id="appFightersRoles"') && game.includes('id="appFightersCount"') &&
@@ -152,8 +152,8 @@ check('ranked: hub stacks below 640px (single column)',
 
 // --- (5) Trophy / Brick road ---
 check('trophy road: brick road is a horizontal scroll-snap road with node cards',
-    game.includes("trackContainer.style.cssText = 'display:flex;flex-direction:row;gap:12px;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;") &&
-    game.includes('flex:0 0 208px;scroll-snap-align:start;'));
+    game.includes("trackContainer.style.cssText = 'position:relative;display:flex;flex-direction:row;gap:12px;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;") &&
+    game.includes('flex:0 0 150px;scroll-snap-align:start;'));
 check('trophy road: next goal is marked and scrolled into view',
     game.includes("mCard.setAttribute('data-brick-road-next', '1')") &&
     game.includes("trackContainer.querySelector('[data-brick-road-next]')?.scrollIntoView({ inline: 'center', block: 'nearest' })"));
@@ -183,8 +183,8 @@ check('web events: heading is a tab, compact row is wider with bigger cards',
     homeCss.includes('grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)) !important;') &&
     homeCss.includes('#homeScreen #homeEventsView .home-mode-card { min-height: 128px !important; }'));
 check('web roster: wider grid on desktop, trophy line on cards',
-    galleryCss.includes('.fighter-gallery:not(.brawler-detail-view) .brawler-browser__grid{grid-template-columns:repeat(auto-fill,minmax(210px,1fr))!important;gap:16px!important}') &&
-    galleryCss.includes('@media(min-width:1100px){.fighter-gallery:not(.brawler-detail-view) .brawler-browser__grid{grid-template-columns:repeat(auto-fill,minmax(230px,1fr))!important;') &&
+    galleryCss.includes('.fighter-gallery:not(.brawler-detail-view) .brawler-browser__grid{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))!important;gap:12px!important}') &&
+    galleryCss.includes('@media(min-width:1100px){.fighter-gallery:not(.brawler-detail-view) .brawler-browser__grid{grid-template-columns:repeat(auto-fill,minmax(320px,1fr))!important;') &&
     game.includes("trophyLine.className = 'brawler-card__trophies';") &&
     galleryCss.includes('.fighter-gallery .brawler-card__trophies{'));
 check('web: save code, MORE links, deep links and mode cards untouched',
