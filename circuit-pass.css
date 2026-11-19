@@ -34,3 +34,19 @@
 .native-app .circuit-shop article{padding:12px}
 .native-app .circuit-shop button{min-height:44px}
 @media(max-width:400px){.native-app .circuit-shop{grid-template-columns:1fr}}
+
+/* ---- Brawl Space season-pass road (2026-11-19) ----
+   Same pass state, tiers, claim flow, MISSIONS link — bigger reward
+   cards, tier numbers as glowing bubbles on a per-tier track rail,
+   current tier lit. App portrait keeps its pinned vertical stack;
+   app landscape goes back to the horizontal track. */
+.circuit-road{padding-bottom:20px}
+.circuit-tier{position:relative;padding-top:8px}
+.circuit-tier::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;border-radius:4px;background:#22344d}
+.circuit-tier.unlocked::before{background:linear-gradient(90deg,#72e8d2,#ffd166)}
+.circuit-tier h2{width:52px;height:52px;display:grid;place-items:center;border-radius:50%;border:3px solid #5e7087;background:#0d1a2c;font-size:22px;margin:0 0 10px}
+.circuit-tier.unlocked h2{border-color:#72e8d2;color:#a9f5e6;box-shadow:0 0 16px rgba(114,232,210,.55)}
+.circuit-reward{height:168px;box-shadow:0 4px 0 rgba(0,0,0,.35)}
+.circuit-reward.claimed{border-color:#4c9e8d;box-shadow:0 0 14px rgba(76,158,141,.4)}
+.circuit-header{flex-wrap:wrap}
+@media (orientation:landscape){.native-app .circuit-road{flex-direction:row;overflow-x:auto;gap:12px;padding-bottom:14px}.native-app .circuit-tier{flex:0 0 178px}}
