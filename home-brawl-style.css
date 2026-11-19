@@ -854,3 +854,11 @@
 @media (min-width: 1100px) {
   #homeScreen #homeModeCompactRow { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important; }
 }
+
+/* ---- Brawl Space v2 web home (2026-11-19) ----
+   Reference: home screenshot — bright blue + faint skull pattern,
+   chunky dark borders on the stage and cards, giant yellow PLAY. */
+#homeScreen{background:linear-gradient(180deg,#1e7fe0,#0f5fc4) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='84' viewBox='0 0 84 84'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M42 12c-13 0-22 9-22 21 0 8 4 14 9 17v8a4 4 0 0 0 4 4h18a4 4 0 0 0 4-4v-8c5-3 9-9 9-17 0-12-9-21-22-21z'/%3E%3Ccircle cx='33' cy='32' r='5' fill='%23125fc0' fill-opacity='0.45'/%3E%3Ccircle cx='51' cy='32' r='5' fill='%23125fc0' fill-opacity='0.45'/%3E%3C/g%3E%3C/svg%3E") repeat !important}
+#homeScreen #homeBrawlerCard{border:3px solid #0a1428 !important;box-shadow:0 6px 0 rgba(0,0,0,.4) !important}
+#homeScreen #startMatch{background:linear-gradient(180deg,#ffe14d,#ffb400) !important;color:#231303 !important;border:3px solid #0a1428 !important;box-shadow:0 6px 0 rgba(0,0,0,.45) !important;text-shadow:0 2px 0 rgba(255,255,255,.5) !important}
+#homeScreen .home-mode-card{border:3px solid #0a1428 !important;box-shadow:0 4px 0 rgba(0,0,0,.4) !important}

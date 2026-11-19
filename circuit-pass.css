@@ -50,3 +50,34 @@
 .circuit-reward.claimed{border-color:#4c9e8d;box-shadow:0 0 14px rgba(76,158,141,.4)}
 .circuit-header{flex-wrap:wrap}
 @media (orientation:landscape){.native-app .circuit-road{flex-direction:row;overflow-x:auto;gap:12px;padding-bottom:14px}.native-app .circuit-tier{flex:0 0 178px}}
+
+/* ---- Brawl Space v2 season-pass road (2026-11-19) ----
+   Reference: season-pass screenshot — two reward rows on one rail,
+   tier number bubbles sitting ON the rail, hero fighter + GET at the
+   left (JS, .circuit-hero), VAULT/REWARDS tabs at the bottom. The tier
+   becomes a flex column (title, premium card, bubble, free card) and
+   the bubble's ::before draws the rail left and right through it.
+   Web + app landscape; app portrait keeps the v1 side-by-side cards. */
+.circuit-tier{display:flex;flex-direction:column}
+.circuit-tier-cards{display:contents}
+.circuit-tier h3{order:1;margin:0 0 10px;height:auto;min-height:35px}
+.circuit-tier .circuit-reward.premium{order:2}
+.circuit-tier h2{order:3;position:relative;z-index:1;margin:10px auto}
+.circuit-tier h2::before{content:"";position:absolute;top:50%;left:-75px;right:-75px;height:6px;transform:translateY(-50%);background:#22344d;z-index:-1}
+.circuit-tier.unlocked h2::before{background:linear-gradient(90deg,#72e8d2,#ffd166)}
+.circuit-tier .circuit-reward.free{order:4}
+.circuit-tier .circuit-reward{margin-bottom:0}
+.circuit-tier::before{display:none}
+.circuit-panel .circuit-header{order:1}
+.circuit-panel .circuit-summary{order:2}
+.circuit-panel .circuit-content{order:3}
+.circuit-panel .circuit-tabs{order:4}
+.circuit-panel footer{order:5}
+@media (orientation:portrait){
+  .native-app .circuit-tier{display:block}
+  .native-app .circuit-tier-cards{display:grid}
+  .native-app .circuit-tier h3{height:35px;margin:0 0 14px}
+  .native-app .circuit-tier h2{margin:0 0 10px}
+  .native-app .circuit-tier h2::before{display:none}
+  .native-app .circuit-tier::before{display:block}
+}
