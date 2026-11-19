@@ -5825,6 +5825,45 @@ const bolznstienPendingStrikes = [];
     window.addEventListener('load', retryAppHomeActivation);
     document.addEventListener('DOMContentLoaded', retryAppHomeActivation);
 
+    // APK diagnostic strip (2026-11-18): the app home still does not
+    // activate on-device even after PR #136, and guessing the URL scheme
+    // is done — this strip prints the ground truth on the phone itself.
+    // APK-ONLY: it is never created when the page is the live website
+    // (hostname ppp65isking.github.io), and it is deliberately NOT gated
+    // on isNativeAppMode() / window.Capacitor / localhost, because the
+    // detection itself is what is broken. Content: the page URL
+    // (middle-truncated, scheme + host kept — that is the whole point),
+    // whether the Capacitor bridge exists, and whether the #appHome shell
+    // was built. pointer-events:none so it can never block taps; the
+    // text is re-read live on every refresh so it reflects the final
+    // state, not just boot.
+    const APK_DIAG_PAGES_HOST = 'ppp65isking.github.io';
+    function refreshApkDiagStrip() {
+        let hostname = '';
+        try { hostname = window.location.hostname || ''; } catch (_) { return; }
+        if (hostname === APK_DIAG_PAGES_HOST) return;
+        const body = document.body;
+        if (!body) return;
+        let strip = document.getElementById('apkDiagStrip');
+        if (!strip) {
+            strip = document.createElement('div');
+            strip.id = 'apkDiagStrip';
+            strip.setAttribute('aria-hidden', 'true');
+            strip.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:9999;pointer-events:none;font:11px/1.5 monospace,monospace;color:#d7f0ff;background:rgba(0,0,0,.65);padding:2px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left';
+            body.appendChild(strip);
+        }
+        let href = '';
+        try { href = String(window.location.href || ''); } catch (_) { href = ''; }
+        if (href.length > 72) href = href.slice(0, 44) + '…' + href.slice(-24);
+        let hasCapacitor = false;
+        try { hasCapacitor = !!window.Capacitor; } catch (_) { hasCapacitor = false; }
+        const appHomeBuilt = !!document.getElementById('appHome');
+        strip.textContent = 'URL: ' + href + ' | Capacitor: ' + (hasCapacitor ? 'yes' : 'no') + ' | appHome: ' + (appHomeBuilt ? 'built' : 'not-built');
+    }
+    refreshApkDiagStrip();
+    window.addEventListener('load', refreshApkDiagStrip);
+    document.addEventListener('DOMContentLoaded', refreshApkDiagStrip);
+
     // Fullscreen persistence (home-screen redesign 2026-11-03): remember
     // the player's fullscreen choice across page reloads. Browsers always
     // drop fullscreen on reload and only grant it after a user gesture, so
