@@ -468,6 +468,33 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         .app-fighters-roles{flex:1 1 auto;min-width:0;padding-bottom:0}
         .app-fighters-role{padding:6px 10px}
         #appFightersStrip{padding:2px 2px 6px}
+        /* ---- Arena Forge app fighters fixes (2026-11-19): F3 sticky
+           toolbar, F5 clear-search button, F8 locked-card soul cost,
+           F9 owned/total counter + clamped kit descs. App/touch mode
+           only; the website is untouched. The phase-3/4 rules above stay
+           as they are so their suites keep passing; these rules layer on
+           top (later rules win where they overlap). ---- */
+        /* F3: the search toolbar sticks to the top of the Fighters
+           scroller so search/filter stay reachable while the detail
+           scrolls. The strip sticks just below it (the toolbar is one
+           row, ~52px tall in both orientations after the phase-4
+           compaction, so 56px leaves a hair of breathing room). */
+        .app-fighters-toolbar{position:sticky;top:0;z-index:3;background:linear-gradient(160deg,#06101f,#0a2140);border-radius:0 0 12px 12px}
+        #appFightersStrip{top:56px}
+        /* F5: clear-search (✕) sits inside the search field. The wrap
+           takes the search input's flex slot in the toolbar row. */
+        .app-fighters-search-wrap{flex:1 1 150px;min-width:0;position:relative;display:flex}
+        .app-fighters-search-wrap .app-fighters-search{flex:1 1 auto;min-width:0;width:auto;padding-right:38px}
+        .app-fighters-clear-search{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:32px;height:32px;flex:none;display:grid;place-items:center;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;font-size:14px;font-weight:1000;line-height:1;cursor:pointer}
+        .app-fighters-clear-search[hidden]{display:none}
+        /* F8: locked strip cards show the unlock soul cost under LOCKED. */
+        .app-fighter-cost{display:block;font-size:9px;font-weight:800;color:#ffd166}
+        /* F9: owned/total counter in the toolbar row. */
+        .app-fighters-count{flex:none;font-size:11px;font-weight:1000;color:#ffd166;white-space:nowrap}
+        /* F9: kit descs clamp to 3 lines so slots stay even heights.
+           The full text is still in the DOM and in the kit detail
+           sheet (tap a slot); this only evens the layout. */
+        .app-kit-desc{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
         /* Kit detail sheet (bottom sheet, app style). */
         .app-kit-sheet-overlay{position:fixed;inset:0;z-index:100;display:flex;align-items:flex-end;justify-content:center;background:rgba(2,8,18,.62);backdrop-filter:blur(3px)}
         .app-kit-sheet{width:100%;max-width:560px;max-height:82dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;box-sizing:border-box;padding:16px 16px calc(16px + env(safe-area-inset-bottom));border-radius:20px 20px 0 0;border:2px solid rgba(255,255,255,.2);border-bottom:0;background:linear-gradient(160deg,#0a2140,#06101f);color:#fff;font-family:inherit;animation:appKitSheetIn .18s ease-out}
@@ -6184,13 +6211,33 @@ const bolznstienPendingStrikes = [];
             if (!appFightersState.focused) appFightersState.focused = selectedBrawler;
             view.innerHTML = `
               <div class="app-fighters-toolbar">
-                <input id="appFightersSearch" class="app-fighters-search" type="search" placeholder="🔎 Search fighters…" autocomplete="off" enterkeyhint="search">
+                <div class="app-fighters-search-wrap">
+                  <input id="appFightersSearch" class="app-fighters-search" type="search" placeholder="🔎 Search fighters…" autocomplete="off" enterkeyhint="search">
+                  <button type="button" id="appFightersClearSearch" class="app-fighters-clear-search" aria-label="Clear search" hidden>✕</button>
+                </div>
                 <div id="appFightersRoles" class="app-fighters-roles"></div>
+                <span id="appFightersCount" class="app-fighters-count"></span>
               </div>
               <div id="appFightersStrip"></div>
               <div id="appFightersDetail"></div>`;
             view.querySelector('#appFightersSearch')?.addEventListener('input', (event) => {
                 appFightersState.search = event.target.value || '';
+                // F5: the clear button only shows while there is a query.
+                const clearBtn = view.querySelector('#appFightersClearSearch');
+                if (clearBtn) clearBtn.hidden = !appFightersState.search;
+                renderAppFightersStrip();
+            });
+            view.querySelector('#appFightersSearch')?.addEventListener('keydown', (event) => {
+                // F4: the phone keyboard's Search key dismisses the keyboard.
+                if (event.key === 'Enter') { event.preventDefault(); event.target.blur(); }
+            });
+            view.querySelector('#appFightersClearSearch')?.addEventListener('click', () => {
+                // F5: clear the query and keep focus so a new search can start.
+                const input = view.querySelector('#appFightersSearch');
+                appFightersState.search = '';
+                if (input) { input.value = ''; input.focus(); }
+                const clearBtn = view.querySelector('#appFightersClearSearch');
+                if (clearBtn) clearBtn.hidden = true;
                 renderAppFightersStrip();
             });
             view.querySelector('#appFightersRoles')?.addEventListener('click', (event) => {
@@ -6242,18 +6289,28 @@ const bolznstienPendingStrikes = [];
     function renderAppFightersStrip() {
         const strip = document.getElementById('appFightersStrip');
         if (!strip) return;
+        // F9: owned/total counter (overall roster, not the filtered list).
+        const countEl = document.getElementById('appFightersCount');
+        if (countEl) {
+            const owned = allBrawlers.filter((b) => isBrawlerUnlocked(b)).length;
+            countEl.textContent = `${owned}/${allBrawlers.length} OWNED`;
+        }
         const list = appFightersVisibleList();
         if (!list.length) { strip.innerHTML = '<div class="app-fighters-empty">No fighters match that search.</div>'; return; }
         strip.innerHTML = list.map((id) => {
             const data = brawlerData[id] || {};
             const pData = playerData?.brawlers?.[id] || { level: 1 };
             const locked = !isBrawlerUnlocked(id) && !isWeeklyTrialBrawler(id);
+            // F8: locked cards show the real unlock soul cost under the
+            // LOCKED line (same table the Soul Summoner uses).
+            const soulCost = locked ? getSoulUnlockCostForRarity(getBrawlerRarity(id)) : 0;
             let portrait = `<span style="font-size:26px">${data.emoji || '🙂'}</span>`;
             try { portrait = getBrawlerPortraitMarkup(id); } catch (_) {}
             return `<button type="button" class="app-fighter-card${appFightersState.focused === id ? ' is-selected' : ''}${locked ? ' is-locked' : ''}" data-app-fighter="${id}" style="--card-color:${data.color || '#0b69bd'}">
               <span class="app-fighter-portrait">${portrait}</span>
               <b>${data.name || id}</b>
-              <small>${locked ? '🔒 LOCKED' : `POWER ${pData.level || 1}`}</small>
+              <small>${locked ? '🔒 LOCKED' : `POWER ${pData.level || 1}`}</small>${soulCost > 0 ? `
+              <span class="app-fighter-cost">${soulCost} SOULS TO UNLOCK</span>` : ''}
             </button>`;
         }).join('');
     }
@@ -6303,10 +6360,15 @@ const bolznstienPendingStrikes = [];
           <span class="app-kit-desc">${desc}</span>` : ''}
         </button>`;
         let hyperDesc = '';
-        try { hyperDesc = (getCoreSurgeDescription(id) || '').slice(0, 90); } catch (_) {}
+        // F6: the full Core Surge description, like the gadget/star slots
+        // (was sliced to 90 chars, so the slot showed a cut-off sentence).
+        try { hyperDesc = getCoreSurgeDescription(id) || ''; } catch (_) {}
         let upgLabel = '';
         let upgDisabled = false;
-        if (trial) { upgLabel = 'WEEKLY TRIAL'; upgDisabled = true; }
+        // F1: UPGRADE is disabled on a locked brawler, exactly like PLAY
+        // below — upgrading something unowned makes no sense.
+        if (locked) { upgLabel = '🔒 LOCKED'; upgDisabled = true; }
+        else if (trial) { upgLabel = 'WEEKLY TRIAL'; upgDisabled = true; }
         else if (level >= MAX_POWER_LEVEL) { upgLabel = 'MAX LEVEL'; upgDisabled = true; }
         else {
             const cost = getUpgradeCost(level);
@@ -6315,6 +6377,16 @@ const bolznstienPendingStrikes = [];
             upgLabel = `⬆ UPGRADE · ${cost} 🪙${cpCost > 0 ? ` + ${cpCost} 💎` : ''}`;
             upgDisabled = !canAfford;
         }
+        // F7: a brawler with no second tool gets no TOOL 2 slot at all —
+        // the old fallback promised one "coming soon" that the code
+        // cannot keep. (Every playable brawler currently has a g2; the
+        // only g2-less entries are summons/structures.)
+        // Slot-render fix (same lines): the g1/g2/sp1/sp2 calls used to
+        // read `kitSlotHtml(...), kitDesc(...)` — a comma expression, so
+        // the slot button HTML was computed and THROWN AWAY and only the
+        // bare description text rendered (no slot, no kit-sheet tap).
+        // kitDesc is now the 7th argument, as kitSlotHtml expects.
+        const g2Slot = data.g2 ? kitSlotHtml('g2', 'TOOL 2', kitName(data.g2, 'Gadget 2'), !pData.gadgetUnlocked, 'LOCKED · POWER 7', pData.selectedGadget === 'g2', kitDesc(data.g2)) : '';
         detail.innerHTML = `
           <div class="app-fighters-detail-portrait" style="--detail-color:${data.color || '#0b69bd'}">${portrait}</div>
           <div class="app-fighters-detail-info">
@@ -6329,11 +6401,11 @@ const bolznstienPendingStrikes = [];
             <div class="app-fighters-detail-desc"><b>MAIN</b> · ${data.main || '—'}</div>
             <div class="app-fighters-detail-desc"><b>SUPER</b> · ${data.super || '—'}</div>
             <div class="app-kit-slots">
-              ${kitSlotHtml('g1', 'TOOL 1', kitName(data.g1, 'Gadget 1'), !pData.gadgetUnlocked, 'LOCKED · POWER 7', pData.selectedGadget === 'g1'), kitDesc(data.g1)}
-              ${kitSlotHtml('g2', 'TOOL 2', kitName(data.g2, 'Second Tool/Talent coming soon'), !pData.gadgetUnlocked, 'LOCKED · POWER 7', pData.selectedGadget === 'g2'), kitDesc(data.g2)}
-              ${kitSlotHtml('sp1', 'TALENT 1', kitName(data.sp1, 'Star Power 1'), !pData.starPowerUnlocked, 'LOCKED · POWER 9', pData.selectedStar === 'slow'), kitDesc(data.sp1)}
-              ${kitSlotHtml('sp2', 'TALENT 2', kitName(data.sp2, 'Star Power 2'), !pData.starPowerUnlocked, 'LOCKED · POWER 9', pData.selectedStar === 'long'), kitDesc(data.sp2)}
-              ${kitSlotHtml('hyper', 'CORE SURGE', hyperDesc || 'Core Surge', !pData.hyperchargeUnlocked, 'LOCKED · POWER 11', false)}
+              ${kitSlotHtml('g1', 'TOOL 1', kitName(data.g1, 'Gadget 1'), !pData.gadgetUnlocked, 'LOCKED · POWER 7', pData.selectedGadget === 'g1', kitDesc(data.g1))}
+              ${g2Slot}
+              ${kitSlotHtml('sp1', 'TALENT 1', kitName(data.sp1, 'Star Power 1'), !pData.starPowerUnlocked, 'LOCKED · POWER 9', pData.selectedStar === 'slow', kitDesc(data.sp1))}
+              ${kitSlotHtml('sp2', 'TALENT 2', kitName(data.sp2, 'Star Power 2'), !pData.starPowerUnlocked, 'LOCKED · POWER 9', pData.selectedStar === 'long', kitDesc(data.sp2))}
+              ${kitSlotHtml('hyper', 'CORE SURGE', 'Core Surge', !pData.hyperchargeUnlocked, 'LOCKED · POWER 11', false, hyperDesc)}
             </div>
             <div class="app-fighters-detail-actions">
               <button type="button" class="app-fighters-play" data-app-action="play" ${locked ? 'disabled' : ''}>${isHero ? '✓ CURRENT HERO' : `▶ PLAY AS ${String(data.name || id).toUpperCase()}`}</button>
@@ -6444,6 +6516,9 @@ const bolznstienPendingStrikes = [];
         setAppHomeTab('home');
     }
     function appFightersUpgrade(id) {
+        // F1: a locked brawler cannot be upgraded, even by a direct call —
+        // same guard as PLAY (appFightersPlay). Trials stay blocked below.
+        if (!isBrawlerUnlocked(id) && !isWeeklyTrialBrawler(id)) return;
         const pData = getEffectiveBrawlerProgress(id);
         if (isWeeklyTrialBrawler(id) || (pData.level || 1) >= MAX_POWER_LEVEL) return;
         const cost = getUpgradeCost(pData.level);
