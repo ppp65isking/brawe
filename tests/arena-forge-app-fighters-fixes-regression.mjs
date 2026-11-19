@@ -136,6 +136,10 @@ const elements = {};
 const documentStub = { getElementById: (id) => (elements[id] ||= { innerHTML: '', textContent: '' }) };
 const unlockedSet = new Set(['unlockedStarter', 'noG2']);
 let saveCalls = 0;
+// Round 2: the strip + detail now read isFavoriteBrawler (star on the
+// card, FAVORITE button in the panel). No fixture favorites here, so it
+// reads false for every brawler and the old order is unchanged.
+const favSet = new Set();
 const sandbox = {
     document: documentStub,
     allBrawlers: ['unlockedStarter', 'lockedEpic', 'noG2'],
@@ -155,6 +159,7 @@ const sandbox = {
         },
     },
     appFightersState: { search: '', role: 'all', focused: 'lockedEpic' },
+    isFavoriteBrawler: (id) => favSet.has(id),
     APP_FIGHTER_RARITY_COLORS: { Starter: '#ff9f1c', Rare: '#8cf05a', Epic: '#b388ff' },
     MAX_POWER_LEVEL: 12,
     selectedBrawler: 'unlockedStarter',
