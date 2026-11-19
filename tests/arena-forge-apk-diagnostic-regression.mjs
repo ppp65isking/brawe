@@ -5,7 +5,9 @@
 // Detection genuinely fails on-device, so guessing the URL scheme is
 // done: this strip prints the ground truth (page URL, Capacitor bridge,
 // #appHome built or not) on the phone itself. APK-ONLY: it is never
-// created on the live website. Source-presence + behavior mirrors.
+// created on the live website. App home optimize (2026-11-18): the strip
+// leaves the normal build — it only shows with ?diag=1 in the URL.
+// Source-presence + behavior mirrors.
 // Never uses the banned bare word.
 import fs from 'fs';
 const root = new URL('..', import.meta.url);
@@ -15,10 +17,14 @@ let passed = 0, failed = 0;
 const failures = [];
 function check(name, cond) { if (cond) passed++; else { failed++; failures.push(name); } }
 
-// --- The strip exists and is gated ONLY on the Pages host ---
+// --- The strip exists and is gated on ?diag=1 AND the Pages host ---
 check('diagnostic strip function exists', game.includes('function refreshApkDiagStrip() {'));
 check('Pages host constant is ppp65isking.github.io', game.includes("const APK_DIAG_PAGES_HOST = 'ppp65isking.github.io';"));
 check('strip returns early on the Pages host', game.includes('if (hostname === APK_DIAG_PAGES_HOST) return;'));
+// App home optimize: the ?diag=1 gate reads location.search (NOT another
+// location.hostname read — the app-home suite asserts exactly 2).
+check('strip is gated on ?diag=1 via location.search', game.includes("new URLSearchParams(window.location.search || '').get('diag') === '1'"));
+check('strip removes itself when ?diag=1 is absent', game.includes("const existing = document.getElementById('apkDiagStrip');") && game.includes('if (existing) existing.remove();'));
 check('strip element id is apkDiagStrip and it is appended to body', game.includes("strip.id = 'apkDiagStrip';") && game.includes('body.appendChild(strip);'));
 
 // --- Deliberately NOT gated on the broken detection ---
@@ -31,12 +37,14 @@ check('strip is NOT gated on localhost', !fnBody.includes('localhost'));
 check('strip reads appHome live from the DOM', fnBody.includes("document.getElementById('appHome')"));
 check('strip probes the Capacitor bridge directly', fnBody.includes('!!window.Capacitor'));
 
-// --- Gate mirror: shown everywhere except the Pages host ---
-function stripShown(hostname) { return hostname !== 'ppp65isking.github.io'; }
-check('gate: localhost -> strip shown', stripShown('localhost') === true);
-check('gate: empty hostname (file://) -> strip shown', stripShown('') === true);
-check('gate: any other host -> strip shown', stripShown('example.com') === true);
-check('gate: ppp65isking.github.io -> strip NEVER shown', stripShown('ppp65isking.github.io') === false);
+// --- Gate mirror: shown ONLY with ?diag=1 AND off the Pages host ---
+function stripShown(hostname, diag) { return diag === '1' && hostname !== 'ppp65isking.github.io'; }
+check('gate: localhost + ?diag=1 -> strip shown', stripShown('localhost', '1') === true);
+check('gate: localhost without ?diag=1 -> strip HIDDEN', stripShown('localhost', null) === false);
+check('gate: empty hostname (file://) + ?diag=1 -> strip shown', stripShown('', '1') === true);
+check('gate: any other host + ?diag=1 -> strip shown', stripShown('example.com', '1') === true);
+check('gate: ppp65isking.github.io + ?diag=1 -> strip NEVER shown', stripShown('ppp65isking.github.io', '1') === false);
+check('gate: ?diag=0 -> strip HIDDEN', stripShown('localhost', '0') === false);
 
 // --- Text mirror: exact format, all four combinations ---
 function stripText(href, hasCapacitor, appHomeBuilt) {

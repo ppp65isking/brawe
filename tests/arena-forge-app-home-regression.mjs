@@ -56,7 +56,11 @@ check('portrait fallback layout exists for portrait orientation', game.includes(
 // --- Reuse, not rebuild: currency bar + events view are MOVED, not duplicated ---
 check('live currency bar is moved into the app top strip', game.includes("document.getElementById('homeCurrencyBar')") && game.includes('currencyHost.appendChild(currencyBar);'));
 check('existing events view is moved into the app events host', game.includes("document.getElementById('homeEventsView')") && game.includes('eventsHost.appendChild(eventsView);'));
-check('no duplicate events/mode logic is built in the app shell', !game.includes('appHomeModeCard') && !game.includes('createAppModeCard'));
+// App home optimize (2026-11-18): the native events slots are named
+// app-event-slot / appEventSlotHtml (not appHomeModeCard /
+// createAppModeCard) and reuse HOME_MODE_DATA + the existing web card
+// click path — no duplicate mode registry, no second launch path.
+check('no duplicate events/mode logic is built in the app shell', !game.includes('appHomeModeCard') && !game.includes('createAppModeCard') && game.includes('function appEventSlotHtml(id, opts = {}) {') && game.includes('HOME_MODE_DATA[id]') && game.includes('homeModeCardMap?.[id]'));
 
 // --- Hero: same data as the web card, never blank ---
 check('hero reads the same data as renderHomeBrawlerCard (outlit fallback)', game.includes("brawlerData[selectedBrawler] || brawlerData.outlit"));
@@ -74,17 +78,30 @@ check('event chip reads the selected mode from HOME_MODE_DATA', game.includes('H
 
 // --- Wiring: PLAY + tabs reuse existing entry points ---
 check('PLAY clicks the existing #startMatch button', game.includes("document.getElementById('startMatch')?.click();"));
-check('hero tap opens the fighters collection via brawlerBtn', game.includes("document.getElementById('appHomeHero')?.addEventListener('click'") && game.includes('brawlerBtn.click()'));
-check('Fighters tab reuses brawlerBtn.click()', game.includes("if (tab === 'fighters') { if (brawlerBtn) brawlerBtn.click(); return; }"));
+// App home optimize (2026-11-18): the hero tap opens the NATIVE Fighters
+// view now — the web gallery overlay (brawlerBtn.click()) is no longer
+// the app path.
+check('hero tap opens the native Fighters view', game.includes("document.getElementById('appHomeHero')?.addEventListener('click', () => { setAppHomeTab('fighters'); });"));
+check('Fighters tab builds the native Fighters view', game.includes("if (tab === 'fighters') buildAppFightersView();"));
 check('Shop tab reuses openHomeShop()', game.includes("if (tab === 'shop') { if (typeof openHomeShop === 'function') openHomeShop(); return; }"));
-check('Home/Events tabs reuse setHomeTab', game.includes("setHomeTab(tab === 'events' ? 'events' : 'home');"));
+// App home optimize: Home/Events tabs switch the NATIVE app views now —
+// the web setHomeTab is no longer the app tab path.
+check('Home/Events tabs switch the native app views (no web setHomeTab)', game.includes("if (tab === 'fighters' || tab === 'events' || tab === 'home') {") && game.includes("if (tab === 'events') buildAppEventsView();") && !game.includes("setHomeTab(tab === 'events' ? 'events' : 'home');"));
 check('event chip tap goes to the Events tab', game.includes("document.getElementById('appHomeEventChip')?.addEventListener('click', () => setAppHomeTab('events'));"));
+// App home optimize: the landscape hero's dead blue space now holds real
+// content — the UP NEXT event card + the tournament card — and their
+// clicks stopPropagation so they never trigger the hero's fighters tap.
+check('hero side column shows UP NEXT event + tournament in landscape', game.includes('app-hero-side') && game.includes('data-hero-side="events"') && game.includes('data-hero-side="tournament"'));
+check('hero side cards stopPropagation so they never open Fighters', game.includes("event.stopPropagation(); setAppHomeTab('events');") && game.includes("event.stopPropagation(); if (typeof openTournamentHub === 'function') openTournamentHub();"));
 
 // --- Sync: hero stays fresh, tab follows web tab state, visibility follows home ---
 check('syncAppHome is hooked at the end of renderHomeBrawlerCard', (() => { const start = game.indexOf('function renderHomeBrawlerCard() {'); const hook = game.indexOf('syncAppHome();', start); const next = game.indexOf('const FASTPASS_MOMENTUM_PER_HIT', start); return start !== -1 && hook !== -1 && hook < next; })());
 check('syncAppHome is hooked at the end of refreshPersonalizedHome', game.includes('season.innerHTML = homeSeasonProfile.key === ') && /Packets have been retired\.`; \}\n      syncAppHome\(\);\n  \}\n\n  function setHomeTab/.test(game));
 check('syncAppHome is hooked at the end of setHomeTab', game.includes("document.getElementById('homePanel')?.scrollTo({ top: 0, behavior: 'smooth' });\n      syncAppHome();"));
-check('app tab is derived from the web events view is-active state', game.includes("document.getElementById('homeEventsView')?.classList.contains('is-active')"));
+// App home optimize: the app tab is internal appHomeTab state, not the
+// web events view's is-active class — the moved web view stays hidden in
+// app mode and the native events view is what the Events tab shows.
+check('app tab is internal appHomeTab state, not the web events view', game.includes("const activeView = appHomeTab === 'fighters' ? 'fighters' : appHomeTab === 'events' ? 'events' : 'home';") && !game.includes("document.getElementById('homeEventsView')?.classList.contains('is-active')"));
 check('app shell hides when the home screen hides (match start) via MutationObserver', game.includes('new MutationObserver(syncAppHomeVisibility).observe(homeScreenEl, { attributes: true, attributeFilter: [\'style\'] })') && game.includes("appHomeEl.classList.toggle('app-home-hidden', hidden);"));
 check('first sync is deferred past initial evaluation (no TDZ reads at boot)', game.includes('if (typeof setTimeout === \'function\') setTimeout(syncAppHome, 0);'));
 check('syncAppHome no-ops on the website (appHomeEl null / not native)', game.includes('if (!appHomeEl || !isNativeAppMode()) return;'));
@@ -102,10 +119,12 @@ check('hero: empty portrait renders the initials fallback tile', (() => { const 
 check('hero: whitespace-only portrait renders the initials fallback tile', heroPortrait('   ', 'Pandy', '#ec4899').kind === 'fallback');
 check('hero: null portrait renders the initials fallback tile', heroPortrait(null, 'Gravy', '#b45309').initials === 'GR');
 
-// Mirror of the app-tab derivation from the web events view state.
-function appTabFromEventsView(eventsIsActive) { return eventsIsActive ? 'events' : 'home'; }
-check('tab derivation: events view active -> events tab', appTabFromEventsView(true) === 'events');
-check('tab derivation: events view inactive -> home tab', appTabFromEventsView(false) === 'home');
+// Mirror of the app-tab derivation: internal appHomeTab state is the
+// source of truth (app home optimize) — the web events view never flips it.
+function appTabFromState(appHomeTab) { return appHomeTab === 'fighters' ? 'fighters' : appHomeTab === 'events' ? 'events' : 'home'; }
+check('tab derivation: fighters state -> fighters view', appTabFromState('fighters') === 'fighters');
+check('tab derivation: events state -> events view', appTabFromState('events') === 'events');
+check('tab derivation: home state -> hero view', appTabFromState('home') === 'home');
 
 // Mirror of isNativeAppMode: Capacitor bridge first, localhost fallback.
 function nativeMode({ hasBridge, bridgeNative, hostname }) {
