@@ -212,8 +212,14 @@ check('desktop road CSS is untouched (horizontal scroll, 178px columns)',
     circuitCss.includes('.circuit-road{display:flex;gap:12px;overflow-x:auto;') &&
     circuitCss.includes('.circuit-tier{flex:0 0 178px;'));
 const newCssBlock = circuitCss.split('Arena Forge app overhaul round 2')[1] || '';
+// Brawl Space (2026-11-19): the block headed 'Brawl Space season-pass
+// road' is DELIBERATELY shared web + app — the season pass overlay is
+// the same on both, and the follow-up asked for the same spacious
+// treatment on the website. So the no-leak check covers only the
+// round-2 app block above that header, not the shared Brawl Space rules.
+const round2Block = newCssBlock.split('Brawl Space season-pass road')[0] || '';
 check('no app rule leaks outside .native-app in the new block',
-    newCssBlock.length > 0 && newCssBlock.split('\n').filter(l => l.trim().startsWith('.')).every(l => l.trim().startsWith('.native-app')));
+    round2Block.length > 0 && round2Block.split('\n').filter(l => l.trim().startsWith('.')).every(l => l.trim().startsWith('.native-app')));
 
 // --- 8. Season data: all four seasons define a full 25-tier road ---
 const KNOWN_REWARD_TYPES = new Set(['coins', 'gems', 'souls', 'tapper', 'superTapper', 'hyperTapper', 'towerDrop', 'spookyBox', 'present', 'corePieces', 'skin', 'pinPack', 'packetSignal', 'profileCosmetic', 'eventTapper']);

@@ -819,3 +819,38 @@
 #homeScreen #homeBsRight .home-career-snapshot:empty {
   display: none !important;
 }
+
+/* ==========================================================================
+   BRAWL SPACE — website home + events (2026-11-19). Same spacious
+   treatment as the app redesign, adapted to desktop widths: bigger
+   stage, wider grids, more air. No feature, button or id removed;
+   this sheet loads last, so these rules win ties.
+   ========================================================================== */
+
+/* Home: roomier panel grid, full-bleed hero stage, bigger PLAY. */
+#homeScreen #homePanel.home-bs-panel { gap: 16px !important; }
+#homeScreen #homeBsCenter { gap: 16px !important; }
+#homeScreen #homeBrawlerCard { min-height: clamp(340px, 62vh, 580px) !important; }
+#homeScreen #homeBsBottom { gap: 16px !important; }
+#homeScreen #startMatch { width: 220px !important; min-height: 100px !important; font-size: 30px !important; }
+#homeScreen #homeSelectedEventCard { min-height: 76px !important; }
+
+/* Events: heading reads as a tab, cards bigger, more columns. */
+#homeScreen #homeModesSection { gap: 12px !important; padding: 14px !important; }
+#homeScreen #homeModesSection .home-event-heading {
+  display: flex !important;
+  align-items: baseline !important;
+  gap: 10px !important;
+  padding: 10px 14px !important;
+  border-radius: 12px !important;
+  background: rgba(255, 209, 102, 0.14) !important;
+  border: 1px solid rgba(255, 209, 102, 0.35) !important;
+}
+#homeScreen #homeModeCompactRow {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)) !important;
+  gap: 12px !important;
+}
+#homeScreen #homeEventsView .home-mode-card { min-height: 128px !important; }
+@media (min-width: 1100px) {
+  #homeScreen #homeModeCompactRow { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important; }
+}

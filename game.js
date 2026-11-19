@@ -800,6 +800,114 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         .native-app .ranked-queue-actions{flex-direction:column !important;align-items:stretch !important}
         .native-app .ranked-queue-actions button{min-height:48px !important;width:100% !important}
         }
+        /* ---- Arena Forge Brawl Space redesign (2026-11-19) ----
+           Anthony: "Brawl stars uses there space very good" — the app
+           screens felt broken and hard to move. Heavy inspiration from
+           his 8 reference screenshots for layout, spacing and hierarchy
+           ONLY: no Brawl Stars art, icons, text or branding is lifted;
+           all names, art and copy stay Arena Forge. Layered on top of
+           the phase 3/4 + fighters-fixes rules (later rules win), so the
+           older suites' pinned strings stay in the file. */
+        /* FIGHTERS GRID: the horizontal strip is a full grid now.
+           ONE scroller: the view. The grid is not a scroller at all
+           (overflow:visible + position:static override the old sticky
+           strip), the toolbar stays sticky on top, and touch-action
+           pan-y means a vertical drag can never be stolen by a
+           horizontal strip — that was the "hard to move" bug. */
+        #appHomeFightersView{touch-action:pan-y}
+        #appFightersStrip{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px;overflow:visible;position:static;touch-action:pan-y;padding:4px 2px 12px;background:transparent;border-radius:0}
+        @media (orientation:landscape){#appFightersStrip{grid-template-columns:repeat(auto-fill,minmax(168px,1fr))}}
+        @media (orientation:portrait) and (max-width:560px){#appFightersStrip{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}}
+        .app-fighter-card{width:auto;padding:0 0 10px;border-radius:16px;overflow:hidden;text-align:left}
+        .app-fighter-card .app-fighter-portrait{width:100%;height:118px;margin:0;border-radius:0;border:0}
+        .app-fighter-card .app-fighter-portrait svg{width:88%;height:88%}
+        .app-fighter-card b{display:block;font-size:14px;padding:8px 10px 0}
+        .app-fighter-card small{display:block;font-size:11px;padding:2px 10px 0}
+        .app-fighter-card .app-fighter-fav{top:8px;right:10px}
+        .app-fighter-power{position:absolute;top:8px;left:8px;z-index:2;min-width:30px;height:30px;padding:0 7px;display:grid;place-items:center;border-radius:999px;background:rgba(5,10,22,.8);border:2px solid #ffd166;color:#ffd166;font-size:13px;font-weight:1000}
+        .app-fighter-trophies{display:block;font-size:11px;font-weight:1000;color:#ffd166;padding:2px 10px 0}
+        .app-fighter-rarity{position:absolute;top:0;right:0;bottom:0;width:6px;background:var(--rarity-color,#9fb4c7);box-shadow:0 0 10px var(--rarity-color,#9fb4c7);opacity:.9}
+        .app-fighter-cost{padding:2px 10px 0}
+        /* FIGHTERS DETAIL SHOWCASE: big stage portrait, stats chips,
+           kit slots as a 2-column grid. Portrait stacks, landscape
+           puts the portrait left. */
+        #appFightersDetail{flex-direction:column;align-items:center;text-align:center;padding:16px 14px}
+        .app-fighters-detail-portrait{width:min(38vh,210px);height:min(38vh,210px)}
+        .app-fighters-detail-info{align-items:center}
+        .app-fighters-detail-info h3{font-size:clamp(24px,5vh,34px)}
+        .app-fighters-detail-stats{justify-content:center}
+        .app-fighters-detail-desc{max-width:560px}
+        .app-kit-slots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%}
+        .app-kit-slot{min-width:0}
+        .app-fighters-detail-actions{justify-content:center}
+        @media (orientation:landscape){#appFightersDetail{flex-direction:row;align-items:flex-start;text-align:left}#appFightersDetail .app-fighters-detail-info{align-items:flex-start}#appFightersDetail .app-fighters-detail-stats{justify-content:flex-start}#appFightersDetail .app-fighters-detail-actions{justify-content:flex-start}}
+        @media (orientation:portrait) and (max-width:560px){.app-fighters-detail-portrait{width:min(38vw,150px);height:min(38vw,150px)}}
+        /* HOME HERO: full-bleed stage. The portrait is the showcase —
+           bigger, on a glow tinted by the fighter color; the info sits
+           under it in portrait, beside it in landscape. */
+        #appHomeHero{position:relative;flex-direction:column;justify-content:center;text-align:center;gap:8px;padding:18px 14px;overflow:hidden}
+        #appHomeHero::before{content:"";position:absolute;inset:-40% -20% auto;height:120%;background:radial-gradient(ellipse at 50% 30%,color-mix(in srgb,var(--hero-color,#0b69bd) 55%,transparent),transparent 70%);pointer-events:none}
+        #appHomeHero>*{position:relative}
+        #appHomeHero .app-hero-portrait{width:min(44vh,300px);font-size:clamp(84px,20vh,150px)}
+        #appHomeHero .app-hero-info{align-items:center;text-align:center}
+        #appHomeHero .app-hero-stats{justify-content:center}
+        @media (orientation:landscape){#appHomeHero{flex-direction:row;text-align:left;align-items:center}#appHomeHero .app-hero-info{align-items:flex-start;text-align:left}#appHomeHero .app-hero-stats{justify-content:flex-start}}
+        /* EVENTS: section headers read as tabs; cards are bigger with
+           more air, and the map preview shows through. */
+        .app-events-section{display:inline-block;font-size:13px;letter-spacing:.12em;padding:8px 14px 6px;border-radius:999px 999px 0 0;background:rgba(255,209,102,.14);border:1px solid rgba(255,209,102,.35);border-bottom:0;margin-top:8px}
+        .app-events-grid{grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;padding-top:10px}
+        .app-event-slot{min-height:118px;padding:16px 16px 14px}
+        .app-event-slot b{font-size:16px}
+        .app-event-slot small{font-size:12px}
+        /* PROFILE SPLIT (web + app): player card full-width on top,
+           the rest in two columns on wide screens, one column on
+           phones. Scoped to the profile panel only — Brick Bon keeps
+           its own layout. */
+        .brick-bon-v2.profile-view>main{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:14px;align-items:start}
+        .brick-bon-v2.profile-view>main>.profile-hero{grid-column:1/-1}
+        @media (max-width:760px){.brick-bon-v2.profile-view>main{grid-template-columns:minmax(0,1fr)}}
+        /* TROPHY ROAD (web + app): the top-5 list becomes a horizontal
+           milestone road — node cards on one scrollable track. */
+        .profile-trophies .profile-trophy-list{display:flex;gap:10px;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;padding:4px 2px 10px;scrollbar-width:none}
+        .profile-trophies .profile-trophy-list::-webkit-scrollbar{display:none}
+        .profile-trophies .profile-trophy-list>div{flex:0 0 190px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:12px 10px}
+        .profile-trophies .profile-trophy-list>div span{justify-content:center}
+        .profile-trophies .profile-trophy-list>div small{text-align:center}
+        .profile-trophy-total b{font-size:40px}
+        /* NEON RANKED (web + app): the boldest screen in the set.
+           Electric blues/cyans/purples on a near-black backdrop; the
+           emblem, progress bar and PLAY button all glow. Same ranked
+           data, tier + RP — only the look changes. */
+        .ranked-hub-overlay{position:fixed;inset:0;z-index:2300;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 0%,rgba(88,28,135,.55),rgba(2,0,20,.97) 60%);padding:12px;box-sizing:border-box;font-family:'Trebuchet MS','Gill Sans','Verdana',sans-serif}
+        .ranked-hub-panel{width:min(920px,100%);max-height:calc(100dvh - 24px);overflow-y:auto;-webkit-overflow-scrolling:touch;box-sizing:border-box;padding:22px;border-radius:22px;border:2px solid rgba(0,245,212,.55);background:linear-gradient(175deg,rgba(10,6,38,.98),rgba(4,1,24,.98));box-shadow:0 0 42px rgba(0,245,212,.35),0 0 90px rgba(168,85,247,.28),inset 0 0 60px rgba(0,245,212,.06);color:#eafcff}
+        .ranked-hub-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+        .ranked-hub-top h2{margin:0;font-size:clamp(22px,4vw,32px);letter-spacing:.06em;color:#fff;text-shadow:0 0 18px rgba(0,245,212,.8)}
+        .ranked-hub-top small{display:block;color:#8ef5e2;font-size:12px;font-weight:800;letter-spacing:.1em}
+        .ranked-hub-close{flex:none;width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.08);color:#fff;font-size:16px;font-weight:1000;cursor:pointer}
+        .ranked-hub-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:18px;align-items:stretch;margin-top:16px}
+        .ranked-hub-emblem{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:18px 12px;border-radius:18px;border:2px solid var(--ranked-color,#00f5d4);background:radial-gradient(circle at 50% 35%,color-mix(in srgb,var(--ranked-color,#00f5d4) 22%,transparent),rgba(2,0,20,.6) 75%);box-shadow:0 0 28px color-mix(in srgb,var(--ranked-color,#00f5d4) 45%,transparent),inset 0 0 30px rgba(0,245,212,.12)}
+        .ranked-hub-emblem .ranked-hub-glyph{font-size:64px;line-height:1;filter:drop-shadow(0 0 14px var(--ranked-color,#00f5d4))}
+        .ranked-hub-emblem b{font-size:clamp(20px,3.4vw,28px);color:var(--ranked-color,#00f5d4);text-shadow:0 0 16px var(--ranked-color,#00f5d4);text-transform:uppercase;text-align:center;line-height:1.05}
+        .ranked-hub-emblem span{font-size:13px;font-weight:800;color:#bfefff}
+        .ranked-hub-main{display:flex;flex-direction:column;gap:12px;min-width:0}
+        .ranked-hub-bar-label{display:flex;justify-content:space-between;gap:8px;font-size:12px;font-weight:1000;letter-spacing:.06em;color:#9df3e6}
+        .ranked-hub-bar{height:18px;border-radius:999px;border:1px solid rgba(0,245,212,.6);background:rgba(0,0,0,.5);overflow:hidden;box-shadow:0 0 16px rgba(0,245,212,.35)}
+        .ranked-hub-bar i{display:block;height:100%;background:linear-gradient(90deg,#00f5d4,#38bdf8,#a855f7);box-shadow:0 0 18px rgba(0,245,212,.9)}
+        .ranked-hub-meta{font-size:12px;line-height:1.5;color:#bfefff}
+        .ranked-hub-pass{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;border:2px solid rgba(168,85,247,.6);background:linear-gradient(135deg,rgba(88,28,135,.5),rgba(10,6,38,.7));box-shadow:0 0 18px rgba(168,85,247,.35);color:#fff;text-align:left;cursor:pointer}
+        .ranked-hub-pass b{display:block;font-size:15px}
+        .ranked-hub-pass small{display:block;font-size:12px;color:#d8b4fe}
+        .ranked-hub-pass .ranked-hub-pass-go{margin-left:auto;flex:none;font-size:12px;font-weight:1000;color:#e9d5ff}
+        .ranked-hub-play{padding:16px 20px;border:0;border-radius:16px;background:linear-gradient(90deg,#00f5d4,#38bdf8,#a855f7);color:#04122b;font-size:clamp(20px,3.4vw,26px);font-weight:1000;letter-spacing:.06em;cursor:pointer;box-shadow:0 0 26px rgba(0,245,212,.65),0 6px 0 rgba(0,0,0,.45)}
+        .ranked-hub-play:active{transform:translateY(3px)}
+        @media (max-width:640px){.ranked-hub-body{grid-template-columns:1fr}.ranked-hub-panel{padding:16px}}
+        /* Neon carries into the draft + pass too (same screens, same
+           glow). Inline styles set the base colors, so these win with
+           !important — the pattern the app polish pass already uses. */
+        .ranked-queue-overlay{background:radial-gradient(ellipse at 50% 0%,rgba(88,28,135,.5),rgba(2,0,20,.97) 60%) !important}
+        .ranked-queue-panel{border-color:rgba(0,245,212,.55) !important;box-shadow:0 0 42px rgba(0,245,212,.3),0 0 90px rgba(168,85,247,.22) !important}
+        .ranked-pass-overlay{background:radial-gradient(ellipse at 50% 0%,rgba(88,28,135,.5),rgba(2,0,20,.97) 60%) !important}
+        .ranked-pass-panel{border-color:rgba(0,245,212,.55) !important;box-shadow:0 0 42px rgba(0,245,212,.3),0 0 90px rgba(168,85,247,.22) !important}
         `;
         document.head.appendChild(styleSheet);
 
@@ -2110,7 +2218,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         const overlay = document.createElement('div');
         overlay.className = 'brick-bon-v2-overlay';
         const panel = document.createElement('div');
-        panel.className = 'brick-bon-v2';
+        panel.className = 'brick-bon-v2 profile-view';
         const close = () => { overlay.remove(); document.removeEventListener('keydown', onKey); previousFocus?.focus?.(); };
         const onKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } };
         document.addEventListener('keydown', onKey);
@@ -7347,7 +7455,7 @@ const bolznstienPendingStrikes = [];
                 <div id="appFightersRoles" class="app-fighters-roles"></div>
                 <span id="appFightersCount" class="app-fighters-count"></span>
               </div>
-              <div id="appFightersStrip"></div>
+              <div id="appFightersStrip" class="app-fighters-grid"></div>
               <div id="appFightersDetail"></div>`;
             view.querySelector('#appFightersSearch')?.addEventListener('input', (event) => {
                 appFightersState.search = event.target.value || '';
@@ -7416,7 +7524,7 @@ const bolznstienPendingStrikes = [];
                 // the picked card stays visible in the strip.
                 const fightersView = document.getElementById('appHomeFightersView');
                 if (fightersView) fightersView.scrollTop = 0;
-                view.querySelector(`[data-app-fighter="${appFightersState.focused}"]`)?.scrollIntoView({ inline: 'center', block: 'nearest' });
+                view.querySelector(`[data-app-fighter="${appFightersState.focused}"]`)?.scrollIntoView({ block: 'nearest' });
             });
             view.querySelector('#appFightersDetail')?.addEventListener('click', (event) => {
                 // Round 2: a skin chip equips that skin; the FAVORITE
@@ -7462,14 +7570,24 @@ const bolznstienPendingStrikes = [];
             // F8: locked cards show the real unlock soul cost under the
             // LOCKED line (same table the Soul Summoner uses).
             const soulCost = locked ? getSoulUnlockCostForRarity(getBrawlerRarity(id)) : 0;
+            const rarity = (typeof brawlerRarities !== 'undefined' && brawlerRarities[id]) || 'Starter';
+            const rarityColor = APP_FIGHTER_RARITY_COLORS[rarity] || '#fff';
+            // Trophies (10/win) — guarded: the vm harnesses in the
+            // fighters suites do not stub getBrawlerTrophies, so a bare
+            // call would throw there; 0 simply hides the chip.
+            let trophies = 0;
+            try { trophies = (typeof getBrawlerTrophies === 'function') ? getBrawlerTrophies(id) : 0; } catch (_) { trophies = 0; }
             let portrait = `<span style="font-size:26px">${data.emoji || '🙂'}</span>`;
             try { portrait = getBrawlerPortraitMarkup(id); } catch (_) {}
             return `<button type="button" class="app-fighter-card${appFightersState.focused === id ? ' is-selected' : ''}${locked ? ' is-locked' : ''}" data-app-fighter="${id}" style="--card-color:${data.color || '#0b69bd'}">
               <span class="app-fighter-portrait">${portrait}</span>
+              <span class="app-fighter-power">${pData.level || 1}</span>
+              <span class="app-fighter-rarity" style="--rarity-color:${rarityColor}" aria-hidden="true"></span>
               <span class="app-fighter-fav${isFavoriteBrawler(id) ? ' is-fav' : ''}" data-app-favorite="${id}" role="button" aria-label="Favorite ${data.name || id}">${isFavoriteBrawler(id) ? '★' : '☆'}</span>
               <b>${data.name || id}</b>
               <small>${locked ? '🔒 LOCKED' : `POWER ${pData.level || 1}`}</small>${soulCost > 0 ? `
-              <span class="app-fighter-cost">${soulCost} SOULS TO UNLOCK</span>` : ''}
+              <span class="app-fighter-cost">${soulCost} SOULS TO UNLOCK</span>` : ''}${trophies > 0 ? `
+              <span class="app-fighter-trophies">🏆 ${trophies.toLocaleString()}</span>` : ''}
             </button>`;
         }).join('');
     }
@@ -23025,7 +23143,7 @@ let heistFeverActive = false;
 
           // Milestones Vertical Road Track
           const trackContainer = document.createElement('div');
-          trackContainer.style.cssText = 'display:flex;flex-direction:column;gap:10px;box-sizing:border-box;';
+          trackContainer.style.cssText = 'display:flex;flex-direction:row;gap:12px;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;padding:6px 2px 14px;box-sizing:border-box;';
 
           BRICK_ROAD_MILESTONES.forEach((m, idx) => {
               const isReached = totalBricks >= m.bricks;
@@ -23033,13 +23151,13 @@ let heistFeverActive = false;
               const canClaim = isReached && !isClaimed;
 
               const mCard = document.createElement('div');
-              mCard.style.cssText = `display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:12px 16px;border-radius:14px;background:${canClaim ? 'linear-gradient(135deg,rgba(30,60,95,0.9),rgba(14,30,55,0.9))' : isClaimed ? 'rgba(10,20,38,0.5)' : 'rgba(8,14,28,0.7)'};border:1.5px solid ${canClaim ? '#5df2c2' : isClaimed ? 'rgba(93,242,194,0.3)' : isReached ? '#ffd166' : 'rgba(255,255,255,0.08)'};transition:all 0.2s;box-sizing:border-box;`;
+              mCard.style.cssText = `flex:0 0 208px;scroll-snap-align:start;display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding:16px 12px;border-radius:14px;background:${canClaim ? 'linear-gradient(135deg,rgba(30,60,95,0.9),rgba(14,30,55,0.9))' : isClaimed ? 'rgba(10,20,38,0.5)' : 'rgba(8,14,28,0.7)'};border:1.5px solid ${canClaim ? '#5df2c2' : isClaimed ? 'rgba(93,242,194,0.3)' : isReached ? '#ffd166' : 'rgba(255,255,255,0.08)'};transition:all 0.2s;box-sizing:border-box;`;
 
               const mLeft = document.createElement('div');
-              mLeft.style.cssText = 'display:flex;align-items:center;gap:12px;min-width:0;';
+              mLeft.style.cssText = 'display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;min-width:0;';
 
               const iconBadge = document.createElement('div');
-              iconBadge.style.cssText = `width:46px;height:46px;border-radius:12px;background:radial-gradient(circle,rgba(255,209,102,0.2),rgba(8,16,32,0.9));border:1.5px solid ${canClaim ? '#5df2c2' : '#ffd166'};display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;`;
+              iconBadge.style.cssText = `width:58px;height:58px;border-radius:12px;background:radial-gradient(circle,rgba(255,209,102,0.2),rgba(8,16,32,0.9));border:1.5px solid ${canClaim ? '#5df2c2' : '#ffd166'};display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0;`;
               iconBadge.textContent = m.icon;
 
               const info = document.createElement('div');
@@ -23072,10 +23190,12 @@ let heistFeverActive = false;
 
               mCard.appendChild(mLeft);
               mCard.appendChild(mRight);
+              if ((canClaim || !isReached) && !trackContainer.querySelector('[data-brick-road-next]')) mCard.setAttribute('data-brick-road-next', '1');
               trackContainer.appendChild(mCard);
           });
 
           body.appendChild(trackContainer);
+          try { trackContainer.querySelector('[data-brick-road-next]')?.scrollIntoView({ inline: 'center', block: 'nearest' }); } catch (_) {}
           panel.appendChild(body);
       }
 
@@ -55806,6 +55926,7 @@ let heistFeverActive = false;
         ensureRankedSeasonState();
         const progress = getRankedPassProgress();
         const overlay = document.createElement('div');
+        overlay.className = 'ranked-pass-overlay';
         overlay.style.position = 'fixed';
         overlay.style.inset = '0';
         overlay.style.background = 'rgba(3, 7, 18, 0.94)';
@@ -55815,6 +55936,7 @@ let heistFeverActive = false;
         overlay.style.justifyContent = 'center';
 
         const panel = document.createElement('div');
+        panel.className = 'ranked-pass-panel';
         panel.style.width = 'min(1000px, calc(100vw - 28px))';
         panel.style.maxHeight = 'min(820px, calc(100vh - 28px))';
         panel.style.overflow = 'auto';
@@ -55996,6 +56118,68 @@ let heistFeverActive = false;
         panel.appendChild(trackGrid);
         overlay.appendChild(panel);
         document.body.appendChild(overlay);
+    }
+
+    // Neon Ranked hub (2026-11-19): the Ranked screen — big rank emblem
+    // in the division color, RP progress bar to the next division, the
+    // Ranked Pass card (opens the existing 50-tier pass UI), and a big
+    // neon PLAY that starts the draft. Same ranked data (tier + RP from
+    // getRankedTierInfo, pass progress from getRankedPassProgress) — no
+    // new ranks, rewards or currencies. The queue overlay is built
+    // underneath and its draft only starts via onPlay.
+    function openRankedHubOverlay(queueOverlay, onPlay) {
+        ensureRankedSeasonState();
+        const rankedPoints = playerData?.ranked?.points || 0;
+        const tierInfo = getRankedTierInfo(rankedPoints);
+        const floor = getRankedDivisionFloor(rankedPoints);
+        const intoDivision = Math.max(0, rankedPoints - floor);
+        const divisionPct = tierInfo.nextThreshold ? Math.min(100, Math.round((intoDivision / Math.max(1, tierInfo.nextThreshold - floor)) * 100)) : 100;
+        const passProgress = getRankedPassProgress();
+        const hub = document.createElement('div');
+        hub.className = 'ranked-hub-overlay';
+        hub.id = 'rankedHubOverlay';
+        hub.setAttribute('role', 'dialog');
+        hub.setAttribute('aria-label', 'Ranked');
+        hub.innerHTML = `
+          <div class="ranked-hub-panel" style="--ranked-color:${tierInfo.color || '#00f5d4'}">
+            <div class="ranked-hub-top">
+              <div><h2>🏆 RANKED</h2><small>SEASONAL RANKED · 3-MONTH SEASON 1</small></div>
+              <button type="button" class="ranked-hub-close" data-ranked-hub="close" aria-label="Close ranked">✕</button>
+            </div>
+            <div class="ranked-hub-body">
+              <div class="ranked-hub-emblem">
+                <span class="ranked-hub-glyph" aria-hidden="true">🏆</span>
+                <b>${tierInfo.label}</b>
+                <span>${tierInfo.points} RP · DIVISION ${tierInfo.index + 1} OF ${RANKED_DIVISIONS.length}</span>
+              </div>
+              <div class="ranked-hub-main">
+                <div>
+                  <div class="ranked-hub-bar-label"><span>${tierInfo.label.toUpperCase()}</span><span>${tierInfo.nextLabel ? `NEXT: ${tierInfo.nextLabel.toUpperCase()} · ${tierInfo.nextThreshold} RP` : 'MAX DIVISION'}</span></div>
+                  <div class="ranked-hub-bar" role="progressbar" aria-valuenow="${divisionPct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${divisionPct}%"></i></div>
+                </div>
+                <div class="ranked-hub-meta">${tierInfo.nextLabel ? `${Math.max(0, tierInfo.nextThreshold - tierInfo.points)} RP to ${tierInfo.nextLabel} · ` : ''}Division safety floor: ${floor} RP · Weekly Pass XP: ${(playerData.ranked.weeklyPassXp || 0)}/2000${playerData.ranked.weeklyMaxed ? ' · 🏆 WEEKLY MAXED' : ''}</div>
+                <button type="button" class="ranked-hub-pass" data-ranked-hub="pass">
+                  <span aria-hidden="true" style="font-size:26px">⭐</span>
+                  <span style="min-width:0"><b>RANKED PASS · TIER ${passProgress.unlockedTiers} / ${RANKED_PASS_TIERS}</b><small>${passProgress.currentTierXp}/${passProgress.xpPerTier} XP to the next tier · ${passProgress.xp} total Ranked XP</small></span>
+                  <span class="ranked-hub-pass-go">OPEN ›</span>
+                </button>
+                <button type="button" class="ranked-hub-play" data-ranked-hub="play">▶ PLAY RANKED</button>
+              </div>
+            </div>
+          </div>`;
+        hub.addEventListener('click', (event) => {
+            const btn = event.target.closest('[data-ranked-hub]');
+            if (!btn && event.target !== hub) return;
+            const action = btn ? btn.dataset.rankedHub : 'close';
+            if (action === 'play') { appBuzz(12); hub.remove(); try { onPlay(); } catch (_) {} return; }
+            if (action === 'pass') { appBuzz(10); if (typeof openRankedPassUI === 'function') openRankedPassUI(); return; }
+            // Close: the draft never started, so there is no AI timer to
+            // clear — removing the queue overlay is the whole cleanup.
+            hub.remove();
+            try { queueOverlay.remove(); } catch (_) {}
+        });
+        document.body.appendChild(hub);
+        return hub;
     }
 
     function openRankedQueueUI() {
@@ -57097,12 +57281,15 @@ let heistFeverActive = false;
             launchShowdownMatch();
         };
 
-        renderDraft();
         overlay.appendChild(panel);
         document.body.appendChild(overlay);
 
-        // Kick off first turn if AI starts
-        scheduleNextTurn(500);
+        // Neon Ranked hub (2026-11-19): the queue opens on the hub —
+        // rank emblem, RP progress, Pro Pass card, PLAY — and the draft
+        // only starts when PLAY is tapped, so no AI turn is ever
+        // scheduled before the player is in. The hub sits above the
+        // queue overlay (z 2300 > 2200); closing it closes the queue.
+        openRankedHubOverlay(overlay, () => { renderDraft(); scheduleNextTurn(500); });
     }
 
     // Prop Hunt v2: pre-match role picker. The choice is session-only
@@ -61774,6 +61961,12 @@ isBrawlerLabMode = false;
                 card.appendChild(traitPreview);
                 card.appendChild(abilityBar);
                 card.appendChild(rankLabel);
+                const trophyLine = document.createElement('div');
+                trophyLine.className = 'brawler-card__trophies';
+                let cardTrophies = 0;
+                try { cardTrophies = (typeof getBrawlerTrophies === 'function') ? getBrawlerTrophies(id) : 0; } catch (_) { cardTrophies = 0; }
+                trophyLine.textContent = `🏆 ${cardTrophies.toLocaleString()} TROPHIES`;
+                card.appendChild(trophyLine);
                 rankBar.setAttribute('aria-hidden', 'true');
                 if (selectedBrawler === id) {
                     card.classList.add('is-selected-fighter');
