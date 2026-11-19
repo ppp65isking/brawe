@@ -22,8 +22,10 @@ check('live Brick Rush button is moved into the quick row', game.includes("const
 check('quick-row badges refresh in syncAppHome', game.includes("document.getElementById('dailyWeeklyQuestCount')?.textContent") && game.includes("getClaimableSeasonRewardCount() || 0"));
 
 // --- Player + season chips finally do something in app mode ---
-check('player chip tap opens the player profile', game.includes("document.getElementById('appHomePlayer')?.addEventListener('click', () => { if (typeof openPlayerProfile === 'function') openPlayerProfile(); });"));
-check('season chip tap opens the season pass', game.includes("document.getElementById('appHomeSeasonChip')?.addEventListener('click', () => { if (typeof openSeasonPass === 'function') openSeasonPass(); });"));
+// Phase 4: the handler also buzzes (appBuzz) — same tap, same destination.
+check('player chip tap opens the player profile', game.includes("document.getElementById('appHomePlayer')?.addEventListener('click', () => { appBuzz(10); if (typeof openPlayerProfile === 'function') openPlayerProfile(); });"));
+// Phase 4: the handler also buzzes (appBuzz) — same tap, same destination.
+check('season chip tap opens the season pass', game.includes("document.getElementById('appHomeSeasonChip')?.addEventListener('click', () => { appBuzz(10); if (typeof openSeasonPass === 'function') openSeasonPass(); });"));
 check('chips show a pointer cursor', game.includes('#appHomePlayer,#appHomeSeasonChip{cursor:pointer}'));
 
 // --- Settings view: shell + builders + tab wiring ---
@@ -42,7 +44,10 @@ check('settings about shows live fighter count + season', game.includes('const f
 
 // --- Haptics: one guarded helper, all touch buttons go through it ---
 check('haptics helper exists with the stored pref (default on)', game.includes("const APP_HAPTICS_KEY = 'arenaForgeHapticsV1';") && game.includes('function appBuzz(ms) {') && game.includes("localStorage.getItem(APP_HAPTICS_KEY) !== '0'"));
-check('all four touch-button vibrations go through appBuzz', game.includes('appBuzz(18);') && game.includes('appBuzz(22);') && (game.match(/appBuzz\(\d+\);/g) || []).length === 4);
+// Phase 4: more appBuzz call sites now exist (shell taps, kit sheet), so
+// the count check is gone — the intent stands: no bare navigator.vibrate
+// anywhere; the single vibrate call lives inside the guarded appBuzz.
+check('all four touch-button vibrations go through appBuzz', game.includes('appBuzz(18);') && game.includes('appBuzz(22);') && (game.match(/navigator\.vibrate/g) || []).length === 1);
 check('no bare vibrate call survives outside the helper', (game.match(/navigator\.vibrate/g) || []).length === 1);
 
 // --- Web overlays restyled for the app (CSS only, same functions) ---
