@@ -371,6 +371,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         .app-settings-row .app-settings-label small{display:block;font-size:11px;color:#9fc6e8;margin-top:2px;line-height:1.35}
         .app-settings-row>button{flex:none;padding:10px 16px;border:0;border-radius:12px;background:#ff9f1c;color:#231303;font-weight:1000;font-size:13px;cursor:pointer}
         .app-settings-row>button.is-off{background:rgba(255,255,255,.12);color:#cfe6ff;border:1px solid rgba(255,255,255,.25)}
+        .app-settings-row.is-danger{border-color:rgba(255,84,112,.5)}
+        .app-settings-row.is-danger>button{background:#ff5470;color:#fff}
         .app-settings-about{flex:none;padding:12px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);font-size:12px;color:#9fc6e8;line-height:1.6}
         /* Web overlays restyled for the app (phase 2): the shop, quest
            board and tournament overlays are desktop panels on the web.
@@ -7019,10 +7021,11 @@ const bolznstienPendingStrikes = [];
 
     // ---- App Settings view (phase 2, 2026-11-19) ----
     // Native settings sheet for the app: save code (the same modal as
-    // the top-strip button), the Arena Forge guide again, haptics, about.
-    // Deliberately NOT invented here: no sound toggle exists anywhere in
-    // the game (each voice-line / sfx module carries its own enabled
-    // flag, wired to nothing) and no progress reset exists.
+    // the top-strip button), the Arena Forge guide again, haptics, sound
+    // mute, progress reset, about. Sound mute + progress reset added
+    // 2026-11-19 (round 2): the mute pushes the pref into every audio
+    // module's setEnabled; the reset double-confirms, wipes the real
+    // save keys, then reloads (see below).
     let appSettingsBuilt = false;
     const APP_HAPTICS_KEY = 'arenaForgeHapticsV1';
     // App polish pass (SE2): the APK version has no source of truth
@@ -7034,6 +7037,107 @@ const bolznstienPendingStrikes = [];
     }
     function appBuzz(ms) {
         try { if (!appHapticsOn()) return; navigator.vibrate?.(ms); } catch (_) {}
+    }
+    // ---- App sound mute + progress reset (round 2, 2026-11-19) ----
+    // Master mute: every sound in the app comes from the modules/audio/*
+    // classic scripts bootstrap.js loads before game.js. Six of them
+    // actually play audio and expose setEnabled/isEnabled on window —
+    // the Outlit, Fuser, Voodoyou, Pandy and Snipa voice modules plus
+    // the Hypercharge SFX module — and each gates its own play() on
+    // that flag, so the master mute is exactly: persist the pref, push
+    // it into every module that has the hook. The other four voice
+    // modules (Bookworm, Freezeon, Driller, Gravy) are silent text
+    // stubs: play() picks a line and calls a window.*VoiceClip callback
+    // that nothing in the repo defines, so they make no sound today and
+    // have no setEnabled to wire — they stay listed in
+    // APP_AUDIO_MODULE_NAMES so a future setEnabled is picked up
+    // automatically, but if Anthony ever picks voices for them, their
+    // clip callback must consult appSoundMuted() too. There is NO music
+    // path anywhere (no music module, no music files, no AudioContext /
+    // speechSynthesis in game.js or modules/), so there is nothing else
+    // to mute. Volumes are untouched — on/off only. One honest limit: a
+    // clip already playing when the toggle flips keeps playing to its
+    // end (modules expose no stop); every later play() is silenced
+    // immediately, no reload needed.
+    const APP_MUTED_KEY = 'arenaForgeMutedV1';
+    const APP_AUDIO_MODULE_NAMES = ['BraweOutlitVoice', 'BraweFuserVoice', 'BraweVoodoyouVoice', 'BrawePandyVoice', 'BraweSnipaVoice', 'BraweBookwormVoice', 'BraweFreezeonVoice', 'BraweDrillerVoice', 'BraweGravyVoice', 'BraweHyperchargeSfx'];
+    function appSoundMuted() {
+        try { return localStorage.getItem(APP_MUTED_KEY) === '1'; } catch (_) { return false; }
+    }
+    function applyAppSoundMuted() {
+        const muted = appSoundMuted();
+        try {
+            for (const name of APP_AUDIO_MODULE_NAMES) {
+                const mod = window[name];
+                if (mod && typeof mod.setEnabled === 'function') { try { mod.setEnabled(!muted); } catch (_) {} }
+            }
+        } catch (_) {}
+        return muted;
+    }
+    function appSetSoundMuted(muted) {
+        try { localStorage.setItem(APP_MUTED_KEY, muted ? '1' : '0'); } catch (_) {}
+        applyAppSoundMuted();
+    }
+    // Push the saved pref into the audio modules at boot (they load
+    // before game.js, so this is the first moment the pref exists) and
+    // again on load in case a module arrived late.
+    applyAppSoundMuted();
+    window.addEventListener('load', applyAppSoundMuted);
+    // Progress reset: wipes the real save keys — every key the save-code
+    // whitelist covers (isBraweBackupStorageKey: brawl|arena_forge|
+    // super_granted|shop_|sushi_|tower_|season_), plus every arenaForge*
+    // pref the game owns (tournament runs, help flags, home rotations,
+    // last-tab/choice, fullscreen, haptics AND this mute pref — a reset
+    // means a fresh start, so prefs return to their defaults), plus the
+    // two known keys neither pattern catches (brickBonClaimed,
+    // brawe_gadget_test_results_v1). It never touches anything else in
+    // localStorage. In-memory progress (playerData, season state) is
+    // loaded once at boot and spread across the game, so an in-place
+    // reset cannot be proven safe — after the wipe the app reloads, the
+    // same proven pattern the save-import flow already uses.
+    const APP_PROGRESS_RESET_EXTRA_KEYS = ['brickBonClaimed', 'brawe_gadget_test_results_v1'];
+    function appProgressResetKeys(storage) {
+        const wiped = [];
+        try {
+            const keys = [];
+            for (let i = 0; i < storage.length; i++) { const key = storage.key(i); if (key) keys.push(key); }
+            for (const key of keys) {
+                if (isBraweBackupStorageKey(key) || /^arenaForge/i.test(key) || APP_PROGRESS_RESET_EXTRA_KEYS.indexOf(key) !== -1) wiped.push(key);
+            }
+        } catch (_) {}
+        return wiped;
+    }
+    function wipeAppProgress(storage) {
+        const store = storage || localStorage;
+        const wiped = appProgressResetKeys(store);
+        try { for (const key of wiped) store.removeItem(key); } catch (_) {}
+        return wiped;
+    }
+    function openAppProgressResetFlow() {
+        showAppConfirmSheet({
+            title: 'ERASE ALL PROGRESS?',
+            message: 'This erases your coins, souls, gems, unlocked brawlers, season progress, tournament runs and settings on this device. A save code will not bring it back. This cannot be undone.',
+            confirmText: 'YES, ERASE IT',
+            cancelText: 'KEEP MY PROGRESS',
+            confirmColor: '#ff5470',
+            onConfirm: () => {
+                showAppConfirmSheet({
+                    title: 'ARE YOU SURE?',
+                    message: 'This is the last step. Tap ERASE EVERYTHING below to wipe all progress on this device right now.',
+                    confirmText: 'ERASE EVERYTHING',
+                    cancelText: 'CANCEL',
+                    confirmColor: '#ff5470',
+                    onConfirm: () => {
+                        wipeAppProgress();
+                        showAppConfirmSheet({
+                            title: 'PROGRESS ERASED',
+                            message: 'All progress on this device has been erased. BRAWE will reload now with a fresh start.',
+                            onClose: () => { try { location.reload(); } catch (_) {} }
+                        });
+                    }
+                });
+            }
+        });
     }
     // ---- App toast + confirm sheet (2026-11-19) ----
     // showToast was called from save download, save-code copy and Brick
@@ -7174,6 +7278,15 @@ const bolznstienPendingStrikes = [];
                     renderAppSettingsView();
                     return;
                 }
+                if (action === 'sound') {
+                    appSetSoundMuted(!appSoundMuted());
+                    renderAppSettingsView();
+                    return;
+                }
+                if (action === 'reset') {
+                    openAppProgressResetFlow();
+                    return;
+                }
             });
         }
         renderAppSettingsView();
@@ -7184,6 +7297,7 @@ const bolznstienPendingStrikes = [];
         const season = (() => { try { return getActiveSeasonProfile(); } catch (_) { return null; } })();
         const fighterCount = Array.isArray(allBrawlers) ? allBrawlers.length : 0;
         const hapticsOn = appHapticsOn();
+        const muted = appSoundMuted();
         view.innerHTML = `
           <div class="app-settings-head">
             <button type="button" class="app-settings-back" data-app-settings="back">‹ BACK</button>
@@ -7200,6 +7314,14 @@ const bolznstienPendingStrikes = [];
           <div class="app-settings-row">
             <span class="app-settings-label"><b>📳 BUTTON HAPTICS</b><small>Small vibration when you tap buttons, in the app and in matches.</small></span>
             <button type="button" class="${hapticsOn ? '' : 'is-off'}" data-app-settings="haptics">${hapticsOn ? 'ON' : 'OFF'}</button>
+          </div>
+          <div class="app-settings-row">
+            <span class="app-settings-label"><b>🔇 SOUND</b><small>Voice lines and sound effects, everywhere in the app. Turning it off silences them right away — no restart needed.</small></span>
+            <button type="button" class="${muted ? 'is-off' : ''}" data-app-settings="sound">${muted ? 'ON' : 'OFF'}</button>
+          </div>
+          <div class="app-settings-row is-danger">
+            <span class="app-settings-label"><b>🗑️ ERASE ALL PROGRESS</b><small>Wipes coins, souls, brawlers, season progress, tournament runs and settings on this device. This cannot be undone.</small></span>
+            <button type="button" data-app-settings="reset">ERASE</button>
           </div>
           <div class="app-settings-about">
             <b>ABOUT</b><br>
