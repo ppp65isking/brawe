@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@capacitor/core": "^6.1.2",
+    "@capacitor/screen-orientation": "^6.0.4",
     "phaser": "^3.90.0"
   },
   "devDependencies": {

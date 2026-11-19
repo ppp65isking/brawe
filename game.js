@@ -380,7 +380,9 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         .app-settings-row>button.is-off{background:rgba(255,255,255,.12);color:#cfe6ff;border:1px solid rgba(255,255,255,.25)}
         .app-settings-row.is-danger{border-color:rgba(255,84,112,.5)}
         .app-settings-row.is-danger>button{background:#ff5470;color:#fff}
-        .app-settings-about{flex:none;padding:12px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);font-size:12px;color:#9fc6e8;line-height:1.6}
+        .app-settings-seg{flex:none;display:flex;gap:6px}
+        .app-settings-seg button{padding:10px 11px;border-radius:12px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.12);color:#cfe6ff;font-weight:1000;font-size:12px;cursor:pointer}
+        .app-settings-seg button.is-active{background:#ff9f1c;border-color:#ff9f1c;color:#231303}        .app-settings-about{flex:none;padding:12px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);font-size:12px;color:#9fc6e8;line-height:1.6}
         /* Web overlays restyled for the app (phase 2): the shop, quest
            board and tournament overlays are desktop panels on the web.
            These rules only apply under .native-app, so the website is
@@ -7354,9 +7356,13 @@ const bolznstienPendingStrikes = [];
         // map label (same names, same fallbacks). Showdown-family modes
         // play on the rotating showdown map; the special-cased modes
         // have their own named arenas. Duels / Tower Duels / Fused play
-        // on the plain Duels cross-walls arena and Friendly Battle picks
-        // its map at launch — neither has a named map in code, so no
-        // invented name goes on those slots (null = no map line).
+        // on the plain Duels cross-walls arena (beginFusedMatch sets
+        // isDuels + the 1000x1000 world; the HUD deliberately skips its
+        // map line for Duels) — no named map exists anywhere in code for
+        // it (Tournament has its own "Champion's Ring"), so the slots
+        // carry the plain label "Duels Arena" rather than an invented
+        // name. Friendly Battle picks one of ten named maps at launch,
+        // so it has no single map and keeps no map line (null).
         try {
             if (id === 'construction') return getConstructionMapName();
             if (id === 'mirror') return 'Mirror Arena';
@@ -7369,7 +7375,8 @@ const bolznstienPendingStrikes = [];
             if (id === 'prop_hunt') return 'Prop Hunt — Crown Collapse';
             if (id === 'trio') return 'Trio Showdown Arena';
             if (id === 'tournament') return TOURNAMENT_MAP_NAME;
-            if (id === 'duels' || id === 'tower_duels' || id === 'fused' || id === 'custom_clash') return null;
+            if (id === 'duels' || id === 'tower_duels' || id === 'fused') return 'Duels Arena';
+            if (id === 'custom_clash') return null;
             return getActiveShowdownTheme().name || null;
         } catch (_) { return null; }
     }
@@ -7596,6 +7603,76 @@ const bolznstienPendingStrikes = [];
             }
         });
     }
+    // ---- App orientation lock (2026-11-19, round 2 small fixes) ----
+    // Round-1 flag 7 said no screenOrientation existed in the manifest —
+    // it did: the activity was hard-locked to sensorLandscape, so the app
+    // could never show its portrait layouts at all. The manifest now says
+    // "sensor" (follow the device), and this is the runtime choice on top:
+    // Auto (sensor) / Portrait / Landscape, saved in localStorage and
+    // applied at boot. The lock goes through the official
+    // @capacitor/screen-orientation plugin (installed, Capacitor 6):
+    // game.js is a classic script with no bundler, so instead of importing
+    // the plugin's JS, it resolves the native plugin through the Capacitor
+    // bridge itself — window.Capacitor.registerPlugin('ScreenOrientation')
+    // with no JS implementation routes lock/unlock to the native plugin
+    // via the injected PluginHeaders (see @capacitor/core
+    // defaultRegisterPlugin/createPluginMethod). Fallbacks, in order:
+    // the registered Plugins proxy, a direct nativePromise call, then the
+    // web Screen Orientation API. Every path is best-effort and never
+    // throws into the caller; applyAppOrientation reports whether a lock
+    // actually took effect so the Settings row can say so honestly.
+    // Tradeoff, stated plainly: in Auto the system auto-rotate toggle
+    // still governs (rotation off system-wide = no rotation in Auto), and
+    // on the website this setting is never applied (native app only) —
+    // the web fullscreen path keeps its own landscape lock.
+    const APP_ORIENTATION_KEY = 'arenaForgeOrientationV1';
+    function appOrientationPref() {
+        try {
+            const v = localStorage.getItem(APP_ORIENTATION_KEY);
+            if (v === 'portrait' || v === 'landscape') return v;
+        } catch (_) {}
+        return 'auto';
+    }
+    async function applyAppOrientation(pref) {
+        const want = (pref === 'portrait' || pref === 'landscape') ? pref : 'auto';
+        try {
+            const cap = (typeof window !== 'undefined') ? window.Capacitor : null;
+            // 1) A registered plugin proxy (present if the plugin JS was
+            // ever bundled in by a future build).
+            const registered = cap?.Plugins?.ScreenOrientation;
+            if (registered && typeof registered.lock === 'function' && typeof registered.unlock === 'function') {
+                if (want === 'auto') await registered.unlock();
+                else await registered.lock({ orientation: want });
+                return true;
+            }
+            // 2) The bridge's own registration: no JS implementation, so
+            // the native PluginHeaders route lock/unlock to nativePromise.
+            if (cap && typeof cap.registerPlugin === 'function' && (typeof cap.isPluginAvailable !== 'function' || cap.isPluginAvailable('ScreenOrientation'))) {
+                const plugin = cap.registerPlugin('ScreenOrientation', {});
+                if (plugin && typeof plugin.lock === 'function' && typeof plugin.unlock === 'function') {
+                    if (want === 'auto') await plugin.unlock();
+                    else await plugin.lock({ orientation: want });
+                    return true;
+                }
+            }
+            // 3) The raw bridge call, same plugin id + method names.
+            if (cap && typeof cap.nativePromise === 'function') {
+                if (want === 'auto') await cap.nativePromise('ScreenOrientation', 'unlock', {});
+                else await cap.nativePromise('ScreenOrientation', 'lock', { orientation: want });
+                return true;
+            }
+            // 4) Web Screen Orientation API (desktop Chrome fullscreen,
+            // some mobile browsers). 'auto' needs no lock at all.
+            if (want === 'auto') {
+                try { if (screen.orientation?.unlock) screen.orientation.unlock(); } catch (_) {}
+                return true;
+            }
+            if (screen.orientation?.lock) {
+                await screen.orientation.lock(want === 'portrait' ? 'portrait-primary' : 'landscape-primary');
+                return true;
+            }
+        } catch (_) { /* a failed lock is reported, never thrown */ }
+        return false;    }
     // ---- App toast + confirm sheet (2026-11-19) ----
     // showToast was called from save download, save-code copy and Brick
     // Rush but never defined, so every call site silently did nothing.
@@ -7744,6 +7821,18 @@ const bolznstienPendingStrikes = [];
                     openAppProgressResetFlow();
                     return;
                 }
+                if (action === 'orientation') {
+                    const value = btn.dataset.orientationValue;
+                    if (value !== 'auto' && value !== 'portrait' && value !== 'landscape') return;
+                    try { localStorage.setItem(APP_ORIENTATION_KEY, value); } catch (_) {}
+                    renderAppSettingsView();
+                    applyAppOrientation(value).then((ok) => {
+                        if (typeof showToast !== 'function') return;
+                        if (value === 'auto') showToast('Orientation: Auto — follows your device', '#5ec4ff');
+                        else if (ok) showToast(`Orientation locked to ${value === 'portrait' ? 'Portrait' : 'Landscape'}`, '#5ec4ff');
+                        else showToast('Orientation lock is not available on this device — staying in Auto', '#ffd166');
+                    });                    return;
+                }
             });
         }
         renderAppSettingsView();
@@ -7755,7 +7844,7 @@ const bolznstienPendingStrikes = [];
         const fighterCount = Array.isArray(allBrawlers) ? allBrawlers.length : 0;
         const hapticsOn = appHapticsOn();
         const muted = appSoundMuted();
-        view.innerHTML = `
+        const orientationPref = appOrientationPref();        view.innerHTML = `
           <div class="app-settings-head">
             <button type="button" class="app-settings-back" data-app-settings="back">‹ BACK</button>
             <b>⚙️ SETTINGS</b>
@@ -7776,6 +7865,14 @@ const bolznstienPendingStrikes = [];
             <span class="app-settings-label"><b>🔇 SOUND</b><small>Voice lines and sound effects, everywhere in the app. Turning it off silences them right away — no restart needed.</small></span>
             <button type="button" class="${muted ? 'is-off' : ''}" data-app-settings="sound">${muted ? 'ON' : 'OFF'}</button>
           </div>
+          <div class="app-settings-row">
+            <span class="app-settings-label"><b>🔄 SCREEN ORIENTATION</b><small>Auto follows your device. Portrait or Landscape locks the app that way.</small></span>
+            <span class="app-settings-seg" role="group" aria-label="Screen orientation">
+              <button type="button" class="${orientationPref === 'auto' ? 'is-active' : ''}" data-app-settings="orientation" data-orientation-value="auto">AUTO</button>
+              <button type="button" class="${orientationPref === 'portrait' ? 'is-active' : ''}" data-app-settings="orientation" data-orientation-value="portrait">PORTRAIT</button>
+              <button type="button" class="${orientationPref === 'landscape' ? 'is-active' : ''}" data-app-settings="orientation" data-orientation-value="landscape">LANDSCAPE</button>
+            </span>
+          </div>
           <div class="app-settings-row is-danger">
             <span class="app-settings-label"><b>🗑️ ERASE ALL PROGRESS</b><small>Wipes coins, souls, brawlers, season progress, tournament runs and settings on this device. This cannot be undone.</small></span>
             <button type="button" data-app-settings="reset">ERASE</button>
@@ -7789,6 +7886,9 @@ const bolznstienPendingStrikes = [];
     }
 
     buildAppHome();
+    // Round 2 orientation: re-apply the saved lock at boot — the bridge
+    // may arrive late, and the retry below re-applies it again.
+    if (isNativeAppMode()) void applyAppOrientation(appOrientationPref());
 
     // Retry the app-home activation on window load and DOMContentLoaded:
     // the Capacitor bridge may not be injected when this IIFE evaluates,
@@ -7800,6 +7900,9 @@ const bolznstienPendingStrikes = [];
     function retryAppHomeActivation() {
         if (isNativeAppMode()) document.documentElement.classList.add('native-app');
         buildAppHome();
+        // Round 2 orientation: the late-arriving bridge may not have been
+        // there for the boot apply above, so re-apply the saved lock here.
+        if (isNativeAppMode()) void applyAppOrientation(appOrientationPref());
     }
     window.addEventListener('load', retryAppHomeActivation);
     document.addEventListener('DOMContentLoaded', retryAppHomeActivation);
@@ -12530,13 +12633,13 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           if (!GOLD_EVENT_RETIRED) makeTab('gold', '🪙 Gold Event');
           makeTab('overdrive', '⚡ Core Surge Overdrive');
           makeTab('special', '💠 Core Pieces');
-          if (ENABLE_SEASON_QUESTS) makeTab('season', '⚡ Core Circuit Pass');
+          if (ENABLE_SEASON_QUESTS) makeTab('season', '⚡ Season Pass');
           setActiveTab(views[initialTab] ? initialTab : 'core');
 
           panel.appendChild(top);
           const boardSubtitle = document.createElement('div');
           boardSubtitle.className = 'app-quest-subtitle';
-          boardSubtitle.textContent = 'Complete quests, claim rewards, and climb the Core Circuit Pass.';
+          boardSubtitle.textContent = 'Complete quests, claim rewards, and climb the Season Pass.';
           boardSubtitle.style.fontSize = '12px';
           boardSubtitle.style.color = '#95b8d4';
           panel.appendChild(boardSubtitle);
@@ -59337,6 +59440,23 @@ isBrawlerLabMode = false;
             return document.execCommand('copy');
         } catch (_) { return false; }
     }
+    // Round 2 small fixes: read a save code from the clipboard. Reading
+    // needs a permission grant on Android WebView (and a user gesture —
+    // the PASTE tap is one), so denial is a normal outcome, not an error:
+    // { ok:false, reason:'denied' } means "tell the player to long-press
+    // and paste by hand", 'empty' means the clipboard has nothing to
+    // paste, 'unsupported' means this WebView has no clipboard-read API
+    // at all. Unlike copy, there is no execCommand fallback for reading.
+    async function readSaveCodeFromClipboard() {
+        try {
+            if (!navigator.clipboard?.readText) return { ok: false, reason: 'unsupported' };
+            const text = await navigator.clipboard.readText();
+            if (!text || !text.trim()) return { ok: false, reason: 'empty' };
+            return { ok: true, text: String(text).trim() };
+        } catch (_) {
+            return { ok: false, reason: 'denied' };
+        }
+    }
     function openSaveCodeModal() {
         let modal = document.getElementById('saveCodeModal');
         if (!modal) {
@@ -59352,7 +59472,7 @@ isBrawlerLabMode = false;
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><button id="saveCodeCopyBtn" type="button" style="background:#5df2c2;color:#08101d;border:0;border-radius:8px;padding:9px 16px;cursor:pointer;font-weight:1000">COPY CODE</button><span id="saveCodeSizeLine" style="font-size:12px;color:#9fc6e8"></span></div>
                 <label for="saveCodeImport" style="font-size:12px;font-weight:800;letter-spacing:.06em;color:#ffd166">PASTE A SAVE CODE</label>
                 <textarea id="saveCodeImport" rows="4" placeholder="Paste a save code here…" style="width:100%;box-sizing:border-box;margin:4px 0 6px;background:rgba(0,0,0,.45);color:#d7f0ff;border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:8px;font:12px/1.4 monospace,monospace;word-break:break-all;resize:vertical"></textarea>
-                <button id="saveCodeImportBtn" type="button" style="background:#ff9f1c;color:#231303;border:0;border-radius:8px;padding:10px 16px;cursor:pointer;font-weight:1000">IMPORT SAVE CODE</button>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><button id="saveCodePasteBtn" type="button" style="background:#5ec4ff;color:#08101d;border:0;border-radius:8px;padding:10px 16px;cursor:pointer;font-weight:1000">📋 PASTE</button><button id="saveCodeImportBtn" type="button" style="background:#ff9f1c;color:#231303;border:0;border-radius:8px;padding:10px 16px;cursor:pointer;font-weight:1000">IMPORT SAVE CODE</button></div>
               </div>`;
             document.body.appendChild(modal);
             modal.addEventListener('click', (event) => { if (event.target === modal) closeSaveCodeModal(); });
@@ -59371,6 +59491,28 @@ isBrawlerLabMode = false;
                     if (btn) { btn.textContent = 'COPIED ✓'; setTimeout(() => { btn.textContent = 'COPY CODE'; }, 1500); }
                 } else {
                     showAppConfirmSheet({ title: 'COPY FAILED', message: 'Could not copy automatically — long-press the code to copy it.' });
+                }
+            });
+            // Round 2 small fixes: PASTE reads the clipboard into the
+            // import field. A denial (or no clipboard-read API) never
+            // throws — it explains itself and focuses the field so the
+            // player can long-press and paste by hand instead.
+            document.getElementById('saveCodePasteBtn')?.addEventListener('click', async () => {
+                const result = await readSaveCodeFromClipboard();
+                const importTa = document.getElementById('saveCodeImport');
+                if (result.ok) {
+                    if (importTa) { importTa.value = result.text; importTa.focus(); }
+                    if (typeof showToast === 'function') showToast('Save code pasted!', '#5ec4ff');
+                    appBuzz(10);
+                    return;
+                }
+                if (importTa) importTa.focus();
+                if (result.reason === 'empty') {
+                    showAppConfirmSheet({ title: 'CLIPBOARD EMPTY', message: 'Your clipboard is empty — copy a save code first, then tap PASTE.' });
+                } else if (result.reason === 'unsupported') {
+                    showAppConfirmSheet({ title: 'PASTE NOT AVAILABLE', message: 'This device cannot read the clipboard automatically — long-press the field above and tap Paste.' });
+                } else {
+                    showAppConfirmSheet({ title: 'CLIPBOARD BLOCKED', message: 'Clipboard access was denied — allow clipboard access for Arena Forge, or long-press the field above and tap Paste.' });
                 }
             });
             document.getElementById('saveCodeImportBtn')?.addEventListener('click', () => {
@@ -75908,10 +76050,26 @@ function checkHit(target, b, i){
       try { if (typeof syncAppHome === 'function') syncAppHome(); } catch (_) {}
   }
 
-  // PLAY AGAIN (2026-11-19, app overhaul C): rematch the same mode with
-  // the same brawler via the existing launch path. Tournament results never
-  // get this button (they have PLAY NEXT MATCH); the guard below keeps a
-  // stale call from launching a showdown match mid-tournament-run.
+  // PLAY AGAIN (2026-11-19, app overhaul C; round 2 adds ranked/friendly):
+  // rematch the same mode with the same brawler via the existing launch
+  // path. Tournament results never get this button (they have PLAY NEXT
+  // MATCH); the guard below keeps a stale call from launching a showdown
+  // match mid-tournament-run.
+  //   * Ranked: re-enter the ranked queue (openRankedQueueUI — the ranked
+  //     launch path). A ranked match is a full ban/pick draft with a
+  //     fresh random mode from RANKED_TEAM_MODE_POOL, so there is no
+  //     same-mode rematch to replay — re-queueing returns to ranked,
+  //     not casual, with a new draft (mode re-rolled, as every ranked
+  //     queue does). Re-launching ranked directly would skip the draft
+  //     and bypass bans/picks (RP integrity), so that is deliberately
+  //     not built.
+  //   * Friendly: replay the exact friendly config (mode, map, mutators,
+  //     power rule, enemy pool) via launchFriendlyBattle — the friendly
+  //     launch path. friendlyBattleConfig still holds the just-finished
+  //     match (it is only reset by the next launch), and re-arming it
+  //     one-shot is what the picker itself does. Prop Hunt keeps the
+  //     role picked last time (propHuntSelectedRole is session-only and
+  //     never cleared); the role picker does not re-open.
   //   * Duels (not Tower Duels weekend): same drafted teams, fresh scores
   //     and charges, straight into startDuelsRound — mirrors the Duels
   //     draft launch, which never reset the saved charges or re-armed the
@@ -75921,13 +76079,25 @@ function checkHit(target, b, i){
   //     so this rematches the same mode with the same brawler; special
   //     modes re-enter their picker (custom clash, prop hunt, slop sushi,
   //     tower duels draft, weekend floor preview) exactly as PLAY does.
-  //     Ranked / friendly sessions are cleared by the PLAY button's own
-  //     clearRankedSessionState, so a ranked or friendly rematch comes back
-  //     as a casual match of the same mode — re-entering the ranked queue
-  //     or the friendly picker is a different flow, not a rematch.
+  //     (The ranked/friendly branches above run first, so a ranked or
+  //     friendly match never falls through to this casual PLAY click.)
   function playAgainFromResults(resultsOverlay) {
       if (isTournamentMatch) return false;
       if (resultsOverlay && resultsOverlay.remove) resultsOverlay.remove();
+      if (typeof isRankedMatch !== 'undefined' && isRankedMatch && typeof openRankedQueueUI === 'function') {
+          openRankedQueueUI();
+          return true;
+      }
+      if (typeof isFriendlyBattle !== 'undefined' && isFriendlyBattle && typeof launchFriendlyBattle === 'function' && friendlyBattleConfig && typeof friendlyBattleConfig === 'object') {
+          launchFriendlyBattle({
+              mode: friendlyBattleConfig.mode,
+              mapIndex: friendlyBattleConfig.mapIndex,
+              powerRule: friendlyBattleConfig.powerRule,
+              enemyPool: friendlyBattleConfig.enemyPool,
+              modifiers: Array.isArray(friendlyBattleConfig.modifiers) ? friendlyBattleConfig.modifiers.slice() : []
+          });
+          return true;
+      }
       if (isDuels && !isTowerDuelEvent) {
           clearShowdownModifier();
           playerScore = 0;

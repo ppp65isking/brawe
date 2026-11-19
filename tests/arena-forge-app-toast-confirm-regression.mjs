@@ -58,7 +58,7 @@ check('all 3 call sites are still present', game.includes("showToast('BRAWE save
     game.includes("showToast('Save code copied!'") &&
     game.includes("showToast('BRICK RUSH! 3x Bricks - 4x with a win streak'"));
 check('call sites still guard with typeof (now resolves to the real toast)',
-    count(game, "typeof showToast === 'function'") === 3);
+    count(game, "typeof showToast === 'function'") === 4); // round 2: PASTE success toast guards the same way
 check('toast CSS exists (pill, above the tab bar, pointer-events none)',
     game.includes('.app-toast{') && game.includes('pointer-events:none') &&
     game.includes('bottom:calc(84px + env(safe-area-inset-bottom,0px))'));
@@ -117,8 +117,8 @@ check('tournament bracket flow has no native dialogs', noNative(bodyOf('openTour
 check('shop uses the sheet for all 10 purchase errors', count(bodyOf('openGemShop'), 'showAppConfirmSheet(') === 10);
 check('save file import uses the sheet 3x (read fail, success, invalid)',
     count(bodyOf('importBraweSaveBackup'), 'showAppConfirmSheet(') === 3);
-check('save-code modal uses the sheet 6x (copy fail, empty, confirm, success, invalid, build fail)',
-    count(bodyOf('openSaveCodeModal'), 'showAppConfirmSheet(') === 6);
+check('save-code modal uses the sheet 9x (copy fail, empty, confirm, success, invalid, build fail, + paste empty/unsupported/blocked)',
+    count(bodyOf('openSaveCodeModal'), 'showAppConfirmSheet(') === 9);
 check('file-picker import confirm uses the sheet',
     game.includes("showAppConfirmSheet({\n            title: 'IMPORT SAVE?'"));
 check('ability purchases use the sheet 3x each',

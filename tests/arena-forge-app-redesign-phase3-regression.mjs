@@ -109,7 +109,7 @@ check('new telegraphs draw a lob arc, not a straight line', (game.match(/quadrat
 
 // --- Website paths unchanged: same openers, same flows ---
 check('shop opener still exists and still opens the gem shop', game.includes('function openGemShop() {') && game.includes("shopBtn.addEventListener('click', ()=>{ openGemShop(); });"));
-check('quest board opener still exists with all five tabs', game.includes('function openQuestBoard(initialTab') && game.includes("makeTab('season', '⚡ Core Circuit Pass')"));
+check('quest board opener still exists with all five tabs', game.includes('function openQuestBoard(initialTab') && game.includes("makeTab('season', '⚡ Season Pass')"));
 check('season pass still delegates to the quest board season tab', game.includes('function openSeasonPass() {') && game.includes("openQuestBoard('season');"));
 check('save-code modal behavior untouched', game.includes('function openSaveCodeModal() {') && game.includes('importBraweSavePayload'));
 check('diagnostic strip gate untouched', game.includes("new URLSearchParams(window.location.search || '').get('diag') === '1'"));
