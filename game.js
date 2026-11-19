@@ -348,6 +348,50 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         #appHomeTabs button{padding:10px 6px;border-radius:14px;border:2px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#cfe6ff;font-weight:1000;font-size:15px;cursor:pointer}
         #appHomeTabs button small{display:block;font-size:10px;letter-spacing:.08em;opacity:.75}
         #appHomeTabs button.is-active{background:#ff9f1c;border-color:#ffd166;color:#231303}
+        /* App quick row (phase 2, 2026-11-19): home shortcuts that were
+           trapped inside the hidden web home — quests, season pass,
+           Brick Rush, settings. Same chunky card language as the hero. */
+        #appHomePlayer,#appHomeSeasonChip{cursor:pointer}
+        #appHomeQuickRow{flex:none;display:flex;gap:8px;padding:8px 2px 0;flex-wrap:wrap}
+        .app-quick-btn{flex:1 1 0;min-width:96px;padding:10px 8px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(8,20,42,.6);color:#fff;font-weight:1000;font-size:13px;cursor:pointer;position:relative;white-space:nowrap}
+        .app-quick-btn small{display:block;font-size:9px;font-weight:1000;letter-spacing:.08em;color:#9fc6e8}
+        .app-quick-badge{position:absolute;top:-7px;right:-4px;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:#5df2c2;color:#04111a;font-size:11px;font-weight:1000;display:grid;place-items:center}
+        .app-quick-badge[hidden]{display:none}
+        .native-app #appHomeQuickRow #dailyBrickRushBtn{flex:1 1 0;min-width:96px;padding:10px 8px !important;border-radius:12px !important;font-size:13px !important}
+        /* Settings view (phase 2): native rows, same card language. */
+        #appHomeSettingsView{flex:1 1 auto;min-height:0;display:none;flex-direction:column;overflow-y:auto}
+        #appHomeSettingsView.is-active{display:flex}
+        .app-settings-head{flex:none;display:flex;align-items:center;gap:10px;padding:4px 2px 10px}
+        .app-settings-head b{font-size:18px;letter-spacing:.04em}
+        .app-settings-back{padding:8px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:#cfe6ff;font-weight:1000;font-size:14px;cursor:pointer}
+        .app-settings-row{flex:none;display:flex;align-items:center;gap:10px;padding:12px;border-radius:14px;border:1px solid rgba(255,255,255,.16);background:rgba(8,20,42,.55);margin-bottom:8px;text-align:left;color:#fff}
+        .app-settings-row .app-settings-label{flex:1 1 auto;min-width:0}
+        .app-settings-row .app-settings-label b{display:block;font-size:14px}
+        .app-settings-row .app-settings-label small{display:block;font-size:11px;color:#9fc6e8;margin-top:2px;line-height:1.35}
+        .app-settings-row>button{flex:none;padding:10px 16px;border:0;border-radius:12px;background:#ff9f1c;color:#231303;font-weight:1000;font-size:13px;cursor:pointer}
+        .app-settings-row>button.is-off{background:rgba(255,255,255,.12);color:#cfe6ff;border:1px solid rgba(255,255,255,.25)}
+        .app-settings-about{flex:none;padding:12px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);font-size:12px;color:#9fc6e8;line-height:1.6}
+        /* Web overlays restyled for the app (phase 2): the shop, quest
+           board and tournament overlays are desktop panels on the web.
+           These rules only apply under .native-app, so the website is
+           untouched; every button still calls the existing functions. */
+        .native-app .brawe-shop-overlay{padding:0 !important}
+        .native-app .brawe-shop-panel{width:100vw !important;height:100dvh !important;max-height:none !important;border-radius:0 !important}
+        .native-app .brawe-shop-header{padding:12px !important;flex-wrap:wrap !important;gap:8px}
+        .native-app .brawe-shop-title{font-size:19px !important}
+        .native-app .brawe-shop-header button{width:44px !important;height:44px !important}
+        .native-app .brawe-shop-body{flex-direction:column !important;overflow-y:auto !important;padding:12px !important;gap:12px !important}
+        .native-app .brawe-shop-sidebar{width:100% !important;flex-direction:row !important;overflow-x:auto !important;flex:none !important;padding-bottom:4px}
+        .native-app .brawe-shop-sidebar button{flex:none !important;width:auto !important;white-space:nowrap !important;padding:10px 14px !important}
+        .native-app .brawe-shop-content{overflow-y:visible !important;padding-right:0 !important}
+        .native-app .brawe-shop-content>div{grid-template-columns:repeat(auto-fill,minmax(160px,1fr)) !important}
+        .native-app #questBoardOverlay>div{width:100vw !important;height:100dvh !important;max-height:none !important;border-radius:0 !important;padding:12px !important}
+        .native-app .app-tournament-overlay{padding:14px 10px !important}
+        .native-app .app-tournament-league-grid>div{width:min(200px,calc(50vw - 22px)) !important}
+        /* Polish (phase 2): the top strip can overflow on narrow phones,
+           and the Fighters detail row is cramped in narrow portrait. */
+        @media (max-width:430px){#appHomeTop{flex-wrap:wrap;row-gap:6px}#appHomePlayer{font-size:13px;padding:5px 9px}#appHomeSeasonChip{font-size:11px;padding:5px 9px}#appHomeSaveBtn{padding:5px 8px;font-size:13px}#appHomeTop #homeCurrencyBar{gap:6px}}
+        @media (orientation:portrait) and (max-width:560px){#appFightersDetail{flex-direction:column;align-items:center;gap:10px}.app-fighters-detail-portrait{width:min(34vw,120px)}.app-fighters-detail-info{width:100%}}
         @media (orientation:portrait){#appHomeHero{flex-direction:column;justify-content:center;text-align:center}.app-hero-info{align-items:center}.app-hero-fighters{align-self:center}#appHomeEventChip{max-width:52vw}}
         #mobileLandscapeHint{top:max(10px,env(safe-area-inset-top));padding:7px 12px;border-color:rgba(255,196,93,.5);background:rgba(17,20,31,.85);color:#ffe0a3}
         @media (orientation:portrait) and (max-width:760px){.mobile-stick{width:112px;height:112px}#mobileMoveStick,#mobileAimStick{bottom:max(26px,calc(env(safe-area-inset-bottom) + 10px))}#mobileActionButtons{right:max(14px,env(safe-area-inset-right));bottom:calc(max(26px,env(safe-area-inset-bottom)) + 118px);grid-template-columns:repeat(2,52px);gap:8px}.mobile-action-btn{width:52px;height:52px;font-size:19px}}
@@ -4209,17 +4253,17 @@ function updateGadgetInfo() {
       });
       gadgetTouchBtn.addEventListener('pointerdown', (e) => {
           e.preventDefault();
-          navigator.vibrate?.(18);
+          appBuzz(18);
           gadgetBtn.click();
       });
       signatureTouchBtn.addEventListener('pointerdown', (e) => {
           e.preventDefault();
-          navigator.vibrate?.(18);
+          appBuzz(18);
           activateSignatureAbility(player);
       });
       propHuntMorphTouchBtn.addEventListener('pointerdown', (e) => {
           e.preventDefault();
-          navigator.vibrate?.(18);
+          appBuzz(18);
           tryPropHuntPlayerMorph();
       });
       superTouchBtn.addEventListener('pointerdown', (e) => {
@@ -4255,7 +4299,7 @@ function updateGadgetInfo() {
       superTouchBtn.addEventListener('lostpointercapture', () => { if (aimingSuper && superAimCancelState.source === 'mobile') cancelSuperAim(); });
       hyperTouchBtn.addEventListener('pointerdown', (e) => {
           e.preventDefault();
-          navigator.vibrate?.(22);
+          appBuzz(22);
           activateHypercharge();
       });
   }
@@ -5770,10 +5814,16 @@ const bolznstienPendingStrikes = [];
                 <button id="appHomeEventChip" type="button" aria-label="Change event"></button>
                 <button id="appHomePlay" type="button">▶ PLAY</button>
               </div>
+              <div id="appHomeQuickRow">
+                <button type="button" class="app-quick-btn" data-app-quick="quests">📜 QUESTS<small>CONTRACTS</small><span class="app-quick-badge" id="appQuestsBadge" hidden></span></button>
+                <button type="button" class="app-quick-btn" data-app-quick="pass">🎁 SEASON PASS<small>REWARDS</small><span class="app-quick-badge" id="appPassBadge" hidden></span></button>
+                <button type="button" class="app-quick-btn" data-app-quick="settings">⚙️ SETTINGS<small>SAVE · GUIDE</small></button>
+              </div>
             </div>
             <div id="appHomeEventsHost"></div>
             <div id="appHomeFightersView"></div>
             <div id="appHomeEventsView"></div>
+            <div id="appHomeSettingsView"></div>
           </div>
           <nav id="appHomeTabs" aria-label="App navigation">
             <button type="button" data-app-tab="home" class="is-active">🏠<small>HOME</small></button>
@@ -5803,6 +5853,27 @@ const bolznstienPendingStrikes = [];
             document.getElementById('startMatch')?.click();
         });
         document.getElementById('appHomeEventChip')?.addEventListener('click', () => setAppHomeTab('events'));
+        // Phase 2: the player + season chips were dead in app mode (no
+        // tap handler) even though the profile + pass overlays exist —
+        // wire them to the existing openers. The quick row exposes the
+        // home features that lived inside the hidden web home.
+        document.getElementById('appHomePlayer')?.addEventListener('click', () => { if (typeof openPlayerProfile === 'function') openPlayerProfile(); });
+        document.getElementById('appHomeSeasonChip')?.addEventListener('click', () => { if (typeof openSeasonPass === 'function') openSeasonPass(); });
+        document.getElementById('appHomeQuickRow')?.addEventListener('click', (event) => {
+            const btn = event.target.closest('[data-app-quick]');
+            if (!btn) return;
+            const action = btn.dataset.appQuick;
+            if (action === 'quests') { if (typeof openQuestBoard === 'function') openQuestBoard(); }
+            else if (action === 'pass') { if (typeof openQuestBoard === 'function') openQuestBoard('season'); }
+            else if (action === 'settings') { setAppHomeTab('settings'); }
+        });
+        // Move the live Brick Rush button into the app quick row: its 1s
+        // interval (updateDailyBrickRushButton) keeps updating it by
+        // captured reference, so the countdown / multiplier stay live
+        // after the move — same pattern as the currency bar above.
+        const brickRushBtn = document.getElementById('dailyBrickRushBtn');
+        const quickRow = document.getElementById('appHomeQuickRow');
+        if (brickRushBtn && quickRow) quickRow.appendChild(brickRushBtn);
         document.getElementById('appHomeSaveBtn')?.addEventListener('click', () => openSaveCodeModal());
         appHomeEl.querySelectorAll('[data-app-tab]').forEach((button) => {
             button.addEventListener('click', () => setAppHomeTab(button.dataset.appTab));
@@ -5893,14 +5964,32 @@ const bolznstienPendingStrikes = [];
         renderAppHomeHero();
         renderAppHomeTop();
         renderAppHomeEventChip();
+        // Quick-row badges: the web quest button's badge is maintained
+        // by updateQuestBadge, so read its live value; the pass badge
+        // comes from the same counter the quest board tabs use.
+        try {
+            const qBadge = document.getElementById('appQuestsBadge');
+            if (qBadge) {
+                const n = Number(document.getElementById('dailyWeeklyQuestCount')?.textContent || 0) || 0;
+                qBadge.hidden = n <= 0;
+                qBadge.textContent = String(n);
+            }
+            const pBadge = document.getElementById('appPassBadge');
+            if (pBadge) {
+                const n = (typeof getClaimableSeasonRewardCount === 'function') ? (getClaimableSeasonRewardCount() || 0) : 0;
+                pBadge.hidden = n <= 0;
+                pBadge.textContent = String(n);
+            }
+        } catch (_) {}
         // The app tab is the source of truth (home / fighters / events):
         // the moved web events view stays hidden in app mode — the native
         // events view is what the Events tab shows. setHomeTab still calls
         // this (web tab restore at boot), but it never flips the app tab.
         const activeView = appHomeTab === 'fighters' ? 'fighters' : appHomeTab === 'events' ? 'events' : 'home';
-        document.getElementById('appHomeHeroView')?.classList.toggle('is-active', activeView === 'home');
+        document.getElementById('appHomeHeroView')?.classList.toggle('is-active', activeView === 'home' && appHomeTab !== 'settings');
         document.getElementById('appHomeFightersView')?.classList.toggle('is-active', activeView === 'fighters');
         document.getElementById('appHomeEventsView')?.classList.toggle('is-active', activeView === 'events');
+        document.getElementById('appHomeSettingsView')?.classList.toggle('is-active', appHomeTab === 'settings');
         document.getElementById('appHomeEventsHost')?.classList.remove('is-active');
         appHomeEl.querySelectorAll('[data-app-tab]').forEach((button) => {
             button.classList.toggle('is-active', button.dataset.appTab === appHomeTab);
@@ -5909,6 +5998,7 @@ const bolznstienPendingStrikes = [];
     function setAppHomeTab(tab) {
         if (!appHomeEl) return;
         if (tab === 'shop') { if (typeof openHomeShop === 'function') openHomeShop(); return; }
+        if (tab === 'settings') { appHomeTab = tab; buildAppSettingsView(); syncAppHome(); return; }
         if (tab === 'fighters' || tab === 'events' || tab === 'home') {
             appHomeTab = tab;
             if (tab === 'fighters') buildAppFightersView();
@@ -6245,6 +6335,78 @@ const bolznstienPendingStrikes = [];
         }
         renderAppHomeEventChip();
         setAppHomeTab('home');
+    }
+
+    // ---- App Settings view (phase 2, 2026-11-19) ----
+    // Native settings sheet for the app: save code (the same modal as
+    // the top-strip button), the Arena Forge guide again, haptics, about.
+    // Deliberately NOT invented here: no sound toggle exists anywhere in
+    // the game (each voice-line / sfx module carries its own enabled
+    // flag, wired to nothing) and no progress reset exists.
+    let appSettingsBuilt = false;
+    const APP_HAPTICS_KEY = 'arenaForgeHapticsV1';
+    function appHapticsOn() {
+        try { return localStorage.getItem(APP_HAPTICS_KEY) !== '0'; } catch (_) { return true; }
+    }
+    function appBuzz(ms) {
+        try { if (!appHapticsOn()) return; navigator.vibrate?.(ms); } catch (_) {}
+    }
+    function buildAppSettingsView() {
+        const view = document.getElementById('appHomeSettingsView');
+        if (!view) return;
+        if (!appSettingsBuilt) {
+            appSettingsBuilt = true;
+            view.addEventListener('click', (event) => {
+                const btn = event.target.closest('[data-app-settings]');
+                if (!btn) return;
+                const action = btn.dataset.appSettings;
+                if (action === 'back') { setAppHomeTab('home'); return; }
+                if (action === 'save') { if (typeof openSaveCodeModal === 'function') openSaveCodeModal(); return; }
+                if (action === 'guide') {
+                    // Reset the guide's own flags, then show it now (it
+                    // normally only appears at Arena Forge match start).
+                    try { localStorage.removeItem('arenaForgeHelpHiddenV1'); localStorage.setItem('arenaForgeHelpViewsV1', '0'); } catch (_) {}
+                    if (typeof maybeOpenArenaForgeHelp === 'function') maybeOpenArenaForgeHelp();
+                    return;
+                }
+                if (action === 'haptics') {
+                    try { localStorage.setItem(APP_HAPTICS_KEY, appHapticsOn() ? '0' : '1'); } catch (_) {}
+                    renderAppSettingsView();
+                    return;
+                }
+            });
+        }
+        renderAppSettingsView();
+    }
+    function renderAppSettingsView() {
+        const view = document.getElementById('appHomeSettingsView');
+        if (!view) return;
+        const season = (() => { try { return getActiveSeasonProfile(); } catch (_) { return null; } })();
+        const fighterCount = Array.isArray(allBrawlers) ? allBrawlers.length : 0;
+        const hapticsOn = appHapticsOn();
+        view.innerHTML = `
+          <div class="app-settings-head">
+            <button type="button" class="app-settings-back" data-app-settings="back">‹ BACK</button>
+            <b>⚙️ SETTINGS</b>
+          </div>
+          <div class="app-settings-row">
+            <span class="app-settings-label"><b>💾 SAVE CODE</b><small>Copy your progress to another device, or paste a code from the website.</small></span>
+            <button type="button" data-app-settings="save">OPEN ›</button>
+          </div>
+          <div class="app-settings-row">
+            <span class="app-settings-label"><b>📖 ARENA FORGE GUIDE</b><small>Show the how-to-win guide again — it pops up right now.</small></span>
+            <button type="button" data-app-settings="guide">SHOW</button>
+          </div>
+          <div class="app-settings-row">
+            <span class="app-settings-label"><b>📳 BUTTON HAPTICS</b><small>Small vibration when you tap the in-match buttons.</small></span>
+            <button type="button" class="${hapticsOn ? '' : 'is-off'}" data-app-settings="haptics">${hapticsOn ? 'ON' : 'OFF'}</button>
+          </div>
+          <div class="app-settings-about">
+            <b>ABOUT</b><br>
+            Arena Forge · APK v1.0<br>
+            ${fighterCount} fighters · Season ${season ? `${season.seasonNumber} · ${season.name}` : '—'}<br>
+            Save backup covers progress + season pass. Tournament runs don't transfer yet.
+          </div>`;
     }
 
     buildAppHome();
@@ -13336,6 +13498,7 @@ const TOWER_DUELS_ACTIVE_TOWER_POWERS = 8;
       overlay.style.padding = '60px 0'; overlay.style.color = '#fff';
       overlay.style.fontFamily = 'sans-serif'; overlay.style.overflowY = 'auto';
       const title = document.createElement('h1');
+      overlay.classList.add('app-tournament-overlay');
       title.textContent = '🏆 Tournament';
       overlay.appendChild(title);
       const hint = document.createElement('div');
@@ -13369,6 +13532,7 @@ const TOWER_DUELS_ACTIVE_TOWER_POWERS = 8;
           overlay.appendChild(banner);
       }
       const grid = document.createElement('div');
+      grid.classList.add('app-tournament-league-grid');
       grid.style.display = 'flex'; grid.style.gap = '16px'; grid.style.flexWrap = 'wrap';
       grid.style.justifyContent = 'center'; grid.style.maxWidth = '1000px'; grid.style.marginTop = '30px';
       TOURNAMENT_LEAGUES.forEach((league, idx) => {
@@ -13407,6 +13571,7 @@ const TOWER_DUELS_ACTIVE_TOWER_POWERS = 8;
       overlay.style.padding = '60px 0'; overlay.style.color = '#fff';
       overlay.style.fontFamily = 'sans-serif'; overlay.style.overflowY = 'auto';
       const title = document.createElement('h1');
+      overlay.classList.add('app-tournament-overlay');
       title.textContent = `Pick ONE brawler — ${league.name} League`;
       overlay.appendChild(title);
       const hint = document.createElement('div');
@@ -13487,6 +13652,7 @@ const TOWER_DUELS_ACTIVE_TOWER_POWERS = 8;
       overlay.style.padding = '40px 0'; overlay.style.color = '#fff';
       overlay.style.fontFamily = 'sans-serif'; overlay.style.overflowY = 'auto';
       const title = document.createElement('h1');
+      overlay.classList.add('app-tournament-overlay');
       title.textContent = `${league.emoji} ${league.name} League Tournament`;
       overlay.appendChild(title);
       const sub = document.createElement('div');
