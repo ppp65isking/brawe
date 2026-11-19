@@ -22,8 +22,9 @@ assert.match(game,/function commitGoldEventMatch\(isWin = false, now = Date\.now
 assert.match(game,/hpBeforeHit=Math\.max\(0,Number\(target\.hp\)\+value\)[\s\S]{0,80}Math\.min\(value,hpBeforeHit\)/,'preserved Gold intake still excludes lethal overkill damage');
 assert.match(css,/\.gold-event-view\{/,'Gold Event presentation is preserved');
 
-// Untouched Quest HQ behavior: the season tab still carries the Core Circuit Pass label.
-assert.match(game,/makeTab\('season', '⚡ Core Circuit Pass'\)/,'season tab still presents the Core Circuit Pass');
+// Quest HQ behavior (round 2 rename): the season tab is the Season Pass,
+// the name the rest of the app uses for this content (was Core Circuit Pass).
+assert.match(game,/makeTab\('season', '⚡ Season Pass'\)/,'season tab presents the Season Pass');
 assert.match(css,/\.gold-event-grid\{/,'Gold Event grid presentation is preserved');
 
-console.log('Gold Event retirement, Quest HQ v4, and Core Circuit Pass regression checks passed.');
+console.log('Gold Event retirement, Quest HQ v4, and Season Pass regression checks passed.');
