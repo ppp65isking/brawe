@@ -171,7 +171,7 @@ check('xplodemis theme is the Christmas 2026 set: gold accent on pine green', th
 check('season theme is applied on every home sync', game.includes('try { applyAppSeasonTheme(); } catch (_) {}') && game.indexOf('applyAppSeasonTheme();') > game.indexOf('function syncAppHome()'));
 check('home background follows the season vars (fallbacks = today look)', game.includes(".native-app #appHome{background:linear-gradient(160deg,var(--app-season-bg1,#06101f) 0%,var(--app-season-bg2,#0a2140) 55%,#04101f 100%)}"));
 check('season chip follows the season accent', game.includes('color:var(--app-season-accent,#ffd166)'));
-check('active tab follows the season accent', game.includes('#appHomeTabs button.is-active{background:var(--app-season-accent,#ff9f1c);border-color:var(--app-season-accent-soft,#ffd166);color:var(--app-season-accent-ink,#231303)}'));
+check('active tab follows the season accent', game.includes('#appHomeTabs button.is-active{background:var(--app-season-accent,#ff9f1c);border-color:var(--app-season-accent-soft,#ffd166);color:var(--app-season-accent-ink,#231303);box-shadow:0 4px 0 #b96a00,0 8px 16px rgba(255,159,28,.3)}')); // rebase: bottom-bar redesign (PR #162) added the depth shadow to the same rule — accent vars unchanged
 check('hero FIGHTERS button follows the season accent', game.includes('.app-hero-fighters{') && game.includes('background:var(--app-season-accent,#ff9f1c);color:var(--app-season-accent-ink,#231303)'));
 check('season theme writes vars only in app mode', themeFnSrc.includes('if (!isNativeAppMode()) return;'));
 check('season theme records the applied season on the root element', themeFnSrc.includes("root.dataset.appSeason = key || 'default'"));
