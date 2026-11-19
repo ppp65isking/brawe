@@ -239,6 +239,13 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         .mobile-action-btn.is-ready,.mobile-action-btn.is-armed,.mobile-action-btn.is-active{opacity:1;filter:saturate(1.18);border-color:#fff;box-shadow:0 5px 0 rgba(2,9,22,.82),0 0 18px var(--action-color)}
         .mobile-action-btn:disabled{opacity:.38;filter:grayscale(.45);pointer-events:none}.mobile-action-btn:active{transform:translateY(3px) scale(.95);box-shadow:0 2px 0 rgba(2,9,22,.8)}
         #mobileFullscreenBtn{top:max(10px,env(safe-area-inset-top));right:max(10px,env(safe-area-inset-right));width:42px;height:42px;border:2px solid rgba(158,221,255,.6);border-radius:50%;background:rgba(5,15,32,.72);font-size:20px;box-shadow:0 5px 16px #0007}
+        /* Round 2 HUD (2026-11-19): in-match pause button. Top-left, below the
+           map/modifier line (baseline y=24) and above the touch attack/super
+           cards (y=84), left of the centred top pill — the only top strip
+           the pill, minimap and cards all leave clear. 48px meets the 48dp
+           touch target; it lives inside #mobileControlsRoot, so it shows
+           and hides with the rest of the touch controls. */
+        #mobilePauseBtn{position:fixed;top:max(30px,env(safe-area-inset-top));left:max(10px,env(safe-area-inset-left));width:48px;height:48px;border:2px solid rgba(158,221,255,.6);border-radius:50%;background:rgba(5,15,32,.72);color:#e8f8ff;font-size:22px;font-weight:900;box-shadow:0 5px 16px #0007;pointer-events:auto;touch-action:manipulation}
         /* Mobile app (Capacitor APK, 2026-11-18): the native shell already
            runs sticky immersive fullscreen, so the browser-only fullscreen
            buttons and the legacy DOM HUD are redundant in the app — hide
@@ -4301,6 +4308,15 @@ function updateGadgetInfo() {
   let propHuntMorphTouchBtn = null;
   let mobileControlsRoot = null;
   let mobileControlsLastVisible = null;
+  let matchPauseBtn = null;
+  // Round 2 HUD: in-match pause state. matchPaused is the single
+  // source of truth; playing=false is what actually freezes the
+  // sim (update(dt) returns early when !playing), so the overlay
+  // alone can never fake a pause.
+  let matchPaused = false;
+  let matchPausedAt = 0;
+  let matchPauseMenuEl = null;
+  let matchPauseKeyHandler = null;
   // Super aiming is referenced by desktop/mobile listeners during startup.
   // Declare it before those listeners are registered to avoid the lexical
   // temporal-dead-zone crash caused by the later combat-state declaration.
@@ -4327,12 +4343,383 @@ function updateGadgetInfo() {
           releaseSuper();
       }
   }
-  // Phase 3: one swappable slot for the TOOL button icon. Today it is the
-  // generic gear; per-gadget icons drop in here later (Anthony: "we need
-  // gadget icons eventually") without reworking the button or its
-  // cooldown ring.
-  function getMobileToolButtonIcon() {
-      return '\u2699';
+  // In-match pause / menu (Round 2 HUD, 2026-11-19). Round 1 found no
+  // pause control anywhere in the touch HUD (verified again here: the only
+  // "pause" hits in the codebase are shield-decay pauses, the debug
+  // __pureHTMLGame.pause hook and the runtime-error screen).
+  //   * The sim freeze is real, not an overlay: update(dt) starts with
+  //     `if (!playing || gameOver) return;`, so setting playing=false stops
+  //     every dt-driven timer (match clocks, reload, bot AI, projectiles)
+  //     on the next frame. The rAF loop keeps running so the frozen frame
+  //     still renders, and `last` is refreshed every frame, so no dt spike
+  //     lands on resume. The controls hide with playing=false (the existing
+  //     updateMobileControlsVisibility path) and reappear on resume.
+  //   * Wall-clock stamps are NOT frozen by playing=false (same as the
+  //     existing document.hidden path, which also just stops update()).
+  //     Resume shifts the player-facing ones forward by the paused
+  //     duration, so a pause costs no gadget cooldown, Core Surge time or
+  //     Arena Forge phase time. Bot-internal wall-clock stamps are left
+  //     alone: their behaviour is dt-driven inside update(), so they wait
+  //     out the pause like everything else.
+  //   * Disabled where it cannot be safe: the tutorial (isTutorialMode —
+  //     its step overlays and wall-clock tutorial timer assume playing),
+  //     and once the match is over (gameOver). Every other mode is a local
+  //     sim (no live multiplayer exists in this build), so pausing is safe
+  //     everywhere else, including Duels and Tournament.
+  //   * Quit reuses round 1 build C's returnToLobbyFromResults in place —
+  //     never a reload. Quitting a tournament match abandons the run
+  //     (same as closing the app mid-match); it is not recorded as a loss.
+  function isMatchPauseAllowed() {
+      return !!mobileInput.enabled && !!playing && !gameOver && !matchPaused && !isTutorialMode;
+  }
+  function hideMatchPauseMenu() {
+      if (matchPauseKeyHandler) { document.removeEventListener('keydown', matchPauseKeyHandler); matchPauseKeyHandler = null; }
+      if (matchPauseMenuEl && matchPauseMenuEl.remove) matchPauseMenuEl.remove();
+      matchPauseMenuEl = null;
+  }
+  function buildMatchPauseMenu() {
+      hideMatchPauseMenu();
+      const brawlerName = ((typeof brawlerData !== 'undefined' && brawlerData[selectedBrawler]) || {}).name || selectedBrawler;
+      const overlay = document.createElement('div');
+      overlay.className = 'app-confirm-overlay';
+      overlay.id = 'matchPauseOverlay';
+      overlay.style.zIndex = '1250';
+      const sheet = document.createElement('div');
+      sheet.className = 'app-confirm-sheet';
+      sheet.setAttribute('role', 'dialog');
+      sheet.setAttribute('aria-modal', 'true');
+      sheet.setAttribute('aria-label', 'Match paused');
+      const title = document.createElement('div');
+      title.className = 'app-confirm-title';
+      title.textContent = '⏸ PAUSED';
+      sheet.appendChild(title);
+      const body = document.createElement('div');
+      body.className = 'app-confirm-message';
+      body.textContent = `Paused as ${brawlerName}. The match is frozen — nothing moves until you resume.`;
+      sheet.appendChild(body);
+      const resumeRow = document.createElement('div');
+      resumeRow.className = 'app-confirm-actions';
+      const resumeBtn = document.createElement('button');
+      resumeBtn.type = 'button';
+      resumeBtn.id = 'matchPauseResumeBtn';
+      resumeBtn.className = 'app-confirm-ok';
+      resumeBtn.textContent = '▶ RESUME';
+      resumeBtn.onclick = () => { appBuzz(10); resumeMatchFromHud(); };
+      resumeRow.appendChild(resumeBtn);
+      sheet.appendChild(resumeRow);
+      const secondRow = document.createElement('div');
+      secondRow.className = 'app-confirm-actions';
+      secondRow.style.marginTop = '8px';
+      const hapticsBtn = document.createElement('button');
+      hapticsBtn.type = 'button';
+      hapticsBtn.id = 'matchPauseHapticsBtn';
+      hapticsBtn.className = 'app-confirm-cancel';
+      const syncHapticsLabel = () => { hapticsBtn.textContent = `📳 HAPTICS: ${appHapticsOn() ? 'ON' : 'OFF'}`; };
+      syncHapticsLabel();
+      hapticsBtn.onclick = () => {
+          try { localStorage.setItem(APP_HAPTICS_KEY, appHapticsOn() ? '0' : '1'); } catch (_) {}
+          syncHapticsLabel();
+          appBuzz(12);
+      };
+      secondRow.appendChild(hapticsBtn);
+      const quitBtn = document.createElement('button');
+      quitBtn.type = 'button';
+      quitBtn.id = 'matchPauseQuitBtn';
+      quitBtn.className = 'app-confirm-confirm';
+      quitBtn.textContent = '🚪 QUIT TO LOBBY';
+      quitBtn.onclick = () => { appBuzz(12); quitMatchToLobbyFromPause(); };
+      secondRow.appendChild(quitBtn);
+      sheet.appendChild(secondRow);
+      overlay.appendChild(sheet);
+      // Tapping the dimmed backdrop resumes, like dismissing a sheet.
+      overlay.addEventListener('pointerdown', (event) => { if (event.target === overlay) resumeMatchFromHud(); });
+      document.body.appendChild(overlay);
+      matchPauseMenuEl = overlay;
+      matchPauseKeyHandler = (event) => { if (event.key === 'Escape') { event.preventDefault(); resumeMatchFromHud(); } };
+      document.addEventListener('keydown', matchPauseKeyHandler);
+  }
+  function pauseMatchFromHud() {
+      if (!isMatchPauseAllowed()) return false;
+      matchPaused = true;
+      matchPausedAt = performance.now();
+      // Freeze the sim first, then drop live input: the next loop frame
+      // hides the touch controls (playing=false) and resets the sticks,
+      // but a held aim must not survive into the menu either.
+      playing = false;
+      mobileInput.moveX = 0;
+      mobileInput.moveY = 0;
+      mobileInput.attackActive = false;
+      mobileInput.aimHeld = false;
+      try { releaseSuper(); } catch (_) {}
+      buildMatchPauseMenu();
+      try { appBuzz(12); } catch (_) {}
+      return true;
+  }
+  function resumeMatchFromHud() {
+      if (!matchPaused) return false;
+      const pausedMs = Math.max(0, performance.now() - matchPausedAt);
+      matchPaused = false;
+      hideMatchPauseMenu();
+      if (pausedMs > 0) {
+          // Shift player-facing wall-clock stamps so the pause costs no
+          // cooldown / surge / phase time. Guarded: a stamp of 0 means
+          // "not running" and must stay 0.
+          if (gadgetCooldownUntil > 0) gadgetCooldownUntil += pausedMs;
+          if (gadgetCooldownBySlot) { for (const s of ['g1', 'g2']) if (gadgetCooldownBySlot[s] > 0) gadgetCooldownBySlot[s] += pausedMs; }
+          if (hyperchargeUntil > 0) hyperchargeUntil += pausedMs;
+          if (typeof arenaForgePrepUntil === 'number' && arenaForgePrepUntil > 0) arenaForgePrepUntil += pausedMs;
+          if (typeof arenaForgeNextWaveAt === 'number' && arenaForgeNextWaveAt > 0) arenaForgeNextWaveAt += pausedMs;
+          if (typeof arenaForgeNextAutoUpgradeAt === 'number' && arenaForgeNextAutoUpgradeAt > 0) arenaForgeNextAutoUpgradeAt += pausedMs;
+          if (typeof arenaForgeNextBreachWaveAt === 'number' && arenaForgeNextBreachWaveAt > 0) arenaForgeNextBreachWaveAt += pausedMs;
+          if (typeof arenaForgeNextSurgeAt === 'number' && arenaForgeNextSurgeAt > 0) arenaForgeNextSurgeAt += pausedMs;
+          if (typeof arenaForgeNextEnemyBuyAt === 'number' && arenaForgeNextEnemyBuyAt > 0) arenaForgeNextEnemyBuyAt += pausedMs;
+          if (typeof arenaForgeLastCalloutUntil === 'number' && arenaForgeLastCalloutUntil > 0) arenaForgeLastCalloutUntil += pausedMs;
+      }
+      if (!gameOver) playing = true;
+      try { appBuzz(10); } catch (_) {}
+      return true;
+  }
+  function quitMatchToLobbyFromPause() {
+      if (!matchPaused) return false;
+      matchPaused = false;
+      hideMatchPauseMenu();
+      // In place, never a reload: round 1 build C's return path resets the
+      // sim + mode flags and rebuilds home.
+      returnToLobbyFromResults(null);
+      return true;
+  }
+  // Round 2 HUD (2026-11-19): per-gadget TOOL icons. Every gadget maps
+  // to a sensible icon, reusing ONLY emoji/symbols already used elsewhere
+  // in the game (no new art assets). Keyed by brawler + slot so the icon
+  // follows the selected gadget; anything unmapped (a future brawler, a
+  // non-playable entity) falls back to the gear. Icons repeat only inside
+  // one effect family (heal, shield, dash, electric, ice, ...): 208
+  // gadgets, 160 distinct icons, zero gadgets on the gear fallback.
+  const MOBILE_GADGET_ICONS = {
+        'looma:g1': '🔪',
+        'looma:g2': '🛡',
+        'blinkeye:g1': '👁',
+        'blinkeye:g2': '🪞',
+        'weefee:g1': '📶',
+        'weefee:g2': '🔄',
+        'oil_maker:g1': '🔥',
+        'oil_maker:g2': '💨',
+        'magnatar:g1': '🧲',
+        'magnatar:g2': '⚡',
+        'badbat:g1': '🔊',
+        'badbat:g2': '🦇',
+        'rager:g1': '🪓',
+        'rager:g2': '🎺',
+        'carmela_fudge:g1': '💚',
+        'carmela_fudge:g2': '🍬',
+        'bolznstien:g1': '🌩',
+        'bolznstien:g2': '⛈',
+        'sir_cheeseburger:g1': '🍖',
+        'sir_cheeseburger:g2': '🧀',
+        'anti_royal:g1': '👑',
+        'anti_royal:g2': '💰',
+        'king:g1': '♛',
+        'king:g2': '🧱',
+        'cursed:g1': '☠',
+        'cursed:g2': '🌀',
+        'cinderion:g1': '☀',
+        'cinderion:g2': '💠',
+        'drainbow:g1': '🌈',
+        'drainbow:g2': '🫧',
+        'draflygon:g1': '🌋',
+        'draflygon:g2': '♨',
+        'kage:g1': '👻',
+        'kage:g2': '💥',
+        'unopcoloco:g1': '🧣',
+        'unopcoloco:g2': '➕',
+        'dashaholic:g1': '↗',
+        'dashaholic:g2': '💉',
+        'trapper:g1': '🎵',
+        'trapper:g2': '🩹',
+        'classy:g1': '🎛',
+        'classy:g2': '🎉',
+        'hyperorigin:g1': '🔩',
+        'hyperorigin:g2': '👢',
+        'heater_miser:g1': '☄',
+        'heater_miser:g2': '🔁',
+        'minigunnin:g1': '🔫',
+        'minigunnin:g2': '🏰',
+        'steamer:g1': '🌬',
+        'steamer:g2': '🚂',
+        'bowlin_rida:g1': '🎳',
+        'bowlin_rida:g2': '💗',
+        'money_and_tax:g1': '🪙',
+        'money_and_tax:g2': '💸',
+        'hunter:g1': '🎯',
+        'hunter:g2': '🫣',
+        'chaird:g1': '🪑',
+        'chaird:g2': '🔰',
+        'forest:g1': '🌱',
+        'forest:g2': '🌿',
+        'bouncin_balls:g1': '🎾',
+        'bouncin_balls:g2': '🏗',
+        'copyphase:g1': '✖',
+        'copyphase:g2': '👾',
+        'sera_eclipse:g1': '🌑',
+        'sera_eclipse:g2': '🌙',
+        'rocketeer:g1': '🚀',
+        'rocketeer:g2': '🧨',
+        'peter_pickle:g1': '🥒',
+        'peter_pickle:g2': '🫙',
+        'unstable:g1': '🧬',
+        'unstable:g2': '🧪',
+        'homer:g1': '🔍',
+        'homer:g2': '📡',
+        'orbo:g1': '🪐',
+        'orbo:g2': '✨',
+        'predator:g1': '🦅',
+        'predator:g2': '💧',
+        'fuser:g1': '🚪',
+        'fuser:g2': '🔋',
+        'snapper:g1': '🎬',
+        'snapper:g2': '🔒',
+        'jetpack:g1': '🛰',
+        'jetpack:g2': '⛽',
+        'chickpig:g1': '🍳',
+        'chickpig:g2': '🪤',
+        'upiedown:g1': '🥧',
+        'upiedown:g2': '🎭',
+        'relay:g1': '🔋',
+        'relay:g2': '🤝',
+        'warrior:g1': '⚔',
+        'warrior:g2': '🏃',
+        'angel:g1': '😇',
+        'angel:g2': '💫',
+        'demon:g1': '😈',
+        'demon:g2': '🩸',
+        'paradox:g1': '⏳',
+        'paradox:g2': '✦',
+        'beam:g1': '🔦',
+        'beam:g2': '❄',
+        'outlit:g1': '🗡',
+        'outlit:g2': '🍀',
+        'echo:g1': '🔊',
+        'echo:g2': '🧊',
+        'cheseypuff:g1': '🌫',
+        'cheseypuff:g2': '🧀',
+        'decayer:g1': '🪃',
+        'decayer:g2': '🐌',
+        'goonbob:g1': '🫧',
+        'goonbob:g2': '💧',
+        'tempo_maker:g1': '↩',
+        'tempo_maker:g2': '🎵',
+        'overlord:g1': '⏱',
+        'overlord:g2': '🔱',
+        'fightnfire:g1': '🎆',
+        'fightnfire:g2': '🌪',
+        'beast:g1': '🐾',
+        'beast:g2': '🐆',
+        'amplifier:g1': '🔧',
+        'amplifier:g2': '🧰',
+        'skeleflying:g1': '🦴',
+        'skeleflying:g2': '💀',
+        'crystila:g1': '💎',
+        'crystila:g2': '🔮',
+        'hope:g1': '💪',
+        'hope:g2': '💔',
+        'evil_doctor:g1': '🧪',
+        'evil_doctor:g2': '☣',
+        'splitter:g1': '💣',
+        'splitter:g2': '⭐',
+        'scuba_diver:g1': '🤿',
+        'scuba_diver:g2': '🫧',
+        'hoop:g1': '🏀',
+        'hoop:g2': '👟',
+        'screener:g1': '🔋',
+        'screener:g2': '📺',
+        'malakor:g1': '👹',
+        'malakor:g2': '🖐',
+        'feathers:g1': '🪶',
+        'feathers:g2': '💨',
+        'spikey:g1': '🌵',
+        'spikey:g2': '🦔',
+        'electrostien:g1': '⚡',
+        'electrostien:g2': '💥',
+        'boom_arang:g1': '🪃',
+        'boom_arang:g2': '💫',
+        'teether:g1': '🧵',
+        'teether:g2': '🦷',
+        'fuel:g1': '🔥',
+        'fuel:g2': '♨',
+        'xray:g1': '🔎',
+        'xray:g2': '🛡',
+        'ice_cream:g1': '🍦',
+        'ice_cream:g2': '🥄',
+        'mageny:g1': '🧲',
+        'mageny:g2': '🔴',
+        'trampaheal:g1': '⬆',
+        'trampaheal:g2': '🌱',
+        'axeywaxy:g1': '🪓',
+        'axeywaxy:g2': '🌲',
+        'ramage:g1': '🩸',
+        'ramage:g2': '🧲',
+        'upgradart:g1': '🛠',
+        'upgradart:g2': '💉',
+        'fastpass:g1': '✅',
+        'fastpass:g2': '🚩',
+        'freestyle:g1': '🎵',
+        'freestyle:g2': '🎺',
+        'portalo:g1': '🌀',
+        'portalo:g2': '↩',
+        'ghoul:g1': '👻',
+        'ghoul:g2': '👥',
+        'jacktrade:g1': '🎰',
+        'jacktrade:g2': '🎲',
+        'darkener:g1': '🌫',
+        'darkener:g2': '🌀',
+        'awakenator:g1': '💤',
+        'awakenator:g2': '🧠',
+        'mallow:g1': '🍡',
+        'mallow:g2': '💥',
+        'nightshade:g1': '🗡',
+        'nightshade:g2': '🧪',
+        'aegis:g1': '🛡',
+        'aegis:g2': '🔨',
+        'runner:g1': '👟',
+        'runner:g2': '👥',
+        'aura_charmer:g1': '💜',
+        'aura_charmer:g2': '🌟',
+        'voltastein:g1': '⚡',
+        'voltastein:g2': '⛈',
+        'staticstein:g1': '🤖',
+        'staticstein:g2': '🍀',
+        'healnstein:g1': '🔁',
+        'healnstein:g2': '💚',
+        'voodoyou:g1': '🧶',
+        'voodoyou:g2': '🪡',
+        'pandy:g1': '🍬',
+        'pandy:g2': '🍪',
+        'snipa:g1': '🎯',
+        'snipa:g2': '🔎',
+        'bookworm:g1': '📖',
+        'bookworm:g2': '🪱',
+        'freezeon:g1': '🧊',
+        'freezeon:g2': '🍦',
+        'driller:g1': '🪤',
+        'driller:g2': '⛏',
+        'gravy:g1': '🫕',
+        'gravy:g2': '🥄',
+  };
+  function getMobileToolButtonIcon(brawlerId, gadgetSlot) {
+      // selectedBrawler / selectedGadget are let bindings declared later
+      // in this IIFE, and initMobileControls runs before they exist, so
+      // the button-creation call must not throw. The per-frame
+      // syncMobileActionButtons overwrites the gear with the real icon on
+      // the first loop frame, once the bindings exist; later calls resolve
+      // the live selection, so the icon follows a gadget change.
+      let id = brawlerId || null;
+      let slot = gadgetSlot || null;
+      try {
+          if (!id) id = selectedBrawler;
+          if (!slot) slot = selectedGadget;
+      } catch (_) { /* TDZ during boot: fall through to the gear */ }
+      if (!id || !slot) return '\u2699';
+      return MOBILE_GADGET_ICONS[`${id}:${normalizeGadgetSlot(slot)}`] || '\u2699';
   }
   function syncMobileActionButtons() {
       if (!mobileControlsRoot) return;
@@ -4348,7 +4735,7 @@ function updateGadgetInfo() {
           // App HUD polish (HU4): the ring alone can't tell 1s from 8s, so
           // while the tool recharges the button shows a numeric seconds
           // readout ("7s"), mirroring the desktop "Tool: CD 7s" text. The
-          // gear icon returns the moment it is ready. The label only
+          // gadget icon returns the moment it is ready. The label only
           // writes when it changes, so the per-frame sync stays cheap.
           const gadgetReadyAt = getPlayerGadgetCooldownUntil(selectedGadget, performance.now());
           const gadgetTotalMs = getGadgetCooldownMsForBrawler(selectedBrawler, selectedGadget);
@@ -4361,6 +4748,13 @@ function updateGadgetInfo() {
               gadgetTouchBtn.textContent = gadgetTouchLabel;
               gadgetTouchBtn.setAttribute('aria-label', gadgetCdSecs > 0 ? `Use Tool, ${gadgetCdSecs} seconds remaining` : 'Use Tool');
           }
+          // Round 2 HUD: the tooltip names the equipped tool, so the icon
+          // is never the only clue about which gadget is slotted. Only
+          // writes when the selection changes, like the label above.
+          const gadgetData = brawlerData[selectedBrawler] || {};
+          const gadgetName = String(gadgetData[selectedGadget] || '').split(' (')[0] || 'Tool';
+          const gadgetTitle = `Tool: ${gadgetName}`;
+          if (gadgetTouchBtn.title !== gadgetTitle) gadgetTouchBtn.title = gadgetTitle;
       }
       if (superTouchBtn) {
           if (isBlinkEyePlayerActive() && !!player?.blinkeyeSteering && !!player?.blinkeyeActiveEye) {
@@ -4513,6 +4907,14 @@ function updateGadgetInfo() {
       matchFullscreenBtn.setAttribute('aria-label', 'Toggle fullscreen');
       matchFullscreenBtn.addEventListener('pointerdown', (event) => { event.preventDefault(); void toggleGameFullscreen(); });
       root.appendChild(matchFullscreenBtn);
+      const matchPauseBtnEl = document.createElement('button');
+      matchPauseBtnEl.id = 'mobilePauseBtn';
+      matchPauseBtnEl.textContent = '⏸';
+      matchPauseBtnEl.title = 'Pause';
+      matchPauseBtnEl.setAttribute('aria-label', 'Pause match');
+      matchPauseBtnEl.addEventListener('pointerdown', (event) => { event.preventDefault(); appBuzz(12); pauseMatchFromHud(); });
+      root.appendChild(matchPauseBtnEl);
+      matchPauseBtn = matchPauseBtnEl;
       document.body.appendChild(root);
       mobileControlsRoot = root;
       // App HUD polish (HU2): tapping the touch map/modifier line (top-left

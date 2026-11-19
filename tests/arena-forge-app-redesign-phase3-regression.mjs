@@ -78,11 +78,15 @@ check('touch ATTACK/SUPER cards shrink + move under the pill', game.includes('co
 check('desktop card geometry is unchanged', game.includes('Math.min(310, innerWidth - 36)') && game.includes('hudModifierShown ? 134 : 96'));
 
 // --- TOOL button: circular cooldown ring + swappable icon slot ---
-check('TOOL button icon is a swappable slot', game.includes('function getMobileToolButtonIcon() {') && game.includes("gadgetTouchBtn.textContent = getMobileToolButtonIcon();"));
+// Round 2 HUD (2026-11-19) supersedes the old "slot only" pins below:
+// Anthony ordered per-gadget icons built, so the getter now resolves the
+// live selection and the map covers all 208 gadgets (counts are asserted
+// in tests/arena-forge-round2-hud-regression.mjs).
+check('TOOL button icon is a swappable slot', game.includes('function getMobileToolButtonIcon(brawlerId, gadgetSlot) {') && game.includes("gadgetTouchBtn.textContent = getMobileToolButtonIcon();"));
 check('TOOL button carries the circular cooldown ring', game.includes("gadgetTouchBtn.style.setProperty('--mobile-charge', `${gadgetFrac * 360}deg`);"));
 check('TOOL ring fraction comes from the real cooldown', game.includes('getPlayerGadgetCooldownUntil(selectedGadget, performance.now())') && game.includes('getGadgetCooldownMsForBrawler(selectedBrawler, selectedGadget)'));
 check('TOOL ring clamps 0..1 and is full when ready', game.includes('clamp(1 - (gadgetReadyAt - performance.now()) / gadgetTotalMs, 0, 1)'));
-check('no per-gadget icons were built (slot only)', !game.includes('getMobileToolButtonIcon(selectedGadget') && (game.match(/getMobileToolButtonIcon\(\)/g) || []).length === 3);
+check('per-gadget icons are built (round 2 HUD: map covers all 208 gadgets)', game.includes('const MOBILE_GADGET_ICONS = {') && (game.match(/^        '[a-z0-9_]+:g[12]': '/gm) || []).length === 208);
 
 // --- Thrower telegraphs: every thrower has one; touch matches the throw ---
 check('aim helper exists and uses the fire vector on touch', game.includes('function getPlayerAimWorld(){') && game.includes('player.x + (mobileInput.aimX || 0) * 1200'));
