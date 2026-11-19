@@ -256,10 +256,16 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         /* App home (Brawl Stars style, 2026-11-18): the native shell replaces the web home grid with a fullscreen app layout — slim top strip, big hero fighter card, huge PLAY button, bottom tab bar. Scoped under .native-app so the website is byte-for-byte unchanged. The hero uses explicit flex sizing (never percentage-height + absolute-position children, which is how the web card's stage went blank on phone landscape) and a --hero-color fallback so its background can never go invalid. */
         .native-app #homeScreen{display:none !important}
         #appHome{position:fixed;inset:0;z-index:30;display:none;flex-direction:column;box-sizing:border-box;padding-top:max(8px,env(safe-area-inset-top));padding-bottom:max(8px,env(safe-area-inset-bottom));padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right));font-family:'Trebuchet MS','Gill Sans','Verdana',sans-serif;color:#fff;background:linear-gradient(160deg,#06101f 0%,#0a2140 55%,#04101f 100%)}
+        /* Tier 2 feel (2026-11-19): seasonal re-skin. The base #appHome
+           rule above keeps its literal gradient (pinned by the polish-pass
+           suite); this later, higher-specificity .native-app rule is what
+           actually paints the home in app mode, following the season vars
+           set by applyAppSeasonTheme(). Fallbacks are today's look. */
+        .native-app #appHome{background:linear-gradient(160deg,var(--app-season-bg1,#06101f) 0%,var(--app-season-bg2,#0a2140) 55%,#04101f 100%)}
         .native-app #appHome:not(.app-home-hidden){display:flex}
         #appHomeTop{flex:none;display:flex;align-items:center;gap:10px;min-height:44px}
         #appHomePlayer{display:flex;align-items:center;gap:8px;font-weight:1000;font-size:15px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:6px 12px;white-space:nowrap}
-        #appHomeSeasonChip{font-weight:1000;font-size:12px;letter-spacing:.06em;color:#ffd166;background:rgba(255,209,102,.12);border:1px solid rgba(255,209,102,.35);border-radius:999px;padding:6px 12px;white-space:nowrap}
+        #appHomeSeasonChip{font-weight:1000;font-size:12px;letter-spacing:.06em;color:var(--app-season-accent,#ffd166);background:color-mix(in srgb,var(--app-season-accent,#ffd166) 12%,transparent);border:1px solid color-mix(in srgb,var(--app-season-accent,#ffd166) 35%,transparent);border-radius:999px;padding:6px 12px;white-space:nowrap}
         #appHomeSaveBtn{flex:none;font-weight:1000;font-size:15px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:6px 10px;color:#fff;cursor:pointer}
         #appHomeTop #homeCurrencyBar{display:flex;gap:8px;margin-left:auto}
         #appHomeBody{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
@@ -344,7 +350,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         .app-hero-stats{display:flex;gap:8px;flex-wrap:wrap}
         .app-hero-stats span{background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:6px 10px;font-size:13px;font-weight:800;white-space:nowrap}
         .app-hero-stats small{color:#8fdfff;font-size:10px;font-weight:1000;margin-right:4px}
-        .app-hero-fighters{align-self:flex-start;margin-top:2px;padding:9px 16px;border:0;border-radius:12px;background:#ff9f1c;color:#231303;font-weight:1000;font-size:14px;letter-spacing:.03em}
+        .app-hero-fighters{align-self:flex-start;margin-top:2px;padding:9px 16px;border:0;border-radius:12px;background:var(--app-season-accent,#ff9f1c);color:var(--app-season-accent-ink,#231303);font-weight:1000;font-size:14px;letter-spacing:.03em}
         #appHomePlayRow{flex:none;display:flex;align-items:center;justify-content:center;gap:12px;padding:10px 0 4px}
         #appHomePlay{min-width:min(320px,44vw);padding:14px 34px;border:0;border-radius:18px;background:linear-gradient(#7dff6a,#37c837);color:#062b07;font-size:clamp(22px,4.5vh,30px);font-weight:1000;letter-spacing:.04em;box-shadow:0 6px 0 #1d7a1d,0 12px 24px rgba(0,0,0,.45);cursor:pointer}
         #appHomePlay:active{transform:translateY(4px);box-shadow:0 2px 0 #1d7a1d}
@@ -355,7 +361,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         #appHomeTabs{flex:none;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:8px 4px 0}
         #appHomeTabs button{padding:10px 6px;border-radius:14px;border:2px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#cfe6ff;font-weight:1000;font-size:15px;cursor:pointer}
         #appHomeTabs button small{display:block;font-size:10px;letter-spacing:.08em;opacity:.75}
-        #appHomeTabs button.is-active{background:#ff9f1c;border-color:#ffd166;color:#231303}
+        #appHomeTabs button.is-active{background:var(--app-season-accent,#ff9f1c);border-color:var(--app-season-accent-soft,#ffd166);color:var(--app-season-accent-ink,#231303)}
         /* App quick row (phase 2, 2026-11-19): home shortcuts that were
            trapped inside the hidden web home — quests, season pass,
            Brick Rush, settings. Same chunky card language as the hero. */
@@ -596,6 +602,13 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         .app-kit-slot:active{transform:scale(.97);filter:brightness(1.25)}
         .app-event-slot:active{transform:scale(.98);filter:brightness(1.2)}
         .native-app .brawe-shop-card:active{transform:scale(.98);filter:brightness(1.22)}
+        /* Tier 2 feel (2026-11-19): post-match real stats, app mode only.
+           The section is built by the results screen (see there) and only
+           ever renders under .native-app, so the website never sees it. */
+        .native-app .match-results-stats{position:relative;z-index:1;margin-top:2px;padding:12px 14px;border:1px solid rgba(255,255,255,.14);border-radius:14px;background:rgba(0,0,0,.28)}
+        .native-app .match-results-stats-title{margin:0 0 8px;color:#8fdfff;font-size:11px;font-weight:1000;letter-spacing:.18em}
+        .native-app .match-results-stat-row{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:16px;font-weight:800;color:#eaf6ff}
+        .native-app .match-results-stat-row b{font-size:20px;color:#ffd166}
         /* X5: tournament overlay safe areas — overrides the phase-2
            14px/10px padding above (same specificity, later wins; the JS
            also sets a fixed 60px/40px vertical pad inline, which this
@@ -6639,8 +6652,14 @@ const bolznstienPendingStrikes = [];
         const eventsHost = document.getElementById('appHomeEventsHost');
         if (eventsView && eventsHost) eventsHost.appendChild(eventsView);
         document.getElementById('appHomeHero')?.addEventListener('click', () => { appBuzz(10); setAppHomeTab('fighters'); });
+        // Tier 2 feel (2026-11-19): hero voice line on tap. A separate
+        // listener on purpose — the navigation listener above stays
+        // byte-identical (pinned by the app-home + phase-4 suites), and
+        // the line plays alongside it: the voice is a detached Audio
+        // object, so navigating to Fighters never cuts it off.
+        document.getElementById('appHomeHero')?.addEventListener('click', () => { playAppHeroVoiceLine(); });
         document.getElementById('appHomeHero')?.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setAppHomeTab('fighters'); }
+            if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); playAppHeroVoiceLine(); setAppHomeTab('fighters'); }
         });
         document.getElementById('appHomePlay')?.addEventListener('click', () => {
             appBuzz(12);
@@ -6790,6 +6809,7 @@ const bolznstienPendingStrikes = [];
     }
     function syncAppHome() {
         if (!appHomeEl || !isNativeAppMode()) return;
+        try { applyAppSeasonTheme(); } catch (_) {}
         try { renderAppHomeHero(); } catch (_) { try { renderAppHomeHeroFallback(); } catch (_) {} }
         try { renderAppHomeTop(); } catch (_) {}
         try { renderAppHomeEventChip(); } catch (_) {}
@@ -7746,7 +7766,80 @@ const bolznstienPendingStrikes = [];
             }
         } catch (_) { /* a failed lock is reported, never thrown */ }
         return false;    }
-    // ---- App toast + confirm sheet (2026-11-19) ----
+    // ---- Tier 2 feel: seasonal whole-app re-skin (2026-11-19) ----
+    // The app re-skins for the CURRENT season, from art/palette that
+    // already exists in the game — no new assets. Keys are the
+    // getActiveSeasonProfile() keys (arenaween S4, turkey S5, xplodemis
+    // S6 Christmas 2026, ember S7). Xplodemis takes the Christmas 2026
+    // set: Tree Freeze gold (#ffd76b, the daily-present gold) on pine
+    // green. Accents are text-on-dark colors (all >4.5:1 on the home
+    // background) and accent-ink is dark text on the accent itself.
+    // DEFAULT is today's look, so an unknown season key changes nothing.
+    const APP_SEASON_THEMES = {
+        arenaween: { accent: '#ffa94d', soft: '#ffd166', ink: '#2b1503', bg1: '#160a2e', bg2: '#3a1250' },
+        turkey: { accent: '#ff9f1c', soft: '#ffd166', ink: '#231303', bg1: '#1c1006', bg2: '#3a2410' },
+        xplodemis: { accent: '#ffd76b', soft: '#7ddba3', ink: '#231303', bg1: '#06231a', bg2: '#0a3d24' },
+        ember: { accent: '#ff8a3d', soft: '#ffb347', ink: '#2b0e02', bg1: '#200a04', bg2: '#471307' },
+    };
+    const APP_SEASON_THEME_DEFAULT = { accent: '#ff9f1c', soft: '#ffd166', ink: '#231303', bg1: '#06101f', bg2: '#0a2140' };
+    let appSeasonThemeKey = null;
+    function applyAppSeasonTheme() {
+        try {
+            if (!isNativeAppMode()) return;
+            let key = null;
+            try { key = getActiveSeasonProfile().key || null; } catch (_) { key = null; }
+            if (key === appSeasonThemeKey) return;
+            appSeasonThemeKey = key;
+            const t = APP_SEASON_THEMES[key] || APP_SEASON_THEME_DEFAULT;
+            const root = document.documentElement;
+            root.style.setProperty('--app-season-accent', t.accent);
+            root.style.setProperty('--app-season-accent-soft', t.soft);
+            root.style.setProperty('--app-season-accent-ink', t.ink);
+            root.style.setProperty('--app-season-bg1', t.bg1);
+            root.style.setProperty('--app-season-bg2', t.bg2);
+            root.dataset.appSeason = key || 'default';
+        } catch (_) { /* a theme must never break the home screen */ }
+    }
+    // ---- Tier 2 feel: hero voice line on tap (2026-11-19) ----
+    // Brawl Stars pattern: tapping the hero fighter plays that brawler's
+    // voice line. Only PLAYS existing lines — no new lines are written
+    // (RULE ONE: lines never explain what attacks do). The tap still
+    // navigates to Fighters (existing behavior); the line is a detached
+    // Audio object, so navigating away never cuts it off.
+    // Mute: reads the arenaForgeMutedV1 pref (owned by the sibling
+    // round-2 build — this code only READS it, never writes it, and an
+    // absent key means unmuted). '1' or 'true' = muted.
+    // Missing files are silent by construction: brawlers with no voice
+    // module have no window key (no-op); modules for pandy / snipa /
+    // voodoyou list clips whose mp3s were never rendered, and their
+    // play() marks failed files dead and stays silent; bookworm /
+    // driller / freezeon / gravy modules are silent no-ops until Anthony
+    // picks a voice. Only fuser (24 clips) and outlit (27 clips) have
+    // real audio in the repo. A 1s throttle keeps rapid taps from
+    // stacking lines on top of each other.
+    let appHeroVoiceLastAt = 0;
+    function appHeroMuted() {
+        try {
+            const v = localStorage.getItem('arenaForgeMutedV1');
+            return v === '1' || v === 'true';
+        } catch (_) { return false; }
+    }
+    function playAppHeroVoiceLine() {
+        try {
+            if (appHeroMuted()) return false;
+            const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+            if (now - appHeroVoiceLastAt < 1000) return false;
+            appHeroVoiceLastAt = now;
+            const id = String(typeof selectedBrawler !== 'undefined' ? selectedBrawler : '');
+            if (!id) return false;
+            const key = 'Brawe' + id.charAt(0).toUpperCase() + id.slice(1) + 'Voice';
+            const mod = (typeof window !== 'undefined') ? window[key] : null;
+            if (!mod || typeof mod.play !== 'function') return false;
+            // 'spawn' is the greeting line — no throttle inside the
+            // modules (cooldown 0) and the friendliest tap response.
+            return mod.play('spawn') === true;
+        } catch (_) { return false; }
+    }    // ---- App toast + confirm sheet (2026-11-19) ----
     // showToast was called from save download, save-code copy and Brick
     // Rush but never defined, so every call site silently did nothing.
     // One toast element, reused: a repeat call swaps the text and restarts
@@ -76367,6 +76460,34 @@ function checkHit(target, b, i){
       return true;
   }
 
+  // Post-match real stats (2026-11-19, app overhaul Tier 2 feel): builds
+  // the MATCH STATS section for the results screen. Only the damage
+  // number is passed in — it is the match damage ledger total
+  // (commitFullOnDamageMatch()), the only per-match performance number
+  // the game records. Takedowns and healing take no argument on purpose:
+  // no per-match counter exists for either (see the call-site comment),
+  // so no row can be built for them. Pure DOM builder: safe to run in
+  // the regression suite with stubbed document/window.
+  function buildMatchResultsStats(damageTotal) {
+      const statsBox = document.createElement('section');
+      statsBox.className = 'match-results-stats';
+      statsBox.setAttribute('aria-label', 'Match stats');
+      const statsTitle = document.createElement('h3');
+      statsTitle.className = 'match-results-stats-title';
+      statsTitle.textContent = 'MATCH STATS';
+      const statsRow = document.createElement('div');
+      statsRow.className = 'match-results-stat-row';
+      const dmgLabel = document.createElement('span');
+      dmgLabel.textContent = '💥 Match damage';
+      const dmgValue = document.createElement('b');
+      dmgValue.textContent = (Math.max(0, Math.round(Number(damageTotal) || 0))).toLocaleString();
+      statsRow.appendChild(dmgLabel);
+      statsRow.appendChild(dmgValue);
+      statsBox.appendChild(statsTitle);
+      statsBox.appendChild(statsRow);
+      return statsBox;
+  }
+
   function render(){
     const now = performance.now();
     // Balance 2026-11-12: Pandy Hyper (Sugar Surge) zooms the camera out so
@@ -92899,6 +93020,23 @@ function checkHit(target, b, i){
             hero.appendChild(headline);
             resultCard.appendChild(hero);
             resultCard.appendChild(rewardsBox);
+            // Post-match real stats (2026-11-19, app overhaul Tier 2 feel):
+            // app mode ONLY — the website's results screen is untouched.
+            // The only per-match performance number the game records is
+            // the match damage ledger committed above
+            // (commitFullOnDamageMatch() -> fullOnDamageEarned). It counts
+            // every point of damage recorded through the combat path this
+            // match — damage dealt, damage taken, and bot-vs-bot damage all
+            // flow through applyShieldDamage, which is where the ledger is
+            // fed — so it is shown as MATCH DAMAGE, never as "damage dealt
+            // by you". Takedowns are NOT tracked per match (only the career
+            // cumulative eliminations counter exists) and healing is NOT
+            // tracked per match at all (doHeal records nothing), so those
+            // rows are omitted rather than invented. No per-bot match stats
+            // exist either, so there is no bot leaderboard to show.
+            if (isNativeAppMode()) {
+                resultCard.appendChild(buildMatchResultsStats(fullOnDamageEarned));
+            }
             // If God Mode was unlocked this match, enable and show the God Mode button
             
             // Tournament polish: in-place next steps — no reload. The
