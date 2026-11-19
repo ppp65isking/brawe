@@ -21,7 +21,9 @@ check('super charge 14 ticks', /spikey:6, electrostien:14/.test(game));
 check('reload 1100ms', /electrostien: 1100/.test(game));
 check('kill switches declared', /let ELECTROSTIEN_ENABLED = true/.test(game) && /let ELECTRIC_REALM_ENABLED = true/.test(game));
 check('signature def present', /electrostien: \{\s*\n\s*type: 'signature',\s*\n\s*name: 'Family Circuit'/.test(game));
-check('Core Piece buy guard', /fighterId === 'electrostien'\) \{ alert\('Family Circuit Pieces are EARNED/.test(game));
+// 2026-11-19 (app toast + confirm sheet): the native alert() is now the
+// app-styled sheet — same guard message, still shown instead of selling.
+check('Core Piece buy guard', /fighterId === 'electrostien'\) \{ showAppConfirmSheet\(\{ message: 'Family Circuit Pieces are EARNED/.test(game));
 check('Daily Deals exclusion', /fid === 'electrostien'\) continue/.test(game));
 check('free unlock lines', (game.match(/unlockedBrawlers\.electrostien = true/g) || []).length >= 3);
 check('win counter persisted', /electrostienSignatureWins: playerData\.electrostienSignatureWins/.test(game));

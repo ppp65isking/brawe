@@ -512,6 +512,25 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         .app-kit-sheet-select{background:linear-gradient(#7dff6a,#37c837);color:#062b07}
         .app-kit-sheet-select:disabled{background:#555;color:#ddd;cursor:not-allowed}
         .app-kit-sheet-close{background:rgba(255,255,255,.12);color:#cfe6ff;border:1px solid rgba(255,255,255,.25)}
+        /* ---- Arena Forge app toast + confirm sheet (2026-11-19): one
+           app-styled toast (was called 3x but never defined) and one
+           reusable bottom-sheet confirm replacing native alert()/confirm()
+           in save import, shop purchase and tournament-leave flows. The
+           classes are unscoped so the save flows work on the website too;
+           the look matches the kit sheet (same gradient, radius, font).
+           Toast sits above the tab bar, never blocks taps. */
+        .app-toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:1400;transform:translate(-50%,12px);opacity:0;pointer-events:none;max-width:min(92vw,480px);box-sizing:border-box;padding:11px 18px;border-radius:999px;background:rgba(10,33,64,.96);border:1px solid rgba(255,255,255,.22);border-left:4px solid #5df2c2;color:#fff;font-family:inherit;font-size:14px;font-weight:800;text-align:center;box-shadow:0 8px 28px rgba(0,0,0,.5);transition:transform .22s ease-out,opacity .22s ease-out}
+        .app-toast.app-toast-show{transform:translate(-50%,0);opacity:1}
+        .app-confirm-overlay{position:fixed;inset:0;z-index:1300;display:flex;align-items:flex-end;justify-content:center;background:rgba(2,8,18,.62);backdrop-filter:blur(3px)}
+        .app-confirm-sheet{width:100%;max-width:560px;max-height:82dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;box-sizing:border-box;padding:20px 16px calc(16px + env(safe-area-inset-bottom));border-radius:20px 20px 0 0;border:2px solid rgba(255,255,255,.2);border-bottom:0;background:linear-gradient(160deg,#0a2140,#06101f);color:#fff;font-family:inherit;animation:appKitSheetIn .18s ease-out}
+        .app-confirm-title{font-size:11px;font-weight:1000;letter-spacing:.1em;color:#8fdfff}
+        .app-confirm-message{font-size:15px;line-height:1.5;color:#d7ecff;margin:8px 0 16px}
+        .app-confirm-actions{display:flex;gap:8px}
+        .app-confirm-actions button{flex:1;min-height:48px;padding:13px 16px;border:0;border-radius:12px;font-weight:1000;font-size:15px;cursor:pointer}
+        .app-confirm-confirm{background:#ff9f1c;color:#231303}
+        .app-confirm-cancel{background:rgba(255,255,255,.12);color:#cfe6ff;border:1px solid rgba(255,255,255,.25)}
+        .app-confirm-ok{background:linear-gradient(#7dff6a,#37c837);color:#062b07}
+        @media (prefers-reduced-motion:reduce){.app-toast{transition:none}.app-confirm-sheet{animation:none}}
         /* View transitions: switching app tabs fades the new view in
            instead of hard-cutting. Pure CSS, .16s. */
         #appHomeHeroView.is-active,#appHomeEventsHost.is-active,#appHomeFightersView.is-active,#appHomeEventsView.is-active,#appHomeSettingsView.is-active{animation:appViewIn .16s ease-out}
@@ -6669,6 +6688,121 @@ const bolznstienPendingStrikes = [];
     }
     function appBuzz(ms) {
         try { if (!appHapticsOn()) return; navigator.vibrate?.(ms); } catch (_) {}
+    }
+    // ---- App toast + confirm sheet (2026-11-19) ----
+    // showToast was called from save download, save-code copy and Brick
+    // Rush but never defined, so every call site silently did nothing.
+    // One toast element, reused: a repeat call swaps the text and restarts
+    // the auto-dismiss timer instead of stacking. Transform/opacity only,
+    // pointer-events:none so it can never block a tap. The accent arg
+    // tints the left edge (call sites pass mint for saves, amber for
+    // Brick Rush); a light buzz respects the haptics pref via appBuzz.
+    let appToastTimer = null;
+    function showToast(message, accent) {
+        try {
+            let toast = document.getElementById('appToast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'appToast';
+                toast.className = 'app-toast';
+                toast.setAttribute('role', 'status');
+                toast.setAttribute('aria-live', 'polite');
+                document.body.appendChild(toast);
+            }
+            toast.textContent = String(message ?? '');
+            if (accent) toast.style.borderLeftColor = String(accent);
+            toast.classList.remove('app-toast-show');
+            void toast.offsetWidth;
+            toast.classList.add('app-toast-show');
+            appBuzz(10);
+            if (appToastTimer) clearTimeout(appToastTimer);
+            appToastTimer = setTimeout(() => { toast.classList.remove('app-toast-show'); appToastTimer = null; }, 2600);
+        } catch (_) { /* toast is best-effort feedback; never throw into the caller */ }
+    }
+    // One reusable app-styled confirm sheet (bottom sheet, kit-sheet look)
+    // replacing native alert()/confirm() in save import, shop purchase and
+    // tournament-leave flows. Confirm variant when onConfirm is a function
+    // (confirm + cancel buttons); message-only variant otherwise (single OK
+    // button, onClose runs when it is dismissed any way — button, backdrop
+    // or Escape — so callers that reload after acknowledging still reload).
+    // Only one sheet at a time; opening a second replaces the first.
+    let appConfirmSheetKeyHandler = null;
+    function showAppConfirmSheet(options) {
+        const opts = options || {};
+        const message = String(opts.message ?? '');
+        if (!message) return null;
+        closeAppConfirmSheet();
+        const hasConfirm = typeof opts.onConfirm === 'function';
+        const overlay = document.createElement('div');
+        overlay.className = 'app-confirm-overlay';
+        overlay.id = 'appConfirmOverlay';
+        const sheet = document.createElement('div');
+        sheet.className = 'app-confirm-sheet';
+        sheet.setAttribute('role', 'dialog');
+        sheet.setAttribute('aria-modal', 'true');
+        if (opts.title) {
+            const title = document.createElement('div');
+            title.className = 'app-confirm-title';
+            title.textContent = String(opts.title);
+            sheet.appendChild(title);
+        }
+        const body = document.createElement('div');
+        body.className = 'app-confirm-message';
+        body.textContent = message;
+        sheet.appendChild(body);
+        const actions = document.createElement('div');
+        actions.className = 'app-confirm-actions';
+        let primaryBtn = null;
+        let closed = false;
+        const dismiss = (result) => {
+            if (closed) return;
+            closed = true;
+            closeAppConfirmSheet();
+            try {
+                if (result === 'confirm' && typeof opts.onConfirm === 'function') opts.onConfirm();
+                else if (result === 'cancel' && typeof opts.onCancel === 'function') opts.onCancel();
+                else if (result === 'ok' && typeof opts.onClose === 'function') opts.onClose();
+            } catch (_) { /* a callback must never throw into the sheet */ }
+        };
+        if (hasConfirm) {
+            const cancelBtn = document.createElement('button');
+            cancelBtn.type = 'button';
+            cancelBtn.className = 'app-confirm-cancel';
+            cancelBtn.textContent = String(opts.cancelText || 'CANCEL');
+            cancelBtn.onclick = () => dismiss('cancel');
+            actions.appendChild(cancelBtn);
+            const confirmBtn = document.createElement('button');
+            confirmBtn.type = 'button';
+            confirmBtn.className = 'app-confirm-confirm';
+            confirmBtn.textContent = String(opts.confirmText || 'CONFIRM');
+            if (opts.confirmColor) confirmBtn.style.background = String(opts.confirmColor);
+            confirmBtn.onclick = () => { appBuzz(12); dismiss('confirm'); };
+            actions.appendChild(confirmBtn);
+            primaryBtn = confirmBtn;
+        } else {
+            const okBtn = document.createElement('button');
+            okBtn.type = 'button';
+            okBtn.className = 'app-confirm-ok';
+            okBtn.textContent = String(opts.okText || 'GOT IT');
+            okBtn.onclick = () => dismiss('ok');
+            actions.appendChild(okBtn);
+            primaryBtn = okBtn;
+        }
+        sheet.appendChild(actions);
+        overlay.appendChild(sheet);
+        overlay.onclick = (event) => { if (event.target === overlay) dismiss(hasConfirm ? 'cancel' : 'ok'); };
+        appConfirmSheetKeyHandler = (event) => { if (event.key === 'Escape') dismiss(hasConfirm ? 'cancel' : 'ok'); };
+        document.addEventListener('keydown', appConfirmSheetKeyHandler);
+        document.body.appendChild(overlay);
+        appBuzz(10);
+        try { primaryBtn?.focus(); } catch (_) {}
+        return overlay;
+    }
+    function closeAppConfirmSheet() {
+        try {
+            if (appConfirmSheetKeyHandler) { document.removeEventListener('keydown', appConfirmSheetKeyHandler); appConfirmSheetKeyHandler = null; }
+        } catch (_) {}
+        try { document.getElementById('appConfirmOverlay')?.remove(); } catch (_) {}
     }
     function buildAppSettingsView() {
         const view = document.getElementById('appHomeSettingsView');
@@ -14075,12 +14209,20 @@ const TOWER_DUELS_ACTIVE_TOWER_POWERS = 8;
       leaveBtn.textContent = 'LEAVE TOURNAMENT';
       leaveBtn.style.padding = '14px 20px'; leaveBtn.style.borderRadius = '12px'; leaveBtn.style.cursor = 'pointer';
       leaveBtn.onclick = () => {
-          if (!confirm('Abandon this tournament run? Your bracket is lost — you can re-enter the league and start over.')) return;
-          const s = getTournamentState();
-          s.active = null;
-          setTournamentState(s);
-          document.body.removeChild(overlay);
-          openTournamentHub();
+          showAppConfirmSheet({
+              title: 'LEAVE TOURNAMENT?',
+              message: 'Abandon this tournament run? Your bracket is lost — you can re-enter the league and start over.',
+              confirmText: 'LEAVE',
+              cancelText: 'STAY',
+              confirmColor: '#ff6b6b',
+              onConfirm: () => {
+                  const s = getTournamentState();
+                  s.active = null;
+                  setTournamentState(s);
+                  document.body.removeChild(overlay);
+                  openTournamentHub();
+              }
+          });
       };
       btnRow.appendChild(leaveBtn);
       const closeBtn = document.createElement('button');
@@ -21496,10 +21638,10 @@ let heistFeverActive = false;
   function buySpecialAbilityPiece(fighterId) {
       const def = getSpecialAbilityDef(fighterId);
       if (!def) return false;
-      if (fighterId === 'electrostien') { alert('Family Circuit Pieces are EARNED by winning battles with Electrostien — they cannot be bought with Core Pieces.'); return false; }
+      if (fighterId === 'electrostien') { showAppConfirmSheet({ message: 'Family Circuit Pieces are EARNED by winning battles with Electrostien — they cannot be bought with Core Pieces.' }); return false; }
       const ability = getSpecialAbilityState(def.type, fighterId);
-      if (ability.unlocked) { alert('That ability is already unlocked!'); return false; }
-      if (!spendCorePieces(CORE_PIECE_PRICE)) { alert(`Not enough Core Pieces — one ${def.pieceName} costs ${CORE_PIECE_PRICE} Core Pieces. Earn Core Pieces from Tapper Uppers, Super Tappers, the Season Pass and Presents!`); return false; }
+      if (ability.unlocked) { showAppConfirmSheet({ message: 'That ability is already unlocked!' }); return false; }
+      if (!spendCorePieces(CORE_PIECE_PRICE)) { showAppConfirmSheet({ message: `Not enough Core Pieces — one ${def.pieceName} costs ${CORE_PIECE_PRICE} Core Pieces. Earn Core Pieces from Tapper Uppers, Super Tappers, the Season Pass and Presents!` }); return false; }
       addSpecialAbilityPiece(fighterId);
       saveProgress();
       return true;
@@ -21519,10 +21661,10 @@ let heistFeverActive = false;
   function buySpecialAbilityFullUnlock(fighterId) {
       const def = getSpecialAbilityDef(fighterId);
       if (!def) return false;
-      if (fighterId === 'electrostien') { alert('Family Circuit is EARNED by winning battles with Electrostien — it cannot be bought with Core Pieces.'); return false; }
+      if (fighterId === 'electrostien') { showAppConfirmSheet({ message: 'Family Circuit is EARNED by winning battles with Electrostien — it cannot be bought with Core Pieces.' }); return false; }
       const ability = getSpecialAbilityState(def.type, fighterId);
-      if (ability.unlocked) { alert('That ability is already unlocked!'); return false; }
-      if (!spendCorePieces(CORE_FULL_UNLOCK_PRICE)) { alert(`Not enough Core Pieces — a full unlock costs ${CORE_FULL_UNLOCK_PRICE} Core Pieces. Earn Core Pieces from Tapper Uppers, Super Tappers, the Season Pass and Presents!`); return false; }
+      if (ability.unlocked) { showAppConfirmSheet({ message: 'That ability is already unlocked!' }); return false; }
+      if (!spendCorePieces(CORE_FULL_UNLOCK_PRICE)) { showAppConfirmSheet({ message: `Not enough Core Pieces — a full unlock costs ${CORE_FULL_UNLOCK_PRICE} Core Pieces. Earn Core Pieces from Tapper Uppers, Super Tappers, the Season Pass and Presents!` }); return false; }
       ability.pieces = 3;
       ability.unlocked = true;
       saveProgress();
@@ -22035,7 +22177,7 @@ let heistFeverActive = false;
               footerText: 'Fighter-only early access offer.',
               onBuy: () => {
                   if (playerData.unlockedBrawlers.relay) return;
-                  if ((playerData.gems || 0) < 79) return alert('Not enough Gems!');
+                  if ((playerData.gems || 0) < 79) { showAppConfirmSheet({ message: 'Not enough Gems!' }); return; }
                   playerData.gems -= 79;
                   unlockBrawler('relay');
                   playerData.shopClaims.relayEarlyAccess = true;
@@ -22060,7 +22202,7 @@ let heistFeverActive = false;
                   const progress = getOrCreateProgress('relay');
                   const alreadyOwned = !!playerData.unlockedBrawlers.relay;
                   const price = alreadyOwned ? 149 : 199;
-                  if ((playerData.gems || 0) < price) return alert('Not enough Gems!');
+                  if ((playerData.gems || 0) < price) { showAppConfirmSheet({ message: 'Not enough Gems!' }); return; }
                   playerData.gems -= price;
                   if (!alreadyOwned) unlockBrawler('relay');
                   applyLevelUnlocks(progress, 11);
@@ -22115,7 +22257,7 @@ let heistFeverActive = false;
               buttonText: 'BUY',
               buttonColor: '#ffd166',
               onBuy: () => {
-                  if (playerData.gems < 15) return alert('Not enough Gems!');
+                  if (playerData.gems < 15) { showAppConfirmSheet({ message: 'Not enough Gems!' }); return; }
                   playerData.gems -= 15;
                   playerData.starrDrops = (playerData.starrDrops || 0) + 3;
                   playerData.superTapperCount = (playerData.superTapperCount || 0) + 1;
@@ -22305,7 +22447,7 @@ let heistFeverActive = false;
                   buyBtn.style.color = '#08101d';
                   buyBtn.style.cursor = 'pointer';
                   buyBtn.onclick = () => {
-                      if (playerData.gems < skin.price) return alert('Not enough Gems!');
+                      if (playerData.gems < skin.price) { showAppConfirmSheet({ message: 'Not enough Gems!' }); return; }
                       playerData.gems -= skin.price;
                       playerData.ownedSkins[skin.brawler] = playerData.ownedSkins[skin.brawler] || [];
                       playerData.ownedSkins[skin.brawler].push(skin.id);
@@ -22442,7 +22584,7 @@ let heistFeverActive = false;
 
           spinBtn.onclick = () => {
               if (spinning) return;
-              if (playerData.coins < 100) return alert('Not enough Coins!');
+              if (playerData.coins < 100) { showAppConfirmSheet({ message: 'Not enough Coins!' }); return; }
               playerData.coins -= 100;
               spinning = true;
               spinBtn.disabled = true;
@@ -22511,7 +22653,7 @@ let heistFeverActive = false;
               footerText: `Daily Limit: ${soulsClaimed}/3 conversions claimed today.`,
               onBuy: () => {
                   if (playerData.dailyClaims.soulsToCoins >= 3) return;
-                  if (getSoulBalance() < 50) return alert('Not enough Souls!');
+                  if (getSoulBalance() < 50) { showAppConfirmSheet({ message: 'Not enough Souls!' }); return; }
                   deductSouls(50);
                   playerData.coins += 250;
                   playerData.dailyClaims.soulsToCoins = (playerData.dailyClaims.soulsToCoins || 0) + 1;
@@ -22534,7 +22676,7 @@ let heistFeverActive = false;
               footerText: `Daily Limit: ${gemsClaimed}/3 conversions claimed today.`,
               onBuy: () => {
                   if (playerData.dailyClaims.gemsToCoins >= 3) return;
-                  if (playerData.gems < 10) return alert('Not enough Gems!');
+                  if (playerData.gems < 10) { showAppConfirmSheet({ message: 'Not enough Gems!' }); return; }
                   playerData.gems -= 10;
                   playerData.coins += 500;
                   playerData.dailyClaims.gemsToCoins = (playerData.dailyClaims.gemsToCoins || 0) + 1;
@@ -22681,7 +22823,7 @@ let heistFeverActive = false;
                   descText: `${(brawlerData[fid]||{}).name || fid} is at ${st.pieces}/3 ${def.type} pieces. Today's piece is discounted — finish the set.`,
                   priceText: '30 CORE PIECES (was 40)', buttonText: 'BUY PIECE', buttonColor: def.color,
                   isOwned: !!playerData.shopClaims[key], isLocked: getCorePieces()<30, lockedText: '30 CORE PIECES REQUIRED', footerText: 'Personalized pick · rotates daily.',
-                  onBuy: () => { if(playerData.shopClaims[key])return; if(!spendCorePieces(30))return alert('Not enough Core Pieces!'); addSpecialAbilityPiece(fid); playerData.shopClaims[key]=true; ensureShopButtonRefresh(); renderTabContent(); }
+                  onBuy: () => { if(playerData.shopClaims[key])return; if(!spendCorePieces(30)){ showAppConfirmSheet({ message: 'Not enough Core Pieces!' }); return; } addSpecialAbilityPiece(fid); playerData.shopClaims[key]=true; ensureShopButtonRefresh(); renderTabContent(); }
               }));
           }
 
@@ -22695,7 +22837,7 @@ let heistFeverActive = false;
                   descText: `${skin.description || 'A fresh look.'} For ${(brawlerData[skin.brawler]||{}).name || skin.brawler} — 25% off today only.`,
                   priceText: `${dealPrice} GEMS (was ${skin.price})`, buttonText: 'BUY SKIN', buttonColor: '#ff9de2',
                   isLocked: (playerData.gems||0)<dealPrice, lockedText: `${dealPrice} GEMS REQUIRED`, footerText: 'Personalized pick · only for fighters you own · rotates daily.',
-                  onBuy: () => { if((playerData.gems||0)<dealPrice)return alert('Not enough Gems!'); playerData.gems-=dealPrice; playerData.ownedSkins = playerData.ownedSkins || {}; playerData.ownedSkins[skin.brawler] = playerData.ownedSkins[skin.brawler] || []; if(!playerData.ownedSkins[skin.brawler].includes(skin.id)) playerData.ownedSkins[skin.brawler].push(skin.id); playerData.selectedSkins = playerData.selectedSkins || {}; playerData.selectedSkins[skin.brawler] = skin.id; ensureShopButtonRefresh(); renderTabContent(); }
+                  onBuy: () => { if((playerData.gems||0)<dealPrice){ showAppConfirmSheet({ message: 'Not enough Gems!' }); return; } playerData.gems-=dealPrice; playerData.ownedSkins = playerData.ownedSkins || {}; playerData.ownedSkins[skin.brawler] = playerData.ownedSkins[skin.brawler] || []; if(!playerData.ownedSkins[skin.brawler].includes(skin.id)) playerData.ownedSkins[skin.brawler].push(skin.id); playerData.selectedSkins = playerData.selectedSkins || {}; playerData.selectedSkins[skin.brawler] = skin.id; ensureShopButtonRefresh(); renderTabContent(); }
               }));
           }
           return grid;
@@ -22744,7 +22886,7 @@ let heistFeverActive = false;
                       descText: `${data.name||selectedBrawler} has ${selAbilityState.pieces}/3 pieces toward ${selAbilityDef.name}. Shop price today: 30 Core Pieces (normally 40).`,
                       priceText: '30 CORE PIECES (was 40)', buttonText: 'BUY PIECE', buttonColor: selAbilityDef.color,
                       isOwned: !!playerData.shopClaims[pieceKey], isLocked: getCorePieces()<30, lockedText: '30 CORE PIECES REQUIRED', footerText: 'One discounted piece per fighter each day.',
-                      onBuy: () => { if(playerData.shopClaims[pieceKey])return; if(!spendCorePieces(30))return alert('Not enough Core Pieces!'); addSpecialAbilityPiece(selectedBrawler); playerData.shopClaims[pieceKey]=true; ensureShopButtonRefresh(); renderTabContent(); }
+                      onBuy: () => { if(playerData.shopClaims[pieceKey])return; if(!spendCorePieces(30)){ showAppConfirmSheet({ message: 'Not enough Core Pieces!' }); return; } addSpecialAbilityPiece(selectedBrawler); playerData.shopClaims[pieceKey]=true; ensureShopButtonRefresh(); renderTabContent(); }
                   }));
               }
           }
@@ -58059,15 +58201,14 @@ isBrawlerLabMode = false;
     function importBraweSaveBackup(file) {
         if (!file) return;
         const reader = new FileReader();
-        reader.onerror = () => alert('BRAWE could not read that save file.');
+        reader.onerror = () => showAppConfirmSheet({ title: 'IMPORT FAILED', message: 'BRAWE could not read that save file.' });
         reader.onload = () => {
             try {
                 const payload = JSON.parse(String(reader.result || ''));
                 importBraweSavePayload(payload);
-                alert('Save imported! BRAWE will reload now.');
-                location.reload();
+                showAppConfirmSheet({ title: 'SAVE IMPORTED', message: 'Save imported! BRAWE will reload now.', onClose: () => location.reload() });
             } catch (error) {
-                alert(`That file is not a valid BRAWE save. ${error?.message || ''}`.trim());
+                showAppConfirmSheet({ title: 'IMPORT FAILED', message: `That file is not a valid BRAWE save. ${error?.message || ''}`.trim() });
             }
         };
         reader.readAsText(file);
@@ -58157,20 +58298,26 @@ isBrawlerLabMode = false;
                     const btn = document.getElementById('saveCodeCopyBtn');
                     if (btn) { btn.textContent = 'COPIED ✓'; setTimeout(() => { btn.textContent = 'COPY CODE'; }, 1500); }
                 } else {
-                    alert('Could not copy automatically — long-press the code to copy it.');
+                    showAppConfirmSheet({ title: 'COPY FAILED', message: 'Could not copy automatically — long-press the code to copy it.' });
                 }
             });
             document.getElementById('saveCodeImportBtn')?.addEventListener('click', () => {
                 const rawCode = document.getElementById('saveCodeImport')?.value || '';
-                if (!rawCode.trim()) { alert('Paste a save code first.'); return; }
-                if (!confirm('Import this save code? Your current progress will be replaced.')) return;
-                try {
-                    importBraweSaveCode(rawCode);
-                    alert('Save imported! BRAWE will reload now.');
-                    location.reload();
-                } catch (error) {
-                    alert(`That save code is not valid. ${error?.message || ''}`.trim());
-                }
+                if (!rawCode.trim()) { showAppConfirmSheet({ title: 'NOTHING TO IMPORT', message: 'Paste a save code first.' }); return; }
+                showAppConfirmSheet({
+                    title: 'IMPORT SAVE CODE?',
+                    message: 'Import this save code? Your current progress will be replaced.',
+                    confirmText: 'IMPORT',
+                    cancelText: 'CANCEL',
+                    onConfirm: () => {
+                        try {
+                            importBraweSaveCode(rawCode);
+                            showAppConfirmSheet({ title: 'SAVE IMPORTED', message: 'Save imported! BRAWE will reload now.', onClose: () => location.reload() });
+                        } catch (error) {
+                            showAppConfirmSheet({ title: 'IMPORT FAILED', message: `That save code is not valid. ${error?.message || ''}`.trim() });
+                        }
+                    }
+                });
             });
         }
         try {
@@ -58182,7 +58329,7 @@ isBrawlerLabMode = false;
         } catch (error) {
             const exportTa = document.getElementById('saveCodeExport');
             if (exportTa) exportTa.value = '';
-            alert(`Could not build your save code. ${error?.message || ''}`.trim());
+            showAppConfirmSheet({ title: 'SAVE CODE FAILED', message: `Could not build your save code. ${error?.message || ''}`.trim() });
         }
         modal.style.display = 'flex';
     }
@@ -58208,7 +58355,13 @@ isBrawlerLabMode = false;
         const file = importSaveInput.files?.[0];
         importSaveInput.value = '';
         if (!file) return;
-        if (confirm('Import this BRAWE save? Your current progress will be replaced by the backup.')) importBraweSaveBackup(file);
+        showAppConfirmSheet({
+            title: 'IMPORT SAVE?',
+            message: 'Import this BRAWE save? Your current progress will be replaced by the backup.',
+            confirmText: 'IMPORT',
+            cancelText: 'CANCEL',
+            onConfirm: () => importBraweSaveBackup(file)
+        });
     });
     document.body.appendChild(importSaveInput);
 

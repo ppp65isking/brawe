@@ -96,7 +96,12 @@ check('modal has export textarea + COPY and import textarea + IMPORT',
     game.includes('id="saveCodeExport"') && game.includes('id="saveCodeCopyBtn"') &&
     game.includes('id="saveCodeImport"') && game.includes('id="saveCodeImportBtn"'));
 check('import asks for confirmation before replacing progress',
-    game.includes("confirm('Import this save code? Your current progress will be replaced.')"));
+    // 2026-11-19 (app toast + confirm sheet): the native confirm() is now
+    // the app-styled sheet — same message, and the import only runs inside
+    // the sheet's onConfirm, so cancelling still replaces nothing.
+    game.includes("message: 'Import this save code? Your current progress will be replaced.'") &&
+    game.includes('onConfirm: () => {') &&
+    game.includes('importBraweSaveCode(rawCode);'));
 check('modal refreshes the export code fresh on every open',
     game.includes('const code = exportBraweSaveCode();') &&
     game.includes("if (exportTa) exportTa.value = code;"));
