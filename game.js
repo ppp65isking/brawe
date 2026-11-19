@@ -255,9 +255,75 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         #appHomeSeasonChip{font-weight:1000;font-size:12px;letter-spacing:.06em;color:#ffd166;background:rgba(255,209,102,.12);border:1px solid rgba(255,209,102,.35);border-radius:999px;padding:6px 12px;white-space:nowrap}
         #appHomeTop #homeCurrencyBar{display:flex;gap:8px;margin-left:auto}
         #appHomeBody{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
-        #appHomeHeroView,#appHomeEventsHost{flex:1 1 auto;min-height:0;display:none;flex-direction:column}
-        #appHomeHeroView.is-active,#appHomeEventsHost.is-active{display:flex}
+        #appHomeHeroView,#appHomeEventsHost,#appHomeFightersView,#appHomeEventsView{flex:1 1 auto;min-height:0;display:none;flex-direction:column}
+        #appHomeHeroView.is-active,#appHomeEventsHost.is-active,#appHomeFightersView.is-active,#appHomeEventsView.is-active{display:flex}
         #appHomeEventsHost{overflow-y:auto}
+        #appHomeFightersView,#appHomeEventsView{overflow-y:auto}
+        /* Hero side column (app home optimize, 2026-11-18): the landscape
+           hero had a wide dead blue area on the right (Anthony's
+           screenshot). In landscape the hero becomes a 2-column grid and
+           the side shows real content — the UP NEXT event + the tournament
+           card — instead of empty space. Portrait keeps the column layout
+           and the side stays hidden. */
+        .app-hero-side{display:none;flex-direction:column;gap:10px;min-width:0}
+        @media (orientation:landscape){#appHomeHero{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:16px;align-items:stretch}.app-hero-info{align-self:center}.app-hero-side{display:flex}}
+        .app-hero-side-card{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;border:1px solid rgba(255,255,255,.18);background:rgba(8,20,42,.55);cursor:pointer;text-align:left;color:#fff;min-width:0}
+        .app-hero-side-card b{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .app-hero-side-card small{display:block;font-size:11px;color:#9fc6e8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .app-hero-side-card .app-hero-side-emoji{flex:none;width:34px;height:34px;border-radius:9px;display:grid;place-items:center;font-size:17px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12)}
+        .app-hero-side-card .app-hero-side-tag{margin-left:auto;flex:none;font-size:9px;font-weight:1000;letter-spacing:.08em;color:#ffd166}
+        /* Fighters view (Brawl Stars Nov 2026 collection inspo: horizontal
+           scroll, smaller cards, search + class filter). App mode only. */
+        .app-fighters-toolbar{flex:none;display:flex;flex-direction:column;gap:8px;padding:2px 2px 10px}
+        .app-fighters-search{width:100%;box-sizing:border-box;padding:10px 14px;border-radius:12px;border:2px solid rgba(255,255,255,.2);background:rgba(8,20,42,.7);color:#fff;font-size:15px;font-weight:700;outline:none}
+        .app-fighters-search:focus{border-color:#ff9f1c}
+        .app-fighters-roles{flex:none;display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+        .app-fighters-roles::-webkit-scrollbar{display:none}
+        .app-fighters-role{flex:none;padding:7px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:#cfe6ff;font-size:12px;font-weight:1000;cursor:pointer;white-space:nowrap}
+        .app-fighters-role.is-active{background:#ff9f1c;border-color:#ffd166;color:#231303}
+        #appFightersStrip{flex:none;display:flex;gap:8px;overflow-x:auto;padding:4px 2px 10px;scrollbar-width:thin}
+        .app-fighter-card{flex:none;width:92px;padding:8px 6px 7px;border-radius:14px;border:2px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);color:#fff;cursor:pointer;text-align:center}
+        .app-fighter-card .app-fighter-portrait{width:56px;height:56px;margin:0 auto 5px;border-radius:50%;display:grid;place-items:center;overflow:hidden;font-size:26px;font-weight:1000;border:3px solid #fff;background:var(--card-color,#0b69bd)}
+        .app-fighter-card .app-fighter-portrait svg{width:92%;height:92%;display:block}
+        .app-fighter-card b{display:block;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .app-fighter-card small{font-size:10px;font-weight:800;color:#9fc6e8}
+        .app-fighter-card.is-selected{border-color:#ffd166;background:rgba(255,159,28,.22);box-shadow:0 0 0 2px rgba(255,209,102,.5)}
+        .app-fighter-card.is-locked{opacity:.55}
+        .app-fighters-empty{padding:18px;text-align:center;color:#9fc6e8;font-weight:800}
+        #appFightersDetail{flex:1 1 auto;min-height:0;overflow-y:auto;display:flex;gap:14px;padding:10px 12px;border-radius:18px;border:2px solid rgba(255,255,255,.2);background:rgba(8,20,42,.55)}
+        .app-fighters-detail-portrait{flex:none;width:min(26vh,150px);aspect-ratio:1;border-radius:50%;display:grid;place-items:center;overflow:hidden;font-size:64px;font-weight:1000;border:5px solid #fff;background:linear-gradient(145deg,var(--detail-color,#0b69bd),#072755)}
+        .app-fighters-detail-portrait svg{width:92%;height:92%;display:block}
+        .app-fighters-detail-info{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:6px}
+        .app-fighters-detail-info h3{margin:0;font-size:clamp(20px,4.5vh,30px);text-transform:uppercase;line-height:1}
+        .app-fighters-detail-sub{font-size:12px;font-weight:1000}
+        .app-fighters-detail-stats{display:flex;gap:6px;flex-wrap:wrap}
+        .app-fighters-detail-stats span{background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.12);border-radius:9px;padding:5px 9px;font-size:12px;font-weight:800;white-space:nowrap}
+        .app-fighters-detail-stats small{color:#8fdfff;font-size:10px;font-weight:1000;margin-right:4px}
+        .app-fighters-detail-desc{font-size:12px;color:#cfe6ff;line-height:1.35}
+        .app-kit-slots{display:flex;flex-wrap:wrap;gap:6px}
+        .app-kit-slot{flex:1 1 30%;min-width:120px;padding:7px 9px;border-radius:10px;border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.28);color:#fff;text-align:left;cursor:pointer}
+        .app-kit-slot small{display:block;font-size:9px;font-weight:1000;letter-spacing:.08em;color:#8fdfff}
+        .app-kit-slot b{display:block;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .app-kit-slot.is-equipped{border-color:#5df2c2;background:rgba(93,242,194,.14)}
+        .app-kit-slot.is-locked{opacity:.55;cursor:default}
+        .app-fighters-detail-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:2px}
+        .app-fighters-detail-actions button{padding:10px 16px;border:0;border-radius:12px;font-weight:1000;font-size:14px;cursor:pointer}
+        .app-fighters-play{background:linear-gradient(#7dff6a,#37c837);color:#062b07}
+        .app-fighters-upgrade{background:#5df2c2;color:#062b07}
+        .app-fighters-upgrade:disabled{background:#555;color:#ddd;cursor:not-allowed}
+        /* Events view (Brawl Stars events inspo: big slots, mode + map,
+           countdown timers, season featured first). App mode only. */
+        .app-events-section{font-size:12px;font-weight:1000;letter-spacing:.1em;color:#ffd166;padding:6px 2px 4px}
+        .app-events-grid{flex:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;padding-bottom:12px}
+        .app-event-slot{position:relative;overflow:hidden;display:flex;flex-direction:column;gap:4px;min-height:86px;padding:12px 14px;border-radius:16px;border:2px solid rgba(255,255,255,.16);background:rgba(8,20,42,.72);color:#fff;text-align:left;cursor:pointer}
+        .app-event-slot .home-mode-map-preview{position:absolute;inset:0;opacity:.55}
+        .app-event-slot>*{position:relative}
+        .app-event-slot b{font-size:15px}
+        .app-event-slot small{font-size:11px;color:#bcd9f2}
+        .app-event-slot .app-event-tag{position:absolute;top:10px;right:10px;font-size:9px;font-weight:1000;letter-spacing:.08em;padding:3px 7px;border-radius:6px;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.25)}
+        .app-event-slot .app-event-countdown{font-size:11px;font-weight:1000;color:#ffd166}
+        .app-event-slot.is-featured{border-color:#ffd166;background:linear-gradient(150deg,rgba(255,209,102,.22),rgba(8,20,42,.8))}
+        .app-event-slot.is-active-mode{border-color:#5df2c2;box-shadow:0 0 0 2px rgba(93,242,194,.45)}
         #appHomeHero{flex:1 1 auto;min-height:0;display:flex;align-items:center;gap:18px;padding:10px 14px;border-radius:22px;border:3px solid rgba(255,255,255,.75);background:linear-gradient(155deg,color-mix(in srgb,var(--hero-color,#0b69bd) 68%,#0b69bd),#06428c 72%);box-shadow:0 8px 0 #042960,0 18px 35px rgba(0,28,75,.4),inset 0 3px rgba(255,255,255,.28);overflow:hidden;cursor:pointer}
         .app-hero-portrait{flex:none;width:min(32vh,230px);aspect-ratio:1;display:grid;place-items:center;border-radius:50%;border:6px solid #fff;background:linear-gradient(145deg,var(--hero-color,#0b69bd),#072755);box-shadow:0 0 0 5px #071f4a,0 18px 26px rgba(0,21,60,.55),inset 0 6px rgba(255,255,255,.35);overflow:hidden;font-size:clamp(64px,16vh,120px)}
         .app-hero-portrait svg{width:92%;height:92%;display:block}
@@ -284,7 +350,12 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         @media (orientation:portrait){#appHomeHero{flex-direction:column;justify-content:center;text-align:center}.app-hero-info{align-items:center}.app-hero-fighters{align-self:center}#appHomeEventChip{max-width:52vw}}
         #mobileLandscapeHint{top:max(10px,env(safe-area-inset-top));padding:7px 12px;border-color:rgba(255,196,93,.5);background:rgba(17,20,31,.85);color:#ffe0a3}
         @media (orientation:portrait) and (max-width:760px){.mobile-stick{width:112px;height:112px}#mobileMoveStick,#mobileAimStick{bottom:max(26px,calc(env(safe-area-inset-bottom) + 10px))}#mobileActionButtons{right:max(14px,env(safe-area-inset-right));bottom:calc(max(26px,env(safe-area-inset-bottom)) + 118px);grid-template-columns:repeat(2,52px);gap:8px}.mobile-action-btn{width:52px;height:52px;font-size:19px}}
-        @media (orientation:landscape) and (max-height:540px){.mobile-stick{width:118px;height:118px}#mobileMoveStick{left:max(24px,env(safe-area-inset-left));bottom:max(18px,env(safe-area-inset-bottom))}#mobileAimStick{right:max(26px,env(safe-area-inset-right));bottom:max(18px,env(safe-area-inset-bottom))}#mobileActionButtons{right:calc(max(26px,env(safe-area-inset-right)) + 124px);bottom:max(26px,env(safe-area-inset-bottom));grid-template-columns:repeat(2,52px)}.mobile-action-btn{width:52px;height:52px;font-size:19px}#mobileLandscapeHint{display:none}}
+        @media (orientation:landscape) and (max-height:540px){.mobile-stick{width:118px;height:118px}#mobileMoveStick{left:max(24px,env(safe-area-inset-left));bottom:max(18px,env(safe-area-inset-bottom))}#mobileAimStick{right:max(26px,env(safe-area-inset-right));bottom:max(18px,env(safe-area-inset-bottom))}#mobileActionButtons{right:max(26px,env(safe-area-inset-right));bottom:calc(max(18px,env(safe-area-inset-bottom)) + 118px + 14px);grid-template-columns:repeat(2,52px)}.mobile-action-btn{width:52px;height:52px;font-size:19px}#mobileLandscapeHint{display:none}}
+        /* Touch landscape HUD (2026-11-18): the 2x2 action grid used to sit
+           at the bottom next to the AIM+FIRE stick, directly on top of the
+           canvas CORE SURGE / POWER MOVE bars (Anthony's screenshot). It now
+           sits directly ABOVE the aim stick, Brawl Stars style, clear of the
+           bars (which shift left in touch mode, see the HUD draw code). */
         `;
         document.head.appendChild(styleSheet);
 
@@ -5699,6 +5770,8 @@ const bolznstienPendingStrikes = [];
               </div>
             </div>
             <div id="appHomeEventsHost"></div>
+            <div id="appHomeFightersView"></div>
+            <div id="appHomeEventsView"></div>
           </div>
           <nav id="appHomeTabs" aria-label="App navigation">
             <button type="button" data-app-tab="home" class="is-active">🏠<small>HOME</small></button>
@@ -5720,9 +5793,9 @@ const bolznstienPendingStrikes = [];
         const eventsView = document.getElementById('homeEventsView');
         const eventsHost = document.getElementById('appHomeEventsHost');
         if (eventsView && eventsHost) eventsHost.appendChild(eventsView);
-        document.getElementById('appHomeHero')?.addEventListener('click', () => { if (brawlerBtn) brawlerBtn.click(); });
+        document.getElementById('appHomeHero')?.addEventListener('click', () => { setAppHomeTab('fighters'); });
         document.getElementById('appHomeHero')?.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); if (brawlerBtn) brawlerBtn.click(); }
+            if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setAppHomeTab('fighters'); }
         });
         document.getElementById('appHomePlay')?.addEventListener('click', () => {
             document.getElementById('startMatch')?.click();
@@ -5761,6 +5834,27 @@ const bolznstienPendingStrikes = [];
             : `<div class="app-hero-portrait app-hero-fallback" style="background:${bColor}">${(name || '?').substring(0, 2).toUpperCase()}</div>`;
         hero.style.setProperty('--hero-color', bColor);
         hero.style.setProperty('--hero-rarity', rarityColor);
+        // Hero side column (app home optimize): real content for the dead
+        // blue space on the right in landscape — the UP NEXT event and the
+        // tournament card, both from the same data the events page uses.
+        // Hidden in portrait by CSS. Clicks stopPropagation so they never
+        // trigger the hero's own fighters tap.
+        const sideMode = HOME_MODE_DATA?.[showdownMode] || HOME_MODE_DATA?.solo || [showdownMode, '⚔', 'Battle', 'Enter the arena'];
+        let tourneySub = 'Tournament';
+        try { tourneySub = getTournamentCardSubtitle(); } catch (_) {}
+        const heroSideHtml = `
+          <div class="app-hero-side">
+            <button type="button" class="app-hero-side-card" data-hero-side="events">
+              <span class="app-hero-side-emoji" aria-hidden="true">${sideMode[1] || '⚔'}</span>
+              <span style="min-width:0"><b>UP NEXT · ${sideMode[2] || 'Battle'}</b><small>${sideMode[3] || ''}</small></span>
+              <span class="app-hero-side-tag">CHANGE</span>
+            </button>
+            <button type="button" class="app-hero-side-card" data-hero-side="tournament">
+              <span class="app-hero-side-emoji" aria-hidden="true">🏆</span>
+              <span style="min-width:0"><b>TOURNAMENT</b><small>${tourneySub}</small></span>
+              <span class="app-hero-side-tag">OPEN</span>
+            </button>
+          </div>`;
         hero.innerHTML = `
           ${portraitHtml}
           <div class="app-hero-info">
@@ -5774,7 +5868,10 @@ const bolznstienPendingStrikes = [];
               <span><small>POWER</small><b>${level}</b></span>
             </div>
             <span class="app-hero-fighters">👤 FIGHTERS — TAP TO CHANGE</span>
-          </div>`;
+          </div>
+          ${heroSideHtml}`;
+        hero.querySelector('[data-hero-side="events"]')?.addEventListener('click', (event) => { event.stopPropagation(); setAppHomeTab('events'); });
+        hero.querySelector('[data-hero-side="tournament"]')?.addEventListener('click', (event) => { event.stopPropagation(); if (typeof openTournamentHub === 'function') openTournamentHub(); });
     }
     function renderAppHomeTop() {
         const nameEl = document.getElementById('appHomePlayerName');
@@ -5793,22 +5890,360 @@ const bolznstienPendingStrikes = [];
         renderAppHomeHero();
         renderAppHomeTop();
         renderAppHomeEventChip();
-        // The web tab state is the source of truth: boot restores the saved
-        // tab via setHomeTab, and every tab change flows through it.
-        const eventsActive = !!document.getElementById('homeEventsView')?.classList.contains('is-active');
-        appHomeTab = eventsActive ? 'events' : 'home';
-        document.getElementById('appHomeHeroView')?.classList.toggle('is-active', !eventsActive);
-        document.getElementById('appHomeEventsHost')?.classList.toggle('is-active', eventsActive);
+        // The app tab is the source of truth (home / fighters / events):
+        // the moved web events view stays hidden in app mode — the native
+        // events view is what the Events tab shows. setHomeTab still calls
+        // this (web tab restore at boot), but it never flips the app tab.
+        const activeView = appHomeTab === 'fighters' ? 'fighters' : appHomeTab === 'events' ? 'events' : 'home';
+        document.getElementById('appHomeHeroView')?.classList.toggle('is-active', activeView === 'home');
+        document.getElementById('appHomeFightersView')?.classList.toggle('is-active', activeView === 'fighters');
+        document.getElementById('appHomeEventsView')?.classList.toggle('is-active', activeView === 'events');
+        document.getElementById('appHomeEventsHost')?.classList.remove('is-active');
         appHomeEl.querySelectorAll('[data-app-tab]').forEach((button) => {
             button.classList.toggle('is-active', button.dataset.appTab === appHomeTab);
         });
     }
     function setAppHomeTab(tab) {
         if (!appHomeEl) return;
-        if (tab === 'fighters') { if (brawlerBtn) brawlerBtn.click(); return; }
         if (tab === 'shop') { if (typeof openHomeShop === 'function') openHomeShop(); return; }
-        setHomeTab(tab === 'events' ? 'events' : 'home');
+        if (tab === 'fighters' || tab === 'events' || tab === 'home') {
+            appHomeTab = tab;
+            if (tab === 'fighters') buildAppFightersView();
+            if (tab === 'events') buildAppEventsView();
+            syncAppHome();
+            return;
+        }
+        setHomeTab('home');
     }
+    // ---- App Fighters view (Brawl Stars Nov 2026 collection inspo) ----
+    // Horizontal-scrolling roster of smaller cards + search + class filter,
+    // with a detail panel (portrait, stats, main/Super text, kit slots,
+    // upgrade path). App mode only; everything reuses brawlerData,
+    // getScaledStats, getBrawlerPortraitMarkup and the web picker's
+    // selection flow. Tapping a card focuses it; PLAY selects it as hero.
+    let appFightersBuilt = false;
+    const appFightersState = { search: '', role: 'all', focused: null };
+    const APP_FIGHTER_RARITY_COLORS = { Starter: '#ff9f1c', Rare: '#8cf05a', Epic: '#b388ff', Mythic: '#ff8ad8', Exotic: '#ffcd2f', Unique: '#ff6b6b', Anomaly: '#f3d5ff' };
+    function appFightersRoles() {
+        const roles = [];
+        for (const id of allBrawlers) {
+            const role = brawlerData[id]?.role || 'Fighter';
+            if (!roles.includes(role)) roles.push(role);
+        }
+        return roles.sort();
+    }
+    function appFightersVisibleList() {
+        const q = appFightersState.search.trim().toLowerCase();
+        const role = appFightersState.role;
+        const list = allBrawlers.filter((id) => {
+            const data = brawlerData[id] || {};
+            if (role !== 'all' && (data.role || 'Fighter') !== role) return false;
+            if (q && !(String(data.name || id).toLowerCase().includes(q) || String(id).toLowerCase().includes(q))) return false;
+            return true;
+        });
+        // Brawl Stars default: class sort — group by role, then name.
+        return list.sort((a, b) => {
+            const ra = brawlerData[a]?.role || 'Fighter';
+            const rb = brawlerData[b]?.role || 'Fighter';
+            if (ra !== rb) return ra.localeCompare(rb);
+            return String(brawlerData[a]?.name || a).localeCompare(String(brawlerData[b]?.name || b));
+        });
+    }
+    function buildAppFightersView() {
+        const view = document.getElementById('appHomeFightersView');
+        if (!view) return;
+        if (!appFightersBuilt) {
+            appFightersBuilt = true;
+            if (!appFightersState.focused) appFightersState.focused = selectedBrawler;
+            view.innerHTML = `
+              <div class="app-fighters-toolbar">
+                <input id="appFightersSearch" class="app-fighters-search" type="search" placeholder="🔎 Search fighters…" autocomplete="off">
+                <div id="appFightersRoles" class="app-fighters-roles"></div>
+              </div>
+              <div id="appFightersStrip"></div>
+              <div id="appFightersDetail"></div>`;
+            view.querySelector('#appFightersSearch')?.addEventListener('input', (event) => {
+                appFightersState.search = event.target.value || '';
+                renderAppFightersStrip();
+            });
+            view.querySelector('#appFightersRoles')?.addEventListener('click', (event) => {
+                const chip = event.target.closest('[data-app-role]');
+                if (!chip) return;
+                appFightersState.role = chip.dataset.appRole;
+                renderAppFightersRoles();
+                renderAppFightersStrip();
+            });
+            view.querySelector('#appFightersStrip')?.addEventListener('click', (event) => {
+                const card = event.target.closest('[data-app-fighter]');
+                if (!card) return;
+                appFightersState.focused = card.dataset.appFighter;
+                renderAppFightersStrip();
+                renderAppFightersDetail();
+            });
+            view.querySelector('#appFightersDetail')?.addEventListener('click', (event) => {
+                const kitBtn = event.target.closest('[data-app-kit]');
+                if (kitBtn && !kitBtn.disabled) { appFightersKitPick(appFightersState.focused, kitBtn.dataset.appKit); return; }
+                if (event.target.closest('[data-app-action="play"]')) { appFightersPlay(appFightersState.focused); return; }
+                if (event.target.closest('[data-app-action="upgrade"]')) { appFightersUpgrade(appFightersState.focused); return; }
+            });
+        }
+        renderAppFightersRoles();
+        renderAppFightersStrip();
+        renderAppFightersDetail();
+    }
+    function renderAppFightersRoles() {
+        const host = document.getElementById('appFightersRoles');
+        if (!host) return;
+        const chips = ['all', ...appFightersRoles()].map((role) => `<button type="button" class="app-fighters-role${appFightersState.role === role ? ' is-active' : ''}" data-app-role="${role}">${role === 'all' ? 'ALL' : role.toUpperCase()}</button>`).join('');
+        host.innerHTML = chips;
+    }
+    function renderAppFightersStrip() {
+        const strip = document.getElementById('appFightersStrip');
+        if (!strip) return;
+        const list = appFightersVisibleList();
+        if (!list.length) { strip.innerHTML = '<div class="app-fighters-empty">No fighters match that search.</div>'; return; }
+        strip.innerHTML = list.map((id) => {
+            const data = brawlerData[id] || {};
+            const pData = playerData?.brawlers?.[id] || { level: 1 };
+            const locked = !isBrawlerUnlocked(id) && !isWeeklyTrialBrawler(id);
+            let portrait = `<span style="font-size:26px">${data.emoji || '🙂'}</span>`;
+            try { portrait = getBrawlerPortraitMarkup(id); } catch (_) {}
+            return `<button type="button" class="app-fighter-card${appFightersState.focused === id ? ' is-selected' : ''}${locked ? ' is-locked' : ''}" data-app-fighter="${id}" style="--card-color:${data.color || '#0b69bd'}">
+              <span class="app-fighter-portrait">${portrait}</span>
+              <b>${data.name || id}</b>
+              <small>${locked ? '🔒 LOCKED' : `POWER ${pData.level || 1}`}</small>
+            </button>`;
+        }).join('');
+    }
+    function renderAppFightersDetail() {
+        const detail = document.getElementById('appFightersDetail');
+        if (!detail) return;
+        const id = appFightersState.focused || selectedBrawler;
+        const data = brawlerData[id];
+        if (!data) { detail.innerHTML = '<div class="app-fighters-empty">Pick a fighter above.</div>'; return; }
+        const pData = getEffectiveBrawlerProgress(id);
+        const level = pData.level || 1;
+        const stats = getScaledStats(id, level);
+        const rarity = brawlerRarities[id] || 'Starter';
+        const rarityColor = APP_FIGHTER_RARITY_COLORS[rarity] || '#fff';
+        const locked = !isBrawlerUnlocked(id) && !isWeeklyTrialBrawler(id);
+        const trial = isWeeklyTrialBrawler(id);
+        const isHero = selectedBrawler === id;
+        let portrait = `<span style="font-size:64px">${data.emoji || '🙂'}</span>`;
+        try { portrait = getBrawlerPortraitMarkup(id); } catch (_) {}
+        const kitName = (raw, fallback) => raw ? String(raw).split('(')[0].trim() : fallback;
+        const kitSlotHtml = (key, label, name, isLocked, lockedText, equipped) => `<button type="button" class="app-kit-slot${equipped ? ' is-equipped' : ''}${isLocked ? ' is-locked' : ''}" data-app-kit="${key}" ${isLocked ? 'disabled' : ''}>
+          <small>${label}${equipped ? ' · EQUIPPED' : ''}</small>
+          <b>${isLocked ? lockedText : name}</b>
+        </button>`;
+        let hyperDesc = '';
+        try { hyperDesc = (getCoreSurgeDescription(id) || '').slice(0, 90); } catch (_) {}
+        let upgLabel = '';
+        let upgDisabled = false;
+        if (trial) { upgLabel = 'WEEKLY TRIAL'; upgDisabled = true; }
+        else if (level >= MAX_POWER_LEVEL) { upgLabel = 'MAX LEVEL'; upgDisabled = true; }
+        else {
+            const cost = getUpgradeCost(level);
+            const cpCost = getCorePieceUpgradeCost(level);
+            const canAfford = (playerData.coins || 0) >= cost && getCorePieces() >= cpCost;
+            upgLabel = `⬆ UPGRADE · ${cost} 🪙${cpCost > 0 ? ` + ${cpCost} 💎` : ''}`;
+            upgDisabled = !canAfford;
+        }
+        detail.innerHTML = `
+          <div class="app-fighters-detail-portrait" style="--detail-color:${data.color || '#0b69bd'}">${portrait}</div>
+          <div class="app-fighters-detail-info">
+            <h3>${data.name || id}</h3>
+            <div class="app-fighters-detail-sub" style="color:${rarityColor}">${rarity.toUpperCase()} · ${(data.role || 'Fighter').toUpperCase()}${trial ? ' · WEEKLY TRIAL' : ''}${locked ? ' · LOCKED' : ''}</div>
+            <div class="app-fighters-detail-stats">
+              <span><small>POWER</small>${level}</span>
+              <span><small>HP</small>${stats.hp}</span>
+              <span><small>DMG</small>${stats.dmg}</span>
+              <span><small>SPEED</small>${stats.speed}</span>
+            </div>
+            <div class="app-fighters-detail-desc"><b>MAIN</b> · ${data.main || '—'}</div>
+            <div class="app-fighters-detail-desc"><b>SUPER</b> · ${data.super || '—'}</div>
+            <div class="app-kit-slots">
+              ${kitSlotHtml('g1', 'TOOL 1', kitName(data.g1, 'Gadget 1'), !pData.gadgetUnlocked, 'LOCKED · POWER 7', pData.selectedGadget === 'g1')}
+              ${kitSlotHtml('g2', 'TOOL 2', kitName(data.g2, 'Second Tool/Talent coming soon'), !pData.gadgetUnlocked, 'LOCKED · POWER 7', pData.selectedGadget === 'g2')}
+              ${kitSlotHtml('sp1', 'TALENT 1', kitName(data.sp1, 'Star Power 1'), !pData.starPowerUnlocked, 'LOCKED · POWER 9', pData.selectedStar === 'slow')}
+              ${kitSlotHtml('sp2', 'TALENT 2', kitName(data.sp2, 'Star Power 2'), !pData.starPowerUnlocked, 'LOCKED · POWER 9', pData.selectedStar === 'long')}
+              ${kitSlotHtml('hyper', 'CORE SURGE', hyperDesc || 'Core Surge', !pData.hyperchargeUnlocked, 'LOCKED · POWER 11', false)}
+            </div>
+            <div class="app-fighters-detail-actions">
+              <button type="button" class="app-fighters-play" data-app-action="play" ${locked ? 'disabled' : ''}>${isHero ? '✓ CURRENT HERO' : `▶ PLAY AS ${String(data.name || id).toUpperCase()}`}</button>
+              <button type="button" class="app-fighters-upgrade" data-app-action="upgrade" ${upgDisabled ? 'disabled' : ''}>${upgLabel}</button>
+            </div>
+          </div>`;
+    }
+    function appFightersKitPick(id, key) {
+        const pData = getEffectiveBrawlerProgress(id);
+        if (key === 'g1' || key === 'g2') {
+            if (!pData.gadgetUnlocked) return;
+            if (isWeeklyTrialBrawler(id)) setWeeklyTrialLoadoutChoice(id, 'selectedGadget', key);
+            else { pData.selectedGadget = key; saveProgress(); }
+        } else if (key === 'sp1' || key === 'sp2') {
+            if (!pData.starPowerUnlocked) return;
+            const value = key === 'sp1' ? 'slow' : 'long';
+            if (isWeeklyTrialBrawler(id)) setWeeklyTrialLoadoutChoice(id, 'selectedStar', value);
+            else { pData.selectedStar = value; saveProgress(); }
+        } else return;
+        renderAppFightersDetail();
+        updateGadgetInfo();
+        updateGadgetButton();
+    }
+    function appFightersPlay(id) {
+        if (!brawlerData[id]) return;
+        if (!isBrawlerUnlocked(id) && !isWeeklyTrialBrawler(id)) return;
+        // Same selection flow as the web picker's Play button.
+        selectedBrawler = id;
+        normalizeSelectedBrawler();
+        if (brawlerSelect) { brawlerSelect.value = id; brawlerSelect.dispatchEvent(new Event('change')); }
+        initPlayerHP();
+        syncAbilityInputs();
+        updateGadgetInfo();
+        updateGadgetButton();
+        renderHomeBrawlerCard();
+        saveProgress();
+        syncAppHome();
+        setAppHomeTab('home');
+    }
+    function appFightersUpgrade(id) {
+        const pData = getEffectiveBrawlerProgress(id);
+        if (isWeeklyTrialBrawler(id) || (pData.level || 1) >= MAX_POWER_LEVEL) return;
+        const cost = getUpgradeCost(pData.level);
+        const cpCost = getCorePieceUpgradeCost(pData.level);
+        if ((playerData.coins || 0) < cost || getCorePieces() < cpCost) return;
+        playerData.coins -= cost;
+        if (cpCost > 0) spendCorePieces(cpCost);
+        pData.level++;
+        if (pData.level >= 11) ensureHyperchargeDiscount(pData);
+        saveProgress();
+        renderAppFightersStrip();
+        renderAppFightersDetail();
+        syncAppHome();
+    }
+
+    // ---- App Events view (Brawl Stars events inspo) ----
+    // Big event-slot cards (mode + map + countdown), season featured first,
+    // then tournament, POPULAR, ROTATING. Tap reuses the existing launch
+    // path: the web mode card's click when one exists, else the same
+    // dispatch the web events view uses. App mode only.
+    let appEventsBuilt = false;
+    let appEventsCountdownTimer = null;
+    function appEventModeTag(id) {
+        if (id === 'solo' || id === 'slop_sushi' || id === 'slop_sushi_plus') return 'FFA';
+        if (id === 'slop_sushi_gauntlet') return '20F';
+        if (id === 'chaos_crown') return '10F';
+        if (id === 'tower_duels_weekend') return '5F';
+        if (id === 'duo') return 'DUO';
+        if (id === 'trio') return 'QUAD';
+        if (['orbo_boss', 'ramage_boss', 'demon_villains_boss', 'weefee_boss', 'blink_eye_dodge', 'power_gods', 'damage_filler', 'solo_td', 'tombstone_boss', 'megastein_boss', 'tower_defense'].includes(id)) return 'SOLO';
+        if (id === 'beast_boss_god_mode') return '5V1';
+        if (id === 'duels' || id === 'tower_duels' || id === 'impossible') return '1V1';
+        if (id === 'tournament') return '32P';
+        if (id === 'arena_forge') return '3V3';
+        if (id === 'marked_mayhem') return '3V3';
+        if (id === 'mirror') return '4V4';
+        return '3V3';
+    }
+    function appEventSlotHtml(id, opts = {}) {
+        const entry = HOME_MODE_DATA[id];
+        if (!entry) return '';
+        const [, emoji, name, subtitle] = entry;
+        return `<button type="button" class="app-event-slot${opts.featured ? ' is-featured' : ''}${showdownMode === id ? ' is-active-mode' : ''}" data-app-event="${id}">
+          <span class="home-mode-map-preview theme-${id}" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+          <span class="app-event-tag">${appEventModeTag(id)}</span>
+          <b>${emoji} ${name}</b>
+          <small>${subtitle || ''}</small>
+        </button>`;
+    }
+    function buildAppEventsView() {
+        const view = document.getElementById('appHomeEventsView');
+        if (!view) return;
+        if (!appEventsBuilt) {
+            appEventsBuilt = true;
+            view.addEventListener('click', (event) => {
+                const slot = event.target.closest('[data-app-event]');
+                if (slot) { appEventSlotTap(slot.dataset.appEvent); return; }
+                const feat = event.target.closest('[data-app-featured]');
+                if (!feat) return;
+                if (feat.dataset.appFeatured === 'season') { if (typeof openSeasonPass === 'function') openSeasonPass(); }
+                else if (feat.dataset.appFeatured === 'tournament') { if (typeof openTournamentHub === 'function') openTournamentHub(); }
+            });
+            if (typeof setInterval === 'function' && !appEventsCountdownTimer) {
+                appEventsCountdownTimer = setInterval(tickAppEventCountdowns, 1000);
+            }
+        }
+        renderAppEventsView();
+    }
+    function renderAppEventsView() {
+        const view = document.getElementById('appHomeEventsView');
+        if (!view) return;
+        const season = getActiveSeasonProfile();
+        const seasonEmoji = season.key === 'ember' ? '🔥' : season.key === 'xplodemis' ? '🎄' : season.key === 'turkey' ? '🦃' : '🎃';
+        let seasonCountdown = '';
+        try { seasonCountdown = 'ENDS IN ' + formatSeasonCountdown(Math.max(0, season.endUtc - Date.now())); } catch (_) {}
+        const tState = getTournamentState();
+        const tActive = !!(tState.active && tState.active.status === 'active');
+        const tLeague = getTournamentLeague(tActive ? tState.active.league : ([...(tState.unlocked || [])].reverse()[0] || 'bronze'));
+        let tSub = 'Tournament';
+        try { tSub = getTournamentCardSubtitle(); } catch (_) {}
+        const popular = (HOME_POPULAR_MODE_IDS || []).filter((id) => HOME_MODE_DATA[id]).map((id) => appEventSlotHtml(id)).join('');
+        let rotationIds = [];
+        try { rotationIds = getHomeDailyRotationIds(); } catch (_) {}
+        const rotating = rotationIds.filter((id) => HOME_MODE_DATA[id]).map((id) => appEventSlotHtml(id)).join('');
+        view.innerHTML = `
+          <div class="app-events-section">FEATURED EVENTS</div>
+          <div class="app-events-grid">
+            <button type="button" class="app-event-slot is-featured" data-app-featured="season">
+              <span class="home-mode-map-preview theme-season" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+              <span class="app-event-tag">SEASON ${season.seasonNumber}</span>
+              <b>${seasonEmoji} ${season.upperName}</b>
+              <small>Season Pass live · ends ${season.endLabel}</small>
+              <span class="app-event-countdown" data-app-countdown="season">${seasonCountdown}</span>
+            </button>
+            <button type="button" class="app-event-slot is-featured" data-app-featured="tournament">
+              <span class="home-mode-map-preview theme-tournament" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+              <span class="app-event-tag">${tActive ? 'RESUME RUN' : 'LIVE'}</span>
+              <b>🏆 TOURNAMENT · ${tLeague.name.toUpperCase()} LEAGUE</b>
+              <small>${tSub}</small>
+            </button>
+          </div>
+          <div class="app-events-section">POPULAR EVENTS</div>
+          <div class="app-events-grid">${popular}</div>
+          <div class="app-events-section">ROTATING EVENTS · <span class="app-event-countdown" data-app-countdown="daily"></span></div>
+          <div class="app-events-grid">${rotating || '<div class="app-fighters-empty">No rotating events right now.</div>'}</div>`;
+        tickAppEventCountdowns();
+    }
+    function tickAppEventCountdowns() {
+        const view = document.getElementById('appHomeEventsView');
+        if (!view) return;
+        view.querySelectorAll('[data-app-countdown]').forEach((el) => {
+            try {
+                if (el.dataset.appCountdown === 'season') el.textContent = 'ENDS IN ' + formatSeasonCountdown(Math.max(0, getActiveSeasonProfile().endUtc - Date.now()));
+                else if (el.dataset.appCountdown === 'daily') el.textContent = 'NEW PICKS IN ' + formatHomeEventCountdown(getHomeDailyRotationEndsAt() - Date.now());
+            } catch (_) {}
+        });
+    }
+    function appEventSlotTap(id) {
+        const webCard = homeModeCardMap?.[id];
+        if (webCard) {
+            webCard.click();
+        } else {
+            if (id === 'tournament') { if (typeof openTournamentHub === 'function') openTournamentHub(); return; }
+            if (id === 'custom_clash') { if (typeof openCustomMutatorPickerUI === 'function') openCustomMutatorPickerUI(); return; }
+            if (id === 'headless_boss_s4') { if (typeof openHeadlessBossEvent === 'function') openHeadlessBossEvent(); return; }
+            if (id === 'tombstone_boss') { if (typeof openTombstoneBossEvent === 'function') openTombstoneBossEvent(); return; }
+            if (id === 'megastein_boss') { if (typeof openMegasteinBossEvent === 'function') openMegasteinBossEvent(); return; }
+            if (id === 'tower_defense') { if (typeof openTowerDefenseEvent === 'function') openTowerDefenseEvent(); return; }
+            showdownMode = id;
+            clearRankedSessionState();
+            updateShowdownModeUI();
+        }
+        renderAppHomeEventChip();
+        setAppHomeTab('home');
+    }
+
     buildAppHome();
 
     // Retry the app-home activation on window load and DOMContentLoaded:
@@ -5839,6 +6274,17 @@ const bolznstienPendingStrikes = [];
     // state, not just boot.
     const APK_DIAG_PAGES_HOST = 'ppp65isking.github.io';
     function refreshApkDiagStrip() {
+        // App home optimize: the strip is a diagnostic tool, not part of
+        // the normal build — only show it when ?diag=1 is in the URL.
+        // (location.search, NOT another hostname read: the app-home test
+        // asserts exactly 2 hostname reads in the file.)
+        let diagOn = false;
+        try { diagOn = new URLSearchParams(window.location.search || '').get('diag') === '1'; } catch (_) { diagOn = false; }
+        if (!diagOn) {
+            const existing = document.getElementById('apkDiagStrip');
+            if (existing) existing.remove();
+            return;
+        }
         let hostname = '';
         try { hostname = window.location.hostname || ''; } catch (_) { return; }
         if (hostname === APK_DIAG_PAGES_HOST) return;
@@ -88147,7 +88593,11 @@ function checkHit(target, b, i){
 
     // HUD overlays
     // Minimap
-    const mapW = 160; const mapH = 160;
+    // App home optimize: in touch mode the minimap shrinks 160→120 so the
+    // action buttons above the aim stick clear it (8px gap). Desktop keeps
+    // the full 160px map. touchHud is reused by the bars + panel below.
+    const touchHud = typeof mobileInput !== 'undefined' && mobileInput.enabled;
+    const mapW = touchHud ? 120 : 160; const mapH = mapW;
     const mapX = innerWidth - mapW - 20; const mapY = 20;
     
     // UI Refresh Part 2 — top-center stack queue (flushed after the
@@ -88642,7 +89092,12 @@ function checkHit(target, b, i){
     
         // Live Attack / Super HUD (Cyber-Arcade Tactical HUD)
     const dmgInfo = getDisplayDamage(player);
-    const readX = 18, readY = 96, readW = Math.min(310, innerWidth - 36), readH = 56, gap = 8, cardW = Math.floor((readW - gap) / 2);
+    const readX = 18;
+    // App home optimize: the Modifier description sits at y=122, but the
+    // cards started at y=96 and painted over it. Drop the cards to y=134
+    // when a modifier line is showing so everything stays visible.
+    const hudModifierShown = !isBossFight && !isDuels && !isTraining && !isSoloTrial && activeShowdownModifier && !isShowdownModifierActive('none');
+    const readY = hudModifierShown ? 134 : 96, readW = Math.min(310, innerWidth - 36), readH = 56, gap = 8, cardW = Math.floor((readW - gap) / 2);
     const hudNow = performance.now();
     ctx.save();
     for (let card = 0; card < 2; card++) {
@@ -88811,7 +89266,15 @@ function checkHit(target, b, i){
     ctx.restore();
 
     // super charge bar
-    const barW = 220; const barH = 14; const bx = innerWidth - barW - 24; const by = innerHeight - 34;
+    // App home optimize (touch mode only): the bars shift left 150px in
+    // landscape (clears the aim stick by 30px) and shrink to 150px centered
+    // in portrait (clears the move stick by 4px and the aim stick by 5px).
+    // Desktop layout is untouched. The hyper bar, mechanic bar and
+    // signature bar below all follow bx, so they shift together.
+    const touchLandscape = touchHud && innerWidth > innerHeight;
+    const barW = touchHud && !touchLandscape ? 150 : 220; const barH = 14;
+    const bx = touchLandscape ? innerWidth - barW - 24 - 150 : touchHud ? (innerWidth - barW) / 2 : innerWidth - barW - 24;
+    const by = innerHeight - 34;
     drawChunkyPanel(ctx, bx-6, by-6, barW+12, barH+12, { radius: 8, fill: UI_HUD_TOKENS.barBackdropFill, stroke: UI_HUD_TOKENS.barBackdropStroke, lineWidth: 1 });
     ctx.fillStyle = '#223a47'; ctx.fillRect(bx, by, barW, barH);
     ctx.fillStyle = '#f4a261'; ctx.fillRect(bx, by, barW * (superCharge/100), barH);
@@ -88888,14 +89351,19 @@ function checkHit(target, b, i){
         ctx.fillStyle = '#efe1ff'; ctx.fillText(`ORIGIN ENERGY ${getHyperoriginEnergy(player)}/10`, bx, oy-10);
     }
 
-        // HUD panel
+        // HUD panel (desktop) / compact status chips (touch mode).
+        // App home optimize: in touch mode the big Tool/Talent/Core panel
+        // sat under the move stick and showed three "Locked" rows, so it is
+        // replaced by chips below the ATTACK/SUPER cards that only show
+        // unlocked rows. Desktop keeps the full panel.
         const playerProgress = getSelectedProgress();
+        const isHyperGlow = isHypercharged;
+        if (!touchHud) {
         // HUD panel with hypercharge glow for Outlit
         const hudX = 20;
         const hudY = innerHeight - 126;
         const hudW = 330;
         const hudH = 106;
-        const isHyperGlow = isHypercharged;
         
         if (isHyperGlow) {
             // Shared hyper glow for the full Gadget/SP/Hypercharge panel.
@@ -88972,6 +89440,45 @@ function checkHit(target, b, i){
         } else {
             ctx.fillStyle = '#7b90b8';
             ctx.fillText('Locked', hudX + 80, hudY + 70);
+        }
+        } else {
+            // Touch mode: compact chips below the ATTACK/SUPER cards.
+            // Only unlocked rows are shown; all three locked → nothing.
+            const chipY = readY + readH + 10;
+            const chipH = 22;
+            let chipX = readX;
+            const hudChips = [];
+            if (isTraining || playerProgress.gadgetUnlocked) {
+                if (now < getPlayerGadgetCooldownUntil(selectedGadget, now)) {
+                    const s = Math.ceil((getPlayerGadgetCooldownUntil(selectedGadget, now) - now) / 1000);
+                    hudChips.push({ label: `TOOL · CD ${s}s`, color: '#ffd166' });
+                } else hudChips.push({ label: 'TOOL · READY', color: '#5df2c2' });
+            }
+            if (isTraining || playerProgress.starPowerUnlocked) {
+                const spName = selectedStar === 'long' ? (brawlerData[selectedBrawler]?.sp2 || 'SP2') : (brawlerData[selectedBrawler]?.sp1 || 'SP1');
+                hudChips.push({ label: `TALENT · ${spName}`, color: selectedStar === 'long' ? '#ffd166' : '#9ed9ff' });
+            }
+            if (isTraining || playerProgress.hyperchargeUnlocked) {
+                if (isHyperGlow) {
+                    const remain = Math.max(0, Math.ceil((hyperchargeUntil - now) / 1000));
+                    hudChips.push({ label: `CORE · ACTIVE ${remain}s`, color: '#e768ff' });
+                } else hudChips.push({ label: `CORE · ${Math.floor(hyperChargeCharge)}%`, color: '#b68cff' });
+            }
+            ctx.save();
+            ctx.textAlign = 'left';
+            ctx.font = '800 10px sans-serif';
+            for (const chip of hudChips) {
+                const w = ctx.measureText(chip.label).width + 16;
+                ctx.fillStyle = 'rgba(4, 8, 16, 0.72)';
+                ctx.fillRect(chipX, chipY, w, chipH);
+                ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(chipX + 0.5, chipY + 0.5, w - 1, chipH - 1);
+                ctx.fillStyle = chip.color;
+                ctx.fillText(chip.label, chipX + 8, chipY + 15);
+                chipX += w + 6;
+            }
+            ctx.restore();
         }
 
             // Mode indicators
