@@ -1625,6 +1625,10 @@ html,body{overflow-x:hidden !important}
 .match-intro__row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;max-width:min(1060px,96vw)}
 .match-intro__label{font-size:11px;font-weight:1000;letter-spacing:.14em;color:#9cc3e9}
 .match-intro__more{font-size:12px;font-weight:900;color:#cfe3ff}
+/* App HUD polish (HU2): active showdown modifier on the match-intro cards
+   (touch only — the row is only built when mobileInput.enabled). 14px so the
+   description is actually readable on a phone. */
+.match-intro__modifier{max-width:min(560px,92vw);font-size:14px;font-weight:800;line-height:1.35;color:#ffd166;background:rgba(24,18,4,.88);border:1px solid rgba(255,209,102,.6);border-radius:12px;padding:8px 12px;text-align:center}
 .match-card{width:132px;padding:10px;border:2px solid var(--match-card-color,#8aa3c4);border-radius:14px;background:rgba(7,15,31,.92);color:#fff;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.4)}
 .match-card.is-player{width:160px;border-color:#ffd44f;box-shadow:0 0 26px rgba(255,212,79,.35)}
 .match-card__portrait{width:64px;height:64px;margin:0 auto 6px;display:grid;place-items:center;border-radius:50%;background:#07111d;overflow:hidden;font-size:30px}
