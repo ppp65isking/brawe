@@ -34,7 +34,11 @@ check('bridge check still comes first, localhost is only the fallback', (() => {
     const host = game.indexOf("window.location.hostname === 'localhost'", start);
     return start !== -1 && bridge !== -1 && host !== -1 && bridge < host;
 })());
-check('no other host broadens app mode (no 127.0.0.1, no wildcard hostname)', !game.includes('127.0.0.1') && (game.match(/location\.hostname/g) || []).length === 1);
+// Two location.hostname reads exist since 2026-11-18: the localhost
+// fallback inside isNativeAppMode() and the Pages-host gate inside
+// refreshApkDiagStrip(). The strip gate never feeds app mode — it only
+// decides whether the APK-only diagnostic strip is created.
+check('no other host broadens app mode (no 127.0.0.1, no wildcard hostname)', !game.includes('127.0.0.1') && (game.match(/location\.hostname/g) || []).length === 2 && game.indexOf("window.location.hostname === 'localhost'") !== -1 && game.indexOf('window.location.hostname || ') !== -1);
 check('retry helper re-applies the class and rebuilds the shell', game.includes('function retryAppHomeActivation() {') && game.includes("if (isNativeAppMode()) document.documentElement.classList.add('native-app');\n        buildAppHome();"));
 check('retry runs on window load', game.includes("window.addEventListener('load', retryAppHomeActivation);"));
 check('retry runs on DOMContentLoaded', game.includes("document.addEventListener('DOMContentLoaded', retryAppHomeActivation);"));
