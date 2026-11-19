@@ -369,11 +369,34 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         #appHomeEventChip b{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
         #appHomeEventChip small{font-size:11px;color:#9fc6e8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
         #appHomeEventChip i{font-style:normal;font-size:9px;font-weight:1000;letter-spacing:.08em;color:#ffd166}
-        #appHomeTabs{flex:none;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:8px 4px 0}
-        #appHomeTabs button{padding:10px 6px;border-radius:14px;border:2px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#cfe6ff;font-weight:1000;font-size:15px;cursor:pointer}
-        #appHomeTabs button small{display:block;font-size:10px;letter-spacing:.08em;opacity:.75}
-        #appHomeTabs button.is-active{background:var(--app-season-accent,#ff9f1c);border-color:var(--app-season-accent-soft,#ffd166);color:var(--app-season-accent-ink,#231303)}
-        /* App quick row (phase 2, 2026-11-19): home shortcuts that were
+        /* Bottom tab bar (round 2 redesign, 2026-11-19): Brawl Stars-style
+           chunky nav — 56px targets, big icon + label, orange active pill
+           kept (dark text, now with depth + a full-opacity label so the
+           active tab reads by more than colour alone), width capped and
+           centred so wide landscape stops stretching four ~370px pills.
+           Safe-area bottom clearance lives on the #appHome shell
+           (padding-bottom:max(8px,env(safe-area-inset-bottom))) — the bar
+           is the shell's last flex child, so the inset always lands below
+           it, never under the Android gesture bar. */
+        #appHomeTabs{flex:none;align-self:center;width:100%;max-width:640px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:8px 4px 0}
+        #appHomeTabs button{min-height:56px;padding:8px 6px 10px;border-radius:14px;border:2px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#cfe6ff;font-weight:1000;font-size:15px;cursor:pointer;touch-action:manipulation}
+        #appHomeTabs .app-tab-icon{display:block;font-size:22px;line-height:1.1}
+        #appHomeTabs button small{display:block;font-size:10px;letter-spacing:.08em;opacity:.6}
+        #appHomeTabs button.is-active{background:var(--app-season-accent,#ff9f1c);border-color:var(--app-season-accent-soft,#ffd166);color:var(--app-season-accent-ink,#231303);box-shadow:0 4px 0 #b96a00,0 8px 16px rgba(255,159,28,.3)}
+        #appHomeTabs button.is-active small{opacity:1}
+        #appHomeTabs button:focus-visible{outline:3px solid #ffd166;outline-offset:2px}
+        /* Landscape: slimmer bar (48px targets, smaller icon/label) so the
+           nav stops eating ~17% of a short landscape screen; narrower cap
+           because landscape phones are wide. */
+        @media (orientation:landscape){#appHomeTabs{max-width:560px;padding:6px 4px 0}#appHomeTabs button{min-height:48px;padding:6px 4px 7px}#appHomeTabs .app-tab-icon{font-size:18px}#appHomeTabs button small{font-size:9px}}
+        /* Narrow phones: the old <=360px rule stays byte-identical (phase 3
+           suite pins it); this second rule only adds the 48px floor and the
+           smaller icon so the bar never drops under the 48px target. */
+        @media (max-width:360px){#appHomeTabs button{min-height:48px}#appHomeTabs .app-tab-icon{font-size:20px}}
+        /* Content clearance: the flex layout already keeps every view above
+           the bar (no overlap), but the last row sat flush on it — give the
+           scroll views breathing room so nothing ends hard against the bar. */
+        #appHomeHeroView,#appHomeFightersView,#appHomeEventsView,#appHomeSettingsView{padding-bottom:12px}        /* App quick row (phase 2, 2026-11-19): home shortcuts that were
            trapped inside the hidden web home — quests, season pass,
            Brick Rush, settings. Same chunky card language as the hero. */
         #appHomePlayer,#appHomeSeasonChip{cursor:pointer}
@@ -6724,10 +6747,10 @@ const bolznstienPendingStrikes = [];
             <div id="appHomeSettingsView"></div>
           </div>
           <nav id="appHomeTabs" aria-label="App navigation">
-            <button type="button" data-app-tab="home" class="is-active">🏠<small>HOME</small></button>
-            <button type="button" data-app-tab="fighters">👤<small>FIGHTERS</small></button>
-            <button type="button" data-app-tab="events">📅<small>EVENTS</small></button>
-            <button type="button" data-app-tab="shop">🛒<small>SHOP</small></button>
+            <button type="button" data-app-tab="home" class="is-active"><span class="app-tab-icon" aria-hidden="true">🏠</span><small>HOME</small></button>
+            <button type="button" data-app-tab="fighters"><span class="app-tab-icon" aria-hidden="true">👤</span><small>FIGHTERS</small></button>
+            <button type="button" data-app-tab="events"><span class="app-tab-icon" aria-hidden="true">📅</span><small>EVENTS</small></button>
+            <button type="button" data-app-tab="shop"><span class="app-tab-icon" aria-hidden="true">🛒</span><small>SHOP</small></button>
           </nav>`;
         document.body.appendChild(shell);
         appHomeEl = shell;
@@ -6933,7 +6956,12 @@ const bolznstienPendingStrikes = [];
         document.getElementById('appHomeEventsView')?.classList.toggle('is-active', activeView === 'events');
         document.getElementById('appHomeSettingsView')?.classList.toggle('is-active', appHomeTab === 'settings');
         appHomeEl.querySelectorAll('[data-app-tab]').forEach((button) => {
-            button.classList.toggle('is-active', button.dataset.appTab === appHomeTab);
+            const isCurrentTab = button.dataset.appTab === appHomeTab;
+            button.classList.toggle('is-active', isCurrentTab);
+            // Round 2 bottom bar: the active tab is announced, not just
+            // coloured — aria-current is the non-colour active signal.
+            if (isCurrentTab) button.setAttribute('aria-current', 'page');
+            else button.removeAttribute('aria-current');
         });
     }
     // App polish pass (H1): the shop overlay is a direct document.body
