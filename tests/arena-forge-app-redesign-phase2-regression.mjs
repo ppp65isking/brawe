@@ -16,22 +16,22 @@ function check(name, cond) { if (cond) passed++; else { failed++; failures.push(
 check('quick row exists in the app shell with quests + pass + settings', game.includes('id="appHomeQuickRow"') && game.includes('data-app-quick="quests"') && game.includes('data-app-quick="pass"') && game.includes('data-app-quick="settings"'));
 check('quick row buttons carry live badges', game.includes('id="appQuestsBadge"') && game.includes('id="appPassBadge"') && game.includes('class="app-quick-badge"'));
 check('quick row quests opens the quest board', game.includes("if (action === 'quests') { if (typeof openQuestBoard === 'function') openQuestBoard(); }"));
-check('quick row pass opens the revived season-pass tier road (round 2: the dead Circuit Pass overlay is live again)', game.includes("else if (action === 'pass') { if (typeof openSeasonPass === 'function') openSeasonPass(); }"));
+check('quick row pass opens the revived season-pass tier road and sets the deep link (road from PR #154, deep link from round 2 Tier 2)', game.includes("else if (action === 'pass') { if (typeof openSeasonPass === 'function') openSeasonPass(); setAppDeepLink('pass'); }"));
 check('quick row settings opens the native settings view', game.includes("if (action === 'settings') { setAppHomeTab('settings'); }"));
 check('live Brick Rush button is moved into the quick row', game.includes("const brickRushBtn = document.getElementById('dailyBrickRushBtn');") && game.includes("if (brickRushBtn && quickRow) quickRow.appendChild(brickRushBtn);"));
 check('quick-row badges refresh in syncAppHome', game.includes("document.getElementById('dailyWeeklyQuestCount')?.textContent") && game.includes("getClaimableSeasonRewardCount() || 0"));
 
 // --- Player + season chips finally do something in app mode ---
 // Phase 4: the handler also buzzes (appBuzz) — same tap, same destination.
-check('player chip tap opens the player profile', game.includes("document.getElementById('appHomePlayer')?.addEventListener('click', () => { appBuzz(10); if (typeof openPlayerProfile === 'function') openPlayerProfile(); });"));
+check('player chip tap opens the player profile', game.includes("document.getElementById('appHomePlayer')?.addEventListener('click', () => { appBuzz(10); if (typeof openPlayerProfile === 'function') openPlayerProfile(); setAppDeepLink('profile'); });"));
 // Phase 4: the handler also buzzes (appBuzz) — same tap, same destination.
-check('season chip tap opens the season pass', game.includes("document.getElementById('appHomeSeasonChip')?.addEventListener('click', () => { appBuzz(10); if (typeof openSeasonPass === 'function') openSeasonPass(); });"));
+check('season chip tap opens the season pass', game.includes("document.getElementById('appHomeSeasonChip')?.addEventListener('click', () => { appBuzz(10); if (typeof openSeasonPass === 'function') openSeasonPass(); setAppDeepLink('pass'); });"));
 check('chips show a pointer cursor', game.includes('#appHomePlayer,#appHomeSeasonChip{cursor:pointer}'));
 
 // --- Settings view: shell + builders + tab wiring ---
 check('settings view container exists in the app shell', game.includes('id="appHomeSettingsView"'));
 check('settings builders exist', game.includes('function buildAppSettingsView() {') && game.includes('function renderAppSettingsView() {'));
-check('settings tab opens the native view', game.includes("if (tab === 'settings') { appHomeTab = tab; buildAppSettingsView(); syncAppHome(); return; }"));
+check('settings tab opens the native view', game.includes("if (tab === 'settings') { appHomeTab = tab; buildAppSettingsView(); syncAppHome(); setAppDeepLink('settings'); return; }"));
 check('syncAppHome toggles the settings view', game.includes("document.getElementById('appHomeSettingsView')?.classList.toggle('is-active', appHomeTab === 'settings');"));
 check('settings view hides the hero view while open', game.includes("activeView === 'home' && appHomeTab !== 'settings'"));
 check('settings back button returns home', game.includes("if (action === 'back') { setAppHomeTab('home'); return; }"));

@@ -246,7 +246,19 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
            touch target; it lives inside #mobileControlsRoot, so it shows
            and hides with the rest of the touch controls. */
         #mobilePauseBtn{position:fixed;top:max(30px,env(safe-area-inset-top));left:max(10px,env(safe-area-inset-left));width:48px;height:48px;border:2px solid rgba(158,221,255,.6);border-radius:50%;background:rgba(5,15,32,.72);color:#e8f8ff;font-size:22px;font-weight:900;box-shadow:0 5px 16px #0007;pointer-events:auto;touch-action:manipulation}
-        /* Mobile app (Capacitor APK, 2026-11-18): the native shell already
+        /* Arena Forge round 2 Tier 2: editable control layout — button
+           size presets (S/M/L). The size classes sit on
+           #mobileControlsRoot so they beat the coarse-pointer media
+           queries above by specificity (IDs + class); M is the
+           un-overridden default. The knob is 44% of the stick, so it
+           scales with the stick for free; the action-button row lifts
+           with the stick so it never overlaps a bigger aim stick. */
+        #mobileControlsRoot.controls-size-s .mobile-stick{width:104px;height:104px}
+        #mobileControlsRoot.controls-size-s .mobile-action-btn{width:48px;height:48px;font-size:19px}
+        #mobileControlsRoot.controls-size-s #mobileActionButtons{grid-template-columns:repeat(2,48px);bottom:calc(max(24px,env(safe-area-inset-bottom)) + 112px)}
+        #mobileControlsRoot.controls-size-l .mobile-stick{width:160px;height:160px}
+        #mobileControlsRoot.controls-size-l .mobile-action-btn{width:68px;height:68px;font-size:24px}
+        #mobileControlsRoot.controls-size-l #mobileActionButtons{grid-template-columns:repeat(2,68px);bottom:calc(max(24px,env(safe-area-inset-bottom)) + 172px)}        /* Mobile app (Capacitor APK, 2026-11-18): the native shell already
            runs sticky immersive fullscreen, so the browser-only fullscreen
            buttons and the legacy DOM HUD are redundant in the app — hide
            them. Touch sticks + action buttons are NOT hidden: Brawl Stars
@@ -269,9 +281,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         #appHomeSaveBtn{flex:none;font-weight:1000;font-size:15px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:6px 10px;color:#fff;cursor:pointer}
         #appHomeTop #homeCurrencyBar{display:flex;gap:8px;margin-left:auto}
         #appHomeBody{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
-        #appHomeHeroView,#appHomeEventsHost,#appHomeFightersView,#appHomeEventsView{flex:1 1 auto;min-height:0;display:none;flex-direction:column}
-        #appHomeHeroView.is-active,#appHomeEventsHost.is-active,#appHomeFightersView.is-active,#appHomeEventsView.is-active{display:flex}
-        #appHomeEventsHost{overflow-y:auto}
+        #appHomeHeroView,#appHomeFightersView,#appHomeEventsView{flex:1 1 auto;min-height:0;display:none;flex-direction:column}
+        #appHomeHeroView.is-active,#appHomeFightersView.is-active,#appHomeEventsView.is-active{display:flex}
         #appHomeFightersView,#appHomeEventsView{overflow-y:auto}
         /* Hero side column (app home optimize, 2026-11-18): the landscape
            hero had a wide dead blue area on the right (Anthony's
@@ -388,8 +399,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         .app-settings-row.is-danger>button{background:#ff5470;color:#fff}
         .app-settings-seg{flex:none;display:flex;gap:6px}
         .app-settings-seg button{padding:10px 11px;border-radius:12px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.12);color:#cfe6ff;font-weight:1000;font-size:12px;cursor:pointer}
-        .app-settings-seg button.is-active{background:#ff9f1c;border-color:#ff9f1c;color:#231303}        .app-settings-about{flex:none;padding:12px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);font-size:12px;color:#9fc6e8;line-height:1.6}
-        /* Web overlays restyled for the app (phase 2): the shop, quest
+        .app-settings-seg button.is-active{background:#ff9f1c;border-color:#ff9f1c;color:#231303}        .app-settings-about{flex:none;padding:12px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);font-size:12px;color:#9fc6e8;line-height:1.6}        /* Web overlays restyled for the app (phase 2): the shop, quest
            board and tournament overlays are desktop panels on the web.
            These rules only apply under .native-app, so the website is
            untouched; every button still calls the existing functions. */
@@ -582,7 +592,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         @media (prefers-reduced-motion:reduce){.app-toast{transition:none}.app-confirm-sheet{animation:none}}
         /* View transitions: switching app tabs fades the new view in
            instead of hard-cutting. Pure CSS, .16s. */
-        #appHomeHeroView.is-active,#appHomeEventsHost.is-active,#appHomeFightersView.is-active,#appHomeEventsView.is-active,#appHomeSettingsView.is-active{animation:appViewIn .16s ease-out}
+        #appHomeHeroView.is-active,#appHomeFightersView.is-active,#appHomeEventsView.is-active,#appHomeSettingsView.is-active{animation:appViewIn .16s ease-out}
         @keyframes appViewIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
         /* ---- Arena Forge app polish pass (2026-11-19): one font, press
            feedback, safe areas, shop single-column, quest tab row scroll.
@@ -4896,12 +4906,19 @@ function updateGadgetInfo() {
           knobEl.style.top = `${rect.height * .5 + dy}px`;
           onMove(dx / radius, dy / radius);
       }
-      stickEl.addEventListener('pointerdown', (event) => {
+      // Arena Forge round 2 Tier 2: begin() is the floating-joystick
+      // entry point — the canvas handler repositions the stick under the
+      // thumb and then starts the same press the stick's own pointerdown
+      // would have started. Capture is best-effort: even without it the
+      // stick's move/up listeners still see the pointer while it is over
+      // the stick, because activePointerId is already set here.
+      function begin(event) {
           event.preventDefault();
           activePointerId = event.pointerId;
-          if (stickEl.setPointerCapture) stickEl.setPointerCapture(event.pointerId);
+          try { if (stickEl.setPointerCapture) stickEl.setPointerCapture(event.pointerId); } catch (_) {}
           moveWithPointer(event.clientX, event.clientY);
-      });
+      }
+      stickEl.addEventListener('pointerdown', begin);
       stickEl.addEventListener('pointermove', (event) => {
           if (event.pointerId !== activePointerId) return;
           event.preventDefault();
@@ -4915,6 +4932,53 @@ function updateGadgetInfo() {
       stickEl.addEventListener('pointerup', endHandler);
       stickEl.addEventListener('pointercancel', endHandler);
       stickEl.addEventListener('lostpointercapture', reset);
+      return { begin, reset, isActive: () => activePointerId !== null };
+  }
+  // Arena Forge round 2 Tier 2: editable control layout (Brawl Stars
+  // locked-vs-floating joystick + button size). One localStorage pref,
+  // JSON so stick mode + size travel together; any bad or corrupt value
+  // falls back to locked/M. Layout only — aim/fire/damage are untouched.
+  const APP_CONTROLS_KEY = 'arenaForgeControlsV1';
+  function getControlLayoutPrefs() {
+      const fallback = { stick: 'locked', size: 'M' };
+      try {
+          const raw = localStorage.getItem(APP_CONTROLS_KEY);
+          if (!raw) return fallback;
+          const parsed = JSON.parse(raw);
+          if (!parsed || typeof parsed !== 'object') return fallback;
+          return {
+              stick: parsed.stick === 'floating' ? 'floating' : 'locked',
+              size: parsed.size === 'S' || parsed.size === 'L' ? parsed.size : 'M',
+          };
+      } catch (_) { return fallback; }
+  }
+  function isFloatingStickMode() { return getControlLayoutPrefs().stick === 'floating'; }
+  function applyControlLayoutPrefs() {
+      if (!mobileControlsRoot) return;
+      const prefs = getControlLayoutPrefs();
+      try {
+          mobileControlsRoot.classList.toggle('controls-stick-floating', prefs.stick === 'floating');
+          mobileControlsRoot.classList.toggle('controls-stick-locked', prefs.stick !== 'floating');
+          mobileControlsRoot.classList.toggle('controls-size-s', prefs.size === 'S');
+          mobileControlsRoot.classList.toggle('controls-size-m', prefs.size === 'M');
+          mobileControlsRoot.classList.toggle('controls-size-l', prefs.size === 'L');
+          if (prefs.stick !== 'floating') {
+              // Locked mode: drop any floating inline position so the
+              // stylesheet corners come back.
+              for (const stickEl of [document.getElementById('mobileMoveStick'), document.getElementById('mobileAimStick')]) {
+                  if (!stickEl) continue;
+                  stickEl.style.left = ''; stickEl.style.top = ''; stickEl.style.bottom = ''; stickEl.style.right = '';
+              }
+          }
+      } catch (_) {}
+  }
+  function setControlLayoutPrefs(patch) {
+      const next = { ...getControlLayoutPrefs(), ...(patch || {}) };
+      if (next.stick !== 'floating') next.stick = 'locked';
+      if (next.size !== 'S' && next.size !== 'L') next.size = 'M';
+      try { localStorage.setItem(APP_CONTROLS_KEY, JSON.stringify(next)); } catch (_) {}
+      applyControlLayoutPrefs();
+      return next;
   }
   function initMobileControls() {
       if (!isTouchInputEnvironment()) return;
@@ -5005,6 +5069,7 @@ function updateGadgetInfo() {
       matchPauseBtn = matchPauseBtnEl;
       document.body.appendChild(root);
       mobileControlsRoot = root;
+      applyControlLayoutPrefs();
       // App HUD polish (HU2): tapping the touch map/modifier line (top-left
       // strip, y < 40) expands/collapses the active modifier's description.
       // No preventDefault / stopPropagation — the tap is only observed, so
@@ -5017,14 +5082,40 @@ function updateGadgetInfo() {
               touchModifierDescExpandedFor = touchModifierDescExpandedFor === activeShowdownModifier ? null : activeShowdownModifier;
           }
       });
-      bindVirtualStick(moveStick, moveKnob, (x, y) => {
+      // Arena Forge round 2 Tier 2: floating joystick. In floating mode
+      // a touch on the bare game canvas drops the stick under the thumb
+      // (left half = move, right half = aim) and starts it there; the
+      // stick stays where it was left, Brawl Stars style. The top-left
+      // strip (modifier tap zone above) is excluded so the two gestures
+      // never fight, and touches that land on a stick/button keep their
+      // own handlers (this listener only sees canvas-targeted touches).
+      canvas.addEventListener('pointerdown', (event) => {
+          if (!playing || !mobileInput.enabled || !isFloatingStickMode()) return;
+          if (event.target !== canvas) return;
+          const rect = canvas.getBoundingClientRect();
+          const tapX = event.clientX - rect.left, tapY = event.clientY - rect.top;
+          if (tapX >= 0 && tapX <= 360 && tapY >= 0 && tapY <= 40) return;
+          const isLeft = event.clientX < rect.left + rect.width / 2;
+          const stick = isLeft ? moveStick : aimStick;
+          const handle = isLeft ? moveStickHandle : aimStickHandle;
+          if (!stick || !handle) return;
+          const size = stick.getBoundingClientRect().width || 132;
+          const left = Math.max(8, Math.min(event.clientX - size / 2, window.innerWidth - size - 8));
+          const top = Math.max(8, Math.min(event.clientY - size / 2, window.innerHeight - size - 8));
+          stick.style.left = `${left}px`;
+          stick.style.top = `${top}px`;
+          stick.style.bottom = 'auto';
+          stick.style.right = 'auto';
+          try { handle.begin(event); } catch (_) {}
+      });
+      const moveStickHandle = bindVirtualStick(moveStick, moveKnob, (x, y) => {
           mobileInput.moveX = x;
           mobileInput.moveY = y;
       }, () => {
           mobileInput.moveX = 0;
           mobileInput.moveY = 0;
       });
-      bindVirtualStick(aimStick, aimKnob, (x, y) => {
+      const aimStickHandle = bindVirtualStick(aimStick, aimKnob, (x, y) => {
           if (Math.hypot(x, y) <= 0.08) return;
           mobileInput.aimHeld = true;
           mobileInput.attackActive = false;
@@ -6579,8 +6670,10 @@ const bolznstienPendingStrikes = [];
     // is scoped under .native-app, so the website is untouched. Behavior
     // is reused, not rebuilt: the hero reads the same data as
     // renderHomeBrawlerCard, Fighters/Shop open the existing modals,
-    // Events reuses setHomeTab + the existing events view (moved into the
-    // app shell), PLAY clicks the existing #startMatch button.
+    // Events has its own native view (the web events view stays in the
+    // hidden web home — round 2 Tier 2 removed the old move of it into
+    // the app shell, where it could never be seen), PLAY clicks the
+    // existing #startMatch button.
     // Diagnosis of the blank web card (Anthony's screenshot): the card's
     // background rings painted but NONE of its innerHTML children did
     // (avatar blob, identity, power badge, stats) and the profile chip
@@ -6626,7 +6719,6 @@ const bolznstienPendingStrikes = [];
                 <button type="button" class="app-quick-btn" data-app-quick="settings">⚙️ SETTINGS<small>SAVE · GUIDE</small></button>
               </div>
             </div>
-            <div id="appHomeEventsHost"></div>
             <div id="appHomeFightersView"></div>
             <div id="appHomeEventsView"></div>
             <div id="appHomeSettingsView"></div>
@@ -6644,13 +6736,14 @@ const bolznstienPendingStrikes = [];
         const currencyBar = document.getElementById('homeCurrencyBar');
         const currencyHost = document.getElementById('appHomeCurrencies');
         if (currencyBar && currencyHost) currencyHost.appendChild(currencyBar);
-        // Move the whole events view into the app shell: setHomeTab,
-        // setupCompactHomeModeSelector and the mode-card map all keep working
-        // on the moved node (they address it by id / captured reference), and
-        // the mode-card styles are global, not #homeScreen-scoped.
-        const eventsView = document.getElementById('homeEventsView');
-        const eventsHost = document.getElementById('appHomeEventsHost');
-        if (eventsView && eventsHost) eventsHost.appendChild(eventsView);
+        // Arena Forge round 2 Tier 2 (dead-code sweep): the web events
+        // view (homeEventsView) used to be moved into a host div in the
+        // app shell here, but that host never got is-active, so the moved
+        // node was invisible in app mode — and it is invisible anyway
+        // where it lives, because .native-app hides #homeScreen outright.
+        // The move is gone; setHomeTab, setupCompactHomeModeSelector and
+        // the mode-card map keep addressing the node by id in place, and
+        // the native Events tab is what the app shows.
         document.getElementById('appHomeHero')?.addEventListener('click', () => { appBuzz(10); setAppHomeTab('fighters'); });
         // Tier 2 feel (2026-11-19): hero voice line on tap. A separate
         // listener on purpose — the navigation listener above stays
@@ -6670,8 +6763,8 @@ const bolznstienPendingStrikes = [];
         // tap handler) even though the profile + pass overlays exist —
         // wire them to the existing openers. The quick row exposes the
         // home features that lived inside the hidden web home.
-        document.getElementById('appHomePlayer')?.addEventListener('click', () => { appBuzz(10); if (typeof openPlayerProfile === 'function') openPlayerProfile(); });
-        document.getElementById('appHomeSeasonChip')?.addEventListener('click', () => { appBuzz(10); if (typeof openSeasonPass === 'function') openSeasonPass(); });
+        document.getElementById('appHomePlayer')?.addEventListener('click', () => { appBuzz(10); if (typeof openPlayerProfile === 'function') openPlayerProfile(); setAppDeepLink('profile'); });
+        document.getElementById('appHomeSeasonChip')?.addEventListener('click', () => { appBuzz(10); if (typeof openSeasonPass === 'function') openSeasonPass(); setAppDeepLink('pass'); });
         document.getElementById('appHomeQuickRow')?.addEventListener('click', (event) => {
             const btn = event.target.closest('[data-app-quick]');
             if (!btn) return;
@@ -6681,8 +6774,7 @@ const bolznstienPendingStrikes = [];
             // Round 2: the SEASON PASS quick button opens the revived tier
             // road, not the quest list — the road's MISSIONS button links
             // back to the board, and QUESTS above still opens it directly.
-            else if (action === 'pass') { if (typeof openSeasonPass === 'function') openSeasonPass(); }
-            else if (action === 'settings') { setAppHomeTab('settings'); }
+            else if (action === 'pass') { if (typeof openSeasonPass === 'function') openSeasonPass(); setAppDeepLink('pass'); }            else if (action === 'settings') { setAppHomeTab('settings'); }
         });
         // Move the live Brick Rush button into the app quick row: its 1s
         // interval (updateDailyBrickRushButton) keeps updating it by
@@ -6784,7 +6876,7 @@ const bolznstienPendingStrikes = [];
           </div>
           ${heroSideHtml}`;
         hero.querySelector('[data-hero-side="events"]')?.addEventListener('click', (event) => { event.stopPropagation(); appBuzz(10); setAppHomeTab('events'); });
-        hero.querySelector('[data-hero-side="tournament"]')?.addEventListener('click', (event) => { event.stopPropagation(); appBuzz(10); if (typeof openTournamentHub === 'function') openTournamentHub(); });
+        hero.querySelector('[data-hero-side="tournament"]')?.addEventListener('click', (event) => { event.stopPropagation(); appBuzz(10); if (typeof openTournamentHub === 'function') openTournamentHub(); setAppDeepLink('tournament'); });
     }
     function renderAppHomeTop() {
         const nameEl = document.getElementById('appHomePlayerName');
@@ -6831,15 +6923,15 @@ const bolznstienPendingStrikes = [];
             }
         } catch (_) {}
         // The app tab is the source of truth (home / fighters / events):
-        // the moved web events view stays hidden in app mode — the native
-        // events view is what the Events tab shows. setHomeTab still calls
-        // this (web tab restore at boot), but it never flips the app tab.
+        // the web events view stays in the hidden web home in app mode —
+        // the native events view is what the Events tab shows. setHomeTab
+        // still calls this (web tab restore at boot), but it never flips
+        // the app tab.
         const activeView = appHomeTab === 'fighters' ? 'fighters' : appHomeTab === 'events' ? 'events' : 'home';
         document.getElementById('appHomeHeroView')?.classList.toggle('is-active', activeView === 'home' && appHomeTab !== 'settings');
         document.getElementById('appHomeFightersView')?.classList.toggle('is-active', activeView === 'fighters');
         document.getElementById('appHomeEventsView')?.classList.toggle('is-active', activeView === 'events');
         document.getElementById('appHomeSettingsView')?.classList.toggle('is-active', appHomeTab === 'settings');
-        document.getElementById('appHomeEventsHost')?.classList.remove('is-active');
         appHomeEl.querySelectorAll('[data-app-tab]').forEach((button) => {
             button.classList.toggle('is-active', button.dataset.appTab === appHomeTab);
         });
@@ -6858,7 +6950,7 @@ const bolznstienPendingStrikes = [];
                 if (!sawShop) return;
                 appShopCloseObserver.disconnect();
                 appShopCloseObserver = null;
-                if (appHomeTab === 'shop') { appHomeTab = 'home'; syncAppHome(); }
+                if (appHomeTab === 'shop') { appHomeTab = 'home'; syncAppHome(); setAppDeepLink('home'); }
             });
             appShopCloseObserver.observe(document.body, { childList: true, subtree: false });
         } catch (_) {}
@@ -6868,21 +6960,71 @@ const bolznstienPendingStrikes = [];
         // H1: opening Shop sets the tab state honestly (SHOP highlights
         // while the overlay is open) and arms the close-watcher; the open
         // itself still reuses openHomeShop() exactly as before.
-        if (tab === 'shop') { appHomeTab = tab; syncAppHome(); watchAppShopClose(); }
+        if (tab === 'shop') { appHomeTab = tab; syncAppHome(); watchAppShopClose(); setAppDeepLink('shop'); }
         if (tab === 'shop') { if (typeof openHomeShop === 'function') openHomeShop(); return; }
         // The Events countdown ticks every 1s — stop it whenever the
         // Events view hides (home / fighters / settings). Shop is an
         // overlay over the still-active view, so it keeps ticking.
         if (tab !== 'events') stopAppEventsCountdown();
-        if (tab === 'settings') { appHomeTab = tab; buildAppSettingsView(); syncAppHome(); return; }
+        if (tab === 'settings') { appHomeTab = tab; buildAppSettingsView(); syncAppHome(); setAppDeepLink('settings'); return; }
         if (tab === 'fighters' || tab === 'events' || tab === 'home') {
             appHomeTab = tab;
             if (tab === 'fighters') buildAppFightersView();
             if (tab === 'events') buildAppEventsView();
             syncAppHome();
+            setAppDeepLink(tab);
             return;
         }
         setHomeTab('home');
+    }
+    // Arena Forge round 2 Tier 2: deep links per screen. A link or
+    // notification can land on a screen via hash (#fighters) or query
+    // (?screen=fighters) — the same URLSearchParams precedent as
+    // ?diag=1. This is IN-APP routing only: the APK has no intent
+    // filter for external links (AndroidManifest.xml is MAIN/LAUNCHER
+    // only), so a real external link needs manifest work first — that
+    // part is flagged, not claimed. Navigation keeps the URL in sync
+    // with replaceState (no history entries, and replaceState never
+    // fires hashchange, so routing cannot loop back into itself).
+    const APP_DEEP_LINK_ROUTES = ['home', 'fighters', 'events', 'shop', 'pass', 'tournament', 'profile', 'settings'];
+    function readAppDeepLinkRoute() {
+        try {
+            const hash = String(window.location.hash || '').replace(/^#/, '').split(/[/?&]/)[0].trim().toLowerCase();
+            if (APP_DEEP_LINK_ROUTES.includes(hash)) return hash;
+        } catch (_) {}
+        try {
+            const route = String(new URLSearchParams(window.location.search || '').get('screen') || '').trim().toLowerCase();
+            if (APP_DEEP_LINK_ROUTES.includes(route)) return route;
+        } catch (_) {}
+        return null;
+    }
+    function setAppDeepLink(route) {
+        try {
+            if (!isNativeAppMode()) return;
+            if (!APP_DEEP_LINK_ROUTES.includes(route)) return;
+            window.history.replaceState(null, '', `#${route}`);
+        } catch (_) {}
+    }
+    function navigateAppDeepLink(route) {
+        if (!route || !APP_DEEP_LINK_ROUTES.includes(route)) return false;
+        if (!isNativeAppMode() || !appHomeEl) return false;
+        try {
+            // Overlay screens reuse the same openers the app chrome
+            // already uses (season chip / player chip / hero card); the
+            // tab screens go through setAppHomeTab, which also syncs
+            // the URL. 'pass' is the quest-board season tab, exactly
+            // like the SEASON PASS quick button — the Circuit Pass
+            // tier-road overlay stays behind its own decision.
+            if (route === 'pass') { if (typeof openSeasonPass === 'function') openSeasonPass(); setAppDeepLink('pass'); return true; }
+            if (route === 'tournament') { if (typeof openTournamentHub === 'function') openTournamentHub(); setAppDeepLink('tournament'); return true; }
+            if (route === 'profile') { if (typeof openPlayerProfile === 'function') openPlayerProfile(); setAppDeepLink('profile'); return true; }
+            setAppHomeTab(route);
+            return true;
+        } catch (_) { return false; }
+    }
+    function applyAppDeepLink() {
+        const route = readAppDeepLinkRoute();
+        if (route) navigateAppDeepLink(route);
     }
     // ---- App Fighters view (Brawl Stars Nov 2026 collection inspo) ----
     // Horizontal-scrolling roster of smaller cards + search + class filter,
@@ -7999,7 +8141,19 @@ const bolznstienPendingStrikes = [];
                         else showToast('Orientation lock is not available on this device — staying in Auto', '#ffd166');
                     });                    return;
                 }
-            });
+                // Arena Forge round 2 Tier 2: editable control layout.
+                // The pref write applies immediately (classes + stick
+                // reset), the re-render just moves the selected state.
+                if (action === 'stick-locked' || action === 'stick-floating') {
+                    setControlLayoutPrefs({ stick: action === 'stick-floating' ? 'floating' : 'locked' });
+                    renderAppSettingsView();
+                    return;
+                }
+                if (action === 'size-s' || action === 'size-m' || action === 'size-l') {
+                    setControlLayoutPrefs({ size: action.slice(5).toUpperCase() });
+                    renderAppSettingsView();
+                    return;
+                }            });
         }
         renderAppSettingsView();
     }
@@ -8010,8 +8164,12 @@ const bolznstienPendingStrikes = [];
         const fighterCount = Array.isArray(allBrawlers) ? allBrawlers.length : 0;
         const hapticsOn = appHapticsOn();
         const muted = appSoundMuted();
-        const orientationPref = appOrientationPref();        view.innerHTML = `
-          <div class="app-settings-head">
+        const orientationPref = appOrientationPref();
+        const controlPrefs = getControlLayoutPrefs();
+        const stickMode = controlPrefs.stick;
+        const btnSize = controlPrefs.size;
+
+        view.innerHTML = `          <div class="app-settings-head">
             <button type="button" class="app-settings-back" data-app-settings="back">‹ BACK</button>
             <b>⚙️ SETTINGS</b>
           </div>
@@ -8039,10 +8197,15 @@ const bolznstienPendingStrikes = [];
               <button type="button" class="${orientationPref === 'landscape' ? 'is-active' : ''}" data-app-settings="orientation" data-orientation-value="landscape">LANDSCAPE</button>
             </span>
           </div>
+            <span class="app-settings-label"><b>🕹️ JOYSTICK</b><small>Locked: the move stick stays in the bottom-left corner. Floating: the stick appears where your thumb lands — left half moves, right half aims.</small></span>
+            <span class="app-settings-seg"><button type="button" class="${stickMode === 'locked' ? 'is-active' : ''}" data-app-settings="stick-locked">LOCKED</button><button type="button" class="${stickMode === 'floating' ? 'is-active' : ''}" data-app-settings="stick-floating">FLOATING</button></span>
+          </div>
+          <div class="app-settings-row">
+            <span class="app-settings-label"><b>🔘 BUTTON SIZE</b><small>How big the move/aim sticks and the Tool, Super and Core Surge buttons are in a match.</small></span>
+            <span class="app-settings-seg"><button type="button" class="${btnSize === 'S' ? 'is-active' : ''}" data-app-settings="size-s">S</button><button type="button" class="${btnSize === 'M' ? 'is-active' : ''}" data-app-settings="size-m">M</button><button type="button" class="${btnSize === 'L' ? 'is-active' : ''}" data-app-settings="size-l">L</button></span>          </div>
           <div class="app-settings-row is-danger">
             <span class="app-settings-label"><b>🗑️ ERASE ALL PROGRESS</b><small>Wipes coins, souls, brawlers, season progress, tournament runs and settings on this device. This cannot be undone.</small></span>
-            <button type="button" data-app-settings="reset">ERASE</button>
-          </div>
+            <button type="button" data-app-settings="reset">ERASE</button>          </div>
           <div class="app-settings-about">
             <b>ABOUT</b><br>
             Arena Forge · ${APP_VERSION_LABEL}<br>
@@ -8056,6 +8219,15 @@ const bolznstienPendingStrikes = [];
     // may arrive late, and the retry below re-applies it again.
     if (isNativeAppMode()) void applyAppOrientation(appOrientationPref());
 
+    // Deep links (round 2 Tier 2): apply the launch route once the
+    // shell exists, and follow later hash changes (e.g. a notification
+    // re-delivering a route while the app is open). The setTimeout(0)
+    // runs after buildAppHome's own deferred syncAppHome, so a deep
+    // link wins over the restored web tab. replaceState never fires
+    // hashchange, so navigation cannot loop back into this handler.
+    if (typeof setTimeout === 'function') setTimeout(applyAppDeepLink, 0);
+    window.addEventListener('hashchange', applyAppDeepLink);
+
     // Retry the app-home activation on window load and DOMContentLoaded:
     // the Capacitor bridge may not be injected when this IIFE evaluates,
     // so the boot call above can miss even though the APK is running. Both
@@ -8065,11 +8237,16 @@ const bolznstienPendingStrikes = [];
     // retried — no other boot logic is duplicated.
     function retryAppHomeActivation() {
         if (isNativeAppMode()) document.documentElement.classList.add('native-app');
+        const hadShell = !!appHomeEl;
         buildAppHome();
         // Round 2 orientation: the late-arriving bridge may not have been
         // there for the boot apply above, so re-apply the saved lock here.
         if (isNativeAppMode()) void applyAppOrientation(appOrientationPref());
-    }
+        // A late-arriving bridge builds the shell after the boot
+        // setTimeout(0) deep-link apply already ran and no-op'd — so
+        // apply it now, but only on the retry that actually built it
+        // (re-applying a route would re-open its overlay).
+        if (!hadShell && appHomeEl) applyAppDeepLink();    }
     window.addEventListener('load', retryAppHomeActivation);
     document.addEventListener('DOMContentLoaded', retryAppHomeActivation);
 

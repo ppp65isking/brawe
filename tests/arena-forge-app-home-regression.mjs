@@ -39,23 +39,27 @@ check('bridge check still comes first, localhost is only the fallback', (() => {
 // refreshApkDiagStrip(). The strip gate never feeds app mode — it only
 // decides whether the APK-only diagnostic strip is created.
 check('no other host broadens app mode (no 127.0.0.1, no wildcard hostname)', !game.includes('127.0.0.1') && (game.match(/location\.hostname/g) || []).length === 2 && game.indexOf("window.location.hostname === 'localhost'") !== -1 && game.indexOf('window.location.hostname || ') !== -1);
-check('retry helper re-applies the class and rebuilds the shell', game.includes('function retryAppHomeActivation() {') && game.includes("if (isNativeAppMode()) document.documentElement.classList.add('native-app');\n        buildAppHome();"));
+check('retry helper re-applies the class and rebuilds the shell', game.includes('function retryAppHomeActivation() {') && game.includes("if (isNativeAppMode()) document.documentElement.classList.add('native-app');\n        const hadShell = !!appHomeEl;\n        buildAppHome();") && game.includes('if (!hadShell && appHomeEl) applyAppDeepLink();'));
 check('retry runs on window load', game.includes("window.addEventListener('load', retryAppHomeActivation);"));
 check('retry runs on DOMContentLoaded', game.includes("document.addEventListener('DOMContentLoaded', retryAppHomeActivation);"));
 check('retry is registered after the boot buildAppHome() call', game.indexOf("window.addEventListener('load', retryAppHomeActivation);") > game.indexOf('    buildAppHome();\n'));
 
 // --- Shell structure: top strip, hero, PLAY, event chip, tabs ---
 check('top strip has player chip + season chip + currencies host', game.includes('id="appHomePlayerName"') && game.includes('id="appHomeSeasonChip"') && game.includes('id="appHomeCurrencies"'));
-check('hero view + events host exist', game.includes('id="appHomeHeroView"') && game.includes('id="appHomeEventsHost"'));
+check('hero view exists; dead app events host is gone (round 2 Tier 2 sweep)', game.includes('id="appHomeHeroView"') && !game.includes('appHomeEventsHost'));
 check('PLAY button + event chip exist in the play row', game.includes('id="appHomePlay"') && game.includes('id="appHomeEventChip"'));
 check('bottom tab bar has all four tabs with data-app-tab', game.includes('data-app-tab="home"') && game.includes('data-app-tab="fighters"') && game.includes('data-app-tab="events"') && game.includes('data-app-tab="shop"'));
 check('CSS lays out the shell fullscreen with safe-area padding', game.includes('#appHome{position:fixed;inset:0;') && game.includes('env(safe-area-inset-top)') && game.includes('env(safe-area-inset-bottom)'));
 check('app shell is hidden by default and shown only in native-app mode', game.includes('#appHome{position:fixed;inset:0;z-index:30;display:none;') && game.includes(".native-app #appHome:not(.app-home-hidden){display:flex}"));
 check('portrait fallback layout exists for portrait orientation', game.includes('@media (orientation:portrait){#appHomeHero{flex-direction:column;'));
 
-// --- Reuse, not rebuild: currency bar + events view are MOVED, not duplicated ---
+// --- Reuse, not rebuild: currency bar is MOVED, not duplicated ---
 check('live currency bar is moved into the app top strip', game.includes("document.getElementById('homeCurrencyBar')") && game.includes('currencyHost.appendChild(currencyBar);'));
-check('existing events view is moved into the app events host', game.includes("document.getElementById('homeEventsView')") && game.includes('eventsHost.appendChild(eventsView);'));
+// Round 2 Tier 2 (dead-code sweep): the web events view is NO LONGER
+// moved into the app shell — the old #appHomeEventsHost never got
+// is-active, so the moved node could never be seen; it stays in the
+// hidden web home and setHomeTab still addresses it by id in place.
+check('web events view is NOT moved into the app shell anymore', !game.includes('eventsHost.appendChild(eventsView);') && game.includes("document.getElementById('homeEventsView')?.classList.toggle('is-active', safeTab === 'events');"));
 // App home optimize (2026-11-18): the native events slots are named
 // app-event-slot / appEventSlotHtml (not appHomeModeCard /
 // createAppModeCard) and reuse HOME_MODE_DATA + the existing web card

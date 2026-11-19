@@ -130,7 +130,7 @@ check('tab bar taps buzz', game.includes("button.addEventListener('click', () =>
 check('PLAY buzzes (12ms)', game.includes('appBuzz(12);'));
 check('hero tap buzzes', game.includes("() => { appBuzz(10); setAppHomeTab('fighters'); });"));
 check('event chip tap buzzes', game.includes("() => { appBuzz(10); setAppHomeTab('events'); });"));
-check('player + season chips buzz', game.includes("() => { appBuzz(10); if (typeof openPlayerProfile === 'function') openPlayerProfile(); });") && game.includes("() => { appBuzz(10); if (typeof openSeasonPass === 'function') openSeasonPass(); });"));
+check('player + season chips buzz', game.includes("() => { appBuzz(10); if (typeof openPlayerProfile === 'function') openPlayerProfile(); setAppDeepLink('profile'); });") && game.includes("() => { appBuzz(10); if (typeof openSeasonPass === 'function') openSeasonPass(); setAppDeepLink('pass'); });"));
 check('quick row taps buzz', game.includes("const btn = event.target.closest('[data-app-quick]');\n            if (!btn) return;\n            appBuzz(10);"));
 check('save button tap buzzes', game.includes("() => { appBuzz(10); openSaveCodeModal(); });"));
 check('fighter strip + role chip taps buzz', game.includes("if (!card) return;\n                appBuzz(10);") && game.includes("if (!chip) return;\n                appBuzz(10);"));
@@ -148,7 +148,7 @@ check('exactly one navigator.vibrate call, inside the guarded appBuzz',
 
 // --- View transitions ---
 check('switching app views fades the new view in',
-    game.includes('#appHomeHeroView.is-active,#appHomeEventsHost.is-active,#appHomeFightersView.is-active,#appHomeEventsView.is-active,#appHomeSettingsView.is-active{animation:appViewIn .16s ease-out}') &&
+    game.includes('#appHomeHeroView.is-active,#appHomeFightersView.is-active,#appHomeEventsView.is-active,#appHomeSettingsView.is-active{animation:appViewIn .16s ease-out}') &&
     game.includes('@keyframes appViewIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}'));
 
 // --- Hard limits: desktop, whitelist, diag gate, save-code modal ---
