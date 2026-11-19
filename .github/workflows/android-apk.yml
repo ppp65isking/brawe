@@ -32,8 +32,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # tsc + vite build; postbuild copies game.js into dist/ for the
-      # Capacitor file:// runtime (scripts/copy-gamejs-to-dist.mjs).
+      # tsc + vite build; postbuild bundles the full web runtime
+      # (game.js, bootstrap.js, CSS, modules, audio) into dist/ for
+      # Capacitor's local web server (scripts/copy-gamejs-to-dist.mjs).
       - name: Build web app
         run: npm run build
 
