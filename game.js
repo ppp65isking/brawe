@@ -11473,9 +11473,9 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           super: 'Overheated', superDesc: 'Aim and dash smoothly forward, leaving 6 marshmallow trail puffs. Enemies on the trail burn, and each puff explodes 1.32s after placement for 400 damage. Holds 2 charges — aim each dash separately.',
           hyper: 'Hyper Marshmallows: visuals turn purple; main attack marshmallows explode at the end of flight or on enemy hit for burn damage. Overheated dashes faster and further, dashes twice, leaves a wider trail, and hyper trail explosions release 4 mini-mallows in a + shape that explode again for 150 damage each.',
           g1: 'Sticky Volley (Next volley applies 6% slow per hit instead of 4%)',
-          g2: 'Second Tool coming soon.',
+          g2: 'Early Pop (Instantly detonate all live trail puffs)',
           sp1: 'Toasted Haste (Move 5% faster while an enemy is slowed by your marshmallows)',
-          sp2: 'Second Talent coming soon.'
+          sp2: 'Long Simmer (Volley slow lasts 1.5s per hit instead of 1s)'
       },
       'nightshade': {
           name: 'Nightshade', role: 'Assassin', rarity: 'Mythic', color: '#9b5cff',
@@ -12830,7 +12830,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
       feathers: { g1: 12000, g2: 14000 },
       spikey: { g1: 14000, g2: 12000 },
       electrostien: { g1: 11000, g2: 13000 },
-      mallow: { g1: 12000, g2: 12000 },
+      mallow: { g1: 12000, g2: 14000 },
       nightshade: { g1: 16000, g2: 18000 },
       aegis: { g1: 16000, g2: 14000 },
       runner: { g1: 15000, g2: 15000 },
@@ -24051,6 +24051,7 @@ let heistFeverActive = false;
     const MALLOW_SLOW_PER_HIT = 0.04;
     const MALLOW_SLOW_GADGET_PER_HIT = 0.06;
     const MALLOW_SLOW_DURATION_MS = 1000;
+    const MALLOW_SLOW_DURATION_SP2_MS = 1500;
     const MALLOW_SLOW_MAX_STACKS = 8;
     const MALLOW_DASH_DISTANCE = 480;
     const MALLOW_DASH_DISTANCE_HYPER = 640;
@@ -24085,6 +24086,7 @@ let heistFeverActive = false;
     }
     function mallowStarChoice(entity) { try { return getEntityStarChoice(entity); } catch (_) { return entity ? entity.selectedStar : null; } }
     function mallowHasSP1(entity) { const c = mallowStarChoice(entity); return c === 'sp1' || c === 'slow'; }
+    function mallowHasSP2(entity) { const c = mallowStarChoice(entity); return c === 'sp2' || c === 'long'; }
     function getMallowSlowMultiplier(entity, now) {
         if (!entity || !(now < (entity.mallowSlowUntil || 0))) return 1.0;
         const perHit = entity.mallowSlowPerHit || MALLOW_SLOW_PER_HIT;
@@ -24101,7 +24103,7 @@ let heistFeverActive = false;
         if (now >= (target.mallowSlowUntil || 0)) target.mallowSlowStacks = 0;
         target.mallowSlowStacks = Math.min(MALLOW_SLOW_MAX_STACKS, (target.mallowSlowStacks || 0) + 1);
         target.mallowSlowPerHit = (b && b.mallowSlowPerHit) || MALLOW_SLOW_PER_HIT;
-        target.mallowSlowUntil = now + MALLOW_SLOW_DURATION_MS;
+        target.mallowSlowUntil = now + (owner && mallowHasSP2(owner) ? MALLOW_SLOW_DURATION_SP2_MS : MALLOW_SLOW_DURATION_MS);
         if (owner && mallowHasSP1(owner)) owner.mallowSp1SpeedUntil = now + MALLOW_SLOW_DURATION_MS;
     }
     function findMallowEntityById(id) { if (player && player.id === id) return player; return bots.find((b) => b && b.id === id) || null; }
@@ -24110,6 +24112,31 @@ let heistFeverActive = false;
         if (entity.id === player.id) { gadgetArmed = true; }
         else { entity.gadgetArmed = true; }
         spawnFloatingText(entity.x, entity.y - 36, 'STICKY VOLLEY ARMED', '#ffd9a8');
+    }
+    function detonateMallowPuff(puff, now) {
+        if (!puff || puff.exploded) return;
+        puff.exploded = true;
+        const owner = findMallowEntityById(puff.ownerId);
+        if (!owner) return;
+        for (const target of [player, ...bots]) {
+            if (!target || target.hp <= 0 || target.id === owner.id) continue;
+            if (areAlliedEntities(owner, target)) continue;
+            if (Math.hypot(target.x - puff.x, target.y - puff.y) > MALLOW_TRAIL_EXPLOSION_RADIUS + (target.radius || 14)) continue;
+            checkHit(target, { ownerBrawler: 'mallow', ownerId: owner.id, damage: MALLOW_TRAIL_EXPLOSION_DAMAGE, pierce: true, super: true, hitIds: {}, mallowTrailExplosion: true }, -1);
+        }
+        mallowExplosions.push({ x: puff.x, y: puff.y, startedAt: now, durationMs: 450, hyper: !!puff.hyper });
+        if (puff.hyper) spawnMallowMinis(puff, now);
+    }
+    function executeMallowG2(entity) {
+        if (!entity) return;
+        const now = performance.now();
+        for (let i = mallowTrailPuffs.length - 1; i >= 0; i--) {
+            const puff = mallowTrailPuffs[i];
+            if (!puff || puff.ownerId !== entity.id) continue;
+            detonateMallowPuff(puff, now);
+            mallowTrailPuffs.splice(i, 1);
+        }
+        spawnFloatingText(entity.x, entity.y - 36, 'EARLY POP!', '#ffd9a8');
     }
     function createMallowDashState(entity, angle, hyper) {
         const dist = hyper ? MALLOW_DASH_DISTANCE_HYPER : MALLOW_DASH_DISTANCE;
@@ -24232,15 +24259,7 @@ let heistFeverActive = false;
                 }
             }
             if (now >= puff.explodeAt && !puff.exploded) {
-                puff.exploded = true;
-                for (const target of [player, ...bots]) {
-                    if (!target || target.hp <= 0 || target.id === owner.id) continue;
-                    if (areAlliedEntities(owner, target)) continue;
-                    if (Math.hypot(target.x - puff.x, target.y - puff.y) > MALLOW_TRAIL_EXPLOSION_RADIUS + (target.radius || 14)) continue;
-                    checkHit(target, { ownerBrawler: 'mallow', ownerId: owner.id, damage: MALLOW_TRAIL_EXPLOSION_DAMAGE, pierce: true, super: true, hitIds: {}, mallowTrailExplosion: true }, -1);
-                }
-                mallowExplosions.push({ x: puff.x, y: puff.y, startedAt: now, durationMs: 450, hyper: !!puff.hyper });
-                if (puff.hyper) spawnMallowMinis(puff, now);
+                detonateMallowPuff(puff, now);
                 mallowTrailPuffs.splice(i, 1);
             }
         }
@@ -47066,6 +47085,8 @@ let heistFeverActive = false;
       executeElectrostienG2(bot);
     } else if (bot.brawler === 'mallow' && g === 'g1') {
       executeMallowG1(bot);
+    } else if (bot.brawler === 'mallow' && g === 'g2') {
+      executeMallowG2(bot);
     } else if (bot.brawler === 'voodoyou' && g === 'g1') {
       executeVoodoyouG1(bot);
     } else if (bot.brawler === 'voodoyou' && g === 'g2') {
@@ -49203,6 +49224,12 @@ let heistFeverActive = false;
     } else if (curBrawler === 'mallow' && curGadget === 'g1') {
         executeMallowG1(player);
         gadgetCooldownUntil = now + GADGET_COOLDOWN_MS;
+        updateGadgetButton();
+        return;
+    } else if (curBrawler === 'mallow' && curGadget === 'g2') {
+        executeMallowG2(player);
+        gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
+        setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
         updateGadgetButton();
         return;
     } else if (curBrawler === 'voodoyou' && curGadget === 'g1') {
