@@ -3713,6 +3713,12 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
   let gadgetTouchBtn = null;
   let superTouchBtn = null;
   let hyperTouchBtn = null;
+  // App HUD polish (HU2): which showdown modifier (if any) has its
+  // description expanded in touch mode. Holds the modifier id, not a plain
+  // boolean, so the panel collapses itself when the rotation picks a new
+  // modifier. Toggled by tapping the map/modifier line (see
+  // initMobileControls); null = collapsed.
+  let touchModifierDescExpandedFor = null;
 
   // Shared action-control helpers.  These deliberately live beside the
   // desktop/mobile input state so both control schemes use the same path.
@@ -4252,15 +4258,26 @@ function updateGadgetInfo() {
           gadgetTouchBtn.disabled = !gadgetReady;
           gadgetTouchBtn.classList.toggle('is-ready', gadgetReady);
           gadgetTouchBtn.classList.toggle('is-armed', !!gadgetArmed);
-          gadgetTouchBtn.textContent = getMobileToolButtonIcon();
           // Phase 3: circular cooldown ring on the TOOL button itself
           // (Brawl Stars style). The old TOOL text chip is gone, so the
           // ring is the only cooldown readout: it fills as the tool
           // recharges and is full + glowing when ready.
+          // App HUD polish (HU4): the ring alone can't tell 1s from 8s, so
+          // while the tool recharges the button shows a numeric seconds
+          // readout ("7s"), mirroring the desktop "Tool: CD 7s" text. The
+          // gear icon returns the moment it is ready. The label only
+          // writes when it changes, so the per-frame sync stays cheap.
           const gadgetReadyAt = getPlayerGadgetCooldownUntil(selectedGadget, performance.now());
           const gadgetTotalMs = getGadgetCooldownMsForBrawler(selectedBrawler, selectedGadget);
           const gadgetFrac = gadgetTotalMs > 0 ? clamp(1 - (gadgetReadyAt - performance.now()) / gadgetTotalMs, 0, 1) : 1;
           gadgetTouchBtn.style.setProperty('--mobile-charge', `${gadgetFrac * 360}deg`);
+          const gadgetNow = performance.now();
+          const gadgetCdSecs = gadgetReadyAt > gadgetNow ? Math.ceil((gadgetReadyAt - gadgetNow) / 1000) : 0;
+          const gadgetTouchLabel = gadgetCdSecs > 0 ? `${gadgetCdSecs}s` : getMobileToolButtonIcon();
+          if (gadgetTouchBtn.textContent !== gadgetTouchLabel) {
+              gadgetTouchBtn.textContent = gadgetTouchLabel;
+              gadgetTouchBtn.setAttribute('aria-label', gadgetCdSecs > 0 ? `Use Tool, ${gadgetCdSecs} seconds remaining` : 'Use Tool');
+          }
       }
       if (superTouchBtn) {
           if (isBlinkEyePlayerActive() && !!player?.blinkeyeSteering && !!player?.blinkeyeActiveEye) {
@@ -4415,6 +4432,18 @@ function updateGadgetInfo() {
       root.appendChild(matchFullscreenBtn);
       document.body.appendChild(root);
       mobileControlsRoot = root;
+      // App HUD polish (HU2): tapping the touch map/modifier line (top-left
+      // strip, y < 40) expands/collapses the active modifier's description.
+      // No preventDefault / stopPropagation — the tap is only observed, so
+      // sticks, buttons and the game loop are untouched.
+      canvas.addEventListener('pointerdown', (event) => {
+          if (!playing || !mobileInput.enabled) return;
+          const rect = canvas.getBoundingClientRect();
+          const tapX = event.clientX - rect.left, tapY = event.clientY - rect.top;
+          if (tapX >= 0 && tapX <= 360 && tapY >= 0 && tapY <= 40) {
+              touchModifierDescExpandedFor = touchModifierDescExpandedFor === activeShowdownModifier ? null : activeShowdownModifier;
+          }
+      });
       bindVirtualStick(moveStick, moveKnob, (x, y) => {
           mobileInput.moveX = x;
           mobileInput.moveY = y;
@@ -8580,30 +8609,133 @@ const bolznstienPendingStrikes = [];
             width: ctx.measureText(text).width
         });
     }
-    function flushTopCenterStack(ctx, queue, suppressed) {
+    // App HUD polish (HU1): in portrait touch the top-center pill could
+    // overlap the top-right minimap and run off the viewport (long Duels /
+    // Arena Forge lines are queued left-aligned from innerWidth/2 - N with a
+    // 20px font and nothing ever clamped them). Portrait touch only: cap the
+    // font at 16px (re-measured), shrink toward a 13px floor until the stack
+    // fits the viewport, wrap any line that still doesn't fit, then clamp the
+    // pill into the viewport — tucking it left of the minimap when it fits in
+    // the gap, otherwise dropping the whole pill below the minimap. Text is
+    // never truncated and never shrunk below 13px. Landscape + desktop pass
+    // no opts and keep the exact legacy geometry.
+    function flushTopCenterStack(ctx, queue, suppressed, opts) {
         if (!queue.length || suppressed) { queue.length = 0; return; }
-        let top = Infinity, bottom = -Infinity, left = Infinity, right = -Infinity;
-        for (const line of queue) {
-            const m = /(\d+(?:\.\d+)?)px/.exec(line.font || '');
-            const size = m ? parseFloat(m[1]) : 14;
-            const ascent = size * 0.75, descent = size * 0.25;
-            if (line.y - ascent < top) top = line.y - ascent;
-            if (line.y + descent > bottom) bottom = line.y + descent;
-            const lineLeft = line.textAlign === 'center' ? line.x - line.width / 2 : line.x;
-            const lineRight = line.textAlign === 'center' ? line.x + line.width / 2 : line.x + line.width;
-            if (lineLeft < left) left = lineLeft;
-            if (lineRight > right) right = lineRight;
+        const touchPortrait = !!(opts && opts.touch && typeof innerWidth === 'number' && typeof innerHeight === 'number' && innerWidth < innerHeight);
+        let eff = queue.map((line) => {
+            let font = line.font, width = line.width;
+            if (touchPortrait) {
+                const m = /(\d+(?:\.\d+)?)px/.exec(font || '');
+                const size = m ? parseFloat(m[1]) : 14;
+                if (size > 16) {
+                    font = (font || '').replace(/(\d+(?:\.\d+)?)px/, '16px');
+                    const prevFont = ctx.font;
+                    ctx.font = font;
+                    width = ctx.measureText(line.text).width;
+                    ctx.font = prevFont;
+                }
+            }
+            return { text: line.text, x: line.x, y: line.y, font, fillStyle: line.fillStyle, textAlign: line.textAlign, width };
+        });
+        const lineSize = (line) => { const m = /(\d+(?:\.\d+)?)px/.exec(line.font || ''); return m ? parseFloat(m[1]) : 14; };
+        const measureWith = (text, font) => { const prev = ctx.font; ctx.font = font; const w = ctx.measureText(text).width; ctx.font = prev; return w; };
+        const unionBounds = (lines) => {
+            let top = Infinity, bottom = -Infinity, left = Infinity, right = -Infinity;
+            for (const line of lines) {
+                const size = lineSize(line);
+                if (line.y - size * 0.75 < top) top = line.y - size * 0.75;
+                if (line.y + size * 0.25 > bottom) bottom = line.y + size * 0.25;
+                const lineLeft = line.textAlign === 'center' ? line.x - line.width / 2 : line.x;
+                const lineRight = line.textAlign === 'center' ? line.x + line.width / 2 : line.x + line.width;
+                if (lineLeft < left) left = lineLeft;
+                if (lineRight > right) right = lineRight;
+            }
+            return { top, bottom, left, right };
+        };
+        if (touchPortrait) {
+            const maxPanelW = innerWidth - 16;
+            // (1) Shrink fonts, 1px at a time down to a 13px floor, until the
+            // stack fits the viewport width.
+            let bounds = unionBounds(eff);
+            while ((bounds.right - bounds.left) + 28 > maxPanelW) {
+                let shrank = false;
+                eff = eff.map((line) => {
+                    const size = lineSize(line);
+                    if (size <= 13) return line;
+                    const font = (line.font || '').replace(/(\d+(?:\.\d+)?)px/, `${size - 1}px`);
+                    shrank = true;
+                    return { ...line, font, width: measureWith(line.text, font) };
+                });
+                if (!shrank) break;
+                bounds = unionBounds(eff);
+            }
+            // (2) Still too wide (very long single lines): wrap the widest
+            // line at word boundaries, pushing later lines down, until the
+            // stack fits or nothing splittable remains.
+            const maxLineW = maxPanelW - 28;
+            let guard = 0;
+            while (guard++ < 8) {
+                bounds = unionBounds(eff);
+                if ((bounds.right - bounds.left) + 28 <= maxPanelW) break;
+                let widest = -1;
+                for (let i = 0; i < eff.length; i++) {
+                    if (eff[i].width > maxLineW && (widest === -1 || eff[i].width > eff[widest].width)) widest = i;
+                }
+                if (widest === -1) break;
+                const line = eff[widest];
+                const words = line.text.split(' ');
+                if (words.length < 2) break;
+                let part1 = '', endIdx = 0;
+                for (let i = 0; i < words.length; i++) {
+                    const trial = part1 ? `${part1} ${words[i]}` : words[i];
+                    if (part1 && measureWith(trial, line.font) > maxLineW) break;
+                    part1 = trial;
+                    endIdx = i + 1;
+                }
+                const part2 = words.slice(endIdx).join(' ').trim();
+                if (!part2) break;
+                const lineH = Math.ceil(lineSize(line) * 1.3);
+                const first = { ...line, text: part1, width: measureWith(part1, line.font) };
+                const second = { ...line, text: part2, width: measureWith(part2, line.font), y: line.y + lineH };
+                const next = eff.slice();
+                next.splice(widest, 1, first, second);
+                for (let i = widest + 2; i < next.length; i++) next[i] = { ...next[i], y: next[i].y + lineH };
+                eff = next;
+            }
         }
+        const { top, bottom, left, right } = unionBounds(eff);
         const padX = 14;
+        let shiftX = 0, shiftY = 0;
+        if (touchPortrait) {
+            const margin = 8;
+            const panelLeft = left - padX, panelRight = right + padX;
+            const panelTop = top - 6, panelBottom = bottom + 4;
+            // (a) Clamp the pill into the viewport. The left edge never goes
+            // off-screen (the start of the text must stay readable); a pill
+            // wider than the viewport is pinned left as a last resort.
+            if (panelLeft < margin) shiftX = margin - panelLeft;
+            else if (panelRight > innerWidth - margin) shiftX = innerWidth - margin - panelRight;
+            if (panelLeft + shiftX < margin) shiftX = margin - panelLeft;
+            // (b) Keep clear of the touch minimap (120px, top-right at
+            // x = innerWidth - 140, y 20..140 — see the minimap block in the
+            // HUD overlays). Tuck left of it when the pill fits in the gap;
+            // otherwise drop the whole pill below it.
+            const mapLeft = innerWidth - 140, mapTop = 20, mapBottom = 140;
+            if (panelBottom > mapTop && panelTop < mapBottom && panelRight + shiftX > mapLeft - margin) {
+                const gapWidth = mapLeft - margin - margin;
+                if ((panelRight - panelLeft) <= gapWidth) shiftX = (mapLeft - margin) - panelRight;
+                else shiftY = mapBottom + 10 - panelTop;
+            }
+        }
         ctx.save();
-        drawChunkyPanel(ctx, left - padX, top - 6, (right - left) + padX * 2, (bottom - top) + 10,
+        drawChunkyPanel(ctx, left - padX + shiftX, top - 6 + shiftY, (right - left) + padX * 2, (bottom - top) + 10,
             { radius: 14, fill: UI_HUD_TOKENS.panelFill, stroke: UI_HUD_TOKENS.panelStroke, lineWidth: 1 });
         ctx.textBaseline = 'alphabetic';
-        for (const line of queue) {
+        for (const line of eff) {
             ctx.font = line.font;
             ctx.fillStyle = line.fillStyle;
             ctx.textAlign = line.textAlign;
-            ctx.fillText(line.text, line.x, line.y);
+            ctx.fillText(line.text, line.x + shiftX, line.y + shiftY);
         }
         ctx.textAlign = 'left';
         ctx.restore();
@@ -12848,6 +12980,20 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           const overlay = document.createElement('div');
           overlay.id = 'matchIntroCards';
           overlay.className = 'match-intro';
+          // App HUD polish (HU2): the active showdown modifier's description
+          // is also shown here, up front at match start — in app mode there
+          // is no pre-match lobby, so the intro cards are the first place
+          // the player can read what the modifier does. Touch only; the
+          // desktop intro is untouched.
+          if (mobileInput.enabled && activeShowdownModifier && !isShowdownModifierActive('none')) {
+              const introModDef = getShowdownModifierDef(activeShowdownModifier);
+              if (introModDef && introModDef.description) {
+                  const modRow = document.createElement('div');
+                  modRow.className = 'match-intro__modifier';
+                  modRow.textContent = `${introModDef.icon ? `${introModDef.icon} ` : ''}${introModDef.label || introModDef.name}: ${introModDef.description}`;
+                  overlay.appendChild(modRow);
+              }
+          }
           overlay.appendChild(buildMatchCard(roster.playerCard));
           if (roster.teammates.length) {
             const label = document.createElement('div');
@@ -89960,14 +90106,52 @@ function checkHit(target, b, i){
         else if (isKnockDonateMode) mapLabel = 'Knock n Donate Arena';
         else if (isPropHuntMode) mapLabel = 'Prop Hunt — Crown Collapse';
         else if (isTrioShowdownMode) mapLabel = 'Trio Showdown Arena';
-        // Phase 3: touch mode collapses the three-line Map / Modifier /
-        // description block into one small line at the top-left — the
-        // description lives pre-match, not on the live playfield.
+        // App HUD polish (HU2): touch mode used to collapse the three-line
+        // Map / Modifier / description block into one 11px line at the
+        // top-left, and the description "lived pre-match" — but there is no
+        // pre-match lobby in app mode, so the player never saw what the
+        // active modifier does. The line is now 13px, and tapping it
+        // expands the modifier's description in a panel below the
+        // top-center pill (tap again to collapse; see initMobileControls).
+        // The panel sits at y=80, left of the minimap, so it clears the
+        // pill above it and the minimap to its right.
         if (touchHud) {
-            const touchMod = (activeShowdownModifier && !isShowdownModifierActive('none')) ? ` \u00b7 ${activeShowdownModifierLabel}` : '';
+            const touchModDef = (activeShowdownModifier && !isShowdownModifierActive('none')) ? getShowdownModifierDef(activeShowdownModifier) : null;
+            const touchModHasDesc = !!(touchModDef && touchModDef.description);
+            const touchModExpanded = touchModHasDesc && touchModifierDescExpandedFor === activeShowdownModifier;
+            const touchMod = touchModDef ? ` \u00b7 ${activeShowdownModifierLabel}${touchModHasDesc ? (touchModExpanded ? ' \u25b4' : ' \u25be') : ''}` : '';
             ctx.fillStyle = '#b9d6ff';
-            ctx.font = 'bold 11px sans-serif';
+            ctx.font = 'bold 13px sans-serif';
             ctx.fillText(`${mapLabel}${touchMod}`, 12, 24);
+            if (touchModExpanded) {
+                // Word-wrap the description to the strip left of the minimap.
+                const descMaxW = Math.max(120, innerWidth - 140 - 8 - 12 - 16);
+                ctx.font = '13px sans-serif';
+                const descLines = [''];
+                for (const word of touchModDef.description.split(' ')) {
+                    const trial = descLines[descLines.length - 1] ? `${descLines[descLines.length - 1]} ${word}` : word;
+                    if (ctx.measureText(trial).width > descMaxW && descLines[descLines.length - 1]) descLines.push(word);
+                    else descLines[descLines.length - 1] = trial;
+                }
+                let descPanelW = 0;
+                for (const descLine of descLines) descPanelW = Math.max(descPanelW, ctx.measureText(descLine).width);
+                descPanelW = Math.min(descPanelW + 20, innerWidth - 140 - 8 - 12);
+                const descLineH = 17, descPanelY = 80, descPanelH = descLines.length * descLineH + 12;
+                // Raw rounded-rect panel (not a drawChunkyPanel call site):
+                // the UI Refresh Part 1 suite counts those call sites exactly.
+                ctx.save();
+                ctx.fillStyle = 'rgba(24, 18, 4, 0.88)';
+                ctx.strokeStyle = 'rgba(255, 209, 102, 0.7)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.roundRect(12, descPanelY, descPanelW, descPanelH, 10);
+                ctx.fill();
+                ctx.stroke();
+                ctx.fillStyle = 'rgba(255, 209, 102, 0.95)';
+                ctx.font = '13px sans-serif';
+                descLines.forEach((descLine, i) => ctx.fillText(descLine, 22, descPanelY + 17 + i * descLineH));
+                ctx.restore();
+            }
         } else {
             ctx.fillText(`Map: ${mapLabel}`, 20, 86);
             if (activeShowdownModifier && !isShowdownModifierActive('none')) {
@@ -90748,9 +90932,13 @@ function checkHit(target, b, i){
     // Suppressed when this mode's own HUD already covers the top-center — those
     // lines are hidden under that panel today, and the stack must neither
     // paint over it nor resurrect the text on top of it.
+    // App HUD polish (HU1): pass touch mode so portrait touch clamps the
+    // pill to the viewport and clears the minimap; landscape + desktop keep
+    // the legacy geometry.
     flushTopCenterStack(ctx, topCenterStackQueue,
         isImpossibleMode || isBraweBallMode || isKnockoutMode ||
-        isWeeFeeBossMode || isBlinkEyeDodgeMode || isTutorialMode);
+        isWeeFeeBossMode || isBlinkEyeDodgeMode || isTutorialMode,
+        { touch: touchHud });
 
     renderHypeChainHud();
 
