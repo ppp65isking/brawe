@@ -610,6 +610,79 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
            columns on a 360px phone read as a squeezed desktop panel);
            the header tightens so its wrap reads cleanly. */
         @media (max-width:400px){.native-app .brawe-shop-content>div{grid-template-columns:1fr !important}.native-app .brawe-shop-title{font-size:16px !important}.native-app .brawe-shop-header{padding:10px !important;gap:6px}}
+        /* ---- Arena Forge app overhaul round 2, Tier 2 UI (2026-11-19):
+           match-intro phone restyle, profile editor + ranked queue phone
+           layouts. App/touch mode only (.native-app); the website is
+           untouched — shared overlays are restyled through .native-app
+           rules, never by editing their inline styles. ---- */
+        /* 1. Match-intro cards: full-width horizontal rows on phones.
+           The 132px vertical cards overflowed a 360px portrait screen
+           (3 across = 416px) and the overlay had no scroll, so the
+           roster ran off the bottom; rows are 44px-portrait strips now,
+           the overlay scrolls with safe-area padding, and the mode/map
+           header + split modifier name/description sit on top. In
+           landscape the rows go two-across so the list stays short. */
+        .native-app .match-intro{justify-content:flex-start !important;overflow-y:auto !important;padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left)) !important;gap:8px !important}
+        .native-app .match-intro__head{width:100%;max-width:520px;text-align:center;flex:none}
+        .native-app .match-intro__mode{font-size:24px;font-weight:1000;color:#fff;letter-spacing:.02em;line-height:1.15}
+        .native-app .match-intro__map{font-size:15px;font-weight:800;color:#9cc3e9;margin-top:2px}
+        .native-app .match-intro__modifier{width:100%;max-width:520px;text-align:left !important;padding:10px 12px !important;flex:none}
+        .native-app .match-intro__modifier-name{font-size:15px;font-weight:1000;color:#ffd166}
+        .native-app .match-intro__modifier-desc{font-size:13px;font-weight:700;color:#ffe9b0;line-height:1.4;margin-top:2px}
+        .native-app .match-intro__label{width:100%;max-width:520px;text-align:left;font-size:12px}
+        .native-app .match-intro__row{flex-direction:column !important;flex-wrap:nowrap !important;align-items:stretch !important;width:100%;max-width:520px;gap:6px !important}
+        .native-app .match-card{display:flex !important;align-items:center;gap:10px;width:100% !important;max-width:520px;padding:8px 12px !important;text-align:left}
+        .native-app .match-card.is-player{width:100% !important;max-width:520px}
+        .native-app .match-card__portrait{width:44px !important;height:44px !important;margin:0 !important;flex:none;font-size:22px}
+        .native-app .match-card__body{flex:1;min-width:0;text-align:left}
+        .native-app .match-card__name{font-size:15px}
+        .native-app .match-card__title{font-size:11px}
+        .native-app .match-card__fighter{font-size:12px}
+        .native-app .match-card__tag{margin-top:0 !important;flex:none}
+        .native-app .match-intro__more{text-align:center}
+        @media (orientation:landscape){.native-app .match-intro__row{display:grid !important;grid-template-columns:1fr 1fr}.native-app .match-intro__mode{font-size:20px}}
+        /* 2a. Profile editor: full-bleed overlay on phones — the 620px
+           centered panel read as a shrunk desktop dialog, and its 42px
+           inputs / ~38px buttons were below the 44px touch floor.
+           One scroller (the panel itself), 16px fields so focusing
+           never zooms, stacked labels, full-width 48px actions. */
+        .native-app .profile-edit-overlay{padding:0 !important;display:block !important}
+        .native-app .profile-edit-panel{width:100vw !important;max-width:none !important;height:100dvh !important;max-height:none !important;border-radius:0 !important;border:0 !important;box-shadow:none !important;padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left)) !important}
+        .native-app .profile-edit-panel h2{font-size:22px}
+        .native-app .profile-edit-panel label{grid-template-columns:1fr !important;gap:4px !important}
+        .native-app .profile-edit-panel>input,.native-app .profile-edit-panel select{min-height:44px !important;font-size:16px !important}
+        .native-app .profile-edit-actions{display:flex !important;gap:10px !important;margin-top:18px !important}
+        .native-app .profile-edit-actions button{flex:1 !important;min-height:48px !important;padding:12px !important;font-size:15px !important}
+        /* 2b. Ranked queue: the 1100px panel with a fixed 230px/1fr/230px
+           draft grid overflowed a 360px phone sideways, the picker lived
+           in a nested 275px scroller, and the lock-in buttons were
+           ~34px tall. On phones (<=760px) the panel goes full-bleed,
+           the draft stacks picker-first in the panel's single scroller,
+           and every button clears 44px. Desktop inline styles are
+           untouched; wider app windows keep the 3-column draft. */
+        @media (max-width:760px){
+        .native-app .ranked-queue-overlay{padding:0 !important}
+        .native-app .ranked-queue-panel{width:100vw !important;max-width:none !important;height:100dvh !important;max-height:none !important;border-radius:0 !important;border:0 !important;box-shadow:none !important;padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left)) !important}
+        .native-app .ranked-queue-top{flex-direction:column !important;align-items:stretch !important}
+        .native-app .ranked-queue-title{font-size:18px !important}
+        .native-app .ranked-queue-meta{font-size:12px !important;line-height:1.4}
+        .native-app .ranked-queue-top-actions{display:flex !important;gap:8px !important}
+        .native-app .ranked-queue-top-actions button{flex:1 !important;min-height:44px !important;padding:10px 12px !important}
+        .native-app .ranked-queue-banner{flex-wrap:wrap !important}
+        .native-app .ranked-queue-lineup{flex-wrap:wrap !important;gap:6px !important}
+        .native-app .ranked-queue-stepper{-webkit-overflow-scrolling:touch}
+        .native-app .ranked-queue-arena{grid-template-columns:1fr !important}
+        .native-app .ranked-queue-col-center{order:1 !important}
+        .native-app .ranked-queue-col-blue{order:2 !important}
+        .native-app .ranked-queue-col-red{order:3 !important}
+        .native-app .ranked-queue-search{min-height:44px !important;font-size:16px !important;padding:10px 12px !important}
+        .native-app .ranked-queue-grid{grid-template-columns:repeat(auto-fill,minmax(108px,1fr)) !important;max-height:none !important;overflow-y:visible !important}
+        .native-app .ranked-queue-pick-card{min-height:48px !important;display:flex !important;flex-direction:column !important;justify-content:center !important;padding:8px 6px !important}
+        .native-app .ranked-queue-controls{flex-wrap:wrap !important}
+        .native-app .ranked-queue-controls button{min-height:44px !important;padding:10px 16px !important;flex:1 1 auto !important}
+        .native-app .ranked-queue-actions{flex-direction:column !important;align-items:stretch !important}
+        .native-app .ranked-queue-actions button{min-height:48px !important;width:100% !important}
+        }
         `;
         document.head.appendChild(styleSheet);
 
@@ -13827,9 +13900,11 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           card.style.setProperty('--match-card-color', data.color || '#8aa3c4');
           card.innerHTML =
             `<div class="match-card__portrait${hasCustomBrawlerPortrait(entry.brawlerId) ? ' has-custom-portrait' : ''}">${getBrawlerPortraitMarkup(entry.brawlerId)}</div>` +
+            `<div class="match-card__body">` +
             `<div class="match-card__name">${entry.displayName}</div>` +
             (entry.title ? `<div class="match-card__title">${entry.title}</div>` : '') +
             `<div class="match-card__fighter">${data.name || entry.brawlerId} · POWER ${entry.powerLevel || 1}</div>` +
+            `</div>` +
             (entry.tag ? `<div class="match-card__tag">${entry.tag}</div>` : '');
           return card;
         }
@@ -13857,17 +13932,50 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           const overlay = document.createElement('div');
           overlay.id = 'matchIntroCards';
           overlay.className = 'match-intro';
+          // Round 2 Tier 2 (match-intro phone restyle): in touch mode the
+          // intro also names the mode and the map up front — there is no
+          // pre-match lobby in app mode, so this is the only place the
+          // player sees them. The map name reuses appEventMapName (same
+          // names and null rules as the Events slots: Duels / Tower Duels
+          // / Fused / Friendly Battle have no named map in code, so no
+          // map line is invented for them). Desktop intro is untouched.
+          if (mobileInput.enabled) {
+              try {
+                  const head = document.createElement('div');
+                  head.className = 'match-intro__head';
+                  const modeEl = document.createElement('div');
+                  modeEl.className = 'match-intro__mode';
+                  modeEl.textContent = getShowdownModeLabel(showdownMode);
+                  head.appendChild(modeEl);
+                  const introMapName = (typeof appEventMapName === 'function') ? appEventMapName(showdownMode) : null;
+                  if (introMapName) {
+                      const mapEl = document.createElement('div');
+                      mapEl.className = 'match-intro__map';
+                      mapEl.textContent = `🗺 ${introMapName}`;
+                      head.appendChild(mapEl);
+                  }
+                  overlay.appendChild(head);
+              } catch (_) { /* header is presentational; never block match start */ }
+          }
           // App HUD polish (HU2): the active showdown modifier's description
           // is also shown here, up front at match start — in app mode there
           // is no pre-match lobby, so the intro cards are the first place
           // the player can read what the modifier does. Touch only; the
-          // desktop intro is untouched.
+          // desktop intro is untouched. Round 2 Tier 2: name and
+          // description are split onto their own lines so the description
+          // reads at phone size instead of running on after the name.
           if (mobileInput.enabled && activeShowdownModifier && !isShowdownModifierActive('none')) {
               const introModDef = getShowdownModifierDef(activeShowdownModifier);
               if (introModDef && introModDef.description) {
                   const modRow = document.createElement('div');
                   modRow.className = 'match-intro__modifier';
-                  modRow.textContent = `${introModDef.icon ? `${introModDef.icon} ` : ''}${introModDef.label || introModDef.name}: ${introModDef.description}`;
+                  const modName = document.createElement('div');
+                  modName.className = 'match-intro__modifier-name';
+                  modName.textContent = `${introModDef.icon ? `${introModDef.icon} ` : ''}${introModDef.label || introModDef.name}`;
+                  const modDesc = document.createElement('div');
+                  modDesc.className = 'match-intro__modifier-desc';
+                  modDesc.textContent = introModDef.description;
+                  modRow.append(modName, modDesc);
                   overlay.appendChild(modRow);
               }
           }
@@ -23279,6 +23387,59 @@ let heistFeverActive = false;
           return card;
       };
 
+      // Round 2 Tier 2 (shop empty states): the only shop tab whose grid
+      // can ever be empty is SKINS (ownership filter / search — see
+      // renderSkinsTab); every other tab renders fixed cards or fixed
+      // milestone tiers. One shared empty-state builder: icon + one-line
+      // explanation + one action. No shop items are invented here.
+      const makeShopEmptyState = ({ icon, titleText, bodyText, actionLabel, onAction }) => {
+          const empty = document.createElement('div');
+          empty.className = 'brawe-shop-empty';
+          empty.style.gridColumn = '1 / -1';
+          empty.style.display = 'flex';
+          empty.style.flexDirection = 'column';
+          empty.style.alignItems = 'center';
+          empty.style.textAlign = 'center';
+          empty.style.gap = '8px';
+          empty.style.padding = '36px 20px';
+          empty.style.border = '1px dashed rgba(130,190,255,.35)';
+          empty.style.borderRadius = '16px';
+          empty.style.background = 'rgba(8,16,32,.6)';
+          const glyph = document.createElement('div');
+          glyph.textContent = icon || '🎭';
+          glyph.style.fontSize = '40px';
+          glyph.style.lineHeight = '1';
+          empty.appendChild(glyph);
+          const titleEl = document.createElement('div');
+          titleEl.textContent = titleText;
+          titleEl.style.fontSize = '16px';
+          titleEl.style.fontWeight = '900';
+          titleEl.style.color = '#fff';
+          empty.appendChild(titleEl);
+          const body = document.createElement('div');
+          body.textContent = bodyText;
+          body.style.fontSize = '13px';
+          body.style.color = '#89b5d9';
+          body.style.lineHeight = '1.45';
+          body.style.maxWidth = '420px';
+          empty.appendChild(body);
+          const btn = document.createElement('button');
+          btn.textContent = actionLabel;
+          btn.style.minHeight = '44px';
+          btn.style.padding = '10px 22px';
+          btn.style.marginTop = '6px';
+          btn.style.border = 'none';
+          btn.style.borderRadius = '10px';
+          btn.style.background = '#5df2c2';
+          btn.style.color = '#08101d';
+          btn.style.fontWeight = '900';
+          btn.style.fontSize = '13px';
+          btn.style.cursor = 'pointer';
+          btn.onclick = onAction;
+          empty.appendChild(btn);
+          return empty;
+      };
+
       const cardGrid = () => {
           const grid = document.createElement('div');
           grid.style.display = 'grid';
@@ -23491,6 +23652,13 @@ let heistFeverActive = false;
               });
               const count = wrap.querySelector('[data-skin-count]');
               if (count) count.textContent = `${visible} skins`;
+              // Round 2 Tier 2: a search that matches nothing gets the
+              // same empty-state treatment as an empty filter, not a blank
+              // grid. (No [data-skin-card] at all means the filter itself
+              // is empty — that state is already showing, so stay hidden.)
+              const totalCards = wrap.querySelectorAll('[data-skin-card]').length;
+              const noMatch = wrap.querySelector('[data-shop-search-empty]');
+              if (noMatch) noMatch.style.display = (q && visible === 0 && totalCards > 0) ? '' : 'none';
           };
           const ownershipSel = document.createElement('select');
           ownershipSel.style.cssText = 'padding:9px;border-radius:9px;background:#0a1428;color:#fff;border:1px solid rgba(130,190,255,.25);font-weight:800;';
@@ -23648,6 +23816,52 @@ let heistFeverActive = false;
               card.appendChild(actions);
               grid.appendChild(card);
           });
+          // Round 2 Tier 2: the catalogue grid can be empty — the Owned
+          // filter with no skins owned, the Fighter-locked filter when
+          // every fighter is unlocked, the Buyable filter when nothing is
+          // left to buy. Show a real empty state instead of a blank grid.
+          if (!skinList.length) {
+              const emptyCopy = {
+                  owned: { titleText: 'No skins owned yet', bodyText: 'You have not bought any skins yet — browse the full catalogue to find your first.' },
+                  locked: { titleText: 'No locked fighters', bodyText: 'Every fighter with a skin is already unlocked, so nothing is hiding behind a locked fighter.' },
+                  buyable: { titleText: 'Nothing left to buy', bodyText: 'You already own every skin for the fighters you have unlocked.' },
+                  all: { titleText: 'No skins in the catalogue', bodyText: 'The skin catalogue is empty right now — check the Daily Deals instead.' }
+              }[shopSkinOwnership] || { titleText: 'No skins here', bodyText: 'Nothing matches this view right now.' };
+              grid.appendChild(makeShopEmptyState({
+                  icon: '🎭',
+                  titleText: emptyCopy.titleText,
+                  bodyText: emptyCopy.bodyText,
+                  actionLabel: shopSkinOwnership === 'all' ? 'BACK TO DAILY DEALS' : 'BROWSE ALL SKINS',
+                  onAction: () => {
+                      if (shopSkinOwnership === 'all') {
+                          const dailyBtn = sidebar.querySelector('[data-tab-id="daily"]');
+                          if (dailyBtn) { dailyBtn.click(); return; }
+                          activeTab = 'daily';
+                      }
+                      shopSkinOwnership = 'all';
+                      shopSkinQuery = '';
+                      renderTabContent();
+                  }
+              }));
+          }
+          // Search no-match state (hidden until a search matches nothing).
+          const searchEmpty = makeShopEmptyState({
+              icon: '🔍',
+              titleText: 'No skins match that search',
+              bodyText: 'Try a different skin or fighter name.',
+              actionLabel: 'CLEAR SEARCH',
+              onAction: () => {
+                  shopSkinQuery = '';
+                  search.value = '';
+                  wrap.querySelectorAll('[data-skin-card]').forEach(card => { card.style.display = ''; });
+                  const count = wrap.querySelector('[data-skin-count]');
+                  if (count) count.textContent = `${skinList.length} skins`;
+                  searchEmpty.style.display = 'none';
+              }
+          });
+          searchEmpty.setAttribute('data-shop-search-empty', '1');
+          searchEmpty.style.display = 'none';
+          grid.appendChild(searchEmpty);
           return wrap;
       };
 
@@ -55366,6 +55580,7 @@ let heistFeverActive = false;
         const overlay = document.createElement('div');
         overlay.style.position = 'fixed';
         overlay.style.inset = '0';
+        overlay.className = 'ranked-queue-overlay';
         overlay.style.background = 'rgba(3, 8, 18, 0.96)';
         overlay.style.zIndex = '2200';
         overlay.style.display = 'flex';
@@ -55373,6 +55588,7 @@ let heistFeverActive = false;
         overlay.style.justifyContent = 'center';
 
         const panel = document.createElement('div');
+        panel.className = 'ranked-queue-panel';
         panel.style.width = 'min(1100px, calc(100vw - 24px))';
         panel.style.maxHeight = 'min(890px, calc(100vh - 24px))';
         panel.style.overflow = 'auto';
@@ -55385,6 +55601,7 @@ let heistFeverActive = false;
         panel.style.fontFamily = 'sans-serif';
 
         const top = document.createElement('div');
+        top.className = 'ranked-queue-top';
         top.style.display = 'flex';
         top.style.justifyContent = 'space-between';
         top.style.alignItems = 'center';
@@ -55392,11 +55609,13 @@ let heistFeverActive = false;
 
         const titleBox = document.createElement('div');
         const title = document.createElement('h2');
+        title.className = 'ranked-queue-title';
         title.textContent = 'COMPETITIVE RANKED CLASH';
         title.style.margin = '0 0 4px 0';
         title.style.color = '#ffd166';
         title.style.fontSize = '20px';
         const meta = document.createElement('div');
+        meta.className = 'ranked-queue-meta';
         meta.style.fontSize = '13px';
         const floor = getRankedDivisionFloor(rankedPoints);
         const nextText = tierInfo.nextLabel
@@ -55408,10 +55627,12 @@ let heistFeverActive = false;
         top.appendChild(titleBox);
 
         const topActions = document.createElement('div');
+        topActions.className = 'ranked-queue-top-actions';
         topActions.style.display = 'flex';
         topActions.style.gap = '8px';
 
         const passBtn = document.createElement('button');
+        passBtn.className = 'ranked-queue-pass-btn';
         passBtn.textContent = '⭐ Ranked Pass (50 Tiers)';
         passBtn.style.border = 'none';
         passBtn.style.borderRadius = '9px';
@@ -55424,6 +55645,7 @@ let heistFeverActive = false;
         topActions.appendChild(passBtn);
 
         const close = document.createElement('button');
+        close.className = 'ranked-queue-close-btn';
         close.textContent = 'Close';
         close.style.border = 'none';
         close.style.borderRadius = '9px';
@@ -55441,6 +55663,7 @@ let heistFeverActive = false;
 
         // Map & Modifier Banner
         const banner = document.createElement('div');
+        banner.className = 'ranked-queue-banner';
         banner.style.margin = '12px 0 8px 0';
         banner.style.padding = '10px 14px';
         banner.style.background = 'rgba(10, 20, 38, 0.85)';
@@ -55475,6 +55698,7 @@ let heistFeverActive = false;
 
         // Player Lineup & Role Callout
         const lineupBanner = document.createElement('div');
+        lineupBanner.className = 'ranked-queue-lineup';
         lineupBanner.style.margin = '0 0 10px 0';
         lineupBanner.style.padding = '8px 14px';
         lineupBanner.style.background = isPlayerLeader ? 'rgba(255, 209, 102, 0.15)' : 'rgba(0, 245, 212, 0.12)';
@@ -55496,6 +55720,7 @@ let heistFeverActive = false;
 
         // Stepper Bar
         const stepper = document.createElement('div');
+        stepper.className = 'ranked-queue-stepper';
         stepper.style.display = 'flex';
         stepper.style.alignItems = 'center';
         stepper.style.justifyContent = 'space-between';
@@ -55510,6 +55735,7 @@ let heistFeverActive = false;
 
         // Status Callout Box
         const statusCallout = document.createElement('div');
+        statusCallout.className = 'ranked-queue-status';
         statusCallout.style.padding = '10px 14px';
         statusCallout.style.borderRadius = '10px';
         statusCallout.style.marginBottom = '12px';
@@ -55522,6 +55748,7 @@ let heistFeverActive = false;
 
         // Main Draft Arena
         const arena = document.createElement('div');
+        arena.className = 'ranked-queue-arena';
         arena.style.display = 'grid';
         arena.style.gridTemplateColumns = '230px 1fr 230px';
         arena.style.gap = '12px';
@@ -55529,6 +55756,7 @@ let heistFeverActive = false;
 
         // Blue Team Column
         const blueCol = document.createElement('div');
+        blueCol.className = 'ranked-queue-col ranked-queue-col-blue';
         blueCol.style.background = 'rgba(12, 32, 64, 0.6)';
         blueCol.style.border = '1px solid rgba(72, 149, 239, 0.6)';
         blueCol.style.borderRadius = '12px';
@@ -55540,6 +55768,7 @@ let heistFeverActive = false;
 
         // Center Column
         const centerCol = document.createElement('div');
+        centerCol.className = 'ranked-queue-col ranked-queue-col-center';
         centerCol.style.background = 'rgba(10, 18, 34, 0.9)';
         centerCol.style.border = '1px solid rgba(110, 176, 255, 0.3)';
         centerCol.style.borderRadius = '12px';
@@ -55551,6 +55780,7 @@ let heistFeverActive = false;
 
         // Red Team Column
         const redCol = document.createElement('div');
+        redCol.className = 'ranked-queue-col ranked-queue-col-red';
         redCol.style.background = 'rgba(64, 16, 28, 0.6)';
         redCol.style.border = '1px solid rgba(247, 37, 133, 0.6)';
         redCol.style.borderRadius = '12px';
@@ -55564,6 +55794,7 @@ let heistFeverActive = false;
 
         // Rank Ladder Section
         const ladderTitle = document.createElement('div');
+        ladderTitle.className = 'ranked-queue-ladder-title';
         ladderTitle.textContent = 'Rank Ladder & Divisions';
         ladderTitle.style.margin = '10px 0 6px 0';
         ladderTitle.style.fontWeight = '900';
@@ -55571,6 +55802,7 @@ let heistFeverActive = false;
         panel.appendChild(ladderTitle);
 
         const ladder = document.createElement('div');
+        ladder.className = 'ranked-queue-ladder';
         ladder.style.display = 'grid';
         ladder.style.gridTemplateColumns = 'repeat(auto-fit, minmax(140px, 1fr))';
         ladder.style.gap = '6px';
@@ -55591,6 +55823,7 @@ let heistFeverActive = false;
 
         // Action Bar (Bottom Launch Button)
         const actions = document.createElement('div');
+        actions.className = 'ranked-queue-actions';
         actions.style.display = 'flex';
         actions.style.justifyContent = 'space-between';
         actions.style.alignItems = 'center';
@@ -55598,6 +55831,7 @@ let heistFeverActive = false;
         actions.style.marginTop = '14px';
 
         const fastForwardBtn = document.createElement('button');
+        fastForwardBtn.className = 'ranked-queue-ff-btn';
         fastForwardBtn.textContent = '⚡ Fast-Forward / Auto-Draft';
         fastForwardBtn.style.border = '1px solid #00f5d4';
         fastForwardBtn.style.borderRadius = '9px';
@@ -55609,6 +55843,7 @@ let heistFeverActive = false;
         actions.appendChild(fastForwardBtn);
 
         const queueBtn = document.createElement('button');
+        queueBtn.className = 'ranked-queue-queue-btn';
         queueBtn.textContent = '⚔️ Complete Draft to Battle';
         queueBtn.style.border = 'none';
         queueBtn.style.borderRadius = '10px';
@@ -55898,6 +56133,7 @@ let heistFeverActive = false;
             blueRoster.forEach((r) => {
                 const brawlerId = bluePicks[r.slot];
                 const card = document.createElement('div');
+                card.className = 'ranked-queue-team-card';
                 card.style.background = brawlerId ? 'rgba(0, 245, 212, 0.12)' : 'rgba(0,0,0,0.25)';
                 card.style.border = `1px solid ${brawlerId ? '#00f5d4' : (r.isPlayer ? '#ffd166' : 'rgba(255,255,255,0.1)')}`;
                 card.style.borderRadius = '8px';
@@ -55914,6 +56150,7 @@ let heistFeverActive = false;
             redRoster.forEach((r) => {
                 const brawlerId = redPicks[r.slot];
                 const card = document.createElement('div');
+                card.className = 'ranked-queue-team-card';
                 card.style.background = brawlerId ? 'rgba(247, 37, 133, 0.12)' : 'rgba(0,0,0,0.25)';
                 card.style.border = `1px solid ${brawlerId ? '#f72585' : 'rgba(255,255,255,0.1)'}`;
                 card.style.borderRadius = '8px';
@@ -55955,6 +56192,7 @@ let heistFeverActive = false;
 
             // Search Bar
             const searchInput = document.createElement('input');
+            searchInput.className = 'ranked-queue-search';
             searchInput.type = 'search';
             searchInput.placeholder = 'Search available brawlers...';
             searchInput.value = draftSearchQuery;
@@ -55972,6 +56210,7 @@ let heistFeverActive = false;
 
             // Grid Box
             const gridBox = document.createElement('div');
+            gridBox.className = 'ranked-queue-grid';
             gridBox.style.display = 'grid';
             gridBox.style.gridTemplateColumns = 'repeat(auto-fill, minmax(130px, 1fr))';
             gridBox.style.gap = '6px';
@@ -56002,6 +56241,7 @@ let heistFeverActive = false;
                     const isEnemyProtected = (draftState === 'pick' || draftState === 'swap') && redProtect != null && id === redProtect;
 
                     const card = document.createElement('div');
+                    card.className = 'ranked-queue-pick-card';
                     card.style.padding = '7px';
                     card.style.borderRadius = '8px';
                     card.style.fontSize = '12px';
@@ -56052,6 +56292,7 @@ let heistFeverActive = false;
 
             // Action Controls Box
             const actionControlsBox = document.createElement('div');
+            actionControlsBox.className = 'ranked-queue-controls';
             actionControlsBox.style.display = 'flex';
             actionControlsBox.style.justifyContent = 'space-between';
             actionControlsBox.style.alignItems = 'center';
