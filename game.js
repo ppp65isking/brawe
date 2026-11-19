@@ -292,7 +292,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         .app-fighter-card.is-locked{opacity:.55}
         .app-fighters-empty{padding:18px;text-align:center;color:#9fc6e8;font-weight:800}
         #appFightersDetail{flex:1 1 auto;min-height:0;overflow-y:auto;display:flex;gap:14px;padding:10px 12px;border-radius:18px;border:2px solid rgba(255,255,255,.2);background:rgba(8,20,42,.55)}
-        .app-fighters-detail-portrait{flex:none;width:min(26vh,150px);aspect-ratio:1;border-radius:50%;display:grid;place-items:center;overflow:hidden;font-size:64px;font-weight:1000;border:5px solid #fff;background:linear-gradient(145deg,var(--detail-color,#0b69bd),#072755)}
+        .app-fighters-detail-portrait{flex:none;width:min(26vh,150px);height:min(26vh,150px);aspect-ratio:1;align-self:center;border-radius:50%;display:grid;place-items:center;overflow:hidden;font-size:64px;font-weight:1000;border:5px solid #fff;background:linear-gradient(145deg,var(--detail-color,#0b69bd),#072755)}
         .app-fighters-detail-portrait svg{width:92%;height:92%;display:block}
         .app-fighters-detail-info{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:6px}
         .app-fighters-detail-info h3{margin:0;font-size:clamp(20px,4.5vh,30px);text-transform:uppercase;line-height:1}
@@ -392,7 +392,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         /* Polish (phase 2): the top strip can overflow on narrow phones,
            and the Fighters detail row is cramped in narrow portrait. */
         @media (max-width:430px){#appHomeTop{flex-wrap:wrap;row-gap:6px}#appHomePlayer{font-size:13px;padding:5px 9px}#appHomeSeasonChip{font-size:11px;padding:5px 9px}#appHomeSaveBtn{padding:5px 8px;font-size:13px}#appHomeTop #homeCurrencyBar{gap:6px}}
-        @media (orientation:portrait) and (max-width:560px){#appFightersDetail{flex-direction:column;align-items:center;gap:10px}.app-fighters-detail-portrait{width:min(34vw,120px)}.app-fighters-detail-info{width:100%}}
+        @media (orientation:portrait) and (max-width:560px){#appFightersDetail{flex-direction:column;align-items:center;gap:10px}.app-fighters-detail-portrait{width:min(34vw,120px);height:min(34vw,120px)}.app-fighters-detail-info{width:100%}}
         @media (orientation:portrait){#appHomeHero{flex-direction:column;justify-content:center;text-align:center}.app-hero-info{align-items:center}.app-hero-fighters{align-self:center}#appHomeEventChip{max-width:52vw}}
         #mobileLandscapeHint{top:max(10px,env(safe-area-inset-top));padding:7px 12px;border-color:rgba(255,196,93,.5);background:rgba(17,20,31,.85);color:#ffe0a3}
         @media (orientation:portrait) and (max-width:760px){.mobile-stick{width:112px;height:112px}#mobileMoveStick,#mobileAimStick{bottom:max(26px,calc(env(safe-area-inset-bottom) + 10px))}#mobileActionButtons{right:max(14px,env(safe-area-inset-right));bottom:calc(max(26px,env(safe-area-inset-bottom)) + 118px);grid-template-columns:repeat(2,52px);gap:8px}.mobile-action-btn{width:52px;height:52px;font-size:19px}}
@@ -501,6 +501,32 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
            The full text is still in the DOM and in the kit detail
            sheet (tap a slot); this only evens the layout. */
         .app-kit-desc{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+        /* ---- Arena Forge app Fighters round 2 (2026-11-19): screenshot
+           diagnosis + favorites / sort / skin selector. App/touch mode
+           only; the website is untouched. ---- */
+        /* (b) The Core Surge description is NEVER clamped: the full text
+           is always visible in its slot (the F9 3-line clamp above still
+           applies to the Tool/Talent slots; the full text for those lives
+           in the kit detail sheet). */
+        .app-kit-slot[data-app-kit="hyper"] .app-kit-desc{display:block;-webkit-line-clamp:unset;overflow:visible}
+        /* (d) The portrait is square by construction now: an explicit
+           height matching its width, so a flex-stretch quirk in any
+           WebView can never pull it into a tall oval again. */
+        /* Favorites: the ★ sits on the card (top-right) and toggles the
+           favorite without focusing the card; the detail panel has a
+           real FAVORITE button for the same toggle. */
+        .app-fighter-card{position:relative}
+        .app-fighter-fav{position:absolute;top:4px;right:4px;z-index:1;width:26px;height:26px;display:grid;place-items:center;border-radius:50%;background:rgba(0,0,0,.45);color:#9fc6e8;font-size:15px;line-height:1;cursor:pointer}
+        .app-fighter-fav.is-fav{color:#ffd166}
+        /* Sort control: a compact select in the toolbar row. */
+        .app-fighters-sort{flex:none;padding:9px 8px;border-radius:12px;border:2px solid rgba(255,255,255,.2);background:rgba(8,20,42,.7);color:#fff;font-size:13px;font-weight:800;outline:none;cursor:pointer}
+        /* Skin selector row in the detail panel (only when the brawler
+           actually owns a skin; DEFAULT + owned skins, active one lit). */
+        .app-fighters-skins{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+        .app-fighters-skins-label{font-size:9px;font-weight:1000;letter-spacing:.08em;color:#8fdfff}
+        .app-fighter-skin{padding:7px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:#cfe6ff;font-size:11px;font-weight:1000;cursor:pointer;white-space:nowrap}
+        .app-fighter-skin.is-active{background:#ff9f1c;border-color:#ffd166;color:#231303}
+        .app-fighters-detail-actions .app-fighters-fav-btn{background:rgba(255,209,102,.16);color:#ffd166;border:1px solid rgba(255,209,102,.5)}
         /* Kit detail sheet (bottom sheet, app style). */
         .app-kit-sheet-overlay{position:fixed;inset:0;z-index:100;display:flex;align-items:flex-end;justify-content:center;background:rgba(2,8,18,.62);backdrop-filter:blur(3px)}
         .app-kit-sheet{width:100%;max-width:560px;max-height:82dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;box-sizing:border-box;padding:16px 16px calc(16px + env(safe-area-inset-bottom));border-radius:20px 20px 0 0;border:2px solid rgba(255,255,255,.2);border-bottom:0;background:linear-gradient(160deg,#0a2140,#06101f);color:#fff;font-family:inherit;animation:appKitSheetIn .18s ease-out}
@@ -6303,7 +6329,15 @@ const bolznstienPendingStrikes = [];
     // getScaledStats, getBrawlerPortraitMarkup and the web picker's
     // selection flow. Tapping a card focuses it; PLAY selects it as hero.
     let appFightersBuilt = false;
-    const appFightersState = { search: '', role: 'all', focused: null };
+    const appFightersState = { search: '', role: 'all', focused: null, sort: 'favorites' };
+    // Round 2: the sort pref persists in localStorage (a UI pref, not
+    // save data). A bad or stale value falls back to the default.
+    const APP_FIGHTERS_SORT_KEY = 'brawl_arena_fighters_sort';
+    const APP_FIGHTERS_SORTS = ['favorites', 'name', 'power', 'rarity', 'owned'];
+    try {
+        const storedSort = localStorage.getItem(APP_FIGHTERS_SORT_KEY);
+        if (APP_FIGHTERS_SORTS.includes(storedSort)) appFightersState.sort = storedSort;
+    } catch (_) {}
     const APP_FIGHTER_RARITY_COLORS = { Starter: '#ff9f1c', Rare: '#8cf05a', Epic: '#b388ff', Mythic: '#ff8ad8', Exotic: '#ffcd2f', Unique: '#ff6b6b', Anomaly: '#f3d5ff' };
     function appFightersRoles() {
         const roles = [];
@@ -6322,12 +6356,44 @@ const bolznstienPendingStrikes = [];
             if (q && !(String(data.name || id).toLowerCase().includes(q) || String(id).toLowerCase().includes(q))) return false;
             return true;
         });
+        // Round 2: favorites always sort first, then the chosen sort.
+        // 'favorites' (the default) keeps the class sort below for
+        // everything else, so with no favorites the order is exactly
+        // what it was before.
+        const sortMode = appFightersState.sort || 'favorites';
+        const byName = (a, b) => String(brawlerData[a]?.name || a).localeCompare(String(brawlerData[b]?.name || b));
         // Brawl Stars default: class sort — group by role, then name.
-        return list.sort((a, b) => {
+        const byClass = (a, b) => {
             const ra = brawlerData[a]?.role || 'Fighter';
             const rb = brawlerData[b]?.role || 'Fighter';
             if (ra !== rb) return ra.localeCompare(rb);
-            return String(brawlerData[a]?.name || a).localeCompare(String(brawlerData[b]?.name || b));
+            return byName(a, b);
+        };
+        const byPower = (a, b) => {
+            const pa = getEffectiveBrawlerProgress(a).level || 1;
+            const pb = getEffectiveBrawlerProgress(b).level || 1;
+            if (pa !== pb) return pb - pa;
+            return byName(a, b);
+        };
+        const byRarity = (a, b) => {
+            // Canonical rarity rank (Starter 1 → Anomaly 7).
+            const ca = getBrawlerRarityRank(a);
+            const cb = getBrawlerRarityRank(b);
+            if (ca !== cb) return cb - ca;
+            return byName(a, b);
+        };
+        const byOwned = (a, b) => {
+            const oa = isBrawlerUnlocked(a) ? 0 : 1;
+            const ob = isBrawlerUnlocked(b) ? 0 : 1;
+            if (oa !== ob) return oa - ob;
+            return byClass(a, b);
+        };
+        const modeSort = sortMode === 'name' ? byName : sortMode === 'power' ? byPower : sortMode === 'rarity' ? byRarity : sortMode === 'owned' ? byOwned : byClass;
+        return list.sort((a, b) => {
+            const fa = isFavoriteBrawler(a) ? 0 : 1;
+            const fb = isFavoriteBrawler(b) ? 0 : 1;
+            if (fa !== fb) return fa - fb;
+            return modeSort(a, b);
         });
     }
     function buildAppFightersView() {
@@ -6342,6 +6408,13 @@ const bolznstienPendingStrikes = [];
                   <input id="appFightersSearch" class="app-fighters-search" type="search" placeholder="🔎 Search fighters…" autocomplete="off" enterkeyhint="search">
                   <button type="button" id="appFightersClearSearch" class="app-fighters-clear-search" aria-label="Clear search" hidden>✕</button>
                 </div>
+                <select id="appFightersSort" class="app-fighters-sort" aria-label="Sort fighters">
+                  <option value="favorites">★ FAVORITES</option>
+                  <option value="name">NAME A–Z</option>
+                  <option value="power">POWER ↓</option>
+                  <option value="rarity">RARITY ↓</option>
+                  <option value="owned">OWNED FIRST</option>
+                </select>
                 <div id="appFightersRoles" class="app-fighters-roles"></div>
                 <span id="appFightersCount" class="app-fighters-count"></span>
               </div>
@@ -6367,6 +6440,20 @@ const bolznstienPendingStrikes = [];
                 if (clearBtn) clearBtn.hidden = true;
                 renderAppFightersStrip();
             });
+            // Round 2: sort control — favorites first is the default;
+            // the pick persists as a UI pref (localStorage, not save data).
+            const sortSelect = view.querySelector('#appFightersSort');
+            if (sortSelect) {
+                sortSelect.value = appFightersState.sort || 'favorites';
+                sortSelect.addEventListener('change', (event) => {
+                    const next = event.target.value;
+                    if (!APP_FIGHTERS_SORTS.includes(next)) return;
+                    appBuzz(10);
+                    appFightersState.sort = next;
+                    try { localStorage.setItem(APP_FIGHTERS_SORT_KEY, next); } catch (_) {}
+                    renderAppFightersStrip();
+                });
+            }
             view.querySelector('#appFightersRoles')?.addEventListener('click', (event) => {
                 const chip = event.target.closest('[data-app-role]');
                 if (!chip) return;
@@ -6379,13 +6466,22 @@ const bolznstienPendingStrikes = [];
                 renderAppFightersStrip();
             });
             view.querySelector('#appFightersStrip')?.addEventListener('click', (event) => {
+                // Round 2: the ★ on a card favorites it — it must not
+                // also focus the card, so it is checked first.
+                const favBtn = event.target.closest('[data-app-favorite]');
+                if (favBtn) { appBuzz(10); toggleAppFighterFavorite(favBtn.dataset.appFavorite); return; }
                 const card = event.target.closest('[data-app-fighter]');
                 if (!card) return;
                 appBuzz(10);
                 view.querySelector('#appFightersSearch')?.blur();
                 appFightersState.focused = card.dataset.appFighter;
-                renderAppFightersStrip();
+                // Round 2 (screenshot item a): render the detail FIRST —
+                // if the detail cannot render, the strip must not already
+                // show the new selection while the panel still shows the
+                // old brawler. The detail never leaves stale content now
+                // (it renders an error state on failure, see below).
                 renderAppFightersDetail();
+                renderAppFightersStrip();
                 // Phase 3: the detail is one page with the view now, so a
                 // new fighter starts at the top instead of mid-scroll, and
                 // the picked card stays visible in the strip.
@@ -6394,6 +6490,12 @@ const bolznstienPendingStrikes = [];
                 view.querySelector(`[data-app-fighter="${appFightersState.focused}"]`)?.scrollIntoView({ inline: 'center', block: 'nearest' });
             });
             view.querySelector('#appFightersDetail')?.addEventListener('click', (event) => {
+                // Round 2: a skin chip equips that skin; the FAVORITE
+                // button toggles the favorite. Both are checked before
+                // the kit-slot tap below.
+                const skinBtn = event.target.closest('[data-app-skin]');
+                if (skinBtn) { appBuzz(10); appFightersSkinPick(appFightersState.focused, skinBtn.dataset.appSkin); return; }
+                if (event.target.closest('[data-app-action="favorite"]')) { appBuzz(10); toggleAppFighterFavorite(appFightersState.focused); return; }
                 const kitBtn = event.target.closest('[data-app-kit]');
                 // Phase 4: a kit tap opens the detail sheet (name + full
                 // description + real data); the sheet's SELECT button is
@@ -6435,6 +6537,7 @@ const bolznstienPendingStrikes = [];
             try { portrait = getBrawlerPortraitMarkup(id); } catch (_) {}
             return `<button type="button" class="app-fighter-card${appFightersState.focused === id ? ' is-selected' : ''}${locked ? ' is-locked' : ''}" data-app-fighter="${id}" style="--card-color:${data.color || '#0b69bd'}">
               <span class="app-fighter-portrait">${portrait}</span>
+              <span class="app-fighter-fav${isFavoriteBrawler(id) ? ' is-fav' : ''}" data-app-favorite="${id}" role="button" aria-label="Favorite ${data.name || id}">${isFavoriteBrawler(id) ? '★' : '☆'}</span>
               <b>${data.name || id}</b>
               <small>${locked ? '🔒 LOCKED' : `POWER ${pData.level || 1}`}</small>${soulCost > 0 ? `
               <span class="app-fighter-cost">${soulCost} SOULS TO UNLOCK</span>` : ''}
@@ -6459,12 +6562,76 @@ const bolznstienPendingStrikes = [];
     };
     const kitName = (raw, fallback) => raw ? kitSplit(raw).name : fallback;
     const kitDesc = (raw) => raw ? kitSplit(raw).desc : '';
+    // Round 2: Fighters favorites + skin selector helpers.
+    // Favorites reuse the existing localStorage-backed set
+    // (isFavoriteBrawler / setFavoriteBrawler) — the ★ on a strip card
+    // and the FAVORITE button in the detail panel both toggle it.
+    function toggleAppFighterFavorite(id) {
+        if (!brawlerData[id]) return;
+        setFavoriteBrawler(id, !isFavoriteBrawler(id));
+        renderAppFightersStrip();
+        renderAppFightersDetail();
+    }
+    // Owned skins for one brawler, from the skins that actually exist
+    // (skinsDatabase) and are actually owned (playerData.ownedSkins).
+    // ownedSkins is an array per brawler; any other shape (a stale
+    // `true`, a missing map) means "no enumerated skins", never a grant.
+    function appFighterOwnedSkins(id) {
+        const out = [];
+        try {
+            const owned = playerData?.ownedSkins?.[id];
+            if (!Array.isArray(owned)) return out;
+            for (const skinId of owned) {
+                const skin = (typeof skinsDatabase !== 'undefined' && skinsDatabase[skinId]) || null;
+                if (skin && skin.brawler === id) out.push(skin);
+            }
+        } catch (_) {}
+        return out;
+    }
+    // Equip via the existing skin-equip path: playerData.selectedSkins
+    // is what getActiveSkinForBrawler reads (the same write the shop
+    // uses). 'default' clears every equip map for the brawler. An
+    // unowned, unknown, or foreign skin is refused — the selector only
+    // ever offers owned skins for this brawler, so this is a backstop.
+    function appFightersSkinPick(id, skinId) {
+        if (!brawlerData[id]) return;
+        if (skinId === 'default') {
+            if (playerData.selectedSkins) delete playerData.selectedSkins[id];
+            if (playerData.activeSkins) delete playerData.activeSkins[id];
+            if (playerData.equippedSkins) delete playerData.equippedSkins[id];
+        } else {
+            const skin = (typeof skinsDatabase !== 'undefined' && skinsDatabase[skinId]) || null;
+            if (!skin || skin.brawler !== id) return;
+            const owned = playerData?.ownedSkins?.[id];
+            if (!Array.isArray(owned) || !owned.includes(skinId)) return;
+            if (!playerData.selectedSkins) playerData.selectedSkins = {};
+            playerData.selectedSkins[id] = skinId;
+        }
+        saveProgress();
+        renderAppFightersStrip();
+        renderAppFightersDetail();
+        syncAppHome();
+    }
+    // Round 2 (screenshot item a): the detail render never leaves stale
+    // content behind. If anything about the focused brawler fails to
+    // render, the panel says so instead of still showing the previous
+    // brawler while the strip already highlights the new one.
     function renderAppFightersDetail() {
         const detail = document.getElementById('appFightersDetail');
         if (!detail) return;
         const id = appFightersState.focused || selectedBrawler;
+        try {
+            renderAppFightersDetailFor(id);
+        } catch (_) {
+            detail.innerHTML = '<div class="app-fighters-empty">Could not show this fighter — pick another one above.</div>';
+            if (detail.dataset) detail.dataset.renderedFor = '';
+        }
+    }
+    function renderAppFightersDetailFor(id) {
+        const detail = document.getElementById('appFightersDetail');
+        if (!detail) return;
         const data = brawlerData[id];
-        if (!data) { detail.innerHTML = '<div class="app-fighters-empty">Pick a fighter above.</div>'; return; }
+        if (!data) { detail.innerHTML = '<div class="app-fighters-empty">Pick a fighter above.</div>'; if (detail.dataset) detail.dataset.renderedFor = ''; return; }
         const pData = getEffectiveBrawlerProgress(id);
         const level = pData.level || 1;
         const stats = getScaledStats(id, level);
@@ -6513,6 +6680,23 @@ const bolznstienPendingStrikes = [];
         // the slot button HTML was computed and THROWN AWAY and only the
         // bare description text rendered (no slot, no kit-sheet tap).
         // kitDesc is now the 7th argument, as kitSlotHtml expects.
+        // Round 2 (screenshot item c): MAIN / SUPER show the name AND
+        // the description (attackDesc / superDesc exist for the roster),
+        // so the kit is labeled per slot instead of one run-on paragraph.
+        // Round 2 (skin selector): only skins that exist AND are owned
+        // are offered, plus DEFAULT. Computed defensively — a skins
+        // failure must never blank the panel.
+        let skinRow = '';
+        try {
+            const ownedSkins = appFighterOwnedSkins(id);
+            if (ownedSkins.length) {
+                const activeSkin = getActiveSkinForBrawler(id);
+                skinRow = `<div class="app-fighters-skins"><span class="app-fighters-skins-label">SKIN</span>
+              <button type="button" class="app-fighter-skin${!activeSkin ? ' is-active' : ''}" data-app-skin="default">DEFAULT</button>
+              ${ownedSkins.map((skin) => `<button type="button" class="app-fighter-skin${activeSkin && activeSkin.id === skin.id ? ' is-active' : ''}" data-app-skin="${skin.id}">${skin.icon ? `${skin.icon} ` : ''}${skin.name}</button>`).join('')}
+            </div>`;
+            }
+        } catch (_) { skinRow = ''; }
         const g2Slot = data.g2 ? kitSlotHtml('g2', 'TOOL 2', kitName(data.g2, 'Gadget 2'), !pData.gadgetUnlocked, 'LOCKED · POWER 7', pData.selectedGadget === 'g2', kitDesc(data.g2)) : '';
         detail.innerHTML = `
           <div class="app-fighters-detail-portrait" style="--detail-color:${data.color || '#0b69bd'}">${portrait}</div>
@@ -6525,8 +6709,8 @@ const bolznstienPendingStrikes = [];
               <span><small>DMG</small>${stats.dmg}</span>
               <span><small>SPEED</small>${stats.speed}</span>
             </div>
-            <div class="app-fighters-detail-desc"><b>MAIN</b> · ${data.main || '—'}</div>
-            <div class="app-fighters-detail-desc"><b>SUPER</b> · ${data.super || '—'}</div>
+            <div class="app-fighters-detail-desc"><b>MAIN</b> · ${data.main || '—'}${data.attackDesc ? ` — ${data.attackDesc}` : ''}</div>
+            <div class="app-fighters-detail-desc"><b>SUPER</b> · ${data.super || '—'}${data.superDesc ? ` — ${data.superDesc}` : ''}</div>
             <div class="app-kit-slots">
               ${kitSlotHtml('g1', 'TOOL 1', kitName(data.g1, 'Gadget 1'), !pData.gadgetUnlocked, 'LOCKED · POWER 7', pData.selectedGadget === 'g1', kitDesc(data.g1))}
               ${g2Slot}
@@ -6534,11 +6718,14 @@ const bolznstienPendingStrikes = [];
               ${kitSlotHtml('sp2', 'TALENT 2', kitName(data.sp2, 'Star Power 2'), !pData.starPowerUnlocked, 'LOCKED · POWER 9', pData.selectedStar === 'long', kitDesc(data.sp2))}
               ${kitSlotHtml('hyper', 'CORE SURGE', 'Core Surge', !pData.hyperchargeUnlocked, 'LOCKED · POWER 11', false, hyperDesc)}
             </div>
+            ${skinRow}
             <div class="app-fighters-detail-actions">
               <button type="button" class="app-fighters-play" data-app-action="play" ${locked ? 'disabled' : ''}>${isHero ? '✓ CURRENT HERO' : `▶ PLAY AS ${String(data.name || id).toUpperCase()}`}</button>
               <button type="button" class="app-fighters-upgrade" data-app-action="upgrade" ${upgDisabled ? 'disabled' : ''}>${upgLabel}</button>
+              <button type="button" class="app-fighters-fav-btn" data-app-action="favorite">${isFavoriteBrawler(id) ? '★ FAVORITED' : '☆ FAVORITE'}</button>
             </div>
           </div>`;
+        if (detail.dataset) detail.dataset.renderedFor = id;
     }
     function appFightersKitPick(id, key) {
         const pData = getEffectiveBrawlerProgress(id);
