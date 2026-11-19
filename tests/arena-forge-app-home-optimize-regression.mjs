@@ -78,11 +78,18 @@ check('slot tap returns to the Home tab (PLAY is one tap away)', game.includes('
 // --- In-match HUD (touch/app mode only): Tool/Talent/Core redo ---
 check('touch HUD is gated on mobileInput.enabled', game.includes("const touchHud = typeof mobileInput !== 'undefined' && mobileInput.enabled;"));
 check('big Tool/Talent/Core panel only draws on desktop', game.includes('if (!touchHud) {') && game.includes('// HUD panel with hypercharge glow for Outlit'));
-check('touch mode draws compact chips below the ATTACK/SUPER cards', game.includes('const chipY = readY + readH + 10;') && game.includes("hudChips.push({ label: 'TOOL · READY', color: '#5df2c2' })") && game.includes("hudChips.push({ label: `TALENT · ${spName}`") && game.includes("hudChips.push({ label: `CORE · ${Math.floor(hyperChargeCharge)}%`, color: '#b68cff' })"));
+// Phase 3 supersedes the chips: Anthony ordered the whole TOOL / TALENT /
+// CORE text row gone (no talent display in-match, tool cooldown is a ring
+// on the TOOL button, core % already sits on the Core Surge bar).
+check('touch mode has no TOOL/TALENT/CORE text chips anymore', (game.match(/TOOL ·|TALENT ·|CORE ·/g) || []).length === 0 && !game.includes('const hudChips = []'));
+check('TOOL button carries the circular cooldown ring instead', game.includes("gadgetTouchBtn.style.setProperty('--mobile-charge', `${gadgetFrac * 360}deg`);"));
 check('chips only render for unlocked rows (locked rows are not shown)', game.includes('if (isTraining || playerProgress.gadgetUnlocked) {') && game.includes('if (isTraining || playerProgress.starPowerUnlocked) {') && game.includes('if (isTraining || playerProgress.hyperchargeUnlocked) {'));
 
 // --- In-match HUD: ATTACK/SUPER cards no longer cover the Modifier line ---
-check('ATTACK/SUPER cards drop below the Modifier description when one shows', game.includes("const hudModifierShown = !isBossFight && !isDuels && !isTraining && !isSoloTrial && activeShowdownModifier && !isShowdownModifierActive('none');") && game.includes('const readY = hudModifierShown ? 134 : 96'));
+// Phase 3: touch cards no longer drop below the Modifier description —
+// the modifier description is gone on touch and the cards moved under the
+// Brawlers Left pill. Desktop keeps the old drop.
+check('touch cards sit under the pill; desktop still drops below the Modifier line', game.includes('const readY = touchHud ? 84 : (hudModifierShown ? 134 : 96)') && game.includes("const hudModifierShown = !isBossFight && !isDuels && !isTraining && !isSoloTrial && activeShowdownModifier && !isShowdownModifierActive('none');"));
 
 // --- In-match HUD: bars + minimap clear the touch controls ---
 check('super/hyper bars shift left 150px in touch landscape', game.includes('const touchLandscape = touchHud && innerWidth > innerHeight;') && game.includes('const bx = touchLandscape ? innerWidth - barW - 24 - 150 :'));
@@ -137,24 +144,21 @@ check('event tap: no web card -> fallback dispatch selects the mode', eventSlotT
 check('event tap: tournament with no card -> tournament hub', eventSlotTap('tournament', null, []) === 'tournament');
 check('event tap: custom clash with no card -> mutator picker', eventSlotTap('custom_clash', null, []) === 'custom');
 
-// Mirror of the touch HUD chips: only unlocked rows render; all three
-// locked -> nothing is drawn.
-function hudChips({ gadget, talent, core, gadgetCd = 0, hyperPct = 0, hyperActive = false }) {
-    const chips = [];
-    if (gadget) chips.push(gadgetCd > 0 ? `TOOL · CD ${gadgetCd}s` : 'TOOL · READY');
-    if (talent) chips.push('TALENT · SP1');
-    if (core) chips.push(hyperActive ? 'CORE · ACTIVE 5s' : `CORE · ${hyperPct}%`);
-    return chips;
-}
-check('HUD chips: all unlocked -> three chips', hudChips({ gadget: true, talent: true, core: true, hyperPct: 40 }).length === 3);
-check('HUD chips: all locked -> nothing drawn (not shown)', hudChips({ gadget: false, talent: false, core: false }).length === 0);
-check('HUD chips: only core unlocked -> only the core chip', hudChips({ gadget: false, talent: false, core: true, hyperPct: 55 }).join('|') === 'CORE · 55%');
-check('HUD chips: gadget on cooldown shows the countdown', hudChips({ gadget: true, gadgetCd: 7, talent: false, core: false })[0] === 'TOOL · CD 7s');
+// Mirror of the phase-3 TOOL ring: fraction of the cooldown elapsed,
+// 0 when just used, 1 when ready (clamped). The old chips mirror is gone
+// with the chips themselves.
+function toolRingFrac(readyAt, totalMs, now) { return totalMs > 0 ? Math.max(0, Math.min(1, 1 - (readyAt - now) / totalMs)) : 1; }
+check('TOOL ring: just used -> empty (0)', toolRingFrac(12000, 12000, 0) === 0);
+check('TOOL ring: halfway recharged -> half (0.5)', toolRingFrac(6000, 12000, 0) === 0.5);
+check('TOOL ring: ready -> full (1)', toolRingFrac(0, 12000, 5000) === 1);
+check('TOOL ring: cooldown over -> stays full, never over 1', toolRingFrac(1000, 12000, 5000) === 1);
 
-// Mirror of the ATTACK/SUPER readY rule: 134 when a modifier line shows.
-function readYFor(modifierShown) { return modifierShown ? 134 : 96; }
-check('HUD readY: modifier showing -> cards at 134 (below the description)', readYFor(true) === 134);
-check('HUD readY: no modifier -> cards stay at 96', readYFor(false) === 96);
+// Mirror of the phase-3 ATTACK/SUPER readY rule: touch sits under the
+// pill at 84; desktop drops to 134 only when a modifier line shows.
+function readYFor({ touch, modifierShown }) { return touch ? 84 : (modifierShown ? 134 : 96); }
+check('HUD readY: touch -> cards at 84 under the pill', readYFor({ touch: true, modifierShown: true }) === 84);
+check('HUD readY: desktop + modifier -> cards at 134 (below the description)', readYFor({ touch: false, modifierShown: true }) === 134);
+check('HUD readY: desktop, no modifier -> cards stay at 96', readYFor({ touch: false, modifierShown: false }) === 96);
 
 // Mirror of the touch bar geometry: landscape shifts left 150px, portrait
 // shrinks to 150px centered, desktop keeps the old bottom-right bars.

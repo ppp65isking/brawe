@@ -401,6 +401,62 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
            canvas CORE SURGE / POWER MOVE bars (Anthony's screenshot). It now
            sits directly ABOVE the aim stick, Brawl Stars style, clear of the
            bars (which shift left in touch mode, see the HUD draw code). */
+        /* ---- Arena Forge app redesign phase 3 (2026-11-19): scrolling,
+           room, full-screen use. App/touch mode only; the website is
+           untouched. ---- */
+        /* PLAY row: PLAY + event chip overflowed a 360px phone (no
+           flex-wrap: 320px min-width + 44vw chip = ~519px). Wrap, and let
+           the chip take the full row below PLAY in portrait. */
+        #appHomePlayRow{flex-wrap:wrap}
+        @media (orientation:portrait){#appHomeEventChip{max-width:100%;flex:1 1 100%}}
+        /* Hero view: never trap content on short screens. */
+        #appHomeHeroView{overflow-y:auto}
+        /* Momentum scrolling + hidden scrollbars on the strips. */
+        #appFightersStrip{-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;scrollbar-width:none}
+        #appFightersStrip::-webkit-scrollbar{display:none}
+        .app-fighters-roles{-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+        /* Fighters: ONE scroller (the view). The detail panel used to be a
+           nested scroller starved to ~72px tall in landscape; now the whole
+           view scrolls and the fighter strip sticks to the top so the
+           switcher stays reachable while browsing the detail. */
+        #appHomeFightersView{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+        #appFightersStrip{position:sticky;top:0;z-index:2;background:linear-gradient(160deg,#06101f,#0a2140);border-radius:0 0 12px 12px}
+        #appFightersDetail{flex:none;overflow-y:visible}
+        /* Kit slots: descriptions now render under the name (phase 3). */
+        .app-kit-slot b{white-space:normal}
+        .app-kit-desc{display:block;font-size:10px;line-height:1.35;color:#bcd9f2;margin-top:2px}
+        /* Events view + shop sidebar: momentum scrolling, hidden bars. */
+        #appHomeEventsView{-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+        .native-app .brawe-shop-sidebar{-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;scrollbar-width:none}
+        .native-app .brawe-shop-sidebar::-webkit-scrollbar{display:none}
+        .native-app .brawe-shop-body{-webkit-overflow-scrolling:touch}
+        /* Tournament: league + picker cards had 24px padding on ~150px
+           cards, so the text wrapped into a mess. Same cards, roomier text. */
+        .native-app .app-tournament-league-grid>div{padding:12px !important}
+        .native-app .app-tournament-picker-grid>div{width:min(150px,calc(50vw - 24px)) !important;padding:12px !important}
+        .native-app .app-tournament-rounds{-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;scrollbar-width:none}
+        .native-app .app-tournament-rounds::-webkit-scrollbar{display:none}
+        /* Profile overlay: full-bleed in app mode (was a centered panel
+           with margins). The Brick Bon road scrolls with momentum. */
+        .native-app .brick-bon-v2-overlay{padding:0 !important}
+        .native-app .brick-bon-v2{width:100vw !important;height:100dvh !important;border-radius:0 !important;border:0 !important}
+        .native-app .bon-road{-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;scrollbar-width:none}
+        .native-app .bon-road::-webkit-scrollbar{display:none}
+        /* Quest board / season pass: ONE scroller (the content area). The
+           season view's two boxes used to scroll inside half-height
+           windows while the top bar stayed put, so the pass felt tiny.
+           Now the pass fills the screen and scrolls naturally; the top
+           bar compacts instead of eating space. */
+        .native-app #questBoardOverlay .app-quest-content{overflow-y:auto !important;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+        .native-app #questBoardOverlay .app-quest-content>div{height:auto !important;min-height:0 !important;overflow-y:visible !important}
+        .native-app #questBoardOverlay .app-quest-content>div>div{overflow-y:visible !important}
+        .native-app #questBoardOverlay .app-quest-subtitle{display:none !important}
+        .native-app #questBoardOverlay .app-quest-tabrow button{padding:8px 10px !important;font-size:13px !important}
+        /* Top strip: currency pills shrink on narrow phones (phase 2 wrapped
+           the strip; the pills themselves still crowded it). */
+        @media (max-width:430px){.native-app .home-currency-pill{font-size:11px !important;padding:4px 9px !important}}
+        /* Tab bar: four buttons crowd a <=360px phone. */
+        @media (max-width:360px){#appHomeTabs{gap:4px}#appHomeTabs button{font-size:13px;padding:8px 2px}#appHomeTabs button small{font-size:9px}}
         `;
         document.head.appendChild(styleSheet);
 
@@ -4066,6 +4122,13 @@ function updateGadgetInfo() {
           releaseSuper();
       }
   }
+  // Phase 3: one swappable slot for the TOOL button icon. Today it is the
+  // generic gear; per-gadget icons drop in here later (Anthony: "we need
+  // gadget icons eventually") without reworking the button or its
+  // cooldown ring.
+  function getMobileToolButtonIcon() {
+      return '\u2699';
+  }
   function syncMobileActionButtons() {
       if (!mobileControlsRoot) return;
       if (gadgetTouchBtn) {
@@ -4073,6 +4136,15 @@ function updateGadgetInfo() {
           gadgetTouchBtn.disabled = !gadgetReady;
           gadgetTouchBtn.classList.toggle('is-ready', gadgetReady);
           gadgetTouchBtn.classList.toggle('is-armed', !!gadgetArmed);
+          gadgetTouchBtn.textContent = getMobileToolButtonIcon();
+          // Phase 3: circular cooldown ring on the TOOL button itself
+          // (Brawl Stars style). The old TOOL text chip is gone, so the
+          // ring is the only cooldown readout: it fills as the tool
+          // recharges and is full + glowing when ready.
+          const gadgetReadyAt = getPlayerGadgetCooldownUntil(selectedGadget, performance.now());
+          const gadgetTotalMs = getGadgetCooldownMsForBrawler(selectedBrawler, selectedGadget);
+          const gadgetFrac = gadgetTotalMs > 0 ? clamp(1 - (gadgetReadyAt - performance.now()) / gadgetTotalMs, 0, 1) : 1;
+          gadgetTouchBtn.style.setProperty('--mobile-charge', `${gadgetFrac * 360}deg`);
       }
       if (superTouchBtn) {
           if (isBlinkEyePlayerActive() && !!player?.blinkeyeSteering && !!player?.blinkeyeActiveEye) {
@@ -4172,7 +4244,7 @@ function updateGadgetInfo() {
       actionButtons.id = 'mobileActionButtons';
       gadgetTouchBtn = document.createElement('button');
       gadgetTouchBtn.className = 'mobile-action-btn mobile-action-btn--gadget';
-      gadgetTouchBtn.textContent = '⚙';
+      gadgetTouchBtn.textContent = getMobileToolButtonIcon();
       gadgetTouchBtn.dataset.label = 'TOOL';
       gadgetTouchBtn.title = 'Tool';
       gadgetTouchBtn.setAttribute('aria-label', 'Use Tool');
@@ -4703,6 +4775,21 @@ function startBlinkEyeSuper(entity, targetX, targetY, isHyper = false) {
   let lastCameraZoomAt = 0;
   function getMouseWorld(){
     return { x: mouse.screenX / CAMERA_ZOOM + camX, y: mouse.screenY / CAMERA_ZOOM + camY };
+  }
+  // Phase 3: the aim point the player's NEXT shot will actually use.
+  // Root cause of "telegraphs don't match the throwing" on mobile: the
+  // fire code aims from the AIM stick (player + aim * 1200), but every
+  // telegraph read the synthetic mouse (screen centre + aim * 180px) —
+  // about 5x closer — so the landing circle sat ~20% of the way to the
+  // real impact. Telegraphs now read this helper, so the drawn landing
+  // point and the real landing point are the same vector on both inputs.
+  // Desktop is unchanged (mouse world). During Super aiming the Super
+  // button owns the synthetic mouse, so that path keeps getMouseWorld().
+  function getPlayerAimWorld(){
+    if ((mobileInput.aimHeld || mobileInput.attackActive) && !aimingSuper) {
+      return { x: player.x + (mobileInput.aimX || 0) * 1200, y: player.y + (mobileInput.aimY || 0) * 1200 };
+    }
+    return getMouseWorld();
   }
 
   // Combat
@@ -6072,6 +6159,12 @@ const bolznstienPendingStrikes = [];
                 appFightersState.focused = card.dataset.appFighter;
                 renderAppFightersStrip();
                 renderAppFightersDetail();
+                // Phase 3: the detail is one page with the view now, so a
+                // new fighter starts at the top instead of mid-scroll, and
+                // the picked card stays visible in the strip.
+                const fightersView = document.getElementById('appHomeFightersView');
+                if (fightersView) fightersView.scrollTop = 0;
+                view.querySelector(`[data-app-fighter="${appFightersState.focused}"]`)?.scrollIntoView({ inline: 'center', block: 'nearest' });
             });
             view.querySelector('#appFightersDetail')?.addEventListener('click', (event) => {
                 const kitBtn = event.target.closest('[data-app-kit]');
@@ -6124,10 +6217,28 @@ const bolznstienPendingStrikes = [];
         const isHero = selectedBrawler === id;
         let portrait = `<span style="font-size:64px">${data.emoji || '🙂'}</span>`;
         try { portrait = getBrawlerPortraitMarkup(id); } catch (_) {}
-        const kitName = (raw, fallback) => raw ? String(raw).split('(')[0].trim() : fallback;
-        const kitSlotHtml = (key, label, name, isLocked, lockedText, equipped) => `<button type="button" class="app-kit-slot${equipped ? ' is-equipped' : ''}${isLocked ? ' is-locked' : ''}" data-app-kit="${key}" ${isLocked ? 'disabled' : ''}>
+        // Phase 3: kit descriptions render under the name. The data carries
+        // them two ways — "Name (description)" and "Name: description" —
+        // and kitName used to strip both, so slots showed a bare name.
+        // Split on whichever delimiter comes first ("Thermite Canister:
+        // ... (1100 px) ..." proves the colon can precede the paren).
+        // Bare names (Rager all four, Outlit g1/g2) genuinely have no
+        // description text anywhere — reported, never invented.
+        const kitSplit = (raw) => {
+            if (!raw) return { name: '', desc: '' };
+            const s = String(raw);
+            const pi = s.indexOf('('), ci = s.indexOf(': ');
+            if (pi === -1 && ci === -1) return { name: s.trim(), desc: '' };
+            if (ci !== -1 && (pi === -1 || ci < pi)) return { name: s.slice(0, ci).trim(), desc: s.slice(ci + 2).trim() };
+            const m = s.match(/\(([^)]*)\)/);
+            return { name: s.slice(0, pi).trim(), desc: m ? m[1].trim() : '' };
+        };
+        const kitName = (raw, fallback) => raw ? kitSplit(raw).name : fallback;
+        const kitDesc = (raw) => raw ? kitSplit(raw).desc : '';
+        const kitSlotHtml = (key, label, name, isLocked, lockedText, equipped, desc = '') => `<button type="button" class="app-kit-slot${equipped ? ' is-equipped' : ''}${isLocked ? ' is-locked' : ''}" data-app-kit="${key}" ${isLocked ? 'disabled' : ''}>
           <small>${label}${equipped ? ' · EQUIPPED' : ''}</small>
-          <b>${isLocked ? lockedText : name}</b>
+          <b>${isLocked ? lockedText : name}</b>${!isLocked && desc ? `
+          <span class="app-kit-desc">${desc}</span>` : ''}
         </button>`;
         let hyperDesc = '';
         try { hyperDesc = (getCoreSurgeDescription(id) || '').slice(0, 90); } catch (_) {}
@@ -6156,10 +6267,10 @@ const bolznstienPendingStrikes = [];
             <div class="app-fighters-detail-desc"><b>MAIN</b> · ${data.main || '—'}</div>
             <div class="app-fighters-detail-desc"><b>SUPER</b> · ${data.super || '—'}</div>
             <div class="app-kit-slots">
-              ${kitSlotHtml('g1', 'TOOL 1', kitName(data.g1, 'Gadget 1'), !pData.gadgetUnlocked, 'LOCKED · POWER 7', pData.selectedGadget === 'g1')}
-              ${kitSlotHtml('g2', 'TOOL 2', kitName(data.g2, 'Second Tool/Talent coming soon'), !pData.gadgetUnlocked, 'LOCKED · POWER 7', pData.selectedGadget === 'g2')}
-              ${kitSlotHtml('sp1', 'TALENT 1', kitName(data.sp1, 'Star Power 1'), !pData.starPowerUnlocked, 'LOCKED · POWER 9', pData.selectedStar === 'slow')}
-              ${kitSlotHtml('sp2', 'TALENT 2', kitName(data.sp2, 'Star Power 2'), !pData.starPowerUnlocked, 'LOCKED · POWER 9', pData.selectedStar === 'long')}
+              ${kitSlotHtml('g1', 'TOOL 1', kitName(data.g1, 'Gadget 1'), !pData.gadgetUnlocked, 'LOCKED · POWER 7', pData.selectedGadget === 'g1'), kitDesc(data.g1)}
+              ${kitSlotHtml('g2', 'TOOL 2', kitName(data.g2, 'Second Tool/Talent coming soon'), !pData.gadgetUnlocked, 'LOCKED · POWER 7', pData.selectedGadget === 'g2'), kitDesc(data.g2)}
+              ${kitSlotHtml('sp1', 'TALENT 1', kitName(data.sp1, 'Star Power 1'), !pData.starPowerUnlocked, 'LOCKED · POWER 9', pData.selectedStar === 'slow'), kitDesc(data.sp1)}
+              ${kitSlotHtml('sp2', 'TALENT 2', kitName(data.sp2, 'Star Power 2'), !pData.starPowerUnlocked, 'LOCKED · POWER 9', pData.selectedStar === 'long'), kitDesc(data.sp2)}
               ${kitSlotHtml('hyper', 'CORE SURGE', hyperDesc || 'Core Surge', !pData.hyperchargeUnlocked, 'LOCKED · POWER 11', false)}
             </div>
             <div class="app-fighters-detail-actions">
@@ -10371,11 +10482,13 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           top.appendChild(close);
 
           const tabRow = document.createElement('div');
+          tabRow.className = 'app-quest-tabrow';
           tabRow.style.display = 'flex';
           tabRow.style.gap = '8px';
           tabRow.style.flexWrap = 'wrap';
 
           const content = document.createElement('div');
+          content.className = 'app-quest-content';
           content.style.flex = '1';
           content.style.minHeight = '0';
           content.style.overflow = 'hidden';
@@ -11049,6 +11162,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
 
           panel.appendChild(top);
           const boardSubtitle = document.createElement('div');
+          boardSubtitle.className = 'app-quest-subtitle';
           boardSubtitle.textContent = 'Complete contracts, claim rewards, and climb the Core Circuit Pass.';
           boardSubtitle.style.fontSize = '12px';
           boardSubtitle.style.color = '#95b8d4';
@@ -13583,6 +13697,7 @@ const TOWER_DUELS_ACTIVE_TOWER_POWERS = 8;
       mixLine.style.fontSize = '13px'; mixLine.style.color = '#ffd44f'; mixLine.style.marginTop = '6px';
       overlay.appendChild(mixLine);
       const container = document.createElement('div');
+      container.classList.add('app-tournament-picker-grid');
       container.style.display = 'flex'; container.style.gap = '20px';
       container.style.flexWrap = 'wrap'; container.style.justifyContent = 'center';
       container.style.maxWidth = '1000px'; container.style.marginTop = '24px';
@@ -13698,6 +13813,7 @@ const TOWER_DUELS_ACTIVE_TOWER_POWERS = 8;
           overlay.appendChild(hero);
       }
       const roundsWrap = document.createElement('div');
+      roundsWrap.classList.add('app-tournament-rounds');
       roundsWrap.style.display = 'flex'; roundsWrap.style.gap = '12px';
       roundsWrap.style.overflowX = 'auto'; roundsWrap.style.maxWidth = '1100px';
       roundsWrap.style.width = '100%'; roundsWrap.style.padding = '0 12px';
@@ -77401,7 +77517,10 @@ function checkHit(target, b, i){
       }
 
       // aim cone
-    const wm = getMouseWorld();
+    // Phase 3: wm is the aim point the shot will use (see
+    // getPlayerAimWorld) — on touch that is the AIM-stick vector, so the
+    // telegraph can no longer disagree with the throw.
+    const wm = getPlayerAimWorld();
     const dx = (wm.x || 0) - (player.x || 0); const dy = (wm.y || 0) - (player.y || 0);
     const ang = Number.isFinite(Math.atan2(dy, dx)) ? Math.atan2(dy, dx) : (player.dir || 0);
       if (selectedBrawler === 'jetpack' && !aimingSuper && !player.jetpackFlight) {
@@ -80030,6 +80149,24 @@ function checkHit(target, b, i){
           ctx.beginPath();ctx.arc(landX,landY,44,0,Math.PI*2);ctx.fill();ctx.stroke();
           for(let pi=0;pi<pieCount;pi++){const pa=ang+pi*Math.PI*2/pieCount,px=landX+Math.cos(pa)*290,py=landY+Math.sin(pa)*290;ctx.globalAlpha=.72;ctx.beginPath();ctx.moveTo(landX,landY);ctx.lineTo(px,py);ctx.stroke();ctx.beginPath();ctx.arc(px,py,25,0,Math.PI*2);ctx.fill();ctx.stroke();}
           ctx.globalAlpha=1;ctx.fillStyle='#fff';ctx.font='900 12px sans-serif';ctx.textAlign='center';ctx.fillText(`${pieCount} MINI PIES`,landX,landY-48);ctx.textAlign='left';ctx.restore();
+                } else if(selectedBrawler === 'voltastein'){
+          // Phase 3: Voltastein had NO aim telegraph at all. Brawl Stars
+          // style: lob arc + landing circle showing the blast radius.
+          const aimDist=Math.min(VOLTASTEIN_RANGE,Math.hypot(wm.x-player.x,wm.y-player.y));
+          const landX=player.x+Math.cos(ang)*aimDist,landY=player.y+Math.sin(ang)*aimDist;
+          ctx.save();ctx.strokeStyle='rgba(168,85,247,.92)';ctx.fillStyle='rgba(168,85,247,.20)';ctx.lineWidth=3;ctx.setLineDash([10,7]);
+          ctx.beginPath();ctx.moveTo(player.x,player.y);ctx.quadraticCurveTo((player.x+landX)/2,(player.y+landY)/2-90,landX,landY);ctx.stroke();ctx.setLineDash([]);
+          ctx.beginPath();ctx.arc(landX,landY,VOLTASTEIN_EXPLOSION_RADIUS,0,Math.PI*2);ctx.fill();ctx.stroke();
+          ctx.fillStyle='#e9d5ff';ctx.font='900 12px sans-serif';ctx.textAlign='center';ctx.fillText('VOLT BLAST',landX,landY-VOLTASTEIN_EXPLOSION_RADIUS-8);ctx.textAlign='left';ctx.restore();
+                } else if(selectedBrawler === 'gravy'){
+          // Phase 3: Gravy had NO aim telegraph at all. Brawl Stars style:
+          // lob arc + landing circle showing the splash radius.
+          const aimDist=Math.min(GRAVY_GLOB_THROW_RANGE,Math.hypot(wm.x-player.x,wm.y-player.y));
+          const landX=player.x+Math.cos(ang)*aimDist,landY=player.y+Math.sin(ang)*aimDist;
+          ctx.save();ctx.strokeStyle='rgba(245,158,11,.92)';ctx.fillStyle='rgba(180,83,9,.20)';ctx.lineWidth=3;ctx.setLineDash([10,7]);
+          ctx.beginPath();ctx.moveTo(player.x,player.y);ctx.quadraticCurveTo((player.x+landX)/2,(player.y+landY)/2-80,landX,landY);ctx.stroke();ctx.setLineDash([]);
+          ctx.beginPath();ctx.arc(landX,landY,GRAVY_GLOB_SPLASH_RADIUS,0,Math.PI*2);ctx.fill();ctx.stroke();
+          ctx.fillStyle='#fde68a';ctx.font='900 12px sans-serif';ctx.textAlign='center';ctx.fillText('GRAVY SPLASH',landX,landY-GRAVY_GLOB_SPLASH_RADIUS-8);ctx.textAlign='left';ctx.restore();
                 } else if(selectedBrawler === 'warrior'){
           const standActive = performance.now() < (player.warriorStandUntil || 0);
           const spearCount = standActive ? (player.warriorStandHyper ? 6 : 3) : 2;
@@ -89138,17 +89275,27 @@ function checkHit(target, b, i){
         else if (isKnockDonateMode) mapLabel = 'Knock n Donate Arena';
         else if (isPropHuntMode) mapLabel = 'Prop Hunt — Crown Collapse';
         else if (isTrioShowdownMode) mapLabel = 'Trio Showdown Arena';
-        ctx.fillText(`Map: ${mapLabel}`, 20, 86);
-        if (activeShowdownModifier && !isShowdownModifierActive('none')) {
-            ctx.fillStyle = '#ffd166';
-            ctx.fillText(`Modifier: ${activeShowdownModifierLabel}`, 20, 106);
-            const modifierDef = getShowdownModifierDef(activeShowdownModifier);
-            if (modifierDef && modifierDef.description) {
-                ctx.save();
-                ctx.font = '11px sans-serif';
-                ctx.fillStyle = 'rgba(255, 209, 102, 0.85)';
-                ctx.fillText(modifierDef.description, 20, 122);
-                ctx.restore();
+        // Phase 3: touch mode collapses the three-line Map / Modifier /
+        // description block into one small line at the top-left — the
+        // description lives pre-match, not on the live playfield.
+        if (touchHud) {
+            const touchMod = (activeShowdownModifier && !isShowdownModifierActive('none')) ? ` \u00b7 ${activeShowdownModifierLabel}` : '';
+            ctx.fillStyle = '#b9d6ff';
+            ctx.font = 'bold 11px sans-serif';
+            ctx.fillText(`${mapLabel}${touchMod}`, 12, 24);
+        } else {
+            ctx.fillText(`Map: ${mapLabel}`, 20, 86);
+            if (activeShowdownModifier && !isShowdownModifierActive('none')) {
+                ctx.fillStyle = '#ffd166';
+                ctx.fillText(`Modifier: ${activeShowdownModifierLabel}`, 20, 106);
+                const modifierDef = getShowdownModifierDef(activeShowdownModifier);
+                if (modifierDef && modifierDef.description) {
+                    ctx.save();
+                    ctx.font = '11px sans-serif';
+                    ctx.fillStyle = 'rgba(255, 209, 102, 0.85)';
+                    ctx.fillText(modifierDef.description, 20, 122);
+                    ctx.restore();
+                }
             }
         }
     }
@@ -89427,13 +89574,21 @@ function checkHit(target, b, i){
     
         // Live Attack / Super HUD (Cyber-Arcade Tactical HUD)
     const dmgInfo = getDisplayDamage(player);
-    const readX = 18;
+    // Phase 3: touch mode shrinks the ATTACK/SUPER cards and moves them out
+    // of the top-left corner — centered under the Brawlers Left pill in
+    // landscape, tucked left of the minimap in portrait — so the playfield
+    // top-left is free. Desktop geometry is byte-for-byte unchanged.
+    const touchCardsLandscape = touchHud && innerWidth > innerHeight;
+    const touchCardW = touchCardsLandscape ? Math.min(280, innerWidth - 36) : Math.min(220, innerWidth - mapW - 48);
+    const readX = touchHud ? (touchCardsLandscape ? Math.floor((innerWidth - touchCardW) / 2) : 12) : 18;
     // App home optimize: the Modifier description sits at y=122, but the
     // cards started at y=96 and painted over it. Drop the cards to y=134
     // when a modifier line is showing so everything stays visible.
     const hudModifierShown = !isBossFight && !isDuels && !isTraining && !isSoloTrial && activeShowdownModifier && !isShowdownModifierActive('none');
-    const readY = hudModifierShown ? 134 : 96, readW = Math.min(310, innerWidth - 36), readH = 56, gap = 8, cardW = Math.floor((readW - gap) / 2);
+    const readY = touchHud ? 84 : (hudModifierShown ? 134 : 96), readW = touchHud ? touchCardW : Math.min(310, innerWidth - 36), readH = touchHud ? 48 : 56, gap = 8, cardW = Math.floor((readW - gap) / 2);
     const hudNow = performance.now();
+    // Phase 3: tighter inner rows for the shorter touch cards (48px).
+    const rowNameY = touchHud ? 26 : 27, rowValY = touchHud ? 38 : 41, rowBarY = touchHud ? 44 : 48;
     ctx.save();
     for (let card = 0; card < 2; card++) {
         const x = readX + card * (cardW + gap);
@@ -89488,17 +89643,17 @@ function checkHit(target, b, i){
         ctx.fillStyle = '#8da4bb';
         ctx.font = '700 8.5px sans-serif';
         const labelText = String(isAttack ? dmgInfo.mainLabel : dmgInfo.superLabel);
-        ctx.fillText(labelText.length > 17 ? labelText.slice(0, 16) + '…' : labelText, x + 8, readY + 27);
+        ctx.fillText(labelText.length > 17 ? labelText.slice(0, 16) + '…' : labelText, x + 8, readY + rowNameY);
 
         // Main Live Damage / Metric Value (Third Row)
         ctx.fillStyle = '#ffffff';
         ctx.font = '900 11px sans-serif';
         const valText = String(isAttack ? dmgInfo.mainStr : dmgInfo.superStr);
-        ctx.fillText(valText.length > 20 ? valText.slice(0, 19) + '…' : valText, x + 8, readY + 41);
+        ctx.fillText(valText.length > 20 ? valText.slice(0, 19) + '…' : valText, x + 8, readY + rowValY);
 
         // Bottom Gauge / Progress Bar
         const barX = x + 8;
-        const barY = readY + 48;
+        const barY = readY + rowBarY;
         const barW = cardW - 16;
         const barH = 3.5;
 
@@ -89686,11 +89841,10 @@ function checkHit(target, b, i){
         ctx.fillStyle = '#efe1ff'; ctx.fillText(`ORIGIN ENERGY ${getHyperoriginEnergy(player)}/10`, bx, oy-10);
     }
 
-        // HUD panel (desktop) / compact status chips (touch mode).
-        // App home optimize: in touch mode the big Tool/Talent/Core panel
-        // sat under the move stick and showed three "Locked" rows, so it is
-        // replaced by chips below the ATTACK/SUPER cards that only show
-        // unlocked rows. Desktop keeps the full panel.
+        // HUD panel (desktop only). Phase 3 removed the touch-mode
+        // Tool / Talent / Core text row entirely — no chips, no talent
+        // display in-match; the tool cooldown is a ring on the TOOL
+        // button and the core % sits on the Core Surge bar.
         const playerProgress = getSelectedProgress();
         const isHyperGlow = isHypercharged;
         if (!touchHud) {
@@ -89776,45 +89930,13 @@ function checkHit(target, b, i){
             ctx.fillStyle = '#7b90b8';
             ctx.fillText('Locked', hudX + 80, hudY + 70);
         }
-        } else {
-            // Touch mode: compact chips below the ATTACK/SUPER cards.
-            // Only unlocked rows are shown; all three locked → nothing.
-            const chipY = readY + readH + 10;
-            const chipH = 22;
-            let chipX = readX;
-            const hudChips = [];
-            if (isTraining || playerProgress.gadgetUnlocked) {
-                if (now < getPlayerGadgetCooldownUntil(selectedGadget, now)) {
-                    const s = Math.ceil((getPlayerGadgetCooldownUntil(selectedGadget, now) - now) / 1000);
-                    hudChips.push({ label: `TOOL · CD ${s}s`, color: '#ffd166' });
-                } else hudChips.push({ label: 'TOOL · READY', color: '#5df2c2' });
-            }
-            if (isTraining || playerProgress.starPowerUnlocked) {
-                const spName = selectedStar === 'long' ? (brawlerData[selectedBrawler]?.sp2 || 'SP2') : (brawlerData[selectedBrawler]?.sp1 || 'SP1');
-                hudChips.push({ label: `TALENT · ${spName}`, color: selectedStar === 'long' ? '#ffd166' : '#9ed9ff' });
-            }
-            if (isTraining || playerProgress.hyperchargeUnlocked) {
-                if (isHyperGlow) {
-                    const remain = Math.max(0, Math.ceil((hyperchargeUntil - now) / 1000));
-                    hudChips.push({ label: `CORE · ACTIVE ${remain}s`, color: '#e768ff' });
-                } else hudChips.push({ label: `CORE · ${Math.floor(hyperChargeCharge)}%`, color: '#b68cff' });
-            }
-            ctx.save();
-            ctx.textAlign = 'left';
-            ctx.font = '800 10px sans-serif';
-            for (const chip of hudChips) {
-                const w = ctx.measureText(chip.label).width + 16;
-                ctx.fillStyle = 'rgba(4, 8, 16, 0.72)';
-                ctx.fillRect(chipX, chipY, w, chipH);
-                ctx.strokeStyle = 'rgba(255,255,255,0.18)';
-                ctx.lineWidth = 1;
-                ctx.strokeRect(chipX + 0.5, chipY + 0.5, w - 1, chipH - 1);
-                ctx.fillStyle = chip.color;
-                ctx.fillText(chip.label, chipX + 8, chipY + 15);
-                chipX += w + 6;
-            }
-            ctx.restore();
         }
+        // Phase 3: touch mode shows NO Tool / Talent / Core text chips here
+        // at all. Brawl Stars shows no star power mid-battle, so neither do
+        // we — the talent has no in-match display; the tool cooldown lives
+        // on the TOOL button as a circular ring; the core % already sits on
+        // the Core Surge bar. The whole TOOL / TALENT / CORE row is gone.
+        // Desktop keeps its full panel in the if-branch above.
 
             // Mode indicators
         if (isTraining) {
