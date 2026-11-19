@@ -5635,10 +5635,19 @@ const bolznstienPendingStrikes = [];
     // the native shell so browser-only chrome can be hidden. window.Capacitor
     // exists ONLY inside the native WebView — never on the website — so this
     // can never hide controls on desktop or mobile web. The .native-app class
-    // drives the CSS rule above; the class is set once at boot and covers
-    // buttons created later (e.g. the in-match #mobileFullscreenBtn).
+    // drives the CSS rule above; the class is set at boot and re-applied on
+    // window load / DOMContentLoaded (see retryAppHomeActivation below), and
+    // covers buttons created later (e.g. the in-match #mobileFullscreenBtn).
     function isNativeAppMode() {
-        try { return !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()); } catch (_) { return false; }
+        try {
+            if (window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()) return true;
+        } catch (_) { /* fall through to the localhost check */ }
+        // Capacitor Android serves local assets at https://localhost/ (no
+        // server.url in capacitor.config.ts, webDir 'dist'), and the bridge
+        // may not be injected yet when this IIFE evaluates — so localhost
+        // is the fallback. The live website is never served from
+        // localhost, so this cannot false-positive on the web.
+        try { return window.location.hostname === 'localhost'; } catch (_) { return false; }
     }
     if (isNativeAppMode()) document.documentElement.classList.add('native-app');
 
@@ -5801,6 +5810,20 @@ const bolznstienPendingStrikes = [];
         setHomeTab(tab === 'events' ? 'events' : 'home');
     }
     buildAppHome();
+
+    // Retry the app-home activation on window load and DOMContentLoaded:
+    // the Capacitor bridge may not be injected when this IIFE evaluates,
+    // so the boot call above can miss even though the APK is running. Both
+    // steps are idempotent (classList.add + buildAppHome's appHomeEl
+    // early-return), so a late-arriving bridge still turns the shell on
+    // without ever building it twice. Only the class + buildAppHome are
+    // retried — no other boot logic is duplicated.
+    function retryAppHomeActivation() {
+        if (isNativeAppMode()) document.documentElement.classList.add('native-app');
+        buildAppHome();
+    }
+    window.addEventListener('load', retryAppHomeActivation);
+    document.addEventListener('DOMContentLoaded', retryAppHomeActivation);
 
     // Fullscreen persistence (home-screen redesign 2026-11-03): remember
     // the player's fullscreen choice across page reloads. Browsers always

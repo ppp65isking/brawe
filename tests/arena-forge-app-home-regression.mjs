@@ -17,6 +17,29 @@ check('no unscoped #homeScreen hide rule exists', !/^[ \t]*#homeScreen\{display:
 check('app shell builds only when isNativeAppMode() is true', game.includes('function buildAppHome()') && game.includes('if (appHomeEl || !isNativeAppMode()) return;'));
 check('app shell element is created and appended to body', game.includes("shell.id = 'appHome'") && game.includes('document.body.appendChild(shell);'));
 
+// --- Activation fix (2026-11-18): localhost fallback + load/DOMContentLoaded retry ---
+// The APK serves local assets at https://localhost/; if window.Capacitor is
+// not injected yet when the IIFE evaluates, the boot-only check missed and
+// the shell never turned on (Anthony's screenshot: fullscreen button still
+// visible = .native-app never applied). The fix: localhost fallback + retry.
+check('isNativeAppMode falls back to localhost (Capacitor local server)', (() => {
+    const start = game.indexOf('function isNativeAppMode() {');
+    const boot = game.indexOf("if (isNativeAppMode()) document.documentElement.classList.add('native-app');", start);
+    const host = game.indexOf("window.location.hostname === 'localhost'", start);
+    return start !== -1 && boot !== -1 && host !== -1 && host < boot;
+})());
+check('bridge check still comes first, localhost is only the fallback', (() => {
+    const start = game.indexOf('function isNativeAppMode() {');
+    const bridge = game.indexOf('window.Capacitor.isNativePlatform()', start);
+    const host = game.indexOf("window.location.hostname === 'localhost'", start);
+    return start !== -1 && bridge !== -1 && host !== -1 && bridge < host;
+})());
+check('no other host broadens app mode (no 127.0.0.1, no wildcard hostname)', !game.includes('127.0.0.1') && (game.match(/location\.hostname/g) || []).length === 1);
+check('retry helper re-applies the class and rebuilds the shell', game.includes('function retryAppHomeActivation() {') && game.includes("if (isNativeAppMode()) document.documentElement.classList.add('native-app');\n        buildAppHome();"));
+check('retry runs on window load', game.includes("window.addEventListener('load', retryAppHomeActivation);"));
+check('retry runs on DOMContentLoaded', game.includes("document.addEventListener('DOMContentLoaded', retryAppHomeActivation);"));
+check('retry is registered after the boot buildAppHome() call', game.indexOf("window.addEventListener('load', retryAppHomeActivation);") > game.indexOf('    buildAppHome();\n'));
+
 // --- Shell structure: top strip, hero, PLAY, event chip, tabs ---
 check('top strip has player chip + season chip + currencies host', game.includes('id="appHomePlayerName"') && game.includes('id="appHomeSeasonChip"') && game.includes('id="appHomeCurrencies"'));
 check('hero view + events host exist', game.includes('id="appHomeHeroView"') && game.includes('id="appHomeEventsHost"'));
@@ -79,6 +102,31 @@ check('hero: null portrait renders the initials fallback tile', heroPortrait(nul
 function appTabFromEventsView(eventsIsActive) { return eventsIsActive ? 'events' : 'home'; }
 check('tab derivation: events view active -> events tab', appTabFromEventsView(true) === 'events');
 check('tab derivation: events view inactive -> home tab', appTabFromEventsView(false) === 'home');
+
+// Mirror of isNativeAppMode: Capacitor bridge first, localhost fallback.
+function nativeMode({ hasBridge, bridgeNative, hostname }) {
+    try {
+        if (hasBridge && bridgeNative) return true;
+    } catch (_) { /* fall through to the localhost check */ }
+    try { return hostname === 'localhost'; } catch (_) { return false; }
+}
+check('mode: bridge native on the website host -> app mode (bridge primary)', nativeMode({ hasBridge: true, bridgeNative: true, hostname: 'ppp65isking.github.io' }) === true);
+check('mode: no bridge on localhost -> app mode (APK local server fallback)', nativeMode({ hasBridge: false, bridgeNative: false, hostname: 'localhost' }) === true);
+check('mode: bridge present but not native + localhost -> app mode (fallback)', nativeMode({ hasBridge: true, bridgeNative: false, hostname: 'localhost' }) === true);
+check('mode: no bridge on the website host -> NOT app mode', nativeMode({ hasBridge: false, bridgeNative: false, hostname: 'ppp65isking.github.io' }) === false);
+check('mode: no bridge, empty hostname -> NOT app mode', nativeMode({ hasBridge: false, bridgeNative: false, hostname: '' }) === false);
+
+// Mirror of the activation retry: class add is idempotent, buildAppHome
+// early-returns once the shell exists, so late retries never duplicate it.
+function activationRetry(state, mode) {
+    if (mode) state.classAdded = true; // classList.add is idempotent
+    if (!state.shellBuilt && mode) state.shellBuilt = true; // buildAppHome guard
+    return state;
+}
+check('retry: boot without bridge on website -> no class, no shell', (() => { const s = activationRetry({ classAdded: false, shellBuilt: false }, false); return s.classAdded === false && s.shellBuilt === false; })());
+check('retry: bridge appears by load -> class added, shell built once', (() => { const s = activationRetry({ classAdded: false, shellBuilt: false }, true); return s.classAdded === true && s.shellBuilt === true; })());
+check('retry: DOMContentLoaded retry after load -> still exactly one shell', (() => { let s = activationRetry({ classAdded: false, shellBuilt: false }, true); s = activationRetry(s, true); return s.classAdded === true && s.shellBuilt === true; })());
+check('retry: localhost boot already active -> load retry changes nothing', (() => { let s = activationRetry({ classAdded: true, shellBuilt: true }, true); s = activationRetry(s, true); return s.classAdded === true && s.shellBuilt === true; })());
 
 // Mirror of the rarity color map used by the hero (same values as renderHomeBrawlerCard).
 const rarityColors = { 'Starter': '#9fb4c7', 'Common': '#9fb4c7', 'Rare': '#5df2c2', 'Super Rare': '#6ee7ff', 'Epic': '#f1c40f', 'Mythic': '#ff7bd1', 'Exotic': '#b983ff', 'Unique': '#ff9b42', 'Legendary': '#ff9b42', 'Anomaly': '#7a4dff' };
