@@ -53,7 +53,7 @@ assert.match(game, /const botLevel = isDuelsMaxedMode \? 12 : \(isTowerDuelEvent
 assert.match(game, /const duelBotLevel = isTournamentMatch \? tournamentBotLevel : botLevel;/, 'tournament bot level overrides via duelBotLevel');
 assert.match(game, /tournamentCadenceMult: isTournamentMatch \? tournamentBotCadenceMult : 1,/, 'bot entity carries its tournament cadence multiplier');
 assert.match(game, /if \(bot\.tournamentCadenceMult\) cadence \*= bot\.tournamentCadenceMult;/, 'shouldBotShootTarget applies the tournament cadence multiplier');
-assert.equal(game.split('\n').filter((l) => l.trim().startsWith('isTournamentMatch = false;')).length, 4, 'isTournamentMatch is reset in all 4 non-tournament Duels launch paths');
+assert.equal(game.split('\n').filter((l) => l.trim().startsWith('isTournamentMatch = false;')).length, 5, 'isTournamentMatch is reset in all 4 non-tournament Duels launch paths + the in-place lobby return (returnToLobbyFromResults, 2026-11-19)');
 
 // Brawler lock (follow-up 2026-11-18): a bot's brawler is read back from
 // the stored bracket, never re-rolled from shared Duels state.

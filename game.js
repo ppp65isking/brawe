@@ -74713,6 +74713,177 @@ function checkHit(target, b, i){
       ctx.restore();
   }
 
+  // Results flow (2026-11-19, app overhaul C): RETURN TO LOBBY returns IN
+  // PLACE — no window.location.reload(). The reload used to reset match
+  // state for free; returnToLobbyFromResults replicates every reset it was
+  // doing, in the order a fresh boot + the launch paths produce it:
+  //   * the results overlay itself is removed;
+  //   * the sim is switched off (playing / gameOver / hasHandledGameOver
+  //     back to boot defaults) so the loop stops simulating and rendering
+  //     the finished match, and the NEXT match can show its own results
+  //     screen — the Duels draft and Tower Duels weekend launches never
+  //     reset hasHandledGameOver or the saved super/hyper charges
+  //     themselves, so without this a second match in the same page
+  //     session would show no results screen and would inherit the
+  //     finished match's charges;
+  //   * every match-mode flag is back to boot defaults — the launch paths
+  //     re-derive most of them from showdownMode, but the ranked /
+  //     friendly / duels / tournament session flags are NOT re-derived by
+  //     every launch path, so a stale one would leak into the next match
+  //     (e.g. a stale isRankedMatch would pay ranked RP on a tournament
+  //     match, a stale isTournamentMatch would make startDuelsRound pick
+  //     the bracket brawler for a regular Duels match);
+  //   * home is shown the same way exitTrainingModeToHome shows it
+  //     (homeScreen display flex; the MutationObserver syncs the app
+  //     shell), the brawler select is re-enabled, the home UI is rebuilt
+  //     (refreshHomeUI + app tab back to home + syncAppHome), and the
+  //     topbar goes back to its boot text.
+  // Deliberately NOT reset: showdownMode + selectedBrawler + loadout (the
+  // user's home selection, not match state), playerData (already settled
+  // and saved before the results screen was built), and the world arrays /
+  // boss runtimes (each launch path clears or re-creates its own). What a
+  // reload also did that this cannot replicate: a full JS-heap re-init —
+  // any per-mode runtime object a launch path does NOT re-create would
+  // keep its stale value; the audit found none (boss runtimes are rebuilt
+  // by their init*Match, world arrays are cleared by the launch paths),
+  // but that is a live-code claim, not a proof — see the regression suite.
+  function returnToLobbyFromResults(resultsOverlay) {
+      if (resultsOverlay && resultsOverlay.remove) resultsOverlay.remove();
+      // Event flags the old reload handler reset (kept verbatim).
+      currentMapOverride = null;
+      isHyperEvent = false;
+      isBeastBossEvent = false;
+      isLavaBossEvent = false;
+      isHeadlessBossEvent = false;
+      isTombstoneBossEvent = false;
+      isMegasteinBossEvent = false;
+      isOverlordTrialEvent = false;
+      // Match sim off (boot defaults).
+      playing = false;
+      gameOver = false;
+      hasHandledGameOver = false;
+      duelRoundState = 'playing';
+      playerScore = 0;
+      botScore = 0;
+      savedPlayerSuper = 0;
+      savedPlayerHyper = 0;
+      savedBotSuper = 0;
+      savedBotHyper = 0;
+      // Ranked / friendly / custom session state (the existing session
+      // reset the PLAY button runs before every launch).
+      clearRankedSessionState();
+      clearShowdownModifier();
+      // Match-mode flags (boot defaults). showdownMode is NOT touched:
+      // it is the home screen's selected event, and the launch paths
+      // re-derive these flags from it.
+      isTournamentMatch = false;
+      tournamentLastResult = null;
+      tournamentMatchContext = null;
+      isDuels = false;
+      isFusedMode = false;
+      if (typeof player !== 'undefined' && player) player.fusedParts = null;
+      isTowerDuelEvent = false;
+      isTowerDuelsMode = false;
+      isDuelsMaxedMode = false;
+      isBossFight = false;
+      isTowerDefenseEvent = false;
+      isBouncinBossEvent = false;
+      isTowerTroubleMode = false;
+      isTowerPowerVaultWeekendMatch = false;
+      isSlopSushiMode = false;
+      sushiMatchArmed = false;
+      slopSushiActiveCards = [];
+      isTraining = false;
+      isTutorialMode = false;
+      isSoloTrial = false;
+      isSoloTdMode = false;
+      isDuoShowdown = false;
+      isObjectiveMode = false;
+      isTurkeyCaptureMode = false;
+      turkeyCaptureState = null;
+      isPropHuntMode = false;
+      propHuntState = null;
+      isConstructionMode = false;
+      isBrickVaultMode = false;
+      isArenaForgeMode = false;
+      isHyperForgeLTM = false;
+      isMarkedMayhemMode = false;
+      isTugZoneMode = false;
+      isTrioShowdownMode = false;
+      isDamageFillerMode = false;
+      isSplitterPoweredMode = false;
+      isPowerGodsMode = false;
+      isMirrorMode = false;
+      isImpossibleMode = false;
+      isKnockDonateMode = false;
+      isWeeFeeBossMode = false;
+      isDemonVillainsBossMode = false;
+      isOrboBossMode = false;
+      isRamageBossMode = false;
+      isBlinkEyeDodgeMode = false;
+      isCorruptedShowdownMode = false;
+      isPowerPlayShowdownMode = false;
+      isSuperShowdownMode = false;
+      isWarperEvent = false;
+      // Home, shown the same way exitTrainingModeToHome shows it. The
+      // home refresh is guarded so a throw in a home render can never
+      // strand the player on a blank screen after leaving a match.
+      if (homeScreen) homeScreen.style.display = 'flex';
+      if (brawlerSelect) brawlerSelect.disabled = false;
+      if (document.getElementById('topbar')) document.getElementById('topbar').textContent = 'Arena Forge — Showdown';
+      try { refreshHomeUI(); } catch (_) {}
+      try { if (typeof setAppHomeTab === 'function') setAppHomeTab('home'); } catch (_) {}
+      try { if (typeof syncAppHome === 'function') syncAppHome(); } catch (_) {}
+  }
+
+  // PLAY AGAIN (2026-11-19, app overhaul C): rematch the same mode with
+  // the same brawler via the existing launch path. Tournament results never
+  // get this button (they have PLAY NEXT MATCH); the guard below keeps a
+  // stale call from launching a showdown match mid-tournament-run.
+  //   * Duels (not Tower Duels weekend): same drafted teams, fresh scores
+  //     and charges, straight into startDuelsRound — mirrors the Duels
+  //     draft launch, which never reset the saved charges or re-armed the
+  //     results screen itself.
+  //   * Tower Duels weekend + everything else: the PLAY button
+  //     (#startMatch click). showdownMode + selectedBrawler are untouched,
+  //     so this rematches the same mode with the same brawler; special
+  //     modes re-enter their picker (custom clash, prop hunt, slop sushi,
+  //     tower duels draft, weekend floor preview) exactly as PLAY does.
+  //     Ranked / friendly sessions are cleared by the PLAY button's own
+  //     clearRankedSessionState, so a ranked or friendly rematch comes back
+  //     as a casual match of the same mode — re-entering the ranked queue
+  //     or the friendly picker is a different flow, not a rematch.
+  function playAgainFromResults(resultsOverlay) {
+      if (isTournamentMatch) return false;
+      if (resultsOverlay && resultsOverlay.remove) resultsOverlay.remove();
+      if (isDuels && !isTowerDuelEvent) {
+          clearShowdownModifier();
+          playerScore = 0;
+          botScore = 0;
+          savedPlayerSuper = 0;
+          savedPlayerHyper = 0;
+          savedBotSuper = 0;
+          savedBotHyper = 0;
+          hasHandledGameOver = false;
+          if (document.getElementById('topbar')) document.getElementById('topbar').textContent = isTowerDuelsMode ? 'Arena Forge - Tower Duels • ALL 8 Tower Powers' : 'Arena Forge - Duels • Tower Power';
+          WORLD_W = 1000;
+          WORLD_H = 1000;
+          generateCubes();
+          cubes.length = 0;
+          powerups.length = 0;
+          amplifierToolboxes.length = 0;
+          amplifierScrewZones.length = 0;
+          skeleParachutes.length = 0;
+          skelePortals.length = 0;
+          startDuelsRound();
+          if (brawlerSelect) brawlerSelect.disabled = true;
+          if (homeScreen) homeScreen.style.display = 'none';
+          return true;
+      }
+      document.getElementById('startMatch')?.click();
+      return true;
+  }
+
   function render(){
     const now = performance.now();
     // Balance 2026-11-12: Pandy Hyper (Sugar Surge) zooms the camera out so
@@ -91189,18 +91360,10 @@ function checkHit(target, b, i){
             const homeBtn = document.createElement('button');
             homeBtn.textContent = 'RETURN TO LOBBY';
             homeBtn.className = 'match-results-home';
-            homeBtn.onclick = () => {
-                // Reset any temporary event map override and return home
-                currentMapOverride = null;
-                isHyperEvent = false;
-                isBeastBossEvent = false;
-                isLavaBossEvent = false;
-      isHeadlessBossEvent = false;
-      isTombstoneBossEvent = false;
-      isMegasteinBossEvent = false;
-                isOverlordTrialEvent = false;
-                window.location.reload();
-            };
+            // Results flow (2026-11-19, app overhaul C): in-place return —
+            // no window.location.reload(). returnToLobbyFromResults
+            // replicates every reset the reload was doing (see the helper).
+            homeBtn.onclick = () => returnToLobbyFromResults(overlay);
 
             headline.appendChild(resultKicker);
             headline.appendChild(title);
@@ -91242,6 +91405,17 @@ function checkHit(target, b, i){
                     mkTournamentBtn('🏆 VIEW LEAGUES', false, () => { overlay.remove(); openTournamentHub(); });
                 }
                 resultCard.appendChild(tBtnRow);
+            }
+            // PLAY AGAIN (2026-11-19, app overhaul C): non-tournament
+            // results only — tournament matches already have PLAY NEXT
+            // MATCH above. Rematches the same mode with the same brawler
+            // via the existing launch path (see playAgainFromResults).
+            if (!isTournamentMatch) {
+                const playAgainBtn = document.createElement('button');
+                playAgainBtn.textContent = '▶ PLAY AGAIN';
+                playAgainBtn.className = 'match-results-play-again';
+                playAgainBtn.onclick = () => playAgainFromResults(overlay);
+                resultCard.appendChild(playAgainBtn);
             }
             resultCard.appendChild(homeBtn);
             overlay.appendChild(resultCard);
