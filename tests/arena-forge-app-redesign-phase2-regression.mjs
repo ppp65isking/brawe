@@ -16,7 +16,7 @@ function check(name, cond) { if (cond) passed++; else { failed++; failures.push(
 check('quick row exists in the app shell with quests + pass + settings', game.includes('id="appHomeQuickRow"') && game.includes('data-app-quick="quests"') && game.includes('data-app-quick="pass"') && game.includes('data-app-quick="settings"'));
 check('quick row buttons carry live badges', game.includes('id="appQuestsBadge"') && game.includes('id="appPassBadge"') && game.includes('class="app-quick-badge"'));
 check('quick row quests opens the quest board', game.includes("if (action === 'quests') { if (typeof openQuestBoard === 'function') openQuestBoard(); }"));
-check('quick row pass opens the quest board season tab', game.includes("if (action === 'pass') { if (typeof openQuestBoard === 'function') openQuestBoard('season'); }"));
+check('quick row pass opens the revived season-pass tier road (round 2: the dead Circuit Pass overlay is live again)', game.includes("else if (action === 'pass') { if (typeof openSeasonPass === 'function') openSeasonPass(); }"));
 check('quick row settings opens the native settings view', game.includes("if (action === 'settings') { setAppHomeTab('settings'); }"));
 check('live Brick Rush button is moved into the quick row', game.includes("const brickRushBtn = document.getElementById('dailyBrickRushBtn');") && game.includes("if (brickRushBtn && quickRow) quickRow.appendChild(brickRushBtn);"));
 check('quick-row badges refresh in syncAppHome', game.includes("document.getElementById('dailyWeeklyQuestCount')?.textContent") && game.includes("getClaimableSeasonRewardCount() || 0"));

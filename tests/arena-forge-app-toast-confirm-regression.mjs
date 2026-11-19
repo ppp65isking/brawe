@@ -136,9 +136,14 @@ check('ability purchases still return false on failure (callers gate on it)',
     bodyOf('buySpecialAbilityFullUnlock').includes('return false;') &&
     !bodyOf('buySpecialAbilityPiece').includes('return showAppConfirmSheet'));
 
-// Dead-code season-premium confirms are intentionally left alone.
-check('dead-code season-premium confirms left alone (unreachable Circuit Pass overlay)',
-    game.includes('confirm(`Unlock Premium for') && game.includes('confirm(`Spend ${offer.cost} Pass Tokens'));
+// Round 2 (season-pass tier road): the Circuit Pass overlay is live again,
+// so its premium/token confirms now route through the app confirm sheet
+// helper instead of native confirm() — the "left alone" pin below is
+// replaced by the new-state pin. The confirms themselves are unchanged
+// (same prompt, same cost); only the UI differs in app mode.
+check('season-premium / token confirms use the app sheet now that the road is live',
+    !game.includes('confirm(`Unlock Premium for') && !game.includes('confirm(`Spend ${offer.cost} Pass Tokens') &&
+    game.includes('confirmCircuitPassAction(`Unlock Premium for') && game.includes('confirmCircuitPassAction(`Spend ${offer.cost} Pass Tokens on'));
 check('no banned bare word in game.js (word-boundary check, assembled so this file stays clean)',
     !new RegExp('\\b' + 'clus' + 'ter' + '\\b', 'i').test(game));
 check('no banned bare word in this test file',
