@@ -24,6 +24,7 @@
             android:theme="@style/AppTheme.NoActionBarLaunch"
             android:launchMode="singleTask"
             android:screenOrientation="sensor"
+            android:windowLayoutInDisplayCutoutMode="shortEdges"
             android:resizeableActivity="false"
             android:exported="true">
 

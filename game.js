@@ -290,6 +290,14 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         /* App home (Brawl Stars style, 2026-11-18): the native shell replaces the web home grid with a fullscreen app layout — slim top strip, big hero fighter card, huge PLAY button, bottom tab bar. Scoped under .native-app so the website is byte-for-byte unchanged. The hero uses explicit flex sizing (never percentage-height + absolute-position children, which is how the web card's stage went blank on phone landscape) and a --hero-color fallback so its background can never go invalid. */
         .native-app #homeScreen{display:none !important}
         #appHome{position:fixed;inset:0;z-index:30;display:none;flex-direction:column;box-sizing:border-box;padding-top:max(8px,env(safe-area-inset-top));padding-bottom:max(8px,env(safe-area-inset-bottom));padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right));font-family:'Trebuchet MS','Gill Sans','Verdana',sans-serif;color:#fff;background:linear-gradient(160deg,#06101f 0%,#0a2140 55%,#04101f 100%)}
+        /* Web parity + status-bar fix (2026-11-19): the native window draws
+           edge-to-edge now (cutout mode + transparent bars, see
+           MainActivity), so the page root behind the shell must be the
+           app's dark blue, never the browser default white — otherwise
+           the strip around the camera cutout flashes light before the
+           shell paints. The shell itself still pads content below the
+           cutout via safe-area-inset-top above. */
+        html.native-app{background:#06101f}
         /* Tier 2 feel (2026-11-19): seasonal re-skin. The base #appHome
            rule above keeps its literal gradient (pinned by the polish-pass
            suite); this later, higher-specificity .native-app rule is what
@@ -372,6 +380,14 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         .app-event-slot .app-event-map{font-size:11px;font-weight:700;color:#ffd166}
         .app-event-slot.is-featured{border-color:#ffd166;background:linear-gradient(150deg,rgba(255,209,102,.22),rgba(8,20,42,.8))}
         .app-event-slot.is-active-mode{border-color:#5df2c2;box-shadow:0 0 0 2px rgba(93,242,194,.45)}
+        /* Web parity (2026-11-19): every web mode card has an "i" button
+           (rules + rewards, openHomeModeInfo). The app slot is a single
+           <button>, so the info button lives beside it in a wrapper —
+           never nested inside the button — and the delegate checks
+           [data-app-info] before [data-app-event]. */
+        .app-event-slot-wrap{position:relative;display:flex}
+        .app-event-slot-wrap .app-event-slot{flex:1;width:100%}
+        .app-event-info{position:absolute;right:8px;bottom:8px;z-index:2;width:26px;height:26px;border-radius:50%;border:1px solid rgba(255,255,255,.35);background:rgba(0,0,0,.55);color:#dff2ff;font-size:13px;font-weight:900;cursor:pointer}
         #appHomeHero{flex:1 1 auto;min-height:0;display:flex;align-items:center;gap:18px;padding:10px 14px;border-radius:22px;border:3px solid rgba(255,255,255,.75);background:linear-gradient(155deg,color-mix(in srgb,var(--hero-color,#0b69bd) 68%,#0b69bd),#06428c 72%);box-shadow:0 8px 0 #042960,0 18px 35px rgba(0,28,75,.4),inset 0 3px rgba(255,255,255,.28);overflow:hidden;cursor:pointer}
         .app-hero-portrait{flex:none;width:min(32vh,230px);aspect-ratio:1;display:grid;place-items:center;border-radius:50%;border:6px solid #fff;background:linear-gradient(145deg,var(--hero-color,#0b69bd),#072755);box-shadow:0 0 0 5px #071f4a,0 18px 26px rgba(0,21,60,.55),inset 0 6px rgba(255,255,255,.35);overflow:hidden;font-size:clamp(64px,16vh,120px)}
         .app-hero-portrait svg{width:92%;height:92%;display:block}
@@ -627,6 +643,23 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         .app-tapper-bulk span{color:#041810}
         .app-tapper-empty{font-size:13px;color:#9fc6e8;text-align:center;margin:6px 0 12px}
         .app-tapper-close{display:block;width:100%;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:transparent;color:#cfe6ff;font-weight:1000;font-size:14px;cursor:pointer}
+        /* MORE sheet (web parity, 2026-11-19): the web home's ☰ menu /
+           MORE button opens the utility row — Brick Bon, Brick Road,
+           Emote Pins, Balance Blog, Soul Summoner, Season Hub, Ranked,
+           Tutorial — and app mode had no way to reach any of them. Same
+           bottom-sheet language as the tapper sheet above; every row
+           calls the SAME opener the web button uses, so no behavior is
+           rebuilt. Live labels (ranked tier, season name) are read fresh
+           on every open, like the tapper counts. */
+        .app-more-sheet{position:fixed;inset:0;z-index:100;display:flex;align-items:flex-end;justify-content:center;background:rgba(2,8,18,.62);backdrop-filter:blur(3px)}
+        .app-more-card{width:100%;max-width:560px;max-height:82dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;box-sizing:border-box;padding:16px 16px calc(16px + env(safe-area-inset-bottom));border-radius:20px 20px 0 0;border:2px solid rgba(255,255,255,.2);border-bottom:0;background:linear-gradient(160deg,#0a2140,#06101f);color:#fff;font-family:inherit;animation:appKitSheetIn .18s ease-out}
+        .app-more-card h2{margin:2px 0;font-size:22px;text-transform:uppercase;line-height:1.05}
+        .app-more-sub{font-size:13px;line-height:1.4;color:#9fc6e8;margin:4px 0 12px}
+        .app-more-btn{display:flex;align-items:center;gap:10px;width:100%;margin-bottom:8px;padding:13px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff;font-weight:1000;font-size:15px;cursor:pointer;text-align:left}
+        .app-more-btn b{flex:1;min-width:0}
+        .app-more-btn small{display:block;font-size:11px;font-weight:800;color:#9fc6e8}
+        .app-more-btn:active{transform:scale(.98);filter:brightness(1.2)}
+        .app-more-close{display:block;width:100%;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:transparent;color:#cfe6ff;font-weight:1000;font-size:14px;cursor:pointer}
         .app-kit-sheet-actions{display:flex;gap:8px}
         .app-kit-sheet-actions button{flex:1;padding:13px 16px;border:0;border-radius:12px;font-weight:1000;font-size:15px;cursor:pointer}
         .app-kit-sheet-select{background:linear-gradient(#7dff6a,#37c837);color:#062b07}
@@ -6778,6 +6811,7 @@ const bolznstienPendingStrikes = [];
                 <button type="button" class="app-quick-btn" data-app-quick="quests">📜 QUESTS<small>QUEST BOARD</small><span class="app-quick-badge" id="appQuestsBadge" hidden></span></button>
                 <button type="button" class="app-quick-btn" data-app-quick="pass">🎁 SEASON PASS<small>REWARDS</small><span class="app-quick-badge" id="appPassBadge" hidden></span></button>
                 <button type="button" class="app-quick-btn" data-app-quick="tappers">⭐ TAPPERS<small>OPEN DROPS</small><span class="app-quick-badge" id="appTapperBadge" hidden></span></button>
+                <button type="button" class="app-quick-btn" data-app-quick="more">☰ MORE<small>TOOLS · EXTRAS</small></button>
                 <button type="button" class="app-quick-btn" data-app-quick="settings">⚙️ SETTINGS<small>SAVE · GUIDE</small></button>
               </div>
             </div>
@@ -6839,6 +6873,7 @@ const bolznstienPendingStrikes = [];
             else if (action === 'pass') { if (typeof openSeasonPass === 'function') openSeasonPass(); setAppDeepLink('pass'); }
             else if (action === 'settings') { setAppHomeTab('settings'); }
             else if (action === 'tappers') { if (typeof openAppTapperSheet === 'function') openAppTapperSheet(); }
+            else if (action === 'more') { if (typeof openAppMoreSheet === 'function') openAppMoreSheet(); }
         });
         // Move the live Brick Rush button into the app quick row: its 1s
         // interval (updateDailyBrickRushButton) keeps updating it by
@@ -6923,6 +6958,71 @@ const bolznstienPendingStrikes = [];
             else if (which === 'super' && typeof openSuperStarrDrop === 'function') openSuperStarrDrop();
             else if (which === 'hyper' && typeof openHyperStarrDrop === 'function') openHyperStarrDrop();
             else if (which === 'bulk' && typeof openAllTappers === 'function') openAllTappers();
+            try { syncAppHome(); } catch (_) {}
+        });
+        document.body.appendChild(sheet);
+    }
+    // MORE sheet — web parity (2026-11-19, Anthony: "our app needs to be
+    // exactly like the web version js different ui"): the web home's ☰
+    // menu / MORE button opens the utility row, and app mode had no way
+    // to reach any of it — Brick Bon, Brick Road, Emote Pins, Balance
+    // Blog, Soul Summoner, Season Hub, Ranked, Tutorial. Every row calls
+    // the SAME opener the web button uses (openBrickBonV2 /
+    // openBrickRoadModal / openPinsHub / openBalanceBlog /
+    // openSoulSummoner / openSeason3Hub / openRankedQueueUI /
+    // launchTutorialMatch) — the sheet closes first, then the shared
+    // overlay or match takes over, exactly like the tapper sheet above.
+    // Live labels are read fresh on every open: the ranked tier + RP
+    // (getRankedTierInfo) and the season name (getActiveSeasonProfile).
+    function openAppMoreSheet() {
+        if (!isNativeAppMode()) return;
+        appBuzz(10);
+        document.getElementById('appMoreSheet')?.remove();
+        let rankedLabel = 'Ranked';
+        let rankedSub = 'Queue up · draft your brawlers';
+        try {
+            const info = getRankedTierInfo(playerData?.ranked?.points || 0);
+            rankedLabel = `🏆 RANKED · ${info.label.toUpperCase()}`;
+            rankedSub = `${info.points} RP${info.nextLabel ? ` · next: ${info.nextLabel}` : ' · max division'} — queue up`;
+        } catch (_) {}
+        let seasonLabel = '🎃 SEASON HUB';
+        let seasonSub = 'Season events, presents and bosses';
+        try {
+            const s = getActiveSeasonProfile();
+            seasonLabel = `${s.key === 'ember' ? '🔥' : s.key === 'xplodemis' ? '🎄' : s.key === 'turkey' ? '🦃' : '🎃'} ${s.upperName} HUB`;
+            seasonSub = `Season ${s.seasonNumber} events · presents · bosses`;
+        } catch (_) {}
+        const sheet = document.createElement('div');
+        sheet.id = 'appMoreSheet';
+        sheet.className = 'app-more-sheet';
+        sheet.innerHTML = `
+            <div class="app-more-card">
+                <h2>☰ MORE</h2>
+                <p class="app-more-sub">Everything else from the website home — same screens, same rewards.</p>
+                <button type="button" class="app-more-btn" data-app-more="ranked"><span aria-hidden="true">🏆</span><b>${rankedLabel}<small>${rankedSub}</small></b><span aria-hidden="true">›</span></button>
+                <button type="button" class="app-more-btn" data-app-more="season-hub"><span aria-hidden="true">🎃</span><b>${seasonLabel}<small>${seasonSub}</small></b><span aria-hidden="true">›</span></button>
+                <button type="button" class="app-more-btn" data-app-more="brick-bon"><span aria-hidden="true">🧱</span><b>BRICK BON<small>Road + challenges · claim bricks</small></b><span aria-hidden="true">›</span></button>
+                <button type="button" class="app-more-btn" data-app-more="brick-road"><span aria-hidden="true">🏆</span><b>BRICK ROAD<small>Milestone rewards</small></b><span aria-hidden="true">›</span></button>
+                <button type="button" class="app-more-btn" data-app-more="pins"><span aria-hidden="true">📌</span><b>EMOTE PINS<small>Equip your pins</small></b><span aria-hidden="true">›</span></button>
+                <button type="button" class="app-more-btn" data-app-more="souls"><span aria-hidden="true">🧪</span><b>SOUL SUMMONER<small>Summon + reroll brawlers</small></b><span aria-hidden="true">›</span></button>
+                <button type="button" class="app-more-btn" data-app-more="blog"><span aria-hidden="true">📊</span><b>BALANCE BLOG<small>What's changed</small></b><span aria-hidden="true">›</span></button>
+                <button type="button" class="app-more-btn" data-app-more="tutorial"><span aria-hidden="true">🎓</span><b>TUTORIAL<small>Learn the ropes</small></b><span aria-hidden="true">›</span></button>
+                <button type="button" class="app-more-close" data-app-more="close">CLOSE</button>
+            </div>`;
+        sheet.addEventListener('click', (event) => {
+            const btn = event.target.closest('[data-app-more]');
+            if (!btn) return;
+            appBuzz(10);
+            const which = btn.dataset.appMore;
+            sheet.remove();
+            if (which === 'ranked' && typeof openRankedQueueUI === 'function') openRankedQueueUI();
+            else if (which === 'season-hub' && typeof openSeason3Hub === 'function') openSeason3Hub();
+            else if (which === 'brick-bon' && typeof openBrickBonV2 === 'function') openBrickBonV2('road');
+            else if (which === 'brick-road' && typeof openBrickRoadModal === 'function') openBrickRoadModal();
+            else if (which === 'pins' && typeof openPinsHub === 'function') openPinsHub();
+            else if (which === 'souls' && typeof openSoulSummoner === 'function') openSoulSummoner();
+            else if (which === 'blog' && typeof openBalanceBlog === 'function') openBalanceBlog();
+            else if (which === 'tutorial' && typeof launchTutorialMatch === 'function') launchTutorialMatch();
             try { syncAppHome(); } catch (_) {}
         });
         document.body.appendChild(sheet);
@@ -7746,14 +7846,18 @@ const bolznstienPendingStrikes = [];
         const [, emoji, name, subtitle] = entry;
         const mapName = appEventMapName(id);
         const countdown = opts.countdown === 'daily' ? '<span class="app-event-countdown" data-app-countdown="daily"></span>' : '';
-        return `<button type="button" class="app-event-slot${opts.featured ? ' is-featured' : ''}${showdownMode === id ? ' is-active-mode' : ''}" data-app-event="${id}">
+        // Web parity (2026-11-19): every web mode card has an "i" button
+        // (rules + rewards, openHomeModeInfo). The slot button cannot
+        // contain a nested button, so the info button sits beside it in
+        // the wrapper — the delegate checks [data-app-info] first.
+        return `<div class="app-event-slot-wrap"><button type="button" class="app-event-slot${opts.featured ? ' is-featured' : ''}${showdownMode === id ? ' is-active-mode' : ''}" data-app-event="${id}">
           <span class="home-mode-map-preview theme-${id}" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
           <span class="app-event-tag">${appEventModeTag(id)}</span>
           <b>${emoji} ${name}</b>
           <small>${subtitle || ''}</small>
           ${mapName ? `<span class="app-event-map">🗺 ${mapName}</span>` : ''}
           ${countdown}
-        </button>`;
+        </button><button type="button" class="app-event-info" data-app-info="${id}" data-app-info-daily="${opts.countdown === 'daily' ? '1' : '0'}" aria-label="About ${name}">i</button></div>`;
     }
     function buildAppEventsView() {
         const view = document.getElementById('appHomeEventsView');
@@ -7761,8 +7865,12 @@ const bolznstienPendingStrikes = [];
         if (!appEventsBuilt) {
             appEventsBuilt = true;
             view.addEventListener('click', (event) => {
+                const info = event.target.closest('[data-app-info]');
+                if (info) { appBuzz(10); if (typeof openHomeModeInfo === 'function') openHomeModeInfo(info.dataset.appInfo, info.dataset.appInfoDaily === '1' && typeof getHomeEventRewardForMode === 'function' ? getHomeEventRewardForMode(info.dataset.appInfo) : null, false); return; }
                 const slot = event.target.closest('[data-app-event]');
                 if (slot) { appBuzz(10); appEventSlotTap(slot.dataset.appEvent); return; }
+                const od = event.target.closest('[data-app-overdrive]');
+                if (od) { appBuzz(10); if (typeof openQuestBoard === 'function') openQuestBoard('overdrive'); return; }
                 const feat = event.target.closest('[data-app-featured]');
                 if (!feat) return;
                 appBuzz(10);
@@ -7791,6 +7899,27 @@ const bolznstienPendingStrikes = [];
         let rotationIds = [];
         try { rotationIds = getHomeDailyRotationIds(); } catch (_) {}
         const rotating = rotationIds.filter((id) => HOME_MODE_DATA[id]).map((id) => appEventSlotHtml(id, { countdown: 'daily' })).join('');
+        // Web parity (2026-11-19): the web events view shows a Core Surge
+        // Overdrive community card while the event is live (it opens the
+        // quest board's overdrive tab). The app never rendered it.
+        let overdriveHtml = '';
+        try {
+            if (typeof isOverdriveActive === 'function' && isOverdriveActive()) {
+                const odState = ensureOverdriveState();
+                const odMain = getOverdriveMainTier();
+                const odDaily = getOverdriveDailyTier();
+                overdriveHtml = `
+          <div class="app-events-section">CORE SURGE OVERDRIVE</div>
+          <div class="app-events-grid">
+            <button type="button" class="app-event-slot is-featured" data-app-overdrive="1">
+              <span class="home-mode-map-preview theme-season" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+              <span class="app-event-tag">EVENT</span>
+              <b>⚡ CORE SURGE OVERDRIVE</b>
+              <small>Community: ${odMain.total.toLocaleString()} Surges · Tier ${odMain.reached}/${OVERDRIVE_MAIN_TIERS.length} · Today: ${odDaily.total.toLocaleString()} Surged hits</small>
+            </button>
+          </div>`;
+            }
+        } catch (_) { overdriveHtml = ''; }
         view.innerHTML = `
           <div class="app-events-section">FEATURED EVENTS</div>
           <div class="app-events-grid">
@@ -7808,6 +7937,7 @@ const bolznstienPendingStrikes = [];
               <small>${tSub}</small>
             </button>
           </div>
+          ${overdriveHtml}
           <div class="app-events-section">POPULAR EVENTS</div>
           <div class="app-events-grid">${popular}</div>
           <div class="app-events-section">ROTATING EVENTS · <span class="app-event-countdown" data-app-countdown="daily"></span></div>
@@ -19429,17 +19559,23 @@ let heistFeverActive = false;
       panel.appendChild(grid);panel.querySelector('header button').onclick=()=>overlay.remove();overlay.onclick=e=>{if(e.target===overlay)overlay.remove();};overlay.appendChild(panel);document.body.appendChild(overlay);
   }
   function openSeason3Hub(){
+      // Web parity (2026-11-19): the hub's mode buttons pick a mode and
+      // jump to the Events tab. In the APK the web home is hidden, so
+      // setHomeTab('events') would change nothing visible — route to the
+      // app Events tab instead and refresh the app event chip, which
+      // updateShowdownModeUI() cannot reach. Web behavior is unchanged.
+      const goAppEventsTab = () => { if (typeof isNativeAppMode === 'function' && isNativeAppMode()) { if (typeof renderAppHomeEventChip === 'function') renderAppHomeEventChip(); if (typeof setAppHomeTab === 'function') setAppHomeTab('events'); } else setHomeTab('events'); };
       const {packets,season}=ensureSeason3State(),overlay=document.createElement('div');overlay.className='season3-overlay',panel=document.createElement('section');panel.className='season3-panel';
       const unlocked=Object.keys(packets.unlocked).filter(id=>packets.unlocked[id]).length;
       if (getActiveSeasonProfile().key === 'xplodemis') {
           panel.innerHTML=`<header><div><small>SEASON 6</small><h1>XPLODEMIS × ARENA FORGE</h1><p>Ends December 31, 2026</p></div><button aria-label="Close">X</button></header><div class="season3-breach"><small>CHRISTMAS WITH EXPLOSIONS</small><b>PRESENTS, CHRISTMAS SHOWDOWN AND CORE PIECES ARE LIVE</b></div><div class="season3-hub-grid"><button data-action="pass"><i>S6</i><b>Season Pass</b><span>Festive rewards • ends Dec 31 • lives in the Quests tab now</span></button><button data-action="showdown"><i>🎄</i><b>Christmas Showdown</b><span>Solo Showdown • grab DMG, Speed and Double HP buffs</span></button><button data-action="quests"><i>Q</i><b>Season Quests</b><span>Climb the ladder • claim a free Present every day</span></button><button data-action="present"><i>🎁</i><b>Presents</b><span>${playerData.presentCount||0} unopened • 1-4 rewards inside • Xplodemis skins hide within</span></button><button data-action="boss"><i>🎃</i><b>Headless Bolznstien Boss Fight</b><span>Still haunting • up to 3 Spooky Boxes • his skin FREE on full clear</span></button><button data-action="corrupted"><i>CS</i><b>Corrupted Showdown</b><span>Season 6 chaos in the winter arena</span></button></div><div class="tower-retired-note"><b>SEASON 5 — ARCHIVED</b><span>Turkey Trouble is over. Capture the Turkey returns next November; your collections are preserved.</span></div><div class="tower-retired-note"><b>💠 CORE PIECES</b><span>The new currency is LIVE: earn it from Tappers, this Pass and Presents — spend it on Mutation, Signature and Instinct unlocks in the Quests tab.</span></div>`;
           panel.querySelector('header button').onclick=()=>overlay.remove();
           panel.querySelector('[data-action="pass"]').onclick=()=>{overlay.remove();openSeasonPass();};
-          panel.querySelector('[data-action="showdown"]').onclick=()=>{overlay.remove();showdownMode='christmas_showdown';updateShowdownModeUI();setHomeTab('events');};
+          panel.querySelector('[data-action="showdown"]').onclick=()=>{overlay.remove();showdownMode='christmas_showdown';updateShowdownModeUI();goAppEventsTab();};
           panel.querySelector('[data-action="quests"]').onclick=()=>{overlay.remove();openQuestBoard('season');};
           panel.querySelector('[data-action="present"]').onclick=()=>{overlay.remove();if((playerData.presentCount||0)>0)openPresent();else alert('No Presents yet — earn them from the Xplodemis Pass, Season Quests and the daily Present quest!');};
           panel.querySelector('[data-action="boss"]').onclick=()=>{overlay.remove();openHeadlessBossEvent();};
-          panel.querySelector('[data-action="corrupted"]').onclick=()=>{overlay.remove();showdownMode='corrupted_showdown';updateShowdownModeUI();setHomeTab('events');};
+          panel.querySelector('[data-action="corrupted"]').onclick=()=>{overlay.remove();showdownMode='corrupted_showdown';updateShowdownModeUI();goAppEventsTab();};
           overlay.onclick=e=>{if(e.target===overlay)overlay.remove();};overlay.appendChild(panel);document.body.appendChild(overlay);
           return;
       }
@@ -19447,16 +19583,16 @@ let heistFeverActive = false;
           panel.innerHTML=`<header><div><small>SEASON 5</small><h1>TURKEY TROUBLE × ARENA FORGE</h1><p>Ends November 30, 2026</p></div><button aria-label="Close">X</button></header><div class="season3-breach"><small>THE TURKEYS ARE LOOSE</small><b>CAPTURE THE TURKEY IS LIVE ALL NOVEMBER</b></div><div class="season3-hub-grid"><button data-action="pass"><i>S5</i><b>Season Pass</b><span>Harvest rewards • ends Nov 30</span></button><button data-action="turkey"><i>🦃</i><b>Capture the Turkey</b><span>3v3 CTF • grab the bird, haul it home • first to 3 captures</span></button><button data-action="quests"><i>Q</i><b>Season Quests</b><span>Gobble the ladder for feast rewards</span></button><button data-action="boss"><i>🎃</i><b>Headless Bolznstien Boss Fight</b><span>Still haunting • up to 3 Spooky Boxes • his skin FREE on full clear</span></button><button data-action="corrupted"><i>CS</i><b>Corrupted Showdown</b><span>Season 5 chaos in the feast arena</span></button><button data-action="spooky"><i>🎃</i><b>Spooky Boxes</b><span>${playerData.spookyBoxCount||0} unopened leftovers from Arenaaween</span></button></div><div class="tower-retired-note"><b>SEASON 4 — ARCHIVED</b><span>Arenaaween is over. Your Spooky Boxes, skins and collections are preserved.</span></div><div class="tower-retired-note"><b>PACKETS — REMOVED</b><span>Packets are gone for good — the system has been removed. Your collection (${unlocked}/20 discovered) stays in your save as a souvenir.</span></div><div class="tower-retired-note"><b>TOWER POWERS — TEMPORARILY RETIRED</b><span>Your collection is preserved and will return in a future rework.</span></div>`;
           panel.querySelector('header button').onclick=()=>overlay.remove();
           panel.querySelector('[data-action="pass"]').onclick=()=>{overlay.remove();openSeasonPass();};
-          panel.querySelector('[data-action="turkey"]').onclick=()=>{overlay.remove();showdownMode='capture_turkey';updateShowdownModeUI();setHomeTab('events');};
+          panel.querySelector('[data-action="turkey"]').onclick=()=>{overlay.remove();showdownMode='capture_turkey';updateShowdownModeUI();goAppEventsTab();};
           panel.querySelector('[data-action="quests"]').onclick=()=>{overlay.remove();openQuestBoard('season');};
           panel.querySelector('[data-action="boss"]').onclick=()=>{overlay.remove();openHeadlessBossEvent();};
-          panel.querySelector('[data-action="corrupted"]').onclick=()=>{overlay.remove();showdownMode='corrupted_showdown';updateShowdownModeUI();setHomeTab('events');};
+          panel.querySelector('[data-action="corrupted"]').onclick=()=>{overlay.remove();showdownMode='corrupted_showdown';updateShowdownModeUI();goAppEventsTab();};
           panel.querySelector('[data-action="spooky"]').onclick=()=>{overlay.remove();if((playerData.spookyBoxCount||0)>0)openSpookyBox();else alert('No Spooky Boxes left — Arenaaween is over, but Turkey Trouble rewards are live!');};
           overlay.onclick=e=>{if(e.target===overlay)overlay.remove();};overlay.appendChild(panel);document.body.appendChild(overlay);
           return;
       }
       panel.innerHTML=`<header><div><small>SEASON 4</small><h1>ARENAAWEEN × ARENA FORGE</h1><p>Ends October 31, 2026</p></div><button aria-label="Close">X</button></header><div class="season3-breach"><small>THE HAUNTING IS LIVE</small><b>SPOOKY BOXES HAVE INFESTED THE ARENA</b></div><div class="season3-hub-grid"><button data-action="pass"><i>S4</i><b>Season Pass</b><span>Spooky rewards • ends Oct 31</span></button><button data-action="spooky"><i>🎃</i><b>Spooky Boxes</b><span>${playerData.spookyBoxCount||0} unopened • 6 skins, coins, or souls</span></button><button data-action="quests"><i>Q</i><b>Season Quests</b><span>Haunt the ladder for Spooky Boxes</span></button><button data-action="corrupted"><i>CS</i><b>Corrupted Showdown</b><span>Season 4 chaos in the haunted arena</span></button><button data-action="boss"><i>🎃</i><b>Headless Bolznstien Boss Fight</b><span>Hard through Impossible XV • up to 3 Spooky Boxes • his skin FREE on full clear</span></button><button data-action="skins"><i>👻</i><b>Arenaaween Skins</b><span>${unownedArenaweenSkins().length===0?'Full collection!':unownedArenaweenSkins().length+' of 6 still hiding in Spooky Boxes'}</span></button></div><div class="tower-retired-note"><b>BOSS EVENTS — REPLACED</b><span>The Lava Villain and Bouncin' Balls boss events were retired in Season 4. Headless Bolznstien has taken over the arena — your old boss progress is preserved.</span></div><div class="tower-retired-note"><b>PACKETS — REMOVED</b><span>Packets are gone for good — the system has been removed. Your collection (${unlocked}/20 discovered) stays in your save as a souvenir.</span></div><div class="tower-retired-note"><b>TOWER POWERS — TEMPORARILY RETIRED</b><span>Your collection is preserved and will return in a future rework.</span></div>`;
-      panel.querySelector('header button').onclick=()=>overlay.remove();panel.querySelector('[data-action="pass"]').onclick=()=>{overlay.remove();openSeasonPass();};panel.querySelector('[data-action="spooky"]').onclick=()=>{overlay.remove();if((playerData.spookyBoxCount||0)>0)openSpookyBox();else alert('No Spooky Boxes yet — earn them from the Arenaaween Pass and Season Quests!');};panel.querySelector('[data-action="skins"]').onclick=()=>{overlay.remove();alert('Arenaaween skins hide inside Spooky Boxes: Pumpkin King, Count Curseula, Phantom Phase, Midnight Reaper Darkener, Nightmare Awakenator, and Jack-o-Demon. Pumpkin King is also the Tier 25 Premium reward.');};panel.querySelector('[data-action="quests"]').onclick=()=>{overlay.remove();openQuestBoard('season');};panel.querySelector('[data-action="corrupted"]').onclick=()=>{overlay.remove();showdownMode='corrupted_showdown';updateShowdownModeUI();setHomeTab('events');};panel.querySelector('[data-action="boss"]').onclick=()=>{overlay.remove();openHeadlessBossEvent();};overlay.onclick=e=>{if(e.target===overlay)overlay.remove();};overlay.appendChild(panel);document.body.appendChild(overlay);
+      panel.querySelector('header button').onclick=()=>overlay.remove();panel.querySelector('[data-action="pass"]').onclick=()=>{overlay.remove();openSeasonPass();};panel.querySelector('[data-action="spooky"]').onclick=()=>{overlay.remove();if((playerData.spookyBoxCount||0)>0)openSpookyBox();else alert('No Spooky Boxes yet — earn them from the Arenaaween Pass and Season Quests!');};panel.querySelector('[data-action="skins"]').onclick=()=>{overlay.remove();alert('Arenaaween skins hide inside Spooky Boxes: Pumpkin King, Count Curseula, Phantom Phase, Midnight Reaper Darkener, Nightmare Awakenator, and Jack-o-Demon. Pumpkin King is also the Tier 25 Premium reward.');};panel.querySelector('[data-action="quests"]').onclick=()=>{overlay.remove();openQuestBoard('season');};panel.querySelector('[data-action="corrupted"]').onclick=()=>{overlay.remove();showdownMode='corrupted_showdown';updateShowdownModeUI();goAppEventsTab();};panel.querySelector('[data-action="boss"]').onclick=()=>{overlay.remove();openHeadlessBossEvent();};overlay.onclick=e=>{if(e.target===overlay)overlay.remove();};overlay.appendChild(panel);document.body.appendChild(overlay);
   }
 
   function openLavaBossEvent(){
