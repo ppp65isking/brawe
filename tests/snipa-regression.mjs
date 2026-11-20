@@ -961,7 +961,6 @@ try {
     extractFn(game, 'updateSnipaSystems') + '\n' +
     extractFn(game, 'getPlayerDamageScale') + '\n' +
     extractFn(game, 'getLevelDamageScale') + '\n' +
-    extractFn(game, 'getPacketOutgoingDamageMultiplier') + '\n' +
     extractFn(game, 'normalizeDamageBreakpoint') + '\n' +
     extractFn(game, 'checkHit'),
     sandbox);

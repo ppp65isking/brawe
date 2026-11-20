@@ -16,8 +16,8 @@ assert.match(game, /stage === 1 \? \[0\] : stage === 2 \? \[-\.04416,\.04416\] :
 assert.match(game, /JACKTRADE_CARD_RANGE_BY_STAGE = Object\.freeze\(\{1:650,2:530,4:430\}\)/, 'One-card attacks have long range, two-card attacks medium range, and four-card attacks short range');
 assert.match(game, /const cardRange = getJackTradeCardRange\(stage\)[\s\S]*?maxLife:cardRange\/speed/, 'Each projectile uses its current volley stage range');
 assert.match(game, /if \(!volley \|\| volley\.hit\) return;[\s\S]*?volley\.hit = true/, 'Multiple cards in one volley only advance progression once');
-assert.match(game, /volley\.stage === 1\) setJackTradeStage\(owner,isSlopSushiMode&&getEntitySlopEffectTotal\(owner,'jackTradeDoubleDown'\)>0\?4:2\)[\s\S]*?volley\.stage === 2\) setJackTradeStage\(owner,4\)/, 'Successful attacks advance one to two to four cards, while Double Down can skip stage two');
-assert.match(game, /owner\.jackTradeSafeBetArmed[\s\S]*?jackTradeDealerInsurance[\s\S]*?else setJackTradeStage\(owner,1\)/, 'A complete miss resets progression unless Safe Bet or Dealer Insurance changes it');
+assert.match(game, /volley\.stage === 1\) setJackTradeStage\(owner,2\)[\s\S]*?volley\.stage === 2\) setJackTradeStage\(owner,4\)/, 'Successful attacks advance one to two to four cards');
+assert.match(game, /owner\.jackTradeSafeBetArmed[\s\S]*?else setJackTradeStage\(owner,1\)/, 'A complete miss resets progression unless Safe Bet saves it');
 assert.match(game, /if\(!owner\|\|owner\.hp<=0\|\|volley\.hit\|\|volley\.hyper\)continue/, 'Hyper misses preserve the normal attack stage');
 assert.match(game, /NEXT: \$\{stage\} CARD/, 'The HUD clearly displays the next volley size');
 
@@ -29,7 +29,7 @@ assert.match(game, /superCharge >= 100[\s\S]*?prepareJackTradeOutcomes\(player,g
 assert.match(game, /jackTradeRegenRemaining[\s\S]*?\+6000[\s\S]*?jackTradeRegenUntil=now\+10000/, 'Regeneration restores 6000 HP over ten seconds');
 assert.match(game, /damageJackTradeWalls\([\s\S]*?jackTradePushVX[\s\S]*?jackTradePushUntil/, 'Demolition destroys walls and applies smooth knockback');
 assert.match(game, /jackTradeRushUntil[\s\S]*?now\+5000/, 'Rush Order lasts five seconds');
-assert.match(game, /base \/= 3/, 'Rush Order reloads 200 percent faster');
+assert.match(game, /base \/= \(1 \+ 2 \* \(player\.jackTradeRushStrength \?\? 1\)\)/, 'Rush Order reloads 200 percent faster (divisor 1 + 2x rush strength)');
 assert.match(game, /JACKTRADE_TOXIC_SPRAY_RANGE = 300 \* 1\.4/, 'Toxic Spray has forty percent more range than its former cone');
 assert.match(game, /'toxicSpray'[\s\S]*?travelDistance:JACKTRADE_TOXIC_SPRAY_RANGE[\s\S]*?poisonDuration:2000[\s\S]*?poisonDamagePerSecond:1000/, 'Toxic Spray is an aimed traveling cloud that poisons for two seconds');
 assert.match(game, /zone\.x=zone\.originX\+Math\.cos\(zone\.angle\)\*zone\.travelDistance\*ease[\s\S]*?const touched=distance<=zone\.radius/, 'Toxic Spray physically travels and poisons only enemies touched by its cloud');
@@ -68,11 +68,11 @@ assert.match(game, /ex\.fxKind==='jackTradeAllIn'[\s\S]*?for\(let dir=0;dir<4;di
 assert.match(game, /if\(aimingSuper\)[\s\S]*?if\(hyper\)[\s\S]*?for\(const direction of \[-Math\.PI\/2,Math\.PI,Math\.PI\/2,0\]\)[\s\S]*?prepareJackTradeOutcomes[\s\S]*?outcome==='regeneration'\|\|outcome==='rush'[\s\S]*?outcome==='toxic'[\s\S]*?outcome==='demolition'\?175:outcome==='slow'\?195:180/, 'Every revealed Trade of Fate outcome and ALL IN has a distinct custom aiming preview');
 assert.match(game, /ex\.fxKind==='jackTradeDemo'[\s\S]*?for\(let ray=0;ray<16;ray\+\+\)/, 'Demolition has a bespoke explosive blast treatment');
 assert.match(towerCards, /'MARKET CRASH'[\s\S]*?jackTradeSuperUnloadAll:1/, 'Market Crash unloads all six normal Super outcomes');
-assert.match(game, /jackTradeSuperUnloadAll'\)>0\)return JACKTRADE_SUPER_OUTCOMES\.length/, 'Market Crash prepares the full outcome table without modifying ALL IN');
+assert.match(game, /return Math\.min\(3,1\+\(owner\.jackTradeJackpotArmed\?1:0\)\+\(owner\.jackTradeLoadedDiceReady\?1:0\)\);/, 'Prepared outcome count is 1 + Jackpot + Loaded Dice, capped at 3 (Market Crash unload-all was a Slop Sushi effect, deleted)');
 assert.match(towerCards, /'ROYAL FLUSH'[\s\S]*?jackTradeRoyalFlush:1/, 'Royal Flush replaces the old ALL IN enhancement');
 assert.match(game, /function throwJackTradeRoyalFlush[\s\S]*?for\(let index=0;index<5;index\+\+\)[\s\S]*?type:'royalCard'/, 'Royal Flush throws a five-card pentagon');
 assert.match(game, /effect\.type==='royalCard'[\s\S]*?1800\*scale[\s\S]*?effect\.royalIndex===4[\s\S]*?4800\*scale/, 'Royal Flush detonates five cards and a colossal final blast');
-assert.match(game, /getEntitySlopEffectTotal\(owner,'jackTradeRoyalFlush'\)>0[\s\S]*?throwJackTradeRoyalFlush[\s\S]*?return;/, 'Royal Flush fully replaces the standard Hyper Super sequence');
+assert.match(game, /if\(hyper\)\{[\s\S]*?clearJackTradePreparedOutcomes\(owner\);[\s\S]*?owner\.jackTradeRushUntil[\s\S]*?throwJackTradeEffect\(owner,'allin',targetX,targetY,\{hyper:true\}\);/, 'Hyper Super collapses Rush + Regen + ALL IN (Royal Flush was a Slop Sushi effect, deleted)');
 assert.match(game, /ex\.fxKind==='jackTradeRoyalCard'\|\|ex\.fxKind==='jackTradeRoyalFlush'/, 'Royal Flush has bespoke impact visuals');
 assert.doesNotMatch(game, /getBrawlerLevel\s*\(/, 'No removed getBrawlerLevel helper is referenced');
 

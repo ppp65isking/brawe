@@ -219,7 +219,8 @@ function themeSandbox(seasonKey, native = true) {
 // --------------------------------------------------------------- stats -----
 const statsFnSrc = extractFunction(game, 'buildMatchResultsStats');
 check('results screen builds the stats section only in app mode', game.includes('if (isNativeAppMode()) {\n                resultCard.appendChild(buildMatchResultsStats(fullOnDamageEarned));'));
-check('stats section is fed the committed match damage ledger', game.includes('const fullOnDamageEarned=commitFullOnDamageMatch();'));
+// Full-On Damage was deleted: the match-damage stat is a constant 0 until a new per-match metric lands.
+check('stats section is fed the (now constant-0) match damage value', game.includes('const fullOnDamageEarned = 0;'));
 check('stats builder shows exactly one row: Match damage', statsFnSrc.includes("dmgLabel.textContent = '💥 Match damage'") && (statsFnSrc.match(/className = 'match-results-stat-row'/g) || []).length === 1);
 check('stats builder never labels the number "damage dealt" (it is the mixed match ledger)', !/damage dealt/i.test(statsFnSrc));
 check('stats builder has no takedown row (no per-match takedown data exists)', !/Takedown/i.test(statsFnSrc));
@@ -232,9 +233,9 @@ check('healing records nothing per match (doHeal has no stats write)', (() => {
     const d = extractFunction(game, 'doHeal');
     return !/Stats|record|match/i.test(d);
 })());
-check('damage ledger is fed by the general damage path (mixed: dealt + taken + bot-vs-bot)', (() => {
+check('general damage path no longer feeds a Full-On Damage ledger (deleted)', (() => {
     const a = extractFunction(game, 'applyShieldDamage');
-    return a.includes('recordFullOnDamage(amount)');
+    return !a.includes('recordFullOnDamage');
 })());
 
 // VM mirror: buildMatchResultsStats with a stub document.

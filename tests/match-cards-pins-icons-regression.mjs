@@ -13,7 +13,7 @@ check('AI pool frozen with 40 names', /const AI_NAME_POOL = Object\.freeze\(\[([
 check('AI pool names unique', (() => { const m = game.match(/const AI_NAME_POOL = Object\.freeze\(\[([\s\S]*?)\]\);/); const names = m[1].match(/'[^']+'/g) || []; return new Set(names).size === names.length; })());
 check('assignBotDisplayNames shuffles without replacement + Forge Fighter fallback', game.includes('function assignBotDisplayNames()') && game.includes('if (b.displayName) continue;') && game.includes('Forge Fighter ${k + 1}'));
 check('spawnBots calls assign at end', game.includes('assignBotDisplayNames();') && game.indexOf('assignBotDisplayNames();') > game.indexOf('function spawnBots(){'));
-check('displayName on all three spawnBots literals', (game.match(/displayName: null/g) || []).length === 3);
+check('displayName on both spawnBots literals', (game.match(/displayName: null/g) || []).length === 2);
 
 // Profile cards (§2)
 check('buildMatchCard uses portrait markup + brawler color', game.includes('function buildMatchCard(entry)') && game.includes('getBrawlerPortraitMarkup(entry.brawlerId)') && game.includes("--match-card-color"));
@@ -38,8 +38,6 @@ check('aegis icon is shield, sir_cheeseburger untouched', game.includes("aegis: 
 check('7 migrated looks present', ['looma', 'feathers', 'spikey', 'electrostien', 'mallow', 'nightshade', 'aegis'].every(id => new RegExp(`${id}:\\['(hood|horn|robot|round|helmet)'`).test(roster)));
 check('7 migrated identities present', ['looma', 'feathers', 'spikey', 'electrostien', 'mallow', 'nightshade', 'aegis'].every(id => new RegExp(`${id}:'[^']+\\|(robe|float|round|wide)'`).test(roster)));
 
-// Pins contract pins (already implemented — guard against regressions)
-check('pin equip max 6, cooldown 3000, starters seeded', game.includes('const PIN_EQUIP_MAX = 6;') && game.includes('const PIN_SEND_COOLDOWN_MS = 3000;') && game.includes("Object.freeze(['forge_wave', 'good_game', 'ouch'])"));
 
 console.log(`match-cards-pins-icons-regression: ${passed} passed, ${failed} failed`);
 if (failures.length) { console.log('FAILURES:'); for (const f of failures) console.log(' - ' + f); }

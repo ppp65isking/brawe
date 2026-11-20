@@ -119,7 +119,6 @@ check('blinkeye scaledStats 1850>1400', has('dmg: Math.round(1400 * scale), spee
 check('blinkeye fire player normal 1400 (was 1850)', has('(isHyper ? 1665 : 1400)'));
 check('blinkeye fire bot normal 832 (was 1100, same ratio)', has('(isHyper ? 1059 : 832)'));
 check('blinkeye ratio arithmetic', Math.round(1100 * 1400 / 1850) === 832 && Math.round(2200 * 1400 / 1850) === 1665);
-check('blinkeye boss damage untouched (separate boss entity, 580)', has('blinkeyeBaseDmg: 580,'));
 
 // ---------- GUARD: untouched neighbours still at base values ----------
 // Spot-checks that no other brawler was edited: nightshade (Group D's sheet

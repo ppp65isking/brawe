@@ -28,7 +28,7 @@ check('shop sidebar has momentum scrolling + hidden scrollbar', game.includes('.
 check('fighters detail is no longer a nested scroller', game.includes('#appFightersDetail{flex:none;overflow-y:visible}'));
 check('fighters strip sticks to the top of the view', game.includes("#appFightersStrip{position:sticky;top:0;z-index:2;"));
 check('picking a fighter resets the view to the top', game.includes("if (fightersView) fightersView.scrollTop = 0;"));
-check('picked fighter card is scrolled into view in the strip', game.includes("scrollIntoView({ inline: 'center', block: 'nearest' })"));
+check('picked fighter card is scrolled into view in the strip', game.includes("view.querySelector(`[data-app-fighter=\"${appFightersState.focused}\"]`)?.scrollIntoView({ block: 'nearest' })"));
 
 // --- SP / gadget descriptions render where the data exists ---
 check('kitSplit handles Name (description) form', game.includes('const kitSplit = (raw) => {') && game.includes("const m = s.match(/\\(([^)]*)\\)/);"));

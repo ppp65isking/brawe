@@ -91,7 +91,9 @@ check('bullet draw dispatch draws runner shoes before universal skin renderer', 
   return shoeAt > 0 && skinAt > shoeAt;
 })());
 check('respawn clears runner fields at both reset sites', (game.match(/entity\.runnerOverchargeUntil = 0;/g) || []).length === 2);
-check('match reset clears runnerTrailSegments', game.includes('runnerTrailSegments.length = 0;'));
+// The old full-clear line lived only in the vaulted WeeFee boss map (deleted with the boss modes);
+// live cleanup is expiry in updateRunnerSystems.
+check('expired runnerTrailSegments are spliced out by updateRunnerSystems', game.includes('if (now >= runnerTrailSegments[i].until) runnerTrailSegments.splice(i, 1);'));
 check('no truthiness-guard on runner ids in ally filter', !/e\.id &&/.test(game.slice(game.indexOf('function castRunnerSuper'), game.indexOf('function castRunnerSuper') + 800)));
 
 // --- CC redesign (visuals only) ---

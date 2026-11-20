@@ -4,7 +4,6 @@ import fs from 'node:fs';
 const game = fs.readFileSync(new URL('../game.js', import.meta.url), 'utf8');
 
 assert.match(game, /heater_miser:\s*\{\s*type:\s*'mutation',[\s\S]{0,180}Thermal Runaway/, 'Heater Miser registers Thermal Runaway');
-assert.match(game, /heater_miser:\s*\[[\s\S]{0,500}warm_the_lines[\s\S]{0,500}furnace_tests/, 'Thermal Runaway has three unlock quests');
 assert.match(game, /const HEATER_MISER_RANGE = 540;/, 'Thermal Tether range is buffed to 540');
 assert.match(game, /if \(e >= 10000\) return 1020;[\s\S]{0,220}return 180;/, 'Tether ramp is buffed from 180 to 1020');
 assert.match(game, /tickDamage: sp2 \? 300 : 260/, 'Furnace damage is buffed');

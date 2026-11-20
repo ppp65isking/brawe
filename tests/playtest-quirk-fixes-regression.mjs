@@ -7,19 +7,11 @@
 // Escape key + backdrop click, routed through one close helper that also
 // removes the keydown listener. The summon action is synchronous, so
 // dismissal is always cancel-safe.
-// Issue 2 — finishCoreBreach() (the LIVE Season 3 Core Breach intro ending,
-// not dead code: shouldStartCoreBreachIntro() is true for any solo/duo/trio
-// Showdown while season.coreBreachCompleted is false, i.e. every first
-// Solo Showdown on a fresh save) showed a fixed 4.2s, non-interactive
-// "6 UNKNOWN PACKET SIGNALS DETECTED" overlay whose 6 signal names are plain
-// spans that look like choices but are not clickable, and it could pop over
-// an already-shown match-over screen. Rewards/flags/save all happen BEFORE
-// the overlay line, so skipping or dismissing it loses nothing. Fix: skip
-// the overlay when the match already ended (gameOver true); otherwise make
-// it click-to-dismiss (same end state as the timer) with a hint.
+// Issue 2 — finishCoreBreach() (Season 3 Core Breach intro) was DELETED with
+// the Core Breach intro in the big-changes deletions; its checks are gone.
+// Only the Soul Summoner fix (Issue 1) remains in this suite.
 //
-// Soul Summoner checks EXECUTE openSoulSummoner in a vm with a stub DOM;
-// finishCoreBreach checks EXECUTE it in a vm with stubbed season/document.
+// Soul Summoner checks EXECUTE openSoulSummoner in a vm with a stub DOM.
 // Run against a game path: node tests/playtest-quirk-fixes-regression.mjs
 // [path-to-game.js] (default: ../game.js). The unfixed game must FAIL.
 import assert from 'node:assert/strict';
@@ -70,7 +62,7 @@ function extractFn(src, name) {
 
 // ---------------------------------------------------------- 1. source pins
 const ssStart = game.indexOf('function openSoulSummoner()');
-const ssEnd = game.indexOf('const BRICK_ROAD_MILESTONES', ssStart);
+const ssEnd = game.indexOf('  function getUpgradeCost(level)', ssStart);
 const ssRegion = ssStart !== -1 && ssEnd !== -1 ? game.slice(ssStart, ssEnd) : '';
 check('soul summoner region found', ssRegion.length > 0);
 check('soul summoner has Escape handler', ssRegion.includes("event.key === 'Escape'"));
@@ -83,26 +75,6 @@ check('soul summoner X button routes through close helper',
   ssRegion.includes('closeBtn.onclick = () => closeSoulSummoner();'));
 check('soul summoner registers keydown listener',
   ssRegion.includes("document.addEventListener('keydown', soulSummonerKeyboard);"));
-
-const cbStart = game.indexOf('function finishCoreBreach()');
-const cbEnd = game.indexOf('function updateCoreBreachIntro', cbStart);
-const cbRegion = cbStart !== -1 && cbEnd !== -1 ? game.slice(cbStart, cbEnd) : '';
-check('core breach region found', cbRegion.length > 0);
-check('core breach skips overlay when match already over',
-  cbRegion.includes('if(gameOver){return;}'));
-check('core breach overlay is click-to-dismiss',
-  cbRegion.includes('overlay.onclick=()=>{clearTimeout(breachEndTimer);overlay.remove();gameOver=true;}'));
-check('core breach overlay has continue hint',
-  cbRegion.includes('CLICK TO CONTINUE'));
-check('core breach 4.2s timer preserved',
-  cbRegion.includes('setTimeout(()=>{overlay.remove();gameOver=true;},4200)'));
-check('core breach still awards signals before overlay',
-  cbRegion.indexOf("addPacketSignal('bird',100,'CORE BREACH',false)") !== -1 &&
-  cbRegion.indexOf("addPacketSignal('bird',100,'CORE BREACH',false)") <
-  cbRegion.indexOf('core-breach-ending'));
-check('core breach still saves before overlay',
-  cbRegion.indexOf('saveProgress();') !== -1 &&
-  cbRegion.indexOf('saveProgress();') < cbRegion.indexOf('core-breach-ending'));
 
 // ---------------------------------------------------------- 2. stub DOM
 class El {
@@ -216,61 +188,6 @@ try {
   check('vm: panel reference resolved', !!panel && !!panel2 && !!panel3);
 } catch (e) {
   failures.push('vm: soul summoner execution threw: ' + e.message);
-}
-
-// ---------------------------------------------------------- 4. vm: finishCoreBreach
-function runBreach(presetGameOver) {
-  const season = { coreBreachReplayDebug: false, coreBreachCompleted: false, coreBreachSignalsRevealed: false };
-  const calls = { signals: [], saved: 0, quests: 0, appended: [], timers: [], cleared: [] };
-  const doc = makeDocument();
-  doc.body.appendChild = (el) => { calls.appended.push(el); doc.body.children.push(el); return el; };
-  const sandbox = {
-    coreBreachState: { finished: false, phase: 'raid' },
-    ensureSeason3State: () => ({ season }),
-    addPacketSignal: (id, amt, src) => calls.signals.push([id, amt, src]),
-    PACKET_DEFS: { bird: {}, skywild: {}, molten_crown: {}, iron_chorus: {}, glacier_signal: {}, umbral_garden: {}, chrono_divide: {} },
-    saveProgress: () => { calls.saved++; },
-    progressSeason3Quest: () => { calls.quests++; },
-    document: doc,
-    gameOver: presetGameOver,
-    setTimeout: (cb, ms) => { const id = { cb, ms }; calls.timers.push(id); return id; },
-    clearTimeout: (id) => { calls.cleared.push(id); },
-    console,
-  };
-  sandbox.window = sandbox;
-  vm.createContext(sandbox);
-  vm.runInContext(extractFn(game, 'finishCoreBreach') + '\nthis.__finish = finishCoreBreach;', sandbox);
-  vm.runInContext('__finish();', sandbox);
-  return { sandbox, calls, season, doc };
-}
-try {
-  // Timer path + click path on a live match.
-  const r = runBreach(false);
-  check('vm: breach awards signals and saves before overlay',
-    r.calls.signals.length > 0 && r.calls.saved === 1);
-  check('vm: breach overlay created on live match', r.calls.appended.length === 1);
-  const ov = r.calls.appended[0];
-  check('vm: breach overlay keeps signal names',
-    ov && ov.innerHTML.includes('6 UNKNOWN PACKET SIGNALS DETECTED') && ov.innerHTML.includes('SKYWILD'));
-  check('vm: breach overlay has continue hint', ov && ov.innerHTML.includes('CLICK TO CONTINUE'));
-  check('vm: breach timer is 4.2s', r.calls.timers.length === 1 && r.calls.timers[0].ms === 4200);
-  check('vm: breach overlay click dismisses to game over',
-    typeof ov.onclick === 'function' &&
-    (() => { ov.onclick(); return ov.removed === true && r.sandbox.gameOver === true; })());
-  check('vm: breach click clears the timer',
-    r.calls.cleared.length === 1 && r.calls.cleared[0] === r.calls.timers[0]);
-  const r2 = runBreach(false);
-  const ov2 = r2.calls.appended[0];
-  r2.calls.timers[0].cb();
-  check('vm: breach timer path still ends the match',
-    ov2.removed === true && r2.sandbox.gameOver === true);
-  // Guard path: match already over.
-  const r3 = runBreach(true);
-  check('vm: breach overlay skipped when match already over', r3.calls.appended.length === 0);
-  check('vm: breach rewards persist even when overlay skipped',
-    r3.calls.signals.length > 0 && r3.calls.saved === 1);
-} catch (e) {
-  failures.push('vm: finishCoreBreach execution threw: ' + e.message);
 }
 
 console.log(`playtest-quirk-fixes-regression: ${passed} passed, ${failures.length} failed`);

@@ -20,9 +20,7 @@ assert.match(source, /const dailyEventIds = getHomeDailyRotationIds\(\);/, 'rota
 assert.doesNotMatch(source, /createSection\('ALL EVENTS'/, 'the ALL EVENTS section must be gone');
 // Selecting any listed event must survive the selector's validity reset.
 assert.match(source, /const availableIds = new Set\(\['solo', 'duo', 'trio', \.\.\.HOME_POPULAR_MODE_IDS, \.\.\.dailyEventIds\]\);/, 'availableIds must be popular + daily ids');
-assert.match(source, /id !== 'brick_vault' \|\| TOWER_POWER_SYSTEM_ENABLED/, 'daily pool must keep system filters');
 assert.match(source, /id !== 'prop_hunt' \|\| PROP_HUNT_ENABLED/, 'daily pool must keep prop-hunt filter');
-assert.match(source, /id !== 'tombstone_boss' \|\| TOMBSTONE_BOSS_ENABLED/, 'daily pool must keep tombstone filter');
 
 // The heading no longer advertises only the rotation.
 assert.match(html, /POPULAR EVENTS - ALWAYS AVAILABLE/, 'events heading must reflect popular availability');

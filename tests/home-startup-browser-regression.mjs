@@ -22,7 +22,7 @@ try {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.locator('#homeEventsNav').click();
   assert(await page.locator('[data-home-mode="arena_forge"]').isVisible(), 'Arena Forge is available in Events');
-  assert(await page.locator('[data-home-mode="tug_zone"]').isVisible(), 'Tug Zone is not missing from Events');
+  assert(await page.locator('[data-home-mode="damage_filler"]').isVisible(), 'Damage Filler is not missing from Events');
   await page.locator('#homeLobbyNav').click();
   await page.locator('#startMatch').click();
   await page.waitForFunction(() => window.__pureHTMLGame?.playing === true, {}, { timeout: 5000 }).catch(() => { throw new Error('Match did not launch: ' + errors.join('; ')); });

@@ -54,11 +54,10 @@ function check(name, cond) {
 
 // ================= X1: showToast is defined =================
 check('showToast is defined exactly once', count(game, 'function showToast(') === 1);
-check('all 3 call sites are still present', game.includes("showToast('BRAWE save downloaded!'") &&
-    game.includes("showToast('Save code copied!'") &&
-    game.includes("showToast('BRICK RUSH! 3x Bricks - 4x with a win streak'"));
+check('all 2 call sites are still present (Brick Rush toast deleted with the event)', game.includes("showToast('BRAWE save downloaded!'") &&
+    game.includes("showToast('Save code copied!'"));
 check('call sites still guard with typeof (now resolves to the real toast)',
-    count(game, "typeof showToast === 'function'") === 4); // round 2: PASTE success toast guards the same way
+    count(game, "typeof showToast === 'function'") === 3); // round 2: PASTE success toast guards the same way
 check('toast CSS exists (pill, above the tab bar, pointer-events none)',
     game.includes('.app-toast{') && game.includes('pointer-events:none') &&
     game.includes('bottom:calc(84px + env(safe-area-inset-bottom,0px))'));
@@ -114,7 +113,7 @@ check('shop flow (openGemShop) has no native dialogs', noNative(bodyOf('openGemS
 check('ability-piece purchase has no native dialogs', noNative(bodyOf('buySpecialAbilityPiece')));
 check('ability full-unlock purchase has no native dialogs', noNative(bodyOf('buySpecialAbilityFullUnlock')));
 check('tournament bracket flow has no native dialogs', noNative(bodyOf('openTournamentBracket')));
-check('shop uses the sheet for all 10 purchase errors', count(bodyOf('openGemShop'), 'showAppConfirmSheet(') === 10);
+check('shop uses the sheet for all 8 purchase errors (2 were for deleted items)', count(bodyOf('openGemShop'), 'showAppConfirmSheet(') === 8);
 check('save file import uses the sheet 3x (read fail, success, invalid)',
     count(bodyOf('importBraweSaveBackup'), 'showAppConfirmSheet(') === 3);
 check('save-code modal uses the sheet 9x (copy fail, empty, confirm, success, invalid, build fail, + paste empty/unsupported/blocked)',

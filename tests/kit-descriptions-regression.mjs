@@ -50,7 +50,7 @@ if (km) {
     // brawlerData holds 104 brawlers x 4 kit slots = 416. Before this change
     // 410 carried a description and these 6 were bare; now all 416 do.
     const start = game.indexOf('const brawlerData = {');
-    const endMark = '\n  };\n\n    // Player-facing BRAWE vocabulary';
+    const endMark = '\n  };\n    // Player-facing BRAWE vocabulary';
     const end = game.indexOf(endMark, start);
     check('brawlerData block extracts cleanly', start !== -1 && end !== -1);
     if (start !== -1 && end !== -1) {

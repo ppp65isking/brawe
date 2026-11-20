@@ -38,16 +38,13 @@ check('part-1 tokens still present (no token lost)',
   css.includes('--af-radius-xl: 24px') && css.includes('--af-hud-panel: rgba(4, 8, 16, 0.56)') &&
   css.includes('--af-panel-grad: linear-gradient(155deg, #102b48, #09172a 58%, #111329)'));
 
-// ---------------------------------------------------------- 2. mode panels (12)
+// ---------------------------------------------------------- 2. mode panels (9 kept)
 const PANELS = [
   ['Prop Hunt', "drawChunkyPanel(ctx, innerWidth / 2 - bannerW / 2, 78, bannerW, bannerH, { radius: 12, fill: 'rgba(24, 18, 4, 0.85)', stroke: 'rgba(255, 209, 102, 0.8)', lineWidth: 2 });"],
   ['Turkey Capture', "drawChunkyPanel(ctx, innerWidth / 2 - bannerW / 2, 78, bannerW, 36, { radius: 12, fill: 'rgba(32, 16, 4, 0.85)', stroke: 'rgba(255, 179, 71, 0.8)', lineWidth: 2 });"],
   ['Control Clash', "drawChunkyPanel(ctx, innerWidth / 2 - bannerW / 2, 78, bannerW, 36, { radius: 12, fill: 'rgba(4, 14, 32, 0.85)', stroke: 'rgba(120, 190, 255, 0.75)', lineWidth: 2 });"],
-  ['Brick Run', "drawChunkyPanel(ctx, innerWidth / 2 - bannerW / 2, 78, bannerW, brickCountdownTeam ? 52 : 36, { radius: 12, fill: 'rgba(4, 14, 32, 0.88)', stroke: brickCountdownTeam === 'player' ? '#38bdf8' : (brickCountdownTeam === 'enemy' ? '#f87171' : 'rgba(125, 210, 255, 0.75)'), lineWidth: 2 });"],
   ['Brick Vault', "drawChunkyPanel(ctx, panelX, panelY, panelW, panelH, { radius: 12, fill: 'rgba(4, 14, 32, 0.88)', stroke: heistFeverActive ? '#ff0055' : 'rgba(125, 210, 255, 0.78)', lineWidth: heistFeverActive ? 3 : 2 });"],
   ['Arena Forge', "drawChunkyPanel(ctx, panelX, panelY, 530, 76, { radius: 12, fill: 'rgba(4, 14, 32, 0.82)', stroke: arenaForgeOvertime ? '#ffcf66' : '#63e6be', lineWidth: 2 });"],
-  ['Target Rush', "drawChunkyPanel(ctx, panelX, panelY, 470, 52, { radius: 12, fill: 'rgba(4, 14, 32, 0.82)', stroke: '#ff6cab', lineWidth: 2 });"],
-  ['Tug Zone', "drawChunkyPanel(ctx, panelX, panelY, 490, 50, { radius: 12, fill: 'rgba(4,14,32,.84)', stroke: '#6ee7ff', lineWidth: 2 });"],
   ['Knock n Donate', "drawChunkyPanel(ctx, innerWidth / 2 - 240, 78, 480, 40, { radius: 12, fill: 'rgba(4, 14, 32, 0.78)', stroke: 'rgba(125, 210, 255, 0.75)', lineWidth: 2 });"],
   ['Trio Showdown', "drawChunkyPanel(ctx, innerWidth / 2 - 205, 78, 410, 40, { radius: 12, fill: 'rgba(4, 14, 32, 0.78)', stroke: 'rgba(125, 210, 255, 0.75)', lineWidth: 2 });"],
   ['Damage Filler', "drawChunkyPanel(ctx, panelX, panelY, 530, panelH, { radius: 12, fill: 'rgba(4, 14, 32, 0.8)', stroke: 'rgba(125, 210, 255, 0.78)', lineWidth: 2 });"],
@@ -77,7 +74,6 @@ for (const [name, snippet] of [
   ['Control Clash blue/red bars', 'ctx.fillRect(innerWidth / 2 - bannerW / 2 + 8, 104, (bannerW / 2 - 14) * (bluePct / 100), 5);'],
   ['Control Clash red bar', 'ctx.fillRect(innerWidth / 2 + 6, 104, (bannerW / 2 - 14) * (redPct / 100), 5);'],
   ['Arena Forge integrity bars', "ctx.fillRect(panelX + 18, panelY + 28, 220 * ownPct, 10);"],
-  ['Tug Zone position bar', "ctx.fillRect(panelX+18+454*pos-5,panelY+25,10,17);"],
   ['Damage Filler bars', 'ctx.fillRect(panelX + 18, panelY + 32, 228 * playerPct, 10);'],
   ['Mirror bars', 'ctx.fillRect(panelX + 18, panelY + 32, 210 * yourPct, 10);'],
 ]) check(`inner progress bar untouched: ${name}`, game.includes(snippet));
@@ -86,16 +82,14 @@ for (const [name, snippet] of [
   ['Prop Hunt line 1', 'ctx.fillText(phLine1, innerWidth / 2, 96);'],
   ['Turkey line', 'CAPTURE THE TURKEY'],
   ['Control Clash line', 'CONTROL CLASH'],
-  ['Brick Run line', 'BRICK RUN'],
   ['Brick Vault title', 'ctx.fillText(`${feverTag}  •  ⏱️ ${timeLeft}s`, innerWidth / 2, panelY + 18);'],
   ['Arena Forge title', 'TOTAL BASE INTEGRITY'],
-  ['Tug Zone announcement (below the panel)', 'ctx.fillText(tugZoneAnnouncement,innerWidth/2,panelY+75);'],
 ]) check(`mode-panel text untouched: ${name}`, game.includes(snippet));
 
 // ---------------------------------------------------------- 3. stack call sites
 const queueCalls = (game.match(/queueTopCenterLine\(ctx, topCenterStackQueue, /g) || []).length;
-check('27 queue call sites (14 alive incl. AF callout + 13 rule incl. boss)',
-  queueCalls === 27);
+check('19 queue call sites (deleted-mode arms removed with the modes)',
+  queueCalls === 19);
 check('queue declared once, just before the alive counter',
   (game.match(/const topCenterStackQueue = \[\];/g) || []).length === 1 &&
   game.indexOf('const topCenterStackQueue = [];') < game.indexOf('queueTopCenterLine(ctx, topCenterStackQueue, '));
@@ -103,11 +97,11 @@ check('flush called once, after the rule chain, before renderHypeChainHud',
   (game.match(/flushTopCenterStack\(ctx, topCenterStackQueue,/g) || []).length === 1 &&
   game.indexOf('flushTopCenterStack(ctx, topCenterStackQueue,') > game.indexOf('queueTopCenterLine(ctx, topCenterStackQueue, ') &&
   game.indexOf('flushTopCenterStack(ctx, topCenterStackQueue,') < game.indexOf('renderHypeChainHud();'));
-check('flush suppresses the six covering modes (Impossible / Brawe Ball / Knockout / WeeFee / BlinkEye / Tutorial)',
-  game.includes('isImpossibleMode || isBraweBallMode || isKnockoutMode ||\n        isWeeFeeBossMode || isBlinkEyeDodgeMode || isTutorialMode'));
+check('flush is suppressed only in the tutorial now (deleted-mode arms removed)',
+  game.includes('flushTopCenterStack(ctx, topCenterStackQueue,\n        isTutorialMode,'));
 check('helpers defined next to drawChunkyPanel',
   game.includes('function queueTopCenterLine(ctx, queue, text, x, y)') &&
-  game.includes('function flushTopCenterStack(ctx, queue, suppressed)') &&
+  game.includes('function flushTopCenterStack(ctx, queue, suppressed, opts)') &&
   game.indexOf('function queueTopCenterLine') > game.indexOf('function drawChunkyPanel'));
 // No bare top-center fillText left at y=48/60/69 in the HUD region.
 const hudRegion = game.slice(game.indexOf('// Alive counter'), game.indexOf('renderHypeChainHud();'));
@@ -116,10 +110,6 @@ check('no bare top-center fillText left at y=48/60/69 in the HUD region', bareTo
 // Deliberately bare lines stay bare (transient / squeezed / effect lines).
 for (const [name, snippet] of [
   ['Duo/Trio rally line (y=74)', 'innerWidth/2 - 125, 74)'],
-  ['beast-boss trial crystals (y=74)', 'Trial crystals on map: Overlord'],
-  ['GOD MODE line (y=108)', "'💀 GOD MODE ACTIVE', innerWidth/2 - 110, 108"],
-  ['Tower Defense title (y=74)', '🧱 TOWER DEFENSE'],
-  ['Tower Defense kills (y=96)', 'KILLS ${tdRt.kills}'],
   ['Darkagon label (y=42)', "'DARKAGON — OUTSIDE VISION BLOCKED'"],
   ['Ghoul darkness label (y=40)', 'DARKNESS ${Math.ceil'],
   ['LOW/CRITICAL HP flash (y=96)', "'CRITICAL HP' : 'LOW HP', innerWidth / 2, 96"],
@@ -133,22 +123,20 @@ for (const s of [
   "'TRAINING MODE · ALL ABILITIES ENABLED'",
   "'🔥 TRIO SHOWDOWN - NO RESPAWNS, STORM CLOSES, LAST TRIO WINS 🔥'",
   '`🪞 MIRROR 5V5 - ${mirrorModeBrawler.toUpperCase()} ONLY - FIRST TO ${MIRROR_KILL_GOAL} KILLS 🪞`',
-  '`🧬 BEAST BOSS 5V1 [${diffName}] - COLLECT CRYSTALS FOR 5s EMPOWERED BEAST 🧬`',
 ]) check(`queued text literal preserved verbatim: ${s.slice(0, 44)}…`, game.includes(s));
 
 // ---------------------------------------------------------- 4. part-1 sites intact
 const chunkyCalls = (game.match(/drawChunkyPanel\(ctx, /g) || []).length;
-check('drawChunkyPanel call sites: 10 part-1 + 12 part-2 mode panels + 1 part-2 stack flush = 23 (24 matches incl. the definition line)',
-  (game.match(/drawChunkyPanel\(ctx, /g) || []).length === 24);
+check('drawChunkyPanel call sites: 20 (deleted-mode panels removed with the modes)',
+  (game.match(/drawChunkyPanel\(ctx, /g) || []).length === 20);
 check('part-1 HUD sites still present (Attack/Super cards, minimap, bars, kit, badge)',
   game.includes("drawChunkyPanel(ctx, x, readY, cardW, readH, {") &&
   game.includes('drawChunkyPanel(ctx, 0, 0, mapW, mapH,') &&
   game.includes('drawChunkyPanel(ctx, bx-6, by-6, barW+12, barH+12,') &&
   game.includes('drawChunkyPanel(ctx, badgeX, badgeY, badgeW, badgeH,'));
-check('part-1 banner sites still present (respawn / PREPARE / tutorial / Impossible)',
+check('part-1 banner sites still present (respawn / PREPARE)',
   game.includes("drawChunkyPanel(ctx, panelX, panelY, panelW, 92, { radius: 18, fill: respawnGradient") &&
-  game.includes("drawChunkyPanel(ctx, panelX, panelY, panelW, panelH, { radius: 22, fill: 'rgba(6, 16, 34, 0.92)'") &&
-  game.includes("drawChunkyPanel(ctx, innerWidth / 2 - 250, 26, 500, 48, { radius: 14, fill: 'rgba(18, 5, 29, 0.84)'"));
+  game.includes("drawChunkyPanel(ctx, panelX, panelY, panelW, panelH, { radius: 22, fill: 'rgba(6, 16, 34, 0.92)'"));
 check('PR #42: doHeal still refuses Arena Forge towers',
   game.includes('if(entity.isArenaForgeTower) return;') &&
   game.includes('const ARENA_FORGE_TOWERS_HEAL_ENABLED = false;'));

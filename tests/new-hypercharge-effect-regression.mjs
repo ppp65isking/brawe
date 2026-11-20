@@ -13,7 +13,7 @@
 //   120 hyper frames -> explosions stays tiny (no trail spam), aura stays on
 //   real expiry via update() -> exactly one hyperExpire burst, flag clears
 //   bot hyper flip -> burst at the bot, no player text/shake
-//   always_hyper -> burst fires once, never repeats over 120 frames
+//   direct hyper grant -> burst fires once, never repeats over 120 frames
 //   fresh launch after hyper -> no ghost expiry burst (reset clears flag)
 // plus a perf regression: counting canvas proxy — hyper-ON render adds
 // <=12 drawImage calls/frame vs hyper-OFF, and render wall time stays
@@ -102,11 +102,10 @@ check('activateHypercharge duration still 5s (+surge 1.4x)',
 check('activateHypercharge still consumes the charge',
   /function activateHypercharge\(\)\{[\s\S]*?hyperChargeCharge = 0;\s*\n\s*isHypercharged = true;/.test(game));
 check('update() expiry path intact',
-  /if\(isHypercharged && performance\.now\(\) > hyperchargeUntil && !isMutatorActive\('always_hyper'\) && !isHyperForgeLTM\)\{\s*\n\s*isHypercharged = false;/.test(game));
+  /if\(isHypercharged && performance\.now\(\) > hyperchargeUntil\)\{\s*\n\s*isHypercharged = false;/.test(game));
 check('hyper speed mult untouched (+20%, portalo/ghoul 1.15)',
   game.includes("let hcSpd = (isHypercharged ? ((selectedBrawler === 'portalo' || selectedBrawler === 'ghoul') ? 1.15 : 1.2) : 1.0)"));
-check('always_hyper launch grant intact',
-  /if \(isMutatorActive\('always_hyper'\) \|\| isHyperForgeLTM\) \{\s*\n\s*if \(!isHypercharged\) recordOverdriveActivation\(\);\s*\n\s*isHypercharged = true;/.test(game));
+check('always_hyper grant is gone (mutator deleted)', !/isMutatorActive\('always_hyper'\)/.test(game));
 check('bot hyper gate intact',
   game.includes('function shouldBotActivateHyper(bot, target, context) {'));
 check('resetPlayerHyperchargeState still clears the three globals',
@@ -195,12 +194,17 @@ function launchNormal() {
   api.launchShowdownMatch();
   trimBots();
 }
-function launchAlwaysHyper() {
-  api.isRankedMatch = false;
-  api.isCustomMutatorMatch = true;
-  api.setActiveMutators('always_hyper', null, null);
-  api.launchShowdownMatch();
-  trimBots();
+function grantHyperToPlayerAndBot() {
+  // Stand-in for the deleted always_hyper grant: hypercharge the player
+  // (globals) and the single trimmed bot (entity flags) with a far-future
+  // until, exactly as the old grant did.
+  api.isHypercharged = true;
+  api.hyperchargeUntil = Date.now() + 999999999;
+  api.hyperChargeCharge = 100;
+  if (api.player) { api.player.isHypercharged = true; api.player.hyperChargeCharge = 100; }
+  const bot = api.bots.find(b => b && b.hp > 0 && !b.isDummy);
+  if (bot) { bot.isHypercharged = true; bot.hyperchargeUntil = Date.now() + 999999999; bot.hyperChargeCharge = 100; }
+  return bot;
 }
 function trimBots() {
   const live = api.bots.find(b => b && b.hp > 0);
@@ -326,22 +330,23 @@ check('fresh launch after hyper: no ghost expiry burst', countFx('hyperExpire') 
 check('fresh launch after hyper: no ghost activation burst', countFx('hyperActivate') === 0);
 check('fresh launch after hyper: player NOT hypercharged', api.isHypercharged === false);
 
-// --- always_hyper: burst fires once per hypercharged entity, never repeats.
-launchAlwaysHyper();
-check('always_hyper match: player IS hypercharged', api.isHypercharged === true);
+// --- Direct hyper grant: burst fires once per hypercharged entity, never repeats.
+launchNormal();
+grantHyperToPlayerAndBot();
+check('hypercharged match: player IS hypercharged', api.isHypercharged === true);
 runFrames(1);
-// The bot's always_hyper grant can land a frame or two after the player's,
+// The bot's grant can land a frame or two after the player's,
 // so give it up to 10 frames to appear (bursts live ~33 frames, so
 // nothing expires while waiting).
 for (let f = 0; f < 9 && countFx('hyperActivate') < 2; f++) runFrames(1);
 // Player AND the (single trimmed) bot both enter hypercharged, so each
 // gets its own one-shot activation burst — 2 total, 1 per entity.
 const ahBot = api.bots[0];
-check('always_hyper: activation burst fired for the player',
+check('hypercharged: activation burst fired for the player',
   api.explosions.some(e => e.fxKind === 'hyperActivate' && e.x === api.player.x && e.y === api.player.y));
-check('always_hyper: activation burst fired for the bot',
+check('hypercharged: activation burst fired for the bot',
   ahBot && api.explosions.some(e => e.fxKind === 'hyperActivate' && Math.hypot(e.x - ahBot.x, e.y - ahBot.y) < 100));
-check('always_hyper: exactly one burst per hypercharged entity (2 total)',
+check('hypercharged: exactly one burst per hypercharged entity (2 total)',
   countFx('hyperActivate') === 2);
 let maxAh = 0;
 let maxActivateSeen = 0;
@@ -350,11 +355,11 @@ for (let f = 0; f < 120; f++) {
   maxAh = Math.max(maxAh, api.explosions.length);
   maxActivateSeen = Math.max(maxActivateSeen, countFx('hyperActivate'));
 }
-check('always_hyper: burst never re-fires over 120 frames (max 2 live at once)', maxActivateSeen <= 2);
-check('always_hyper: burst expired on its own after 120 frames', countFx('hyperActivate') === 0);
-check('always_hyper: explosions stays small over 120 frames (no trail spam)', maxAh <= 8);
-check('always_hyper: aura flag stays set', api.player._hcFxActive === true);
-check('always_hyper: player stays hypercharged', api.isHypercharged === true);
+check('hypercharged: burst never re-fires over 120 frames (max 2 live at once)', maxActivateSeen <= 2);
+check('hypercharged: burst expired on its own after 120 frames', countFx('hyperActivate') === 0);
+check('hypercharged: explosions stays small over 120 frames (no trail spam)', maxAh <= 8);
+check('hypercharged: aura flag stays set', api.player._hcFxActive === true);
+check('hypercharged: player stays hypercharged', api.isHypercharged === true);
 
 console.log(`✔ behavioural: ${passed} checks passed total, ${failures.length} failed`);
 if (failures.length) {

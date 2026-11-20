@@ -1,13 +1,15 @@
 // Hypercharge leak regression (pre-existing bug, found during the
 // Thanksgiving surprise batch):
 //
-// An always_hyper match left the player hypercharged into the next launch.
-// Root cause: the player's hyper state is three module-level globals
-// (isHypercharged / hyperchargeUntil / hyperChargeCharge). The always_hyper
-// grant sets hyperchargeUntil = now + 999999999 (~11.5 days), and NO launch
-// boundary ever reset the globals — so the update() expiry check
-// (now > hyperchargeUntil) could never fire in the next match, and the
-// player started the next (normal) match hypercharged with a full meter.
+// A hypercharged match left the player hypercharged into the next launch.
+// (Originally an always_hyper match; that mutator is deleted, so the test
+// now grants the hyper state directly.) Root cause: the player's hyper
+// state is three module-level globals (isHypercharged / hyperchargeUntil /
+// hyperChargeCharge). The old grant set hyperchargeUntil = now + 999999999
+// (~11.5 days), and NO launch boundary ever reset the globals — so the
+// update() expiry check (now > hyperchargeUntil) could never fire in the
+// next match, and the player started the next (normal) match hypercharged
+// with a full meter.
 //
 // Fix: resetPlayerHyperchargeState() — clears all three globals plus the
 // player-entity mirrors — called first at every launch boundary:
@@ -15,9 +17,9 @@
 // launchTutorialMatch().
 //
 // Behavioural core (real game booted in a VM, real launches):
-//   always_hyper match -> hypercharged (mutator still works)
+//   hypercharged match -> hypercharged (grant still works)
 //   -> normal match -> NOT hypercharged (the leak is gone)
-//   -> always_hyper again -> hypercharged again (reset didn't break it)
+//   -> hypercharged again -> hypercharged again (reset didn't break it)
 //   -> normal match again -> clean again
 // plus: a normal short hyper still expires via the untouched update() path.
 import { readFileSync } from 'node:fs';
@@ -69,16 +71,16 @@ check('launchTrainingSandbox resets hyper', /function launchTrainingSandbox\([^)
 check('launchTutorialMatch resets hyper', /function launchTutorialMatch\(\) \{\s*\n\s*\/\/ Hypercharge leak fix[\s\S]{0,300}?resetPlayerHyperchargeState\(\);/.test(game));
 
 // The fix must not have "fixed" the leak by deleting the mutator behaviour.
-check('always_hyper launch grant intact (isHypercharged + ~11.5-day until + charge 100)',
-  /if \(isMutatorActive\('always_hyper'\) \|\| isHyperForgeLTM\) \{\s*\n\s*if \(!isHypercharged\) recordOverdriveActivation\(\);\s*\n\s*isHypercharged = true;\s*\n\s*hyperchargeUntil = performance\.now\(\) \+ 999999999;\s*\n\s*hyperChargeCharge = 100;/.test(game));
-check('per-frame always_hyper enforcer in update() intact',
-  /if \(isMutatorActive\('always_hyper'\) \|\| isHyperForgeLTM\) \{\s*\n\s*if \(player\.hp > 0\) \{\s*\n\s*if \(!isHypercharged\) recordOverdriveActivation\(\);\s*\n\s*isHypercharged = true;/.test(game));
-check('respawn re-grant intact (restoreRespawningEntity)',
-  /if \(isMutatorActive\('always_hyper'\) \|\| isHyperForgeLTM\) \{\s*\n\s*setEntityHypercharged\(entity, now \+ 999999999, now\);/.test(game));
+// always_hyper is deleted: no grant, no per-frame enforcer, no respawn
+// re-grant may reference it. The kept hyper_overdrive mutator is passive
+// (+4%/s) instead of an instant grant.
+check('always_hyper grant is gone (mutator deleted)', !/isMutatorActive\('always_hyper'\)/.test(game));
+check('hyper_overdrive passive still accrues +4%/s while not hypercharged',
+  /if \(isMutatorActive\('hyper_overdrive'\)\) \{\s*\n\s*if \(!isHypercharged && player\.hp > 0\) \{\s*\n\s*hyperChargeCharge = Math\.min\(100, hyperChargeCharge \+ 4\.0 \* dt\);/.test(game));
 check('normal activateHypercharge() intact (short ~5s hyper, charge consumed)',
   /function activateHypercharge\(\)\{\s*\n\s*const prog = getSelectedProgress\(\);\s*\n\s*const hcAvailable = prog\.hyperchargeUnlocked[\s\S]*?hyperChargeCharge = 0;\s*\n\s*isHypercharged = true;[\s\S]*?hyperchargeUntil = performance\.now\(\) \+ Math\.round\(\(5000/.test(game));
-check('update() expiry path intact (short hypers still expire when no mutator)',
-  /if\(isHypercharged && performance\.now\(\) > hyperchargeUntil && !isMutatorActive\('always_hyper'\) && !isHyperForgeLTM\)\{\s*\n\s*isHypercharged = false;\s*\n\s*hyperChargeCharge = 0;/.test(game));
+check('update() expiry path intact (short hypers still expire)',
+  /if\(isHypercharged && performance\.now\(\) > hyperchargeUntil\)\{\s*\n\s*isHypercharged = false;\s*\n\s*hyperChargeCharge = 0;/.test(game));
 check('Duels round-to-round hyper CHARGE carryover intact',
   /hyperChargeCharge = savedPlayerHyper \|\| 0;/.test(game));
 console.log(`✔ static pins: ${passed} passed so far, ${failures.length} failed`);
@@ -166,12 +168,13 @@ function launchNormal() {
   api.launchShowdownMatch();
   trimBots();
 }
-function launchAlwaysHyper() {
-  api.isRankedMatch = false;
-  api.isCustomMutatorMatch = true;
-  api.setActiveMutators('always_hyper', null, null);
-  api.launchShowdownMatch();
-  trimBots();
+function grantHyperDirectly() {
+  // Stand-in for the deleted always_hyper grant: leave the player
+  // hypercharged with a far-future until, exactly as the old grant did.
+  api.isHypercharged = true;
+  api.hyperchargeUntil = Date.now() + 999999999;
+  api.hyperChargeCharge = 100;
+  if (api.player) { api.player.isHypercharged = true; api.player.hyperChargeCharge = 100; }
 }
 function trimBots() {
   // Keep one live bot so update() frames stay cheap (test-time only).
@@ -183,39 +186,41 @@ function runFrames(n) {
   for (let f = 0; f < n; f++) api.update(1 / 60);
 }
 
-// --- Match 1: always_hyper — the mutator must still grant hyper.
-launchAlwaysHyper();
-check('always_hyper match: player IS hypercharged', api.isHypercharged === true);
-check('always_hyper match: hyper charge is 100', api.hyperChargeCharge === 100);
-check('always_hyper match: hyperchargeUntil is far-future (~11.5 days)',
+// --- Match 1: hypercharged state left over from a previous match.
+launchNormal();
+grantHyperDirectly();
+check('hypercharged match: player IS hypercharged', api.isHypercharged === true);
+check('hypercharged match: hyper charge is 100', api.hyperChargeCharge === 100);
+check('hypercharged match: hyperchargeUntil is far-future (~11.5 days)',
   api.hyperchargeUntil - Date.now() > 900000000);
 runFrames(5);
-check('always_hyper match: per-frame enforcer keeps player hypercharged', api.isHypercharged === true);
+check('hypercharged match: hyper state persists across frames', api.isHypercharged === true);
 
 // --- Match 2: normal launch right after — THE LEAK. Must start clean.
 launchNormal();
 let s = hyperState();
-check('normal match after always_hyper: NOT hypercharged', s.isHypercharged === false);
-check('normal match after always_hyper: hyperchargeUntil cleared to 0', s.hyperchargeUntil === 0);
-check('normal match after always_hyper: hyper charge cleared to 0', s.hyperChargeCharge === 0);
-check('normal match after always_hyper: player hyper-charge mirror cleared', s.playerHyperChargeCharge === 0);
-check('normal match after always_hyper: player isHypercharged mirror cleared', s.playerIsHypercharged === false);
+check('normal match after hypercharged: NOT hypercharged', s.isHypercharged === false);
+check('normal match after hypercharged: hyperchargeUntil cleared to 0', s.hyperchargeUntil === 0);
+check('normal match after hypercharged: hyper charge cleared to 0', s.hyperChargeCharge === 0);
+check('normal match after hypercharged: player hyper-charge mirror cleared', s.playerHyperChargeCharge === 0);
+check('normal match after hypercharged: player isHypercharged mirror cleared', s.playerIsHypercharged === false);
 runFrames(30);
 s = hyperState();
 check('normal match: stays NOT hypercharged after 30 update frames', s.isHypercharged === false);
 check('normal match: hyper charge stays 0 after 30 update frames', s.hyperChargeCharge === 0);
 
-// --- Match 3: always_hyper again — the reset must not have broken the mutator.
-launchAlwaysHyper();
-check('always_hyper re-armed: player IS hypercharged again', api.isHypercharged === true);
-check('always_hyper re-armed: hyper charge is 100 again', api.hyperChargeCharge === 100);
+// --- Match 3: hypercharged again — the reset must not have broken granting.
+launchNormal();
+grantHyperDirectly();
+check('hypercharged re-armed: player IS hypercharged again', api.isHypercharged === true);
+check('hypercharged re-armed: hyper charge is 100 again', api.hyperChargeCharge === 100);
 
 // --- Match 4: normal again — clean a second time (repeatability).
 launchNormal();
 s = hyperState();
-check('second normal match after always_hyper: NOT hypercharged', s.isHypercharged === false);
-check('second normal match after always_hyper: hyperchargeUntil cleared', s.hyperchargeUntil === 0);
-check('second normal match after always_hyper: hyper charge cleared', s.hyperChargeCharge === 0);
+check('second normal match after hypercharged: NOT hypercharged', s.isHypercharged === false);
+check('second normal match after hypercharged: hyperchargeUntil cleared', s.hyperchargeUntil === 0);
+check('second normal match after hypercharged: hyper charge cleared', s.hyperChargeCharge === 0);
 
 // --- Normal short hyper still expires via the untouched update() path.
 api.isHypercharged = true;

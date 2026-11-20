@@ -87,7 +87,7 @@ check('file importer delegates to the shared importer (no duplicated validation)
     game.includes('importBraweSavePayload(payload);'));
 check('web COPY SAVE CODE button sits next to DOWNLOAD/IMPORT SAVE',
     game.includes("copySaveCodeBtn.textContent = 'COPY SAVE CODE'") &&
-    game.includes('(progressionShortcutRow || homeUtilityRow).appendChild(copySaveCodeBtn);'));
+    game.includes('homeUtilityRow.appendChild(copySaveCodeBtn);'));
 check('app top strip has a save button wired to the same modal',
     game.includes('id="appHomeSaveBtn"') &&
     // Phase 4: the handler also buzzes (appBuzz) — same modal, same wiring.

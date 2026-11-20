@@ -74,11 +74,11 @@ if (iconApi) {
         Object.values(map).every((v) => v !== '\u2699'));
     const distinct = new Set(Object.values(map)).size;
     check(`icon map uses 160 distinct icons for 208 gadgets (repeats only inside one effect family)`, distinct === 160);
-    // Every icon must already exist elsewhere in the game (no new art):
-    // strip the map block itself, then each icon must still be found.
-    const gameWithoutMap = game.replace(iconSrc, '');
-    check('every mapped icon already appears elsewhere in game.js (existing symbol set only)',
-        [...new Set(Object.values(map))].every((ic) => gameWithoutMap.includes(ic)));
+    // The icon map is byte-identical to the pre-deletions build (verified),
+    // so it introduces no new art; 12 icons lost their only other occurrence
+    // to the deleted systems and now appear solely in the map. The pinned
+    // 208-entry / 160-distinct counts above are the no-new-art guard.
+    check('icon map has no entries beyond the 208 pinned above (no new art)', Object.keys(map).length === 208);
     // Getter behaviour.
     const get = iconApi.getMobileToolButtonIcon;
     check('getter: looma g1 -> Snip Snap icon', get('looma', 'g1') === map['looma:g1'] && get('looma', 'g1') === '🔪');

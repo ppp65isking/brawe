@@ -38,7 +38,8 @@ test('Orbo Super rendering draws a long narrow cosmic candy bolt', () => {
 test('Cosmic Candy Cannon is a fast, map-wide, wall-piercing power shot', () => {
   assert.match(gameCode, /const speed = 1480/);
   assert.match(gameCode, /damage:\s*owner\.id === player\.id \? \(hyper \? 2600 : 3700\)/);
-  assert.match(gameCode, /pierce:\s*true,[\s\S]{0,80}pierceWalls:\s*!isPowerPlay/);
+  // Power Play modifier is deleted: Orbo's Super always pierces walls now.
+  assert.match(gameCode, /isOrboSuper: true,[\s\S]{0,900}pierce: true,\s*pierceWalls: true,/);
   assert.match(gameCode, /super:'Cosmic Candy Cannon'/);
 });
 

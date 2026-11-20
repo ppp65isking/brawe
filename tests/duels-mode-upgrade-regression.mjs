@@ -1,31 +1,63 @@
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 
+// Duels Mode Upgrade regression — rewritten for the Arena Forge big changes
+// and the current Duels implementation (draft overlay launch, maxed mode,
+// getDuelsWinScore() formats). Tower Duels is deleted: no Tower Powers in
+// Duels, no DUELS_ACTIVE_TOWER_POWERS, no slopSushiCards, no
+// openDuelsTeamSelectionModal / startDuelsMatch / renderDuelsHUD (all
+// replaced by the openDuelsDraftOverlay flow), no DUELS_WIN_SCORE const
+// (replaced by getDuelsWinScore()), no passive turbo charge (that was
+// Power Play boss code, never a Duels mechanic).
+
 const game = fs.readFileSync(new URL('../game.js', import.meta.url), 'utf8');
 
 const checks = [
-  ['DUELS_WIN_SCORE defined as 9', /const DUELS_WIN_SCORE\s*=\s*9;/],
-  ['Duels registered in HOME_MODE_CARDS', /\['duels',\s*'⚔️',\s*'Duels \(First to 9\)'/],
-  ['Duels in HOME_PERMANENT_MODE_IDS', /HOME_PERMANENT_MODE_IDS\s*=\s*\[[^\]]*'duels'/],
-  ['Duels in HOME_EVENT_REWARDS', /duels:\s*\{\s*type:\s*'coins',\s*amount:\s*50/],
-  ['Duels rules in HOME_MODE_RULES with First to 9 and 1-4 draft', /duels:\s*\[[\s\S]*?Draft 1 to 4 brawlers[\s\S]*?First to win 9 rounds[\s\S]*?Level 11 stats[\s\S]*?4 Tower Power[\s\S]*?Poison storm disabled/],
-  ['Duels mode color and 1V1 tag in createModeCard', /duels:\s*'#a855f7'[\s\S]*?id === 'duels' \|\| id === 'impossible'[\s\S]*?tag\s*=\s*'1V1'/],
-  ['updateShowdownModeUI handles duels with custom start button text', /if \(showdownMode === 'duels'\) \{[\s\S]*?startBtn\.textContent = '⚔️ Start Duels \(First to 9\)'/],
-  ['launchShowdownMatch routes duels to openDuelsTeamSelectionModal', /if \(showdownMode === 'duels'\) \{\s*openDuelsTeamSelectionModal\(\);\s*return;\s*\}/],
-  ['startBtn click event routes duels to openDuelsTeamSelectionModal', /else if \(showdownMode === 'duels'\) openDuelsTeamSelectionModal\(\);/],
-  ['startDuelsMatch function initializes 1v1 duels match with matching bot roster', /function startDuelsMatch\(team\) \{[\s\S]*?playerTeam = team\.slice\(\);[\s\S]*?botTeam = \[\];[\s\S]*?isDuels = true;[\s\S]*?duelRoundIndex = 0;[\s\S]*?startDuelsRound\(\);/],
-  ['openDuelsTeamSelectionModal allows drafting 1 to 4 brawlers with interactive slots', /function openDuelsTeamSelectionModal\(\) \{[\s\S]*?DUELS ROSTER DRAFT[\s\S]*?slotsContainer[\s\S]*?SELECTED ROSTER[\s\S]*?START DUEL/],
-  ['startDuelsRound forces Level 11, star powers, gadgets, and 4 tower powers', /function startDuelsRound\(\) \{[\s\S]*?stormRadius = isDuels \? Infinity : 4000;[\s\S]*?duelPlayerLevel = isTowerDuelEvent \? 11 : \(isDuels \? 11 : getSelectedBrawlerLevel\(\)\);[\s\S]*?gadgetUnlocked: true, starPowerUnlocked: true, hyperchargeUnlocked: true[\s\S]*?duelBot\.slopSushiCards = deck\.slice\(0, 4\);/],
-  ['Passive turbo Super & Hypercharge auto-charging in Duels update loop', /if \(isDuels\) \{[\s\S]*?superCharge = clamp\(superCharge \+ dt \* 18, 0, 100\);[\s\S]*?hyperChargeCharge = clamp\(hyperChargeCharge \+ dt \* 12, 0, 100\);/],
-  ['Duels round transitions check DUELS_WIN_SCORE', /if \(botScore >= DUELS_WIN_SCORE\) gameOver = true;[\s\S]*?if \(playerScore >= DUELS_WIN_SCORE\) gameOver = true;/],
-  ['Poison storm check excludes isDuels in update loop', /!isDuels && !gameOver/],
-  ['Poison storm drawing excludes isDuels on canvas', /!isMarkedMayhemMode && !isTugZoneMode && !isDuels/],
-  ['renderDuelsHUD renders glassmorphic HUD with 9 score pips and roster mini-bar', /function renderDuelsHUD\(ctx\) \{[\s\S]*?for \(let i = 0; i < DUELS_WIN_SCORE; i\+\+\) \{[\s\S]*?ROUND[\s\S]*?ROSTER/],
-  ['Game over text confirms DUELS CHAMPION! (FIRST TO 9)', /won = playerScore >= DUELS_WIN_SCORE;[\s\S]*?matchText = won \? "🏆 DUELS CHAMPION! \(FIRST TO 9\) 🏆"/]
+  // Draft formats: first-to-7 / 9 / 15, defaulting to 9.
+  ['DUELS_ROUND_OPTIONS offers first-to-7, first-to-9, and first-to-15 formats', /const DUELS_ROUND_OPTIONS = Object\.freeze\(\[7, 9, 15\]\);/.test(game)],
+  ['getDuelsWinScore uses the chosen format, defaulting to 9', /function getDuelsWinScore\(\) \{[\s\S]*?return DUELS_ROUND_OPTIONS\.includes\(duelsTargetWins\) \? duelsTargetWins : 9;/.test(game)],
+  ['No DUELS_WIN_SCORE const remains (formats live in getDuelsWinScore)', !/(?<![A-Z_])DUELS_WIN_SCORE/.test(game)],
+  // Home registration.
+  ['Duels registered in HOME_MODE_CARDS', /\['duels',\s*'⚔️',\s*'Duels \(First to 9\)'/.test(game)],
+  ['Duels in HOME_PERMANENT_MODE_IDS', /HOME_PERMANENT_MODE_IDS\s*=\s*\[[^\]]*'duels'/.test(game)],
+  ['Duels in HOME_EVENT_REWARDS', /duels:\s*\{\s*type:\s*'coins',\s*amount:\s*50/.test(game)],
+  ['Duels rules in HOME_MODE_RULES with First to 9 and 1-4 draft, no Tower Powers', /duels:\s*\[(?:(?!Tower Power)[\s\S])*?Draft 1 to 4 brawlers[\s\S]*?First to win 9 rounds[\s\S]*?Level 12 stats[\s\S]*?All gadgets, star powers & Hypercharge[\s\S]*?Poison storm disabled'\]/.test(game)],
+  ['Duels mode color and 1V1 tag in createModeCard', /duels:\s*'#a855f7'[\s\S]*?tag\s*=\s*'1V1'/.test(game)],
+  // Draft overlay launch (replaces the old showdownMode/startBtn routing).
+  ['Draft overlay titles the 1-4 fighter draft', /title\.textContent = 'Draft 1–4 Brawlers for Duels!';/.test(game)],
+  ['Draft overlay explains the format pick', /Choose 1–4 fighters, then pick a format and LAUNCH\./.test(game)],
+  ['Draft overlay caps the squad at DUELS_MAX_FIGHTERS = 4', /const DUELS_MAX_FIGHTERS = 4;/.test(game) && /drafted\.length < DUELS_MAX_FIGHTERS/.test(game)],
+  ['Home Duels button opens the draft overlay', /duelsBtn\.addEventListener\('click', \(\) => openDuelsDraftOverlay\(\)\);/.test(game)],
+  ['Draft launch needs at least one drafted fighter', /launchBtn\.disabled = drafted\.length < 1;/.test(game)],
+  ['Draft launch plays maxed mode and starts the first round', /isDuelsMaxedMode = true;[\s\S]*?startDuelsRound\(\);/.test(game)],
+  // Round engine.
+  ['startDuelsRound levels fighters 11, or 12 in maxed mode', /function startDuelsRound\(\) \{[\s\S]*?const duelPlayerLevel = isDuelsMaxedMode \? 12 : 11;/.test(game)],
+  ['startDuelsRound gives the bot its level unlocks (maxed = all)', /const unlocks = getUnlocksForLevel\(duelBotLevel\);[\s\S]*?gadgetUnlocked: unlocks\.gadgetUnlocked,[\s\S]*?starPowerUnlocked: unlocks\.starPowerUnlocked,[\s\S]*?hyperchargeUnlocked: unlocks\.hyperchargeUnlocked,/.test(game)],
+  ['Duels round transitions check getDuelsWinScore', /if \(botScore >= getDuelsWinScore\(\)\) gameOver = true;[\s\S]*?if \(playerScore >= getDuelsWinScore\(\)\) gameOver = true;/.test(game)],
+  ['Duels HUD shows the live score line', /Duels \| You: \$\{playerScore\}  Bot: \$\{botScore\}/.test(game)],
+  ['Game over text confirms YOU WON THE DUEL / BOT WON THE DUEL', /won = playerScore >= getDuelsWinScore\(\);[\s\S]*?matchText = won \? "YOU WON THE DUEL!" : "BOT WON THE DUEL!";[\s\S]*?rankText = `Score: \$\{playerScore\} - \$\{botScore\}`;/.test(game)],
+  // Storm: the update gate and the draw both run only in Showdown-family
+  // modes — team modes, training, boss fights and Solo Trial are excluded.
+  ['Storm update gate excludes the team modes', /if \(!isObjectiveMode && !isDamageFillerMode && !isMirrorMode && !isKnockDonateMode && !isBrickVaultMode && !isArenaForgeMode && !isPropHuntMode && !isTraining && !isBossFight && !isSoloTrial && !gameOver\) \{[\s\S]*?stormTimer \+= dt;/.test(game)],
+  ['Storm draw excludes the team modes', /if \(!isTraining && !isBossFight && !isSoloTrial && !isObjectiveMode && !isDamageFillerMode && !isMirrorMode && !isKnockDonateMode && !isBrickVaultMode && !isArenaForgeMode\) \{[\s\S]*?ctx\.arc\(WORLD_W\/2, WORLD_H\/2, Math\.max\(0, stormRadius\)/.test(game)],
+  // Tower Duels is gone from Duels entirely.
+  ['No Tower Powers references remain in Duels code', !/DUELS_ACTIVE_TOWER_POWERS|isTowerDuelEvent|rollDuelsTowerLoadout|slopSushiCards/.test(game)],
 ];
 
-for (const [label, pattern] of checks) {
-  assert.match(game, pattern, label);
+let failed = 0;
+for (const [label, result] of checks) {
+  if (result) {
+    console.log('PASS: ' + label);
+  } else {
+    console.error('FAIL: ' + label);
+    failed++;
+  }
 }
 
-console.log('Duels Mode Upgrade regression: ' + checks.length + '/' + checks.length + ' checks passed.');
+console.log('\n================================');
+console.log(`Results: ${checks.length - failed}/${checks.length} passed.`);
+if (failed > 0) {
+  process.exit(1);
+} else {
+  console.log('Duels Mode Upgrade regression: all checks passed.');
+}

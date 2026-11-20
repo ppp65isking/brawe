@@ -63,7 +63,7 @@ check('slow hooks in getEntitySlowMultiplier (pool 0.65, wave 0.50)', game.inclu
 check('update loop calls updateGravySystems', game.includes('if (playing && !gameOver) updateGravySystems(dt);'));
 check('render calls renderGravyEffects', game.includes('    renderGravyEffects();'));
 check('reset sites clear the Gravy arrays (.length = 0 site)', game.includes('gravyPools.length = 0; gravyWaves.length = 0; gravyThrownGlobs.length = 0;'));
-check('reset sites clear the Gravy arrays (all 5 = [] sites)', (game.match(/gravyPools = \[\]; gravyWaves = \[\]; gravyThrownGlobs = \[\];/g) || []).length === 5);
+check('reset sites clear the Gravy arrays (all 3 = [] sites)', (game.match(/gravyPools = \[\]; gravyWaves = \[\]; gravyThrownGlobs = \[\];/g) || []).length === 3);
 check('splash render branch keys off the real Hyper state (purple when Hyper)', (() => {
   const start = game.indexOf("if (ex.fxKind === 'gravySplash') {");
   const end = game.indexOf("if (ex.fxKind === 'rankedRocketeerBurst') {", start);

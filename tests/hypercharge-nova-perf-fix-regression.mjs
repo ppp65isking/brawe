@@ -94,11 +94,8 @@ check('burst cap constant present (3)', game.includes('const HC_BURST_MAX_LIVE =
 check('tick helper caps live bursts before pushing',
   edgeCode.includes('hcLiveBursts < HC_BURST_MAX_LIVE'));
 
-// Item 6 — boss hygiene: hyperchargeUntil set alongside isHypercharged.
-check('MegaBossBlinkeye enrage sets hyperchargeUntil',
-  game.includes('if (ent.isMegaBossBlinkeye) { ent.isHypercharged = true; ent.hyperchargeUntil = performance.now() + 999999999; }'));
-check('megaBoss enrage sets hyperchargeUntil',
-  game.includes('megaBoss.hyperchargeUntil = performance.now() + 999999999;'));
+// Item 6 — boss hygiene: DELETED with the boss modes (Megastein / BlinkEye
+// boss enrage writes are gone; isMegaBossBlinkeye / megaBoss are 0 hits).
 
 // Item 7 — FPS meter.
 check('FPS meter flag parses ?fps=1',
@@ -217,13 +214,19 @@ function launchNormal(keepBots = 9) {
   const live = api.bots.filter(b => b && b.hp > 0).slice(0, keepBots);
   api.bots.length = 0; for (const b of live) api.bots.push(b);
 }
-function launchAlwaysHyper(keepBots = 10) {
-  api.isRankedMatch = false;
-  api.isCustomMutatorMatch = true;
-  api.setActiveMutators('always_hyper', null, null);
+function launchAndGrantHyper(keepBots = 10) {
+  // Stand-in for the deleted always_hyper launch: normal launch, then
+  // hypercharge the player + all kept bots directly with a far-future until.
+  api.clearRankedSessionState();
+  api.setActiveMutators('classic', null, null);
   api.launchShowdownMatch();
   const live = api.bots.filter(b => b && b.hp > 0).slice(0, keepBots);
   api.bots.length = 0; for (const b of live) api.bots.push(b);
+  api.isHypercharged = true;
+  api.hyperchargeUntil = Date.now() + 999999999;
+  api.hyperChargeCharge = 100;
+  if (api.player) { api.player.isHypercharged = true; api.player.hyperChargeCharge = 100; }
+  for (const b of api.bots) { b.isHypercharged = true; b.hyperchargeUntil = Date.now() + 999999999; b.hyperChargeCharge = 100; }
 }
 function unlockHyperForSelected() {
   const b = api.player.brawler || 'outlit';
@@ -313,14 +316,14 @@ check('plain Solo, 600 frames: every bot that reads HC earned >=99 charge first'
 // --- Burst cap: 10 simultaneous activations produce at most 3 live bursts.
 // Check the grants FIRST (within 10 frames, before combat can kill anyone
 // — a dead bot reads as "not HC" and would flake the check later).
-launchAlwaysHyper(10);
+launchAndGrantHyper(10);
 for (let f = 0; f < 10 && hcBots().length < 10; f++) runFrames(1);
-check('always_hyper N=10: player + all 10 bots HC (grants intact)', api.isHypercharged === true && hcBots().length === 10);
+check('hypercharged N=10: player + all 10 bots HC (grants intact)', api.isHypercharged === true && hcBots().length === 10);
 // The aura flag is set by the per-frame tick on the rising edge, which can
 // land a frame after the grant — give it two frames before checking flags.
 runFrames(2);
-check('always_hyper N=10: player aura flag set', api.player._hcFxActive === true);
-check('always_hyper N=10: all 10 bot aura flags set (aura-only, not burst)', api.bots.every(b => b._hcFxActive === true));
+check('hypercharged N=10: player aura flag set', api.player._hcFxActive === true);
+check('hypercharged N=10: all 10 bot aura flags set (aura-only, not burst)', api.bots.every(b => b._hcFxActive === true));
 let maxBurstsLive = 0;
 let peakBursts = [];
 for (let f = 0; f < 120; f++) {
@@ -328,21 +331,29 @@ for (let f = 0; f < 120; f++) {
   const live = api.explosions.filter(e => e.fxKind === 'hyperActivate');
   if (live.length > maxBurstsLive) { maxBurstsLive = live.length; peakBursts = [...live]; }
 }
-check('always_hyper N=10: at most 3 live activation bursts over 120 frames', maxBurstsLive <= 3);
-check('always_hyper N=10: the peak bursts expired on their own (one-shot)',
+check('hypercharged N=10: at most 3 live activation bursts over 120 frames', maxBurstsLive <= 3);
+check('hypercharged N=10: the peak bursts expired on their own (one-shot)',
   peakBursts.length > 0 && peakBursts.every(b => !api.explosions.includes(b)));
-check('always_hyper N=10: live bursts still within cap at the end', countFx('hyperActivate') <= 3);
+check('hypercharged N=10: live bursts still within cap at the end', countFx('hyperActivate') <= 3);
 
 // --- Perf at N=10 HC entities: same-match ON vs OFF delta.
 // Measure ON, then switch every HC flag off WITHOUT an update in between
-// (the always_hyper grant only re-arms on update, renders don't) and
+// (the direct grant never re-arms, renders don't) and
 // measure OFF on the identical scene — the delta is the aura's sprite
 // cost alone, with no scene noise. Pre-fix this delta was 22 (player +
 // 10 bots x glow+core); post-fix it is 2 (player only, bots ring-only).
 // Embers are ownerless pool entries, so they draw in both halves and are
 // bounded separately by the static 24-draw cap above.
-launchAlwaysHyper(10);
+launchAndGrantHyper(10);
 runFrames(45);
+// Drain the FX arrays and top up the player before measuring: the glow
+// pass is skipped when visualPressure is true, and the ember pool can push
+// explosions.length over 105 (which suppresses Pass 2 by design and makes
+// the delta read 0). Renders don't advance the sim, so the counts stay
+// frozen across both halves of the measurement.
+api.explosions.length = 0;
+api.bullets.length = 0;
+if (api.player) api.player.hp = api.player.maxHp;
 const onPerFrame = renderDrawImages(30);
 api.isHypercharged = false; api.player._hcFxActive = false;
 for (const b of api.bots) { b.isHypercharged = false; b._hcFxActive = false; }
@@ -353,7 +364,7 @@ check('perf N=10 HC: aura actually drew (delta >= 2, not suppressed)',
   (onPerFrame - offPerFrame) >= 2);
 
 // --- ?fps=1 meter: frame time + live HC count drawn on render.
-launchAlwaysHyper(10);
+launchAndGrantHyper(10);
 runFrames(5);
 counts.fillText = [];
 api.render();

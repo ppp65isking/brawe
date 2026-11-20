@@ -1,9 +1,0 @@
-import {chromium} from 'playwright';
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import assert from 'node:assert/strict';
-
-const root=process.cwd(),browser=await chromium.launch({channel:'msedge',headless:true});
-const page=await browser.newPage(),errors=[];page.on('pageerror',error=>errors.push(error.message));
-await page.route('**/*',async route=>{const url=new URL(route.request().url());if(url.hostname!=='brawe.test')return route.abort();const file=path.resolve(root,'.'+(url.pathname==='/'?'/index.html':url.pathname));if(!file.startsWith(root+path.sep))return route.abort();try{let body=await fs.readFile(file);if(file.endsWith('game.js')){const source=body.toString(),index=source.lastIndexOf('})();');body=source.slice(0,index)+`window.__chaosCrownSmoke={open(){ensureSlopSushiState();playerData.slopSushi.chaosRun={active:false,variant:'chaos',floor:1,roster:[],losses:0,cards:[],coinsEarned:0};prepareChaosCrownRun();const run=playerData.slopSushi.chaosRun;const board=document.querySelector('.chaos-crown-board');return {exists:!!board,roster:run.roster.length,unique:new Set(run.roster).size,title:board?.textContent.includes('CHAOS CROWN'),floor:run.floor,rule:getChaosCrownRule(1).name};}};`+source.slice(index);}await route.fulfill({status:200,body,contentType:{'.js':'text/javascript','.html':'text/html','.css':'text/css'}[path.extname(file)]||'application/octet-stream'});}catch{await route.fulfill({status:404,body:''});}});
-try{await page.goto('http://brawe.test');await page.waitForFunction(()=>!!window.__chaosCrownSmoke);const result=await page.evaluate(()=>window.__chaosCrownSmoke.open());assert.deepEqual(result,{exists:true,roster:10,unique:10,title:true,floor:1,rule:'Mystery Door'});await page.waitForTimeout(200);assert.deepEqual(errors,[]);console.log('Chaos Crown live board and random roster PASS');}finally{await browser.close();}

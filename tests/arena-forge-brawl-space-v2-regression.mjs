@@ -80,12 +80,11 @@ check('v2 home: landscape is a 3-column grid (quick row | hero | side column, pl
     game.includes('#appHomeSideRight{display:flex;grid-column:3;grid-row:1}') &&
     game.includes('id="appHomeSideRight"') &&
     game.includes('data-app-side="ranked"') && game.includes('data-app-side="news"') &&
-    game.includes("openRankedQueueUI();") && game.includes("openBalanceBlog();"));
+    game.includes("openRankedQueueUI();"));
 
 // --- Ranked: reference split, neon kept ---
-check('v2 ranked: hub is split — back chevron, pass card left, emblem center, PLAY foot',
-    game.includes('class="ranked-hub-back"') && game.includes('class="ranked-hub-pass-clip"') &&
-    game.includes('class="ranked-hub-pass-title"') && game.includes('class="ranked-hub-season"') &&
+check('v2 ranked: hub is split — back chevron, emblem center, PLAY foot (pass card deleted)',
+    game.includes('class="ranked-hub-back"') && game.includes('class="ranked-hub-season"') &&
     game.includes('class="ranked-hub-ticks"') && game.includes('class="ranked-hub-foot"') &&
     game.includes('class="ranked-hub-boost"') && game.includes('RANK BOOST!'));
 check('v2 ranked: hub panel is wider and keeps the neon overlay',
@@ -97,7 +96,7 @@ check('v2 ranked: hub panel is wider and keeps the neon overlay',
 check('v2 events: big outlined title + season countdown, section anchors',
     game.includes('class="app-events-title"') && game.includes('PLAY TO PROGRESS!') &&
     game.includes('data-app-events-section="featured"') && game.includes('data-app-events-section="popular"') &&
-    game.includes('data-app-events-section="rotating"') && game.includes('data-app-events-section="overdrive"'));
+    game.includes('data-app-events-section="rotating"'));
 check('v2 events: sticky bottom tab strip scrolls to each section',
     game.includes('class="app-events-tabs"') && game.includes('data-app-events-tab="featured"') &&
     game.includes('data-app-events-tab="popular"') && game.includes('data-app-events-tab="rotating"') &&
@@ -120,23 +119,6 @@ check('v2 pass: tabs sit below the content; app portrait keeps the v1 side-by-si
     circuitCss.includes('.circuit-panel .circuit-tabs{order:4}') &&
     circuitCss.includes('.native-app .circuit-tier-cards{display:grid}') &&
     circuitCss.includes('.native-app .circuit-tier::before{display:block}'));
-
-// --- Brick road: rail, nodes, stage, next big reward, tier row ---
-check('v2 road: each node draws its own rail segment; nodes are 150px rail nodes',
-    game.includes("railSeg.style.cssText = `position:absolute;left:-6px;right:-6px;top:28px;height:8px;") &&
-    game.includes('flex:0 0 150px;scroll-snap-align:start;') &&
-    game.includes("trackContainer.style.cssText = 'position:relative;display:flex;"));
-check('v2 road: icon is a 64px circle on the rail; NEXT GOAL labels the next node',
-    game.includes('width:64px;height:64px;border-radius:50%;') &&
-    game.includes("nextGoal.textContent = 'NEXT GOAL'"));
-check('v2 road: hero stage + next-big-reward card + numbered tier row below the track',
-    game.includes("roadStage.style.cssText = 'display:flex;align-items:flex-end;") &&
-    game.includes('NEXT BIG REWARD') && game.includes('BRICKS</span>') &&
-    game.includes("tierRow.style.cssText = 'display:flex;gap:8px;overflow-x:auto;") &&
-    game.includes("trackContainer.children[i]?.scrollIntoView({ inline: 'center', block: 'nearest' })"));
-check('v2 road: header shows the league + a bricks chip',
-    game.includes('${league.name.toUpperCase()} · Earn Bricks') &&
-    game.includes('brickChip.textContent = `🧱 ${totalBricks.toLocaleString()}`'));
 
 // --- Profile: diagonal split, ranked panel, hex favorites ---
 check('v2 profile: diagonal split background; hero left spanning, bricks/ranked/favorites right',

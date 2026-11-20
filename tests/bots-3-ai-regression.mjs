@@ -22,8 +22,6 @@ const checks = [
   ['updateBotAI passes predictive aim coordinates (aimX, aimY) into fire()', /const aimX = target\.x \+ leadX;[\s\S]*?const aimY = target\.y \+ leadY;[\s\S]*?fire\(t,\s*aimX,\s*aimY,\s*true,\s*false\);/],
 
   // 4. Mode Intelligence
-  ['Knockout 3v3 toxic storm radius and cover intelligence in updateBotAI', /isKnockoutMode && knockoutState[\s\S]*?safeRadius = Math\.max\(160,\s*\(s\.stormRadius \|\| 1800\) - 150\)[\s\S]*?findBotCoverPoint/],
-  ['Brawe Ball 3v3 carrier goal targeting and barricade pathing in updateBotAI', /isBraweBallMode && braweBallState && braweBallState\.ball[\s\S]*?ball\.carrier === t\.id[\s\S]*?nearBarricade/],
   ['Bots 3.0 flag registered on entity spawn and in getBotModeAiContext', /bot3:\s*!!bot\?\.isBot3\s*\|\|\s*isRankedMatch/ && /isBot3:\s*true/],
 
   // 5. Exports

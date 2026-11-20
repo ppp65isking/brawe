@@ -164,7 +164,7 @@ async function runPaste(navigatorValue) {
 }
 
 // --- 3. DUELS MAP LABELS ---
-check('duels slot gets the Duels Arena label', game.includes("if (id === 'duels' || id === 'tower_duels' || id === 'fused') return 'Duels Arena';"));
+check('duels slot gets the Duels Arena label', game.includes("if (id === 'duels') return 'Duels Arena';"));
 check('friendly slot keeps no map line (map is picked per match)', game.includes("if (id === 'custom_clash') return null;"));
 check('tournament keeps its own named map', game.includes("if (id === 'tournament') return TOURNAMENT_MAP_NAME;"));
 
@@ -181,8 +181,7 @@ const mapSrc = extractFunction(game, 'appEventMapName');
     vm.runInContext(mapSrc, sandbox);
     const label = (id) => vm.runInContext(`appEventMapName('${id}')`, sandbox);
     check('VM map: duels is Duels Arena', label('duels') === 'Duels Arena');
-    check('VM map: tower duels is Duels Arena', label('tower_duels') === 'Duels Arena');
-    check('VM map: fused is Duels Arena', label('fused') === 'Duels Arena');
+    check('VM map: deleted ids fall back to the showdown theme', label('tower_duels') === 'Ember Wastes' && label('fused') === 'Ember Wastes');
     check('VM map: friendly battle has no map line', label('custom_clash') === null);
     check('VM map: tournament keeps Champion\'s Ring', label('tournament') === "Champion's Ring");
     check('VM map: mirror keeps Mirror Arena', label('mirror') === 'Mirror Arena');
@@ -192,8 +191,6 @@ const mapSrc = extractFunction(game, 'appEventMapName');
 // --- 4. SEASON TAB RENAME ---
 check('season tab is named Season Pass', game.includes("makeTab('season', '⚡ Season Pass')"));
 check('board subtitle climbs the Season Pass', game.includes("boardSubtitle.textContent = 'Complete quests, claim rewards, and climb the Season Pass.';"));
-check('no Core Circuit Pass user-facing string remains in game.js', !game.includes('Core Circuit Pass'));
-check('Core Circuit skin set name is untouched (not the pass)', game.includes("set: 'Core Circuit'"));
 check('dead-code pass overlay keeps its internal id (not user-facing)', game.includes("overlay.id = 'circuitPassOverlay'"));
 
 // --- 5. PLAY AGAIN SAME-MODE ---
@@ -204,7 +201,7 @@ check('play-again friendly replay passes the whole saved config (mode/map/power/
 check('play-again ranked/friendly branches run before the casual PLAY click', playAgainSrc.indexOf('openRankedQueueUI();') < playAgainSrc.indexOf("document.getElementById('startMatch')?.click();") && playAgainSrc.indexOf('launchFriendlyBattle({') < playAgainSrc.indexOf("document.getElementById('startMatch')?.click();"));
 check('play-again ranked/friendly branches use typeof guards (old VM sandboxes stay valid)', playAgainSrc.includes("typeof isRankedMatch !== 'undefined'") && playAgainSrc.includes("typeof isFriendlyBattle !== 'undefined'"));
 check('play-again still refuses tournament matches', playAgainSrc.includes('if (isTournamentMatch) return false;'));
-check('play-again duels branch is unchanged', playAgainSrc.includes('if (isDuels && !isTowerDuelEvent) {') && playAgainSrc.includes('startDuelsRound();'));
+check('play-again duels branch is unchanged', playAgainSrc.includes('if (isDuels) {') && playAgainSrc.includes('startDuelsRound();'));
 
 // VM: playAgainFromResults routing
 function playAgainSandbox(overrides = {}) {

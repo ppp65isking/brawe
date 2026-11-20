@@ -22,14 +22,8 @@ assert.match(game, /curBrawler === 'fuel' && curGadget === 'g2'[\s\S]*?areAllied
 assert.match(game, /bot\.brawler === 'fuel' && g === 'g2'[\s\S]*?areAlliedEntities\(bot, enemy\)[\s\S]*?applyKnockback\(enemy, bot\.x, bot\.y, 95, now\)/,
   'Fuel bots use the same safe team-aware knockback');
 
-assert.match(game, /isBraweBallMode \|\| isKnockoutMode \|\| isConstructionMode/,
+assert.match(game, /const botTeamId = \(isObjectiveMode \|\| isMirrorMode \|\| isDamageFillerMode \|\| isKnockDonateMode \|\| isBrickVaultMode \|\| isArenaForgeMode\)/,
   'team-mode bots receive the shared enemy team id');
-assert.match(game, /function isKnockoutFighter\(entity\)/,
-  'Knockout distinguishes fighters from summons and deployables');
-assert.match(game, /function clearKnockoutRoundEntities\(\)[\s\S]*?bullets\.length = 0;[\s\S]*?healingPods\.length = 0;/,
-  'Knockout clears transient round entities');
-assert.match(game, /roundDecided && roundWinTeam && Object\.hasOwn\(s\.roundWins, roundWinTeam\)/,
-  'Knockout validates a round winner before updating score');
 
 assert.match(game, /function stabilizeActiveMatchState\(\)/,
   'all modes run shared runtime-state validation');

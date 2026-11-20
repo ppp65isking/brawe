@@ -94,11 +94,6 @@ check('Decayer NOT touched: radius still 260, pulse render intact', game.include
 check('no decayer pulse fix smuggled in: updateDecayerAura body unchanged shape', game.includes('function updateDecayerAura(now) {') && game.includes('grantShield(ally, 100, 100);'));
 
 // --- Aura Farmer Hypercharge skin ---
-check('skinsDatabase aura-farmer entry: hypercharge rarity + hyperTransform + isHyperchargeSkin', game.includes("'aura-farmer-aura-charmer'") && game.includes("rarity: 'hypercharge'") && game.includes('hyperTransform: true') && game.includes('isHyperchargeSkin: true'));
-check('Aura Farmer copy names the hyper transform', (() => {
-  const entry = game.slice(game.indexOf("'aura-farmer-aura-charmer'"), game.indexOf("'aura-farmer-aura-charmer'") + 1200);
-  return entry.includes('Aura Farmer') && entry.includes('Transfigures during Hypercharge');
-})());
 check('roster visuals: aura_charmer look + identity + aura-farmer skin', roster.includes("aura_charmer:['hood','#c084fc','#ffd76b']") && roster.includes("aura_charmer:'charm_hood|aura_orb|charm_sigil|robe'") && roster.includes("'aura-farmer-aura-charmer':['farmer','#f5c542','#7ec850']"));
 
 // --- Art batch: Doug-like slam, harvest takedown, purple HC, farmer + sovereign models ---
@@ -110,7 +105,6 @@ check('HC purple: hyper ring is purple, farmer gold only off-hyper', game.includ
 check('HC purple: farmer callout is purple on hyper', game.includes("'🌾 AURA FARMER!', '#a855f7'"));
 check('farmer model: roster module draws farmer geometry', roster.includes("if(type==='farmer')") && roster.includes('ellipse(50,22,34,7,coat)') && roster.includes('rect(30,62,40,18,accent)'));
 check('sovereign model: hyper variant + crown/halo geometry + draw swap', roster.includes("if(type==='sovereign')") && roster.includes("'aura-farmer-hyper-aura-charmer':['sovereign','#a855f7','#e9d5ff']") && game.includes("visualSkin = 'aura-farmer-hyper-aura-charmer'"));
-check('skin description promises a purple hyper form', game.includes('radiant purple harvest sovereign'));
 
 console.log(`aura-charmer: ${passed} passed, ${failed} failed`);
 if (failed) { for (const f of failures) console.log('FAIL: ' + f); process.exit(1); }

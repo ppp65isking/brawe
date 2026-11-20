@@ -104,9 +104,9 @@ check('events: section headers read as tabs; cards bigger',
     game.includes('.app-events-section{display:inline-block;font-size:13px;letter-spacing:.12em;') &&
     game.includes('.app-events-grid{grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;padding-top:10px}') &&
     game.includes('.app-event-slot{min-height:118px;padding:16px 16px 14px}'));
-check('events: same data + routes (featured, popular, rotating, overdrive, info buttons)',
+check('events: same data + routes (featured, popular, rotating, info buttons)',
     game.includes('data-app-featured="season"') && game.includes('data-app-featured="tournament"') &&
-    game.includes('data-app-overdrive="1"') && game.includes('data-app-info=') &&
+    game.includes('data-app-info=') &&
     game.includes('HOME_POPULAR_MODE_IDS') && game.includes('getHomeDailyRotationIds'));
 
 // --- (3) Season pass road ---
@@ -129,13 +129,12 @@ check('ranked: hub function exists and gates the draft behind PLAY',
     game.includes('function openRankedHubOverlay(queueOverlay, onPlay) {') &&
     game.includes('openRankedHubOverlay(overlay, () => { renderDraft(); scheduleNextTurn(500); })') &&
     !game.includes('        renderDraft();\n        overlay.appendChild(panel);'));
-check('ranked: hub has emblem + RP bar + pass card + PLAY + close',
+check('ranked: hub has emblem + RP bar + PLAY + close (old pass card deleted)',
     game.includes('class="ranked-hub-emblem"') && game.includes('class="ranked-hub-bar"') &&
-    game.includes('data-ranked-hub="pass"') && game.includes('data-ranked-hub="play"') &&
+    game.includes('data-ranked-hub="play"') &&
     game.includes('data-ranked-hub="close"') && game.includes('▶ PLAY RANKED'));
-check('ranked: hub reads the same tier/RP/pass data (no new ranks or rewards)',
+check('ranked: hub reads the same tier/RP data (no new ranks or rewards)',
     game.includes('const tierInfo = getRankedTierInfo(rankedPoints);') &&
-    game.includes('const passProgress = getRankedPassProgress();') &&
     game.includes('RANKED_PASS_TIERS') && game.includes('getRankedDivisionFloor(rankedPoints)'));
 check('ranked: hub close removes the queue overlay (draft never started)',
     game.includes('queueOverlay.remove();'));
@@ -144,19 +143,10 @@ check('ranked: neon CSS — hub, queue and pass all glow cyan/purple',
     game.includes('.ranked-hub-play{padding:16px 20px;border:0;border-radius:16px;background:linear-gradient(90deg,#00f5d4,#38bdf8,#a855f7);') &&
     game.includes('.ranked-queue-overlay{background:radial-gradient(ellipse at 50% 0%,rgba(88,28,135,.5),rgba(2,0,20,.97) 60%) !important}') &&
     game.includes('.ranked-pass-panel{border-color:rgba(0,245,212,.55) !important;'));
-check('ranked: pass overlay/panel have classes for the neon rules',
-    game.includes("overlay.className = 'ranked-pass-overlay';") &&
-    game.includes("panel.className = 'ranked-pass-panel';"));
 check('ranked: hub stacks below 640px (single column)',
     game.includes('@media (max-width:640px){.ranked-hub-body{grid-template-columns:1fr}.ranked-hub-panel{padding:16px}}'));
 
 // --- (5) Trophy / Brick road ---
-check('brick road: milestone road is a horizontal scroll-snap road with node cards',
-    game.includes("trackContainer.style.cssText = 'position:relative;display:flex;flex-direction:row;gap:12px;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;") &&
-    game.includes('flex:0 0 150px;scroll-snap-align:start;'));
-check('brick road: next goal is marked and scrolled into view',
-    game.includes("mCard.setAttribute('data-brick-road-next', '1')") &&
-    game.includes("trackContainer.querySelector('[data-brick-road-next]')?.scrollIntoView({ inline: 'center', block: 'nearest' })"));
 check('brick road: profile bricks are a horizontal node road too',
     game.includes('.profile-trophies .profile-trophy-list{display:flex;gap:10px;overflow-x:auto;') &&
     game.includes('.profile-trophies .profile-trophy-list>div{flex:0 0 190px;'));

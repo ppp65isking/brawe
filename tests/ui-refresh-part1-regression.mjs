@@ -119,9 +119,9 @@ check('drawChunkyPanel defined once, with slab + radius + fill + stroke + lineWi
   (game.match(/function drawChunkyPanel\(ctx, x, y, w, h, opts\)/g) || []).length === 1 &&
   game.includes('ctx.roundRect(x, y + (o.slabOffset == null ? UI_HUD_TOKENS.slabOffset : o.slabOffset), w, h, radius)'));
 // UI Refresh Part 2 (2026-11-17): 12 mode panels + 1 stack flush added, so the
-// count is 23 call sites (24 matches incl. the definition line).
-check('exactly 23 drawChunkyPanel call sites (24 matches incl. the definition line)',
-  (game.match(/drawChunkyPanel\(ctx, /g) || []).length === 24);
+// count is 19 call sites (20 matches incl. the definition line).
+check('exactly 19 drawChunkyPanel call sites (20 matches incl. the definition line)',
+  (game.match(/drawChunkyPanel\(ctx, /g) || []).length === 20);
 for (const [name, snippet] of [
   ['attack/super cards', "drawChunkyPanel(ctx, x, readY, cardW, readH, {"],
   ['minimap frame', 'drawChunkyPanel(ctx, 0, 0, mapW, mapH, { radius: 8,'],
@@ -131,7 +131,6 @@ for (const [name, snippet] of [
   ['respawn banner', 'drawChunkyPanel(ctx, panelX, panelY, panelW, 92, { radius: 18,'],
   ['arena-forge PREPARE banner', 'drawChunkyPanel(ctx, panelX, panelY, panelW, panelH, { radius: 22,'],
   ['tutorial banner', 'drawChunkyPanel(ctx, panelX, 22, panelW, 92, { radius: 16,'],
-  ['impossible banner', 'drawChunkyPanel(ctx, innerWidth / 2 - 250, 26, 500, 48, { radius: 14,'],
   ['ranked modifier badge', 'drawChunkyPanel(ctx, badgeX, badgeY, badgeW, badgeH, { radius: 8,'],
 ]) check(`7E call site: ${name}`, game.includes(snippet));
 

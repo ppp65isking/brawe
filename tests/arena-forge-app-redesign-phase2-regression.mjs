@@ -18,7 +18,6 @@ check('quick row buttons carry live badges', game.includes('id="appQuestsBadge"'
 check('quick row quests opens the quest board', game.includes("if (action === 'quests') { if (typeof openQuestBoard === 'function') openQuestBoard(); }"));
 check('quick row pass opens the revived season-pass tier road and sets the deep link (road from PR #154, deep link from round 2 Tier 2)', game.includes("else if (action === 'pass') { if (typeof openSeasonPass === 'function') openSeasonPass(); setAppDeepLink('pass'); }"));
 check('quick row settings opens the native settings view', game.includes("if (action === 'settings') { setAppHomeTab('settings'); }"));
-check('live Brick Rush button is moved into the quick row', game.includes("const brickRushBtn = document.getElementById('dailyBrickRushBtn');") && game.includes("if (brickRushBtn && quickRow) quickRow.appendChild(brickRushBtn);"));
 check('quick-row badges refresh in syncAppHome', game.includes("document.getElementById('dailyWeeklyQuestCount')?.textContent") && game.includes("getClaimableSeasonRewardCount() || 0"));
 
 // --- Player + season chips finally do something in app mode ---
@@ -66,8 +65,8 @@ check('fighters detail stacks in narrow portrait', game.includes("@media (orient
 
 // --- Website paths unchanged: same openers, same purchase/claim paths ---
 check('shop opener still exists and still opens the gem shop', game.includes('function openGemShop() {') && game.includes("shopBtn.addEventListener('click', ()=>{ openGemShop(); });"));
-check('shop still has all seven sidebar tabs', game.includes("createSidebarButton('☀ DAILY DEALS', 'daily')") && game.includes("createSidebarButton('👤 FIGHTER DEAL', 'fighter')") && game.includes("createSidebarButton('🎁 OFFER ARCHIVE', 'featured')") && game.includes("createSidebarButton('🎭 SKIN CATALOGUE', 'skins')") && game.includes("createSidebarButton('🎡 LUCKY WHEEL', 'wheel')") && game.includes("createSidebarButton('🪙 CONVERSIONS', 'exchange')") && game.includes("createSidebarButton('⚡ OVERDRIVE REWARDS', 'overdrive')"));
-check('quest board opener still exists with all five tabs', game.includes('function openQuestBoard(initialTab') && game.includes("makeTab('core', '📋 Contracts')") && game.includes("makeTab('overdrive', '⚡ Core Surge Overdrive')") && game.includes("makeTab('special', '💠 Core Pieces')") && game.includes("makeTab('season', '⚡ Season Pass')"));
+check('shop still has all five sidebar tabs (exchange + overdrive deleted)', game.includes("createSidebarButton('☀ DAILY DEALS', 'daily')") && game.includes("createSidebarButton('👤 FIGHTER DEAL', 'fighter')") && game.includes("createSidebarButton('🎁 OFFER ARCHIVE', 'featured')") && game.includes("createSidebarButton('🎭 SKIN CATALOGUE', 'skins')") && game.includes("createSidebarButton('🎡 LUCKY WHEEL', 'wheel')"));
+check('quest board opener still exists with all four tabs (overdrive deleted)', game.includes('function openQuestBoard(initialTab') && game.includes("makeTab('core', '📋 Contracts')") && game.includes("makeTab('special', '💠 Core Pieces')") && game.includes("makeTab('season', '⚡ Season Pass')"));
 check('season pass still delegates to the quest board season tab', game.includes("function openSeasonPass() {") && game.includes("openQuestBoard('season');"));
 check('save-code modal behavior untouched', game.includes('function openSaveCodeModal() {') && game.includes('width:min(560px,94vw);max-height:88vh;') && game.includes('importBraweSavePayload'));
 check('diagnostic strip gate untouched', game.includes("new URLSearchParams(window.location.search || '').get('diag') === '1'"));
