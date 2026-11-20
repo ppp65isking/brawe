@@ -1504,6 +1504,21 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     const RANKED_GOLD_MIN_DIVISION_INDEX = 7;
     const RANKED_PRESTIGE_STEP_RP = 500;
     const RANKED_PRESTIGE_MAX = 5;
+    // Ranked Seasons (2026-11-20 rework): Ranked resets every pass
+    // season. BUILDER PICKS, flagged for Anthony's call:
+    // - Prestige League drops exactly 2 levels (P5 -> P3 in his example);
+    //   everyone else drops 3 divisions (300 RP).
+    // - Each ranked win last season earns back 10 RP of the drop (max
+    //   150 RP); a 60%+ win rate over 10+ matches earns back 100 RP more.
+    // - Prestige players never reset below Brick Legend I (2200 RP).
+    // - Elo boost: x2 RP gains on wins until back at the pre-reset rank.
+    const RANKED_SEASON_RESET_PRESTIGE_LEVELS_DROPPED = 2;
+    const RANKED_SEASON_RESET_DROP_RP = 300;
+    const RANKED_SEASON_RESET_PRESTIGE_FLOOR_RP = 2200;
+    const RANKED_SEASON_RESET_WIN_CREDIT_RP = 10;
+    const RANKED_SEASON_RESET_WIN_CREDIT_CAP_RP = 150;
+    const RANKED_SEASON_RESET_WINRATE_CREDIT_RP = 100;
+    const RANKED_ELO_BOOST_MULTIPLIER = 2;
     function getRankedPrestige(pointsRaw) {
         const points = Math.max(0, Math.floor(pointsRaw || 0));
         if (points < 2400) return 0;
@@ -10399,9 +10414,13 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           const normalizedQuestKey = normalizeQuestKey(questKey);
           const pass = playerData.seasonPass;
           let q = pass.quests && pass.quests[normalizedQuestKey];
+          // Season quests fix (2026-11-20): progress never flows into a
+          // stage that has not unlocked yet ("Coming Soon" quests stay
+          // inactive until the previous stage is complete).
+          if (q && !isSeasonQuestStageUnlocked(q)) q = null;
           if (!q && pass.quests) {
               const candidates = Object.values(pass.quests)
-                  .filter(entry => !entry.completed && (entry.kind === normalizedQuestKey || entry.id === normalizedQuestKey))
+                  .filter(entry => !entry.completed && isSeasonQuestStageUnlocked(entry) && (entry.kind === normalizedQuestKey || entry.id === normalizedQuestKey))
                   .sort((a, b) => (a.stage || 0) - (b.stage || 0));
               q = candidates[0];
           }
@@ -10772,6 +10791,16 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           const previousStageQuest = Object.values(bucket || {}).find(q => q.stage === quest.stage - 1);
           return !previousStageQuest || !!previousStageQuest.completed;
       }
+      // Season quests (2026-11-20 fix): a stage is available only once
+      // the previous stage is complete — stage 1 is always available.
+      // Later stages stay VISIBLE but grayed out as "Coming Soon", never
+      // hidden and never claimable/active until they unlock.
+      function isSeasonQuestStageUnlocked(quest) {
+          if (!quest || typeof quest.stage !== 'number' || quest.stage <= 1) return true;
+          const bucket = (playerData.seasonPass && playerData.seasonPass.quests) || {};
+          const previousStageQuest = Object.values(bucket).find(q => q.stage === quest.stage - 1);
+          return !previousStageQuest || !!previousStageQuest.completed;
+      }
       function getClaimableSeasonRewardCount() {
           if (!ENABLE_SEASON_QUESTS || !playerData.seasonPass) return 0;
           const pass = playerData.seasonPass;
@@ -10802,6 +10831,9 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           const state = pass.quests && pass.quests[questId];
           if (!state || !state.completed || state.rewardClaimed) return false;
           const def = buildSeasonPassQuests().find(q => q.id === questId);
+          // Season quests fix (2026-11-20): a "Coming Soon" stage can
+          // never be claimed, even if a stale save marks it completed.
+          if (!isSeasonQuestStageUnlocked(def || state)) return false;
           const rewards = (def && def.rewards) || state.rewards || {};
           if (rewards.coins) grantReward({ type: 'coins', amount: rewards.coins });
           if (rewards.gems) grantReward({ type: 'gems', amount: rewards.gems });
@@ -11110,28 +11142,33 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
                   const questState = pass.quests?.[quest.id] || { progress: 0, target: quest.target, completed: false, rewardClaimed: false, stage: quest.stage };
                   const done = !!questState.completed;
                   const rewardClaimed = !!questState.rewardClaimed;
-                  const unlocked = true;
+                  // Season quests fix (2026-11-20): later stages are
+                  // VISIBLE but grayed out as "Coming Soon" until the
+                  // previous stage is complete — never hidden.
+                  const unlocked = isSeasonQuestStageUnlocked(quest);
                   const percent = Math.max(0, Math.min(100, Math.round((questState.progress || 0) / Math.max(1, quest.target) * 100)));
                   const questCard = document.createElement('div');
                   questCard.style.padding = '10px';
                   questCard.style.borderRadius = '10px';
                   questCard.style.marginBottom = '8px';
+                  questCard.style.opacity = unlocked ? '' : '0.55';
                   questCard.style.border = rewardClaimed ? '1px solid #58e4b6' : (done ? '1px solid #ffb15a' : (unlocked ? '1px solid #2f4f70' : '1px solid #1f2f42'));
                   questCard.style.background = rewardClaimed ? 'rgba(88,228,182,0.08)' : (done ? 'rgba(255,177,90,0.1)' : (unlocked ? 'rgba(20,34,52,0.52)' : 'rgba(12,20,32,0.45)'));
                   questCard.innerHTML = `
                       <div style="display:flex;justify-content:space-between;gap:8px;">
                           <div style="font-size:12px;font-weight:900;color:#d7ecff;">Stage ${quest.stage} • ${quest.title}</div>
-                          <div style="font-size:11px;color:${rewardClaimed ? '#58e4b6' : (done ? '#ffb15a' : (unlocked ? '#8fd8ff' : '#7f97b2'))};font-weight:800;">${rewardClaimed ? 'Claimed' : (done ? 'Claim Ready' : (unlocked ? 'In Progress' : 'Locked'))}</div>
+                          <div style="font-size:11px;color:${rewardClaimed ? '#58e4b6' : (done ? '#ffb15a' : (unlocked ? '#8fd8ff' : '#7f97b2'))};font-weight:800;">${rewardClaimed ? 'Claimed' : (done ? 'Claim Ready' : (unlocked ? 'In Progress' : 'Coming Soon'))}</div>
                       </div>
                       <div style="font-size:11px;color:#95b8d4;margin:4px 0 6px 0;line-height:1.3;">${quest.desc}</div>
+                      ${!unlocked ? `<div style="font-size:11px;color:#7f97b2;margin-bottom:6px;">Coming soon — unlocks after the previous stage is complete.</div>` : ''}
                       <div style="font-size:11px;color:#ffda8f;margin-bottom:6px;">Quest Reward: ${questRewardText(Object.assign({}, questState.rewards || quest.rewards, { passXP: questState.xpReward || quest.xpReward || 100 }))}</div>
                       <div style="height:6px;border-radius:999px;overflow:hidden;background:#0d1c2c;">
-                          <div style="height:100%;width:${percent}%;background:${rewardClaimed ? '#58e4b6' : (done ? '#ffb15a' : '#5ec4ff')};"></div>
+                          <div style="height:100%;width:${percent}%;background:${rewardClaimed ? '#58e4b6' : (done ? '#ffb15a' : (unlocked ? '#5ec4ff' : '#5f6f82'))};"></div>
                       </div>
                       <div style="margin-top:5px;font-size:11px;color:${rewardClaimed ? '#58e4b6' : '#c1d8ee'};font-weight:700;text-align:center;">${questState.progress || 0}/${quest.target}</div>
                   `;
                   const claimBtn = document.createElement('button');
-                  claimBtn.textContent = rewardClaimed ? 'Claimed' : (done ? 'Claim Quest Reward' : 'Locked');
+                  claimBtn.textContent = rewardClaimed ? 'Claimed' : (done ? 'Claim Quest Reward' : (unlocked ? 'In Progress' : 'Coming Soon'));
                   claimBtn.style.marginTop = '8px';
                   claimBtn.style.padding = '6px 10px';
                   claimBtn.style.minHeight = '40px';
@@ -11152,6 +11189,10 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
                   questCard.appendChild(claimBtn);
                   questBox.appendChild(questCard);
               }
+              // Season quests fix (2026-11-20): the quest box was built
+              // but NEVER attached to the wrapper, so the season tab
+              // rendered empty even though all 20 quests were seeded.
+              wrapper.appendChild(questBox);
               return wrapper;
           }
           function createSpecialBreakthroughView() {
@@ -15410,6 +15451,56 @@ let blinkEyeDodgeState = null;
         league.teammates = (rankedTeammateNames || []).slice(0, 2);
         return league;
     }
+    // Ranked Seasons (2026-11-20 rework): Ranked resets every season,
+    // and "season" is just the current pass season. The reset is SOFT:
+    // your rank plus last season's wins / win rate set the new rank —
+    // a Prestige 5 player resets to Prestige 3, never to Bronze.
+    // Pure function (no playerData writes) so tests can pin the mapping.
+    function computeRankedSeasonReset(previousPoints, seasonStats) {
+        const prev = Math.max(0, Math.floor(previousPoints || 0));
+        const stats = seasonStats || {};
+        const wins = Math.max(0, Math.floor(stats.wins || 0));
+        const matches = Math.max(0, Math.floor(stats.matches || 0));
+        const wasPrestige = getRankedPrestige(prev) > 0;
+        const winCredit = Math.min(RANKED_SEASON_RESET_WIN_CREDIT_CAP_RP, wins * RANKED_SEASON_RESET_WIN_CREDIT_RP);
+        const winRate = matches >= 10 ? wins / matches : 0;
+        const rateCredit = winRate >= 0.6 ? RANKED_SEASON_RESET_WINRATE_CREDIT_RP : 0;
+        const credit = winCredit + rateCredit;
+        let newPoints;
+        if (wasPrestige) {
+            // Drop exactly 2 Prestige League levels, then wins / win rate
+            // earn back some of the drop (up to 250 RP).
+            const newLevel = Math.max(1, getRankedPrestige(prev) - RANKED_SEASON_RESET_PRESTIGE_LEVELS_DROPPED);
+            newPoints = 2400 + (newLevel - 1) * RANKED_PRESTIGE_STEP_RP + credit;
+            newPoints = Math.max(RANKED_SEASON_RESET_PRESTIGE_FLOOR_RP, Math.min(prev, newPoints));
+        } else {
+            // Drop 3 divisions (300 RP), then wins / win rate earn some back.
+            newPoints = Math.max(0, prev - RANKED_SEASON_RESET_DROP_RP + credit);
+            newPoints = Math.min(prev, newPoints);
+        }
+        return { previousPoints: prev, newPoints, drop: prev - newPoints, wasPrestige, boostTarget: prev };
+    }
+    function applyRankedSeasonReset() {
+        const ranked = playerData.ranked;
+        if (!ranked || typeof ranked !== 'object') return null;
+        const result = computeRankedSeasonReset(ranked.points || 0, ranked.seasonStats);
+        ranked.points = result.newPoints;
+        ranked.seasonId = getActiveSeasonPassId();
+        ranked.seasonStats = { wins: 0, matches: 0, kills: 0, damage: 0 };
+        // Elo boost: x2 RP on wins until you climb back to the rank you
+        // were at (the pre-reset RP). highPoints is all-time — untouched.
+        ranked.resetBoostTarget = result.boostTarget;
+        ranked.resetBoostFrom = result.newPoints;
+        return result;
+    }
+    function isRankedEloBoostActive() {
+        const ranked = playerData.ranked;
+        if (!ranked || !Number.isFinite(ranked.resetBoostTarget) || ranked.resetBoostTarget <= 0) return false;
+        return Math.max(0, Math.floor(ranked.points || 0)) < ranked.resetBoostTarget;
+    }
+    function getRankedEloBoostMultiplier() {
+        return isRankedEloBoostActive() ? RANKED_ELO_BOOST_MULTIPLIER : 1;
+    }
     function ensureRankedSeasonState() {
         if (!playerData.ranked || typeof playerData.ranked !== 'object') {
             playerData.ranked = { points: 0, rewardsClaimed: [] };
@@ -15419,7 +15510,20 @@ let blinkEyeDodgeState = null;
         playerData.ranked.highPoints = Math.max(playerData.ranked.highPoints, playerData.ranked.points);
         if (!Array.isArray(playerData.ranked.rewardsClaimed)) playerData.ranked.rewardsClaimed = [];
         if (playerData.ranked.winStreak == null) playerData.ranked.winStreak = 0;
-        if (playerData.ranked.seasonId == null) playerData.ranked.seasonId = 1;
+        // Ranked Seasons (2026-11-20 rework): per-season gameplay stats
+        // feed the next season's soft reset (rank + wins + win rate).
+        if (!playerData.ranked.seasonStats || typeof playerData.ranked.seasonStats !== 'object') {
+            playerData.ranked.seasonStats = { wins: 0, matches: 0, kills: 0, damage: 0 };
+        }
+        // The season is the current pass season: when the pass rolls to a
+        // new season, Ranked soft-resets once (old numeric seasonIds from
+        // before this rework reset on first load — the Xplodemis season
+        // started Nov 20, 2026, so that first reset is the new season).
+        const activeRankedSeasonId = getActiveSeasonPassId();
+        if (playerData.ranked.seasonId == null) playerData.ranked.seasonId = activeRankedSeasonId;
+        if (playerData.ranked.seasonId !== activeRankedSeasonId) {
+            applyRankedSeasonReset();
+        }
         if (playerData.ranked.weekKey == null) playerData.ranked.weekKey = getRankedWeekKey();
         if (playerData.ranked.weekKey !== getRankedWeekKey()) {
             playerData.ranked.weekKey = getRankedWeekKey();
@@ -46736,6 +46840,41 @@ let heistFeverActive = false;
         const floor = getRankedDivisionFloor(rankedPoints);
         const intoDivision = Math.max(0, rankedPoints - floor);
         const divisionPct = tierInfo.nextThreshold ? Math.min(100, Math.round((intoDivision / Math.max(1, tierInfo.nextThreshold - floor)) * 100)) : 100;
+        // Ranked rework (2026-11-20): the season IS the current pass
+        // season — no more hardcoded "Season 1 / 3-month season".
+        const seasonProfile = getActiveSeasonProfile();
+        // Prestige League (2026-11-20 rework): if you are in it, the hub
+        // shows the leaderboard instead of the progress bar. Opening the
+        // hub rolls the 3-day cycle and pays last cycle's top-3 rewards,
+        // and recordPrestigeLeagueMatch updates it after every ranked
+        // match — so what you see here is always the latest standings,
+        // with you and your allies' names.
+        const leagueState = ensurePrestigeLeagueState();
+        const inPrestigeLeague = !leagueState.locked;
+        const eloBoostActive = isRankedEloBoostActive();
+        const halfwayRp = tierInfo.nextThreshold ? Math.floor((floor + tierInfo.nextThreshold) / 2) : null;
+        const rankedProgressHtml = tierInfo.nextThreshold ? `
+                <div>
+                  <div class="ranked-hub-bar-label"><span>${tierInfo.label.toUpperCase()}</span><span>HALFWAY · ${halfwayRp} RP</span><span>NEXT: ${tierInfo.nextLabel.toUpperCase()} · ${tierInfo.nextThreshold} RP</span></div>
+                  <div class="ranked-hub-bar" role="progressbar" aria-valuenow="${divisionPct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${divisionPct}%"></i></div>
+                  <div class="ranked-hub-ticks"><span>${floor} RP</span><span>HALFWAY ${halfwayRp} RP</span><span>${tierInfo.nextThreshold} RP</span></div>
+                </div>` : `
+                <div>
+                  <div class="ranked-hub-bar-label"><span>${tierInfo.label.toUpperCase()}</span><span>MAX DIVISION</span></div>
+                  <div class="ranked-hub-bar" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"><i style="width:100%"></i></div>
+                  <div class="ranked-hub-ticks"><span>${floor} RP</span><span>${tierInfo.points} RP</span><span>MAX</span></div>
+                </div>`;
+        const leagueStandings = inPrestigeLeague ? getPrestigeLeagueStandings(leagueState) : [];
+        const leagueRank = inPrestigeLeague ? getPrestigeLeaguePlayerRank(leagueState) : 0;
+        const leagueTeammates = inPrestigeLeague ? (leagueState.teammates || []).join(' & ') : '';
+        const leagueBoardHtml = `
+                <div class="ranked-hub-league">
+                  <div style="font-weight:900;color:#ffd166;">👑 PRESTIGE LEAGUE LEADERBOARD</div>
+                  <div class="ranked-hub-bar-label"><span>👑 PRESTIGE LEAGUE PL${getPrestigeLeagueLevel(rankedPoints)}</span><span>YOU ARE #${leagueRank}</span></div>
+                  <div class="ranked-hub-league-board">${leagueStandings.map((r, i) => `<div style="${r.isPlayer ? 'font-weight:900;color:#ffe14d;' : 'color:#dceeff;'}">${i + 1}. ${r.isPlayer ? 'YOU' : r.name} — ${r.rp} RP${r.isPlayer ? ' ⭐' : ''}</div>`).join('')}</div>
+                  ${leagueTeammates ? `<div class="ranked-hub-meta">Teammates: ${leagueTeammates}</div>` : ''}
+                  <div class="ranked-hub-meta">Leaderboard updates after every ranked match · resets every 3 days</div>
+                </div>`;
         const hub = document.createElement('div');
         hub.className = 'ranked-hub-overlay';
         hub.id = 'rankedHubOverlay';
@@ -46745,27 +46884,23 @@ let heistFeverActive = false;
           <div class="ranked-hub-panel" style="--ranked-color:${tierInfo.color || '#00f5d4'}">
             <div class="ranked-hub-top">
               <button type="button" class="ranked-hub-back" data-ranked-hub="close" aria-label="Back">‹</button>
-              <div><h2>RANKED</h2><small>SEASONAL RANKED · 3-MONTH SEASON 1</small></div>
+              <div><h2>RANKED</h2><small>SEASON ${seasonProfile.seasonNumber} · ${seasonProfile.upperName} · RANKED RESETS EVERY SEASON</small></div>
               <button type="button" class="ranked-hub-close" data-ranked-hub="close" aria-label="Close ranked">✕</button>
             </div>
             <div class="ranked-hub-body">
               <div class="ranked-hub-main">
-                <div class="ranked-hub-season"><span>SEASON 1</span><span>3-MONTH SEASON</span></div>
+                <div class="ranked-hub-season"><span>SEASON ${seasonProfile.seasonNumber}</span><span>${seasonProfile.upperName} · ENDS ${seasonProfile.endLabel.toUpperCase()}</span></div>
                 <div class="ranked-hub-emblem">
                   <span class="ranked-hub-glyph" aria-hidden="true">⚔️</span>
-                  <b>${tierInfo.label}</b>
+                  <b>${inPrestigeLeague ? getRankedDisplayLabel(rankedPoints) : tierInfo.label}</b>
                   <span>${tierInfo.points} RP · DIVISION ${tierInfo.index + 1} OF ${RANKED_DIVISIONS.length}</span>
                 </div>
-                <div>
-                  <div class="ranked-hub-bar-label"><span>${tierInfo.label.toUpperCase()}</span><span>${tierInfo.nextLabel ? `NEXT: ${tierInfo.nextLabel.toUpperCase()} · ${tierInfo.nextThreshold} RP` : 'MAX DIVISION'}</span></div>
-                  <div class="ranked-hub-bar" role="progressbar" aria-valuenow="${divisionPct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${divisionPct}%"></i></div>
-                  <div class="ranked-hub-ticks"><span>${floor} RP</span><span>${tierInfo.points} RP</span><span>${tierInfo.nextThreshold ? tierInfo.nextThreshold + ' RP' : 'MAX'}</span></div>
-                </div>
-                <div class="ranked-hub-meta">${tierInfo.nextLabel ? `${Math.max(0, tierInfo.nextThreshold - tierInfo.points)} RP to ${tierInfo.nextLabel} · ` : ''}Division safety floor: ${floor} RP</div>
+                ${inPrestigeLeague ? leagueBoardHtml : rankedProgressHtml}
+                <div class="ranked-hub-meta">${inPrestigeLeague ? `Division safety floor: ${floor} RP` : `${tierInfo.nextLabel ? `${Math.max(0, tierInfo.nextThreshold - tierInfo.points)} RP to ${tierInfo.nextLabel} · ` : ''}Division safety floor: ${floor} RP${halfwayRp != null ? ` · Halfway at ${halfwayRp} RP` : ''}`}</div>
               </div>
             </div>
             <div class="ranked-hub-foot">
-              <span class="ranked-hub-boost">RANK BOOST!</span>
+              <span class="ranked-hub-boost">${eloBoostActive ? `⚡ ELO BOOST ×2 · UNTIL ${playerData.ranked.resetBoostTarget} RP` : 'RANK BOOST!'}</span>
               <button type="button" class="ranked-hub-play" data-ranked-hub="play">▶ PLAY RANKED</button>
             </div>
           </div>`;
@@ -79596,6 +79731,7 @@ function checkHit(target, b, i){
             let rankedRpParts = null;
             let prestigeLeague = null;
             let rankedDivisionSummary = '';
+            let rankedEloBoostApplied = false;
             let rankedPromotionCoins = 0;
             let rankedPromotionSouls = 0;
             let rankedPromotionGems = 0;
@@ -79616,11 +79752,29 @@ function checkHit(target, b, i){
                 } else {
                     playerData.ranked.winStreak = 0;
                 }
+                // Ranked Seasons (2026-11-20 rework): per-season gameplay
+                // stats feed the next season's soft reset (rank + wins +
+                // win rate). ensureRankedSeasonState above initialised the
+                // bucket for this season.
+                const rankedSeasonStats = playerData.ranked.seasonStats;
+                rankedSeasonStats.matches = (rankedSeasonStats.matches || 0) + 1;
+                if (won) rankedSeasonStats.wins = (rankedSeasonStats.wins || 0) + 1;
+                rankedSeasonStats.kills = (rankedSeasonStats.kills || 0) + (matchKills || 0);
+                rankedSeasonStats.damage = (rankedSeasonStats.damage || 0) + Math.round(matchDamageDealt || 0);
                 // Ranked RP (rebuild 2026-11-20): mode + kills + damage +
                 // objective + win — not just win/loss. Ranked Pass XP is
                 // gone with the Ranked Pass.
                 rankedRpParts = calcRankedRpGain({ mode: showdownMode, kills: matchKills, damage: matchDamageDealt, objectiveDamage: matchObjectiveDamage, won, streak: playerData.ranked.winStreak || 0, mvp: isRankedMVP });
                 rankedDelta = rankedRpParts.total;
+                // Ranked Seasons (2026-11-20 rework): elo boost — double
+                // RP gains on wins until you climb back to your pre-reset
+                // rank. Losses are never boosted. The RP gain rules
+                // themselves (mode + kills + damage + objective + win)
+                // are unchanged; the boost is a post-calc multiplier.
+                if (rankedDelta > 0 && isRankedEloBoostActive()) {
+                    rankedDelta = rankedDelta * RANKED_ELO_BOOST_MULTIPLIER;
+                    rankedEloBoostApplied = true;
+                }
                 const safetyFloor = getRankedDivisionFloor(beforePoints);
                 const afterPoints = Math.max(safetyFloor, beforePoints + rankedDelta);
                 playerData.ranked.points = afterPoints;
@@ -79643,7 +79797,9 @@ function checkHit(target, b, i){
                 }
                 // Prestige League (rebuild 2026-11-20): this match moves
                 // your league points and your opponents' RP in sync.
-                prestigeLeague = recordPrestigeLeagueMatch(won, rankedDelta);
+                // The league moves by the UNBOOSTED match delta — the elo
+                // boost is a ranked-ladder catch-up, not league performance.
+                prestigeLeague = recordPrestigeLeagueMatch(won, rankedRpParts.total);
                 rankText = rankText
                     ? `${rankText} | Ranked ${rankedDelta >= 0 ? '+' : ''}${rankedDelta} RP`
                     : `Ranked ${rankedDelta >= 0 ? '+' : ''}${rankedDelta} RP`;
@@ -79805,6 +79961,7 @@ function checkHit(target, b, i){
                     ];
                     if (p.streakRp > 0) rpLines.push(`🔥 Win streak: +${p.streakRp}`);
                     if (p.mvpRp > 0) rpLines.push(`⭐ MVP: +${p.mvpRp}`);
+                    if (rankedEloBoostApplied) rpLines.push(`⚡ Elo Boost ×${RANKED_ELO_BOOST_MULTIPLIER} — climbing back to ${playerData.ranked.resetBoostTarget} RP`);
                     rpBreakdownDiv.innerHTML = rpLines.map(l => `<div>${l}</div>`).join('');
                     rpBreakdownDiv.style.fontSize = '16px';
                     rpBreakdownDiv.style.fontWeight = 'bold';
