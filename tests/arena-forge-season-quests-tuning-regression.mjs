@@ -162,7 +162,7 @@ check('no bare word-boundary forbidden brawler token in game.js or this suite',
 // --- static: Ranked Solo --------------------------------------------------------
 check('solo: mode base table pays solo Showdown +5 (BUILDER PICK, same as Arena Forge)',
     (() => { const t = evalLiteral(extractConst(game, 'RANKED_RP_MODE_BASE')); return t.solo === 5 && t.arena_forge === 5 && t.knock_donate === 0 && t.brick_vault === 0; })());
-check('solo: placement helper exists and caps the match delta at +300 RP (corrected 2026-11-20 — no placement floor; 1200 RP is the solo ladder start, Teams keeps 1300)',
+check('solo: placement helper exists and caps the match delta at +300 RP (corrected 2026-11-20 — placement RESULT floors at the 1200 ladder start; 1200 RP is the solo ladder start, Teams keeps 1300)',
     game.includes('function computeRankedSoloPlacement(') && game.includes('const RANKED_SOLO_PLACEMENT_DELTA_CAP_RP = 300;')
     && game.includes('const RANKED_TEAMS_PLACEMENT_DELTA_CAP_RP = 500;')
     && game.includes('const RANKED_SOLO_LADDER_FLOOR_RP = 1200;')
@@ -472,10 +472,10 @@ check('solo: placement caps the match delta at +300 RP (Teams 2000 + 500-delta m
         const p = run('computeRankedSoloPlacement(2000, { total: 500 })');
         return p.points === 2300 && p.matchDelta === 300 && p.deltaCapPoints === 300;
     })());
-check('solo: placement has no floor any more (Teams 0 + loss -> 0, Teams 100 + 40 -> 140)',
-    run('computeRankedSoloPlacement(0, { total: -10 })').points === 0
+check('solo: placement RESULT floors at the 1200 ladder start (Teams 0 + loss -> 1200, Teams 100 + 40 -> 1200)',
+    run('computeRankedSoloPlacement(0, { total: -10 })').points === 1200
     && run('computeRankedSoloPlacement(0, { total: -10 })').matchDelta === -10
-    && run('computeRankedSoloPlacement(100, { total: 40 })').points === 140);
+    && run('computeRankedSoloPlacement(100, { total: 40 })').points === 1200);
 check('solo: placement caps at PL1 entry (Teams 2600 + win -> 2400, higher solo prestige must be earned)',
     run('computeRankedSoloPlacement(2600, { total: 60 })').points === 2400
     && run('computeRankedSoloPlacement(2300, { total: 50 })').points === 2350);

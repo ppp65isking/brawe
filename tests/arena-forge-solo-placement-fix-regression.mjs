@@ -6,6 +6,12 @@
 //      under the Teams rules can never exceed those caps (only the upside
 //      is capped — a loss still subtracts its full delta). The placement
 //      RESULT is still capped at 2400 RP (Brick Legend III / PL1 entry).
+//      UPDATE 2026-11-20 (high-RP fix, Anthony: "Make sure people already
+//      over 1200 get placed into a leauge"): the placement RESULT is now
+//      floored at the solo ladder start (1200 RP / Brick Fume III) —
+//      nobody places below it; the delta itself is still only capped,
+//      never floored. See arena-forge-solo-placement-high-rp-regression
+//      for the floor pins; the checks below were updated to match.
 //  (2) Solo Prestige leagues start at 1200 RP (Brick Fume III), so solo
 //      has fewer leagues: the solo ladder is 13 divisions (Fume III ..
 //      Legend III) plus Prestige, shorter than the 25-division Teams
@@ -21,11 +27,12 @@
 // Teams placement match exists in this build (Teams starts at 0 RP with
 // no placement flow), so the +500 Teams cap is a pinned rule with no call
 // site yet — Anthony to confirm whether Teams should ever have one.
-// FLAG — a low Teams rank now places LOW in solo (no floor): a fresh
-// player places near 0 RP and displays at the bottom rung of the solo
-// ladder (Fume III, division 1 of 13). Regular solo losses can also dip
-// a player below 1200 RP (division safety floor 1000 at 1200-1299 RP);
-// the display still shows Fume III, never a lower league.
+// FLAG — a low Teams rank now places AT the ladder start (1200 RP floor
+// on the placement RESULT, 2026-11-20 high-RP fix): a fresh player places
+// at 1200 RP and displays at the bottom rung of the solo ladder (Fume
+// III, division 1 of 13). Regular solo losses can also dip a player
+// below 1200 RP (division safety floor 1000 at 1200-1299 RP); the display
+// still shows Fume III, never a lower league.
 import fs from 'node:fs';
 import vm from 'node:vm';
 
@@ -270,9 +277,9 @@ check('caps vm: a loss still subtracts its full delta — only the upside is cap
         const p = run('computeRankedSoloPlacement(2000, { total: -10 })');
         return p.points === 1990 && p.matchDelta === -10;
     })());
-check('caps vm: no placement floor any more (Teams 0 + loss -> 0, never negative; Teams 100 + 40 -> 140)',
-    run('computeRankedSoloPlacement(0, { total: -10 })').points === 0
-    && run('computeRankedSoloPlacement(100, { total: 40 })').points === 140);
+check('caps vm: placement RESULT floors at the solo ladder start (Teams 0 + loss -> 1200, never negative; Teams 100 + 40 -> 1200)',
+    run('computeRankedSoloPlacement(0, { total: -10 })').points === 1200
+    && run('computeRankedSoloPlacement(100, { total: 40 })').points === 1200);
 check('caps vm: placement result still capped at 2400 (Teams 2600 + win -> 2400; Teams 2300 + 500-delta -> 2400)',
     run('computeRankedSoloPlacement(2600, { total: 60 })').points === 2400
     && run('computeRankedSoloPlacement(2300, { total: 500 })').points === 2400
@@ -354,7 +361,7 @@ check('reset vm: season change runs the solo reset at the ladder floor (1500 old
 {
     const hub = openHub(500, 0, false);
     const html = hub ? hub.innerHTML : '';
-    check('hub vm: unplaced solo CTA states the +300 cap and the Fume III ladder start, never a placement floor',
+    check('hub vm: unplaced solo CTA states the +300 cap and the Fume III ladder start',
         html.includes('PLAY 1 RANKED SOLO MATCH TO GET PLACED')
         && html.includes('A placement match can add up to +300 RP')
         && html.includes('Solo leagues start at Brick Fume III (1200 RP)')

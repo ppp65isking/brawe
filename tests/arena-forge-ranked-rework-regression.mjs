@@ -197,7 +197,7 @@ for (const name of ['RANKED_POINTS_PER_DIVISION', 'RANKED_GOLD_MIN_DIVISION_INDE
     'RANKED_ELO_BOOST_MULTIPLIER',
     // Ranked Solo (2026-11-20): the hub renders the solo ladder too.
     // Corrected model: placement delta capped at +300 (Solo) / +500
-    // (Teams), no placement floor; 1200 RP is the solo ladder start.
+    // (Teams); placement RESULT floored at 1200 RP, the solo ladder start.
     'RANKED_SOLO_LADDER_FLOOR_RP', 'RANKED_SOLO_LADDER_START_INDEX',
     'RANKED_TEAMS_PLACEMENT_DELTA_CAP_RP', 'RANKED_SOLO_PLACEMENT_DELTA_CAP_RP',
     'RANKED_SOLO_PLACEMENT_CAP_RP', 'RANKED_SOLO_LEAGUE_OPPONENT_SALT']) {
