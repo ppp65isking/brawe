@@ -288,7 +288,7 @@ if (vmReady) try {
   const ctx = recordingCtx();
   const q = [];
   ctx.font = 'bold 20px sans-serif'; ctx.fillStyle = '#cfeef7'; ctx.textAlign = 'center';
-  sandbox.queueTopCenterLine(ctx, q, 'Arena Forge 2.0 | PREPARE 5s', IW / 2, 48);
+  sandbox.queueTopCenterLine(ctx, q, 'Arena Forge | PREPARE 5s', IW / 2, 48);
   ctx.font = 'bold 14px sans-serif'; ctx.fillStyle = '#7fffd4'; ctx.textAlign = 'center';
   sandbox.queueTopCenterLine(ctx, q, 'ARENA FORGE 3V3 - BREAK 2 TOWERS, THEN DESTROY THE CORE', IW / 2, 60);
   ctx.font = '900 15px sans-serif'; ctx.fillStyle = '#ffcf66'; ctx.textAlign = 'center';

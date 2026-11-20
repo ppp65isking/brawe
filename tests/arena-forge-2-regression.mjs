@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 const game = fs.readFileSync(new URL('../game.js', import.meta.url), 'utf8');
 
-assert.match(game, /Arena Forge 2\.0 - Triple Tower War/, 'Arena Forge 2.0 title is active');
+assert.match(game, /Arena Forge - Triple Tower War/, 'Arena Forge title is active');
 assert.match(game, /const laneXs = \[WORLD_W \* 0\.18, WORLD_W \* 0\.5, WORLD_W \* 0\.82\]/, '2.0 uses three tower lanes');
 assert.match(game, /'tower', 'center', laneXs\[1\]/, 'each team receives a center tower');
 assert.match(game, /lane === 'left' \? 'rail' : \(lane === 'center' \? 'prism' : 'mortar'\)/, 'towers receive distinct attack identities');
@@ -20,4 +20,4 @@ assert.match(game, /collector\.arenaForgeSoulCapacitor[\s\S]{0,300}superCharge =
 assert.match(game, /arenaForgeFortressLink && isNearAlliedArenaForgeStructure/, 'Fortress Link is functional');
 assert.match(game, /function showDamageNumber\(x, y, amount/, 'legacy Forge damage-number crash has a compatibility function');
 
-console.log('Arena Forge 2.0 regression checks passed.');
+console.log('Arena Forge regression checks passed.');

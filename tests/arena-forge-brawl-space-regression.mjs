@@ -9,7 +9,7 @@
 //
 // Pins:
 //  (1) Fighters grid replaces the horizontal strip — big portrait
-//      cards with power badge, trophy chip, rarity strip — and the
+//      cards with power badge, bricks chip, rarity strip — and the
 //      view is the ONE scroller (the grid is not a scroller, toolbar
 //      stays sticky, touch-action pan-y so vertical drags are never
 //      stolen). Search + sort + favorites + skins + PLAY + upgrade
@@ -18,7 +18,7 @@
 //  (3) Season pass road: tier bubbles on a track rail, same state/flow.
 //  (4) Ranked: neon hub (emblem + RP bar + pass card + PLAY) gates the
 //      draft — no AI turn starts before PLAY. Same tier/RP/pass data.
-//  (5) Trophy/Brick road: horizontal milestone road, next goal focused.
+//  (5) Brick road: horizontal milestone road, next goal focused.
 //  (6) Profile: split layout (player card full-width, two columns).
 //  (7) Website: same space language (home stage, roster grid, events).
 //  (8) Safe areas + deep links + save code + MORE sheet untouched.
@@ -60,10 +60,10 @@ check('fighters: portrait = 2-column grid, landscape = wider cards',
     game.includes("@media (orientation:landscape){#appFightersStrip{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}}"));
 check('fighters: container carries the grid class',
     game.includes('<div id="appFightersStrip" class="app-fighters-grid"></div>'));
-check('fighters: card has power badge, trophy chip, rarity strip in markup',
+check('fighters: card has power badge, bricks chip, rarity strip in markup',
     game.includes('<span class="app-fighter-power">${pData.level || 1}</span>') &&
     game.includes('<span class="app-fighter-rarity" style="--rarity-color:${rarityColor}" aria-hidden="true"></span>') &&
-    game.includes('<span class="app-fighter-trophies">🏆 ${trophies.toLocaleString()}</span>'));
+    game.includes('<span class="app-fighter-trophies">🧱 ${bricks.toLocaleString()}</span>'));
 check('fighters: power badge top-left, rarity strip right edge (CSS)',
     game.includes('.app-fighter-power{position:absolute;top:5px;right:3px;') &&
     game.includes('.app-fighter-rarity{position:absolute;top:0;right:0;bottom:0;width:34px;'));
@@ -151,27 +151,27 @@ check('ranked: hub stacks below 640px (single column)',
     game.includes('@media (max-width:640px){.ranked-hub-body{grid-template-columns:1fr}.ranked-hub-panel{padding:16px}}'));
 
 // --- (5) Trophy / Brick road ---
-check('trophy road: brick road is a horizontal scroll-snap road with node cards',
+check('brick road: milestone road is a horizontal scroll-snap road with node cards',
     game.includes("trackContainer.style.cssText = 'position:relative;display:flex;flex-direction:row;gap:12px;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;") &&
     game.includes('flex:0 0 150px;scroll-snap-align:start;'));
-check('trophy road: next goal is marked and scrolled into view',
+check('brick road: next goal is marked and scrolled into view',
     game.includes("mCard.setAttribute('data-brick-road-next', '1')") &&
     game.includes("trackContainer.querySelector('[data-brick-road-next]')?.scrollIntoView({ inline: 'center', block: 'nearest' })"));
-check('trophy road: profile trophies are a horizontal node road too',
+check('brick road: profile bricks are a horizontal node road too',
     game.includes('.profile-trophies .profile-trophy-list{display:flex;gap:10px;overflow-x:auto;') &&
     game.includes('.profile-trophies .profile-trophy-list>div{flex:0 0 190px;'));
-check('trophy road: trophy data unchanged (10/win, same helpers)',
-    game.includes('function getBrawlerTrophies(brawlerId) { return TROPHY_PER_WIN * getBrawlerTrophyWins(brawlerId); }') &&
-    game.includes('10 trophies per win'));
+check('brick road: bricks data (lifetime bricks, placement awards)',
+    game.includes('function getLifetimeBricks(progress) {') &&
+    game.includes('1st place earns 30'));
 
 // --- (6) Profile split ---
 check('profile: panel carries the split class; grid is two columns, one on phones',
     game.includes("panel.className = 'brick-bon-v2 profile-view';") &&
     game.includes('.brick-bon-v2.profile-view>main{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);') &&
     game.includes('@media (max-width:760px){.brick-bon-v2.profile-view>main{grid-template-columns:minmax(0,1fr)}}'));
-check('profile: same sections (hero, trophies, career, favorites, badges, pins, road, ranked)',
+check('profile: same sections (hero, bricks, career, favorites, badges, pins, road, ranked)',
     game.includes('function openPlayerProfile() {') && game.includes('function renderProfileCareer(container){') &&
-    game.includes('createTrophySection()') && game.includes('EDIT PROFILE'));
+    game.includes('createBricksSection()') && game.includes('EDIT PROFILE'));
 
 // --- (7) Website treatment ---
 check('web home: bigger stage, bigger PLAY, roomier bottom bar',
@@ -182,7 +182,7 @@ check('web events: heading is a tab, compact row is wider with bigger cards',
     homeCss.includes('#homeScreen #homeModeCompactRow {') &&
     homeCss.includes('grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)) !important;') &&
     homeCss.includes('#homeScreen #homeEventsView .home-mode-card { min-height: 128px !important; }'));
-check('web roster: wider grid on desktop, trophy line on cards',
+check('web roster: wider grid on desktop, bricks line on cards',
     galleryCss.includes('.fighter-gallery:not(.brawler-detail-view) .brawler-browser__grid{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))!important;gap:12px!important}') &&
     galleryCss.includes('@media(min-width:1100px){.fighter-gallery:not(.brawler-detail-view) .brawler-browser__grid{grid-template-columns:repeat(auto-fill,minmax(320px,1fr))!important;') &&
     game.includes("trophyLine.className = 'brawler-card__trophies';") &&
@@ -226,9 +226,9 @@ const sandbox = {
     playerData: {
         coins: 100000, selectedSkins: {}, ownedSkins: {},
         brawlers: {
-            alpha: { level: 12, gadgetUnlocked: true, starPowerUnlocked: true, hyperchargeUnlocked: true, selectedGadget: 'g1', selectedStar: 'slow' },
+            alpha: { level: 12, bricks: 240, gadgetUnlocked: true, starPowerUnlocked: true, hyperchargeUnlocked: true, selectedGadget: 'g1', selectedStar: 'slow' },
             beta: { level: 5, gadgetUnlocked: true, starPowerUnlocked: true, hyperchargeUnlocked: false, selectedGadget: 'g2', selectedStar: 'long' },
-            mallow: { level: 9 },
+            mallow: { level: 9, bricks: 120 },
         },
     },
     appFightersState: { search: '', role: 'all', focused: 'alpha', sort: 'favorites' },
@@ -240,7 +240,7 @@ const sandbox = {
     getEffectiveBrawlerProgress: (id) => sandbox.playerData.brawlers[id] || { level: 1 },
     getScaledStats: () => ({ hp: 1000, dmg: 100, speed: 100 }),
     getBrawlerPortraitMarkup: () => '<span>🙂</span>',
-    getBrawlerTrophies: (id) => ({ alpha: 240, mallow: 120 }[id] || 0),
+    getLifetimeBricks: (p) => Math.max(0, Math.floor(p?.bricks || 0)) + Math.max(0, Math.floor(p?.prestige || 0)) * 1000,
     getCoreSurgeDescription: () => 'Core Surge description.',
     getActiveSkinForBrawler: () => null,
     getUpgradeCost: () => 100,
@@ -275,8 +275,8 @@ run(`appFightersState.sort = 'favorites'; appFightersState.search = ''; appFight
 const stripHtml = elements.appFightersStrip.innerHTML;
 check('runtime grid: power badge shows the level on the card',
     stripHtml.includes('<span class="app-fighter-power">12</span>'));
-check('runtime grid: trophy chip shows real trophies, hidden at zero',
-    stripHtml.includes('🏆 240') && !stripHtml.includes('🏆 0'));
+check('runtime grid: bricks chip shows real lifetime bricks, hidden at zero',
+    stripHtml.includes('🧱 240') && !stripHtml.includes('🧱 0'));
 check('runtime grid: rarity strip carries the rarity color',
     stripHtml.includes('--rarity-color:#b388ff') && stripHtml.includes('--rarity-color:#ff9f1c'));
 check('runtime grid: locked card still shows LOCKED + soul cost',

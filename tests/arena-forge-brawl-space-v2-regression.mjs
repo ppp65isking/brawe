@@ -6,7 +6,7 @@
 // landscape fighter cards with the kit strip, home top bar + side
 // columns + giant yellow PLAY, ranked split (pass card left, emblem
 // center, PLAY foot), event title + bottom tabs, two-row pass road with
-// the rail through the tier bubbles, trophy road rail + nodes + hero
+// the rail through the tier bubbles, brick road rail + nodes + hero
 // stage + next big reward, profile diagonal split. Layout, proportions,
 // spacing and colors only — all content, names, art and copy stay Arena
 // Forge; no Brawl Stars art, icons, text or branding is lifted.
@@ -43,7 +43,7 @@ check('v2 fighters: grid is wide landscape cards (280px, 300px landscape)',
 check('v2 fighters: card is a 16/10 wide card with a dark border + hard shadow',
     game.includes('aspect-ratio:16/10;background:var(--card-color,#0b69bd)') &&
     game.includes('border:3px solid #0a1428;box-shadow:0 4px 0 rgba(0,0,0,.45);'));
-check('v2 fighters: portrait fills the card, name bottom-right, trophy chip bottom-left',
+check('v2 fighters: portrait fills the card, name bottom-right, bricks chip bottom-left',
     game.includes('.app-fighter-card .app-fighter-portrait{position:absolute;inset:0;width:100%;height:100%;') &&
     game.includes('.app-fighter-card b{position:absolute;right:42px;bottom:6px;') &&
     game.includes('.app-fighter-trophies{position:absolute;left:6px;bottom:6px;'));
@@ -62,16 +62,16 @@ check('v2 fighters: locked cards are greyed with a centered LOCKED overlay + sou
     game.includes('.app-fighter-card.is-locked small{display:flex;position:absolute;left:0;right:36px;top:50%;'));
 
 // --- Home: top bar chips, side column, giant PLAY ---
-check('v2 home: top bar has trophy + ranked chips and a menu button',
+check('v2 home: top bar has bricks + ranked chips and a menu button',
     game.includes('id="appHomeTrophyChip"') && game.includes('id="appHomeRankedChip"') &&
     game.includes('id="appHomeMenuBtn"') && game.includes("openAppMoreSheet();"));
-check('v2 home: top chips are filled from live data (trophies, ranked tier, pass XP)',
-    game.includes("trophyEl.textContent = `🏆 ${getTotalTrophies().toLocaleString()}`") &&
+check('v2 home: top chips are filled from live data (bricks, ranked tier, pass XP)',
+    game.includes("trophyEl.textContent = `🧱 ${getTotalBrickBonBricks().toLocaleString()}`") &&
     game.includes('const ti = getRankedTierInfo(rp);') &&
     game.includes("xpEl.textContent = `🎫 LV ${pass.level} · ${Math.min(100, pass.xp % 100)}/100`"));
-check('v2 home: hero carries the trophy chip above the portrait',
-    game.includes('class="app-hero-trophy"') && game.includes('heroTrophies') &&
-    game.includes("getBrawlerTrophies(selectedBrawler)"));
+check('v2 home: hero carries the bricks chip above the portrait',
+    game.includes('class="app-hero-trophy"') && game.includes('heroBricksHtml') &&
+    game.includes("getLifetimeBricks(playerData.brawlers?.[selectedBrawler])"));
 check('v2 home: mode card carries the New-map countdown; PLAY is giant yellow',
     game.includes('app-home-map-count') && game.includes('New map in: ${formatHomeEventCountdown(') &&
     game.includes('#appHomePlay{min-height:64px;font-size:26px;background:linear-gradient(180deg,#ffe14d,#ffb400);'));
@@ -139,7 +139,7 @@ check('v2 road: header shows the league + a bricks chip',
     game.includes('brickChip.textContent = `🧱 ${totalBricks.toLocaleString()}`'));
 
 // --- Profile: diagonal split, ranked panel, hex favorites ---
-check('v2 profile: diagonal split background; hero left spanning, trophies/ranked/favorites right',
+check('v2 profile: diagonal split background; hero left spanning, bricks/ranked/favorites right',
     game.includes('.brick-bon-v2.profile-view>main{background:linear-gradient(115deg,#1e7fe0 0 46%,#6d4bd8 46% 100%)}') &&
     game.includes('.brick-bon-v2.profile-view>main>.profile-hero{grid-column:1;grid-row:1/4}') &&
     game.includes('.brick-bon-v2.profile-view>main>.profile-trophies{grid-column:2;grid-row:1}') &&
@@ -149,7 +149,7 @@ check('v2 profile: ranked panel shows current + highest tier',
     game.includes("section.className = 'profile-section profile-ranked';") &&
     game.includes('Highest: ${rankedHighInfo.label}') &&
     game.includes('function createRankedProfileSection() {') &&
-    game.includes('<h3>🏆 RANKED</h3>'));
+    game.includes('<h3>⚔️ RANKED</h3>'));
 check('v2 profile: favorites are hex-clipped with a prestige shield + SHOW MORE',
     game.includes('.profile-favorites-section .profile-favorite-icon{clip-path:polygon(50% 0,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%)}') &&
     game.includes("shieldC.className='profile-prestige-shield'") &&
@@ -158,7 +158,7 @@ check('v2 profile: favorites are hex-clipped with a prestige shield + SHOW MORE'
     game.includes('function goProfileFighters() {'));
 
 // --- Website: same exact-layout treatment ---
-check('v2 web roster: wide cards, portrait fills, name/trophies placed, kit strip right',
+check('v2 web roster: wide cards, portrait fills, name/bricks placed, kit strip right',
     galleryCss.includes('.fighter-gallery:not(.brawler-detail-view) .brawler-browser__grid{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))!important;gap:12px!important}') &&
     galleryCss.includes('@media(min-width:1100px){.fighter-gallery:not(.brawler-detail-view) .brawler-browser__grid{grid-template-columns:repeat(auto-fill,minmax(320px,1fr))!important;') &&
     galleryCss.includes('.fighter-gallery .brawler-card{position:relative!important;aspect-ratio:16/10!important;') &&
@@ -202,9 +202,9 @@ const sandbox = {
     playerData: {
         coins: 100000, selectedSkins: {}, ownedSkins: {},
         brawlers: {
-            alpha: { level: 12, gadgetUnlocked: true, starPowerUnlocked: true, hyperchargeUnlocked: true, selectedGadget: 'g1', selectedStar: 'slow' },
+            alpha: { level: 12, bricks: 240, gadgetUnlocked: true, starPowerUnlocked: true, hyperchargeUnlocked: true, selectedGadget: 'g1', selectedStar: 'slow' },
             beta: { level: 5, gadgetUnlocked: true, starPowerUnlocked: true, hyperchargeUnlocked: false, selectedGadget: 'g2', selectedStar: 'long' },
-            mallow: { level: 9 },
+            mallow: { level: 9, bricks: 120 },
         },
     },
     appFightersState: { search: '', role: 'all', focused: 'alpha', sort: 'favorites' },
@@ -216,7 +216,7 @@ const sandbox = {
     getEffectiveBrawlerProgress: (id) => sandbox.playerData.brawlers[id] || { level: 1 },
     getScaledStats: () => ({ hp: 1000, dmg: 100, speed: 100 }),
     getBrawlerPortraitMarkup: () => '<span>🙂</span>',
-    getBrawlerTrophies: (id) => ({ alpha: 240, mallow: 120 }[id] || 0),
+    getLifetimeBricks: (p) => Math.max(0, Math.floor(p?.bricks || 0)) + Math.max(0, Math.floor(p?.prestige || 0)) * 1000,
     getCoreSurgeDescription: () => 'Core Surge description.',
     getActiveSkinForBrawler: () => null,
     getUpgradeCost: () => 100,
