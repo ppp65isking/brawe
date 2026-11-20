@@ -69,7 +69,8 @@ check('v2 home: top bar has bricks + ranked chips and a menu button',
 check('v2 home: top chips are filled from live data (bricks, ranked tier, pass XP)',
     game.includes("trophyEl.textContent = `🧱 ${getTotalBrickBonBricks().toLocaleString()}`") &&
     game.includes('const ti = getRankedTierInfo(rp);') &&
-    game.includes("xpEl.textContent = `🎫 LV ${pass.level} · ${Math.min(100, pass.xp % 100)}/100`"));
+    game.includes('const info = seasonPassLevelProgress(pass.xp || 0);') &&
+    game.includes("xpEl.textContent = `🎫 LV ${info.level} · ${info.xpInto}/${info.xpPerLevel}`"));
 check('v2 home: hero carries the bricks chip above the portrait',
     game.includes('class="app-hero-trophy"') && game.includes('heroBricksHtml') &&
     game.includes("getLifetimeBricks(playerData.brawlers?.[selectedBrawler])"));

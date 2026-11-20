@@ -155,7 +155,7 @@ check('exchange buttons show OWNED / SOLD OUT / token cost from live state',
 check('exchange buttons are disabled when owned, sold out, unaffordable, or season ended',
     openSeasonPassSrc.includes('button.disabled=owned||bought>=offer.limit||pass.tokenWallet<offer.cost||!active;'));
 check('exchange purchase goes through the real token purchase + grant, then toasts',
-    openSeasonPassSrc.includes('BrawePassTokens.purchase(pass,offer.id,reward=>{grantSeasonReward(reward);return true;})') &&
+    openSeasonPassSrc.includes('BrawePassTokens.purchase(pass,offer.id,reward=>{grantSeasonReward(reward);return true;},SEASON_PASS_XP_PER_TIER)') &&
     openSeasonPassSrc.includes("showToast('Bought '+offer.name)"));
 check('exchange note states the honest rule: tokens are earned, not purchased',
     openSeasonPassSrc.includes('Tokens are earned, not purchased.'));
@@ -398,6 +398,9 @@ check('no new season/tier data invented: the only tier arrays are the three live
         return false;
     }
     const smokeCollectButtons = (el) => { const out = []; const walk = (e) => { for (const c of e.children) { if (c.tagName === 'BUTTON') out.push(c); walk(c); } }; walk(el); return out; };
+    // 38,950 pass table (2026-11-20): the road render calls
+    // seasonPassLevelProgress, which needs the table + helpers in the vm.
+    const passXpPerTier = vm.runInContext(`(${extractConstArray(game, 'SEASON_PASS_XP_PER_TIER')})`, vm.createContext({}));
     const smokeBody = new El('body');
     const smokeToasts = []; let smokeOpenedBoard = null;
     const smoke = {
@@ -408,7 +411,7 @@ check('no new season/tier data invented: the only tier arrays are the three live
             addEventListener: () => {}, removeEventListener: () => {}, querySelector: () => null,
         },
         ENABLE_SEASON_PASS: true, ENABLE_SEASON_QUESTS: true,
-        SEASON_PREMIUM_UNLOCK_GEMS: 100, SEASON_PREMIUM_UNLOCK_COINS: 11999, SEASON_PASS_MAX_LEVEL: 50,
+        SEASON_PREMIUM_UNLOCK_GEMS: 100, SEASON_PREMIUM_UNLOCK_COINS: 11999, SEASON_PASS_MAX_LEVEL: 50, SEASON_PASS_XP_PER_TIER: passXpPerTier,
         playerData: {
             coins: 10000, gems: 100, souls: 0, starrDrops: 0, superTapperCount: 0, hyperTapperCount: 0,
             presentCount: 0, ownedSkins: {}, selectedSkins: {},
@@ -447,7 +450,8 @@ check('no new season/tier data invented: the only tier arrays are the three live
     };
     vm.createContext(smoke);
     vm.runInContext(passTokensSrc, smoke);
-    for (const fn of ['ensureBrawePassTokens', 'describeCircuitReward', 'grantSeasonReward', 'claimSeasonPassTrackReward', 'unlockSeasonPremium', 'confirmCircuitPassAction', 'openSeasonPass']) {
+    for (const fn of ['seasonPassXpToReachLevel', 'seasonPassLevelForXp', 'seasonPassXpIntoLevel', 'seasonPassXpPerLevel', 'seasonPassLevelProgress',
+        'ensureBrawePassTokens', 'describeCircuitReward', 'grantSeasonReward', 'claimSeasonPassTrackReward', 'unlockSeasonPremium', 'confirmCircuitPassAction', 'openSeasonPass']) {
         vm.runInContext(extractFunction(game, fn), smoke);
     }
     vm.runInContext('openSeasonPass()', smoke);
