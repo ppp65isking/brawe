@@ -104,10 +104,10 @@ check('core quest claim button still 40px min-height',
 check('panel title is Quest Board', game.includes("title.textContent = 'Quest Board';"));
 check('board aria-label is Quest Board', game.includes("overlay.setAttribute('aria-label', 'Quest Board');"));
 check('quick-row button names the board', game.includes('📜 QUESTS<small>QUEST BOARD</small>'));
-check('subtitle says quests, not contracts', game.includes("boardSubtitle.textContent = 'Complete quests, claim rewards, and climb the Season Pass.';"));
+check('subtitle says quests, not contracts (fixes round: pass clause dropped)', game.includes("boardSubtitle.textContent = 'Complete quests and claim rewards.';"));
 check('old Contract Board name is gone', !game.includes('Contract Board'));
 check('season tab is named Season Pass, like everywhere else (round 2: Core Circuit Pass renamed)',
-    game.includes("makeTab('season', '⚡ Season Pass')"));
+    game.includes("makeTab('season', '⚡ Season Quests')"));
 check('no Core Circuit Pass user-facing string remains', !game.includes('Core Circuit Pass'));
 
 // --- S1: shop cards single-column under 400px ---

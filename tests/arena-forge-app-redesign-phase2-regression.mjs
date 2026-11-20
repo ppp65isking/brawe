@@ -61,12 +61,12 @@ check('tournament league cards go two-per-row on phones', game.includes(".native
 
 // --- Polish pass on the phase-1 screens ---
 check('top strip wraps on narrow phones', game.includes("@media (max-width:430px){#appHomeTop{flex-wrap:wrap;row-gap:6px}"));
-check('fighters detail stacks in narrow portrait', game.includes("@media (orientation:portrait) and (max-width:560px){#appFightersDetail{flex-direction:column;align-items:center;gap:10px}"));
+check('fighters detail stacks in narrow portrait', game.includes("@media (orientation:portrait) and (max-width:560px){#appFighterDetail{flex-direction:column;align-items:center;gap:10px}"));
 
 // --- Website paths unchanged: same openers, same purchase/claim paths ---
 check('shop opener still exists and still opens the gem shop', game.includes('function openGemShop() {') && game.includes("shopBtn.addEventListener('click', ()=>{ openGemShop(); });"));
-check('shop still has all five sidebar tabs (exchange + overdrive deleted)', game.includes("createSidebarButton('☀ DAILY DEALS', 'daily')") && game.includes("createSidebarButton('👤 FIGHTER DEAL', 'fighter')") && game.includes("createSidebarButton('🎁 OFFER ARCHIVE', 'featured')") && game.includes("createSidebarButton('🎭 SKIN CATALOGUE', 'skins')") && game.includes("createSidebarButton('🎡 LUCKY WHEEL', 'wheel')"));
-check('quest board opener still exists with all four tabs (overdrive deleted)', game.includes('function openQuestBoard(initialTab') && game.includes("makeTab('core', '📋 Contracts')") && game.includes("makeTab('special', '💠 Core Pieces')") && game.includes("makeTab('season', '⚡ Season Pass')"));
+check('shop still has three sidebar tabs (archive + skins deleted in the fixes round)', game.includes("createSidebarButton('☀ DAILY DEALS', 'daily')") && game.includes("createSidebarButton('👤 FIGHTER DEAL', 'fighter')") && game.includes("createSidebarButton('🎡 LUCKY WHEEL', 'wheel')") && !game.includes("createSidebarButton('🎁 OFFER ARCHIVE'") && !game.includes("createSidebarButton('🎭 SKIN CATALOGUE'"));
+check('quest board opener still exists with all three tabs (season tab is Season Quests now)', game.includes('function openQuestBoard(initialTab') && game.includes("makeTab('core', '📋 Contracts')") && game.includes("makeTab('special', '💠 Core Pieces')") && game.includes("makeTab('season', '⚡ Season Quests')"));
 check('season pass still delegates to the quest board season tab', game.includes("function openSeasonPass() {") && game.includes("openQuestBoard('season');"));
 check('save-code modal behavior untouched', game.includes('function openSaveCodeModal() {') && game.includes('width:min(560px,94vw);max-height:88vh;') && game.includes('importBraweSavePayload'));
 check('diagnostic strip gate untouched', game.includes("new URLSearchParams(window.location.search || '').get('diag') === '1'"));

@@ -68,12 +68,12 @@ function sliceBetween(startMarker, endMarker) {
 // --- (a) detail/strip desync hardening (static) ---
 const stripHandlerAt = game.indexOf("view.querySelector('#appFightersStrip')?.addEventListener('click'");
 const stripHandler = stripHandlerAt === -1 ? '' : game.slice(stripHandlerAt, stripHandlerAt + 1600);
-check('(a) strip tap renders the detail BEFORE the strip (no highlight-ahead-of-panel)',
-    stripHandler.includes('renderAppFightersDetail();') &&
+check('(a) strip tap opens the fighter full screen (fixes round: no inline detail, no highlight-ahead-of-panel)',
+    stripHandler.includes('openAppFighterPage(appFightersState.focused);') &&
     stripHandler.includes('renderAppFightersStrip();') &&
-    stripHandler.indexOf('renderAppFightersDetail();') < stripHandler.indexOf('renderAppFightersStrip();'));
+    !stripHandler.includes('renderAppFightersDetail();'));
 check('(a) detail render is wrapped: a failure renders an error state, never stale content',
-    game.includes('Could not show this fighter — pick another one above.') &&
+    game.includes('Could not show this fighter — go back and pick another fighter.') &&
     game.includes('function renderAppFightersDetailFor(id) {'));
 check('(a) detail stamps which brawler it rendered (data-rendered-for)',
     game.includes('if (detail.dataset) detail.dataset.renderedFor = id;'));
@@ -97,10 +97,10 @@ check('(d) portrait media query also pins the height (portrait orientation)',
     game.includes('.app-fighters-detail-portrait{width:min(34vw,120px);height:min(34vw,120px)}'));
 
 // --- (e) toolbar / stats / slots exist and the detail is one scroller (static) ---
-check('(e) Fighters toolbar (search + roles + counter) is built',
-    game.includes('<div class="app-fighters-toolbar">') && game.includes('id="appFightersSearch"') && game.includes('id="appFightersCount"'));
-check('(e) detail is one scroller with the view (no nested starved panel in landscape)',
-    game.includes('#appFightersDetail{flex:none;overflow-y:visible}'));
+check('(e) Fighters toolbar (search + icon buttons + counter) is built',
+    game.includes('<div class="app-fighters-toolbar">') && game.includes('id="appFightersSearch"') && game.includes('id="appFightersFavToggle"') && game.includes('id="appFightersCount"'));
+check('(e) detail is one scroller on its own full screen (no nested starved panel in landscape)',
+    game.includes('#appFighterDetail{flex:none;overflow-y:visible}'));
 check('(e) kit slot tap still opens the kit sheet (phase-4 behavior, byte-identical)',
     game.includes("if (kitBtn) { openAppKitSheet(appFightersState.focused, kitBtn.dataset.appKit); return; }"));
 
@@ -126,13 +126,12 @@ check('fav: toggle uses the existing localStorage-backed set (no new storage)',
     game.includes('function toggleAppFighterFavorite(id) {') &&
     game.includes('setFavoriteBrawler(id, !isFavoriteBrawler(id));') &&
     game.includes("const favoriteBrawlersKey = 'brawl_arena_favorites';"));
-check('sort: sort select in the toolbar with all five modes',
-    game.includes('<select id="appFightersSort" class="app-fighters-sort" aria-label="Sort fighters">') &&
-    game.includes('<option value="favorites">★ FAVORITES</option>') &&
-    game.includes('<option value="name">NAME A–Z</option>') &&
-    game.includes('<option value="power">POWER ↓</option>') &&
-    game.includes('<option value="rarity">RARITY ↓</option>') &&
-    game.includes('<option value="owned">OWNED FIRST</option>'));
+check('sort: sort select lives in the filter sheet with all five modes (fixes round)',
+    game.includes('id="appFilterSort"') &&
+    game.includes("APP_FIGHTERS_SORTS.map((s) => opt(s,") &&
+    game.includes('Favorites first') && game.includes('Name A–Z') &&
+    game.includes('Power (high first)') && game.includes('Rarity (high first)') &&
+    game.includes('Owned first') && !game.includes('<select id="appFightersSort"'));
 check('sort: favorites always sort first, then the chosen mode',
     game.includes("const fa = isFavoriteBrawler(a) ? 0 : 1;") &&
     game.includes('if (fa !== fb) return fa - fb;'));
@@ -254,6 +253,7 @@ try {
     run(sliceBetween('    function toggleAppFighterFavorite(id) {', '    // Owned skins for one brawler'));
     run(sliceBetween('    function appFighterOwnedSkins(id) {', '    // Equip via the existing skin-equip path'));
     run(sliceBetween('    function appFightersSkinPick(id, skinId) {', '    // Round 2 (screenshot item a)'));
+    run(sliceBetween('    function playableBrawlerIds() {', '    // Emergency balance hold:'));
     run(sliceBetween('    function appFightersVisibleList() {', '    function buildAppFightersView() {'));
     run(sliceBetween('    function renderAppFightersStrip() {', '    // Kit name/description split'));
     run(sliceBetween('    function renderAppFightersDetail() {', '    function appFightersKitPick(id, key) {'));
@@ -284,7 +284,7 @@ run(`appFightersState.sort = 'favorites'; renderAppFightersStrip();`);
 
 // Detail render: labels, descs, slots, Core Surge, renderedFor.
 run(`appFightersState.focused = 'alpha'; renderAppFightersDetail();`);
-const alphaDetail = elements.appFightersDetail.innerHTML;
+const alphaDetail = elements.appFighterDetail.innerHTML;
 check('runtime (c): MAIN line has the name AND the attack description',
     alphaDetail.includes('<b>MAIN</b> · Punch — Punches for 200.'));
 check('runtime (c): SUPER line has the name AND the super description',
@@ -294,13 +294,13 @@ check('runtime (e): all four Tool/Talent slots render (tappable buttons, kit she
 check('runtime (e): Core Surge slot renders with the FULL description (never clamped text)',
     alphaDetail.includes(CORE_SURGE_FULL) && alphaDetail.includes('data-app-kit="hyper"'));
 check('runtime (a): detail stamps renderedFor for the focused brawler',
-    elements.appFightersDetail.dataset.renderedFor === 'alpha');
+    elements.appFighterDetail.dataset.renderedFor === 'alpha');
 check('runtime fav: detail shows ☆ FAVORITE for a non-favorite',
     alphaDetail.includes('☆ FAVORITE'));
 
 // Detail render: Power-1 brawler with nothing unlocked — slots still render, locked.
 run(`appFightersState.focused = 'rocketeer'; renderAppFightersDetail();`);
-const rocketDetail = elements.appFightersDetail.innerHTML;
+const rocketDetail = elements.appFighterDetail.innerHTML;
 check('runtime (e): Power-1 brawler still renders all four Tool/Talent slots (locked, tappable to the sheet)',
     ['g1', 'g2', 'sp1', 'sp2'].every((k) => rocketDetail.includes(`data-app-kit="${k}"`)) &&
     rocketDetail.includes('LOCKED · POWER 7') && rocketDetail.includes('LOCKED · POWER 9'));
@@ -309,17 +309,17 @@ check('runtime (e): Power-1 brawler still renders all four Tool/Talent slots (lo
 const realStats = sandbox.getScaledStats;
 run(`appFightersState.focused = 'alpha'; renderAppFightersDetail();`);
 check('runtime (a) setup: detail shows Alpha before the failing render',
-    elements.appFightersDetail.innerHTML.includes('Alpha') && elements.appFightersDetail.dataset.renderedFor === 'alpha');
+    elements.appFighterDetail.innerHTML.includes('Alpha') && elements.appFighterDetail.dataset.renderedFor === 'alpha');
 sandbox.getScaledStats = () => { throw new Error('boom'); };
 run(`appFightersState.focused = 'mallow'; renderAppFightersDetail();`);
 check('runtime (a): a failing detail render shows the error state, NOT the previous brawler',
-    elements.appFightersDetail.innerHTML.includes('Could not show this fighter') &&
-    !elements.appFightersDetail.innerHTML.includes('Alpha') &&
-    elements.appFightersDetail.dataset.renderedFor === '');
+    elements.appFighterDetail.innerHTML.includes('Could not show this fighter') &&
+    !elements.appFighterDetail.innerHTML.includes('Alpha') &&
+    elements.appFighterDetail.dataset.renderedFor === '');
 sandbox.getScaledStats = realStats;
 run(`appFightersState.focused = 'mallow'; renderAppFightersDetail();`);
 check('runtime (a): after the failure, a good render recovers to the focused brawler',
-    elements.appFightersDetail.innerHTML.includes('Mallow') && elements.appFightersDetail.dataset.renderedFor === 'mallow');
+    elements.appFighterDetail.innerHTML.includes('Mallow') && elements.appFighterDetail.dataset.renderedFor === 'mallow');
 
 // Favorites: toggle floats the brawler first, star + button update, untoggle restores.
 run(`toggleAppFighterFavorite('solo');`);
@@ -332,7 +332,7 @@ check('runtime fav: favorited card shows a filled ★',
     /data-app-favorite="solo"[^>]*>★</.test(favStrip) || favStrip.includes('data-app-favorite="solo"') && favStrip.includes('is-fav'));
 run(`appFightersState.focused = 'solo'; renderAppFightersDetail();`);
 check('runtime fav: detail shows ★ FAVORITED for a favorite',
-    elements.appFightersDetail.innerHTML.includes('★ FAVORITED'));
+    elements.appFighterDetail.innerHTML.includes('★ FAVORITED'));
 run(`toggleAppFighterFavorite('solo');`);
 check('runtime fav: toggling again removes the favorite and restores the order',
     lsStore.get('brawl_arena_favorites') === JSON.stringify([]) &&
@@ -341,7 +341,7 @@ run(`appFightersState.sort = 'favorites'; renderAppFightersStrip();`);
 
 // Skins: selector offers owned skins only; equip / refuse / default / stale shape.
 run(`appFightersState.focused = 'freezeon'; renderAppFightersDetail();`);
-const freezeDetail = elements.appFightersDetail.innerHTML;
+const freezeDetail = elements.appFighterDetail.innerHTML;
 check('runtime skins: owned Tree Freeze chip renders (with DEFAULT), no foreign skins',
     freezeDetail.includes('data-app-skin="tree-freeze-freezeon"') && freezeDetail.includes('🎄 Tree Freeze') &&
     freezeDetail.includes('data-app-skin="default"') && !freezeDetail.includes('xploder-rocketeer') &&
@@ -353,9 +353,9 @@ saveCalls = 0; syncCalls = 0;
 run(`appFightersSkinPick('freezeon', 'tree-freeze-freezeon');`);
 check('runtime skins: equipping an owned skin writes selectedSkins + saves + re-renders',
     sandbox.playerData.selectedSkins.freezeon === 'tree-freeze-freezeon' && saveCalls === 1 &&
-    elements.appFightersDetail.innerHTML.includes('data-app-skin="tree-freeze-freezeon"'));
+    elements.appFighterDetail.innerHTML.includes('data-app-skin="tree-freeze-freezeon"'));
 check('runtime skins: equipped skin chip is active after equip',
-    elements.appFightersDetail.innerHTML.includes('class="app-fighter-skin is-active" data-app-skin="tree-freeze-freezeon"'));
+    elements.appFighterDetail.innerHTML.includes('class="app-fighter-skin is-active" data-app-skin="tree-freeze-freezeon"'));
 saveCalls = 0;
 run(`appFightersSkinPick('rocketeer', 'xploder-rocketeer');`);
 check('runtime skins: unowned Xploder is refused (no write, no save)',
@@ -372,7 +372,7 @@ check('runtime skins: DEFAULT clears the equip and saves',
     sandbox.playerData.selectedSkins.freezeon === undefined && saveCalls === 1);
 run(`appFightersState.focused = 'solo'; renderAppFightersDetail();`);
 check('runtime skins: stale non-array ownedSkins shape never crashes and offers no skins',
-    elements.appFightersDetail.innerHTML.includes('Solo') && !elements.appFightersDetail.innerHTML.includes('app-fighters-skins'));
+    elements.appFighterDetail.innerHTML.includes('Solo') && !elements.appFighterDetail.innerHTML.includes('app-fighters-skins'));
 
 // --- Hard limits: desktop, whitelist, diag gate, save-code modal, banned word ---
 check('save backup whitelist NOT widened',

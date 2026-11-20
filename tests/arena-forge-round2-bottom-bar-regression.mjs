@@ -85,7 +85,7 @@ check('app body is a flex-1 scroller above the bar (bar never overlaps it)',
     game.includes('#appHomeBody{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}') &&
     game.includes('#appHomeTabs{flex:none;'));
 check('scroll views end 12px clear of the bar (no flush last row)',
-    game.includes('#appHomeHeroView,#appHomeFightersView,#appHomeEventsView,#appHomeSettingsView{padding-bottom:12px}'));
+    game.includes('#appHomeHeroView,#appHomeFightersView,#appHomeFighterView,#appHomeEventsView,#appHomeSettingsView{padding-bottom:12px}'));
 // Toast sits at 84px + inset; the new bar is ~58px portrait / ~50px
 // landscape plus 8px top pad plus the shell bottom gap, so 84px still clears.
 check('toast still clears the taller bar (84px + safe-area)',

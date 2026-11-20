@@ -25,10 +25,10 @@ check('events view has momentum scrolling', game.includes('#appHomeEventsView{-w
 check('shop sidebar has momentum scrolling + hidden scrollbar', game.includes('.native-app .brawe-shop-sidebar{-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;scrollbar-width:none}') && game.includes('.native-app .brawe-shop-sidebar::-webkit-scrollbar{display:none}'));
 
 // --- Fighters: one scroller, sticky strip, scroll reset ---
-check('fighters detail is no longer a nested scroller', game.includes('#appFightersDetail{flex:none;overflow-y:visible}'));
+check('fighters detail is no longer a nested scroller', game.includes('#appFighterDetail{flex:none;overflow-y:visible}'));
 check('fighters strip sticks to the top of the view', game.includes("#appFightersStrip{position:sticky;top:0;z-index:2;"));
-check('picking a fighter resets the view to the top', game.includes("if (fightersView) fightersView.scrollTop = 0;"));
-check('picked fighter card is scrolled into view in the strip', game.includes("view.querySelector(`[data-app-fighter=\"${appFightersState.focused}\"]`)?.scrollIntoView({ block: 'nearest' })"));
+check('picking a fighter opens its full screen (fixes round: no more inline detail)', game.includes('openAppFighterPage(appFightersState.focused);'));
+check('fighter page is a full screen in the app shell', game.includes('<div id="appHomeFighterView"></div>') && game.includes('function buildAppFighterView() {'));
 
 // --- SP / gadget descriptions render where the data exists ---
 check('kitSplit handles Name (description) form', game.includes('const kitSplit = (raw) => {') && game.includes("const m = s.match(/\\(([^)]*)\\)/);"));
@@ -109,7 +109,7 @@ check('new telegraphs draw a lob arc, not a straight line', (game.match(/quadrat
 
 // --- Website paths unchanged: same openers, same flows ---
 check('shop opener still exists and still opens the gem shop', game.includes('function openGemShop() {') && game.includes("shopBtn.addEventListener('click', ()=>{ openGemShop(); });"));
-check('quest board opener still exists with all five tabs', game.includes('function openQuestBoard(initialTab') && game.includes("makeTab('season', '⚡ Season Pass')"));
+check('quest board opener still exists with all five tabs', game.includes('function openQuestBoard(initialTab') && game.includes("makeTab('season', '⚡ Season Quests')"));
 check('season pass still delegates to the quest board season tab', game.includes('function openSeasonPass() {') && game.includes("openQuestBoard('season');"));
 check('save-code modal behavior untouched', game.includes('function openSaveCodeModal() {') && game.includes('importBraweSavePayload'));
 check('diagnostic strip gate untouched', game.includes("new URLSearchParams(window.location.search || '').get('diag') === '1'"));

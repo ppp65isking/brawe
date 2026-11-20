@@ -121,9 +121,10 @@ check('F8: soul-cost line has its own styling',
 // --- F9: owned/total counter + clamped kit descs (static) ---
 check('F9: Fighters toolbar has an owned/total counter element',
     game.includes('<span id="appFightersCount" class="app-fighters-count"></span>'));
-check('F9: counter renders owned/total from isBrawlerUnlocked over the whole roster',
-    game.includes('const owned = allBrawlers.filter((b) => isBrawlerUnlocked(b)).length;') &&
-    game.includes('countEl.textContent = `${owned}/${allBrawlers.length} OWNED`;'));
+check('F9: counter renders owned/total from isBrawlerUnlocked over the PLAYABLE roster (fixes round: 104, not 108)',
+    game.includes('const playable = playableBrawlerIds();') &&
+    game.includes('const owned = playable.filter((b) => isBrawlerUnlocked(b)).length;') &&
+    game.includes('countEl.textContent = `${owned}/${playable.length} OWNED`;'));
 check('F9: kit descs clamp to 3 lines so slots stay even heights',
     game.includes('.app-kit-desc{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}'));
 check('F9: phase-3 kit-desc base rule still present (suite pin kept)',
@@ -185,6 +186,8 @@ try {
     run(sliceBetween('    const kitSplit = (raw) => {', '    const kitName = '));
     run(sliceBetween('    const kitName = ', '    const kitDesc = '));
     run(sliceBetween('    const kitDesc = ', '    function renderAppFightersDetail() {'));
+    run(sliceBetween('    function playableBrawlerIds() {', '    // Emergency balance hold:'));
+    run(sliceBetween('    function renderAppFighterWallet() {', '    // ---- Kit detail sheet (phase 4) ----'));
     run(sliceBetween('    function appFightersVisibleList() {', '    function buildAppFightersView() {'));
     run(sliceBetween('    function renderAppFightersStrip() {', '    // Kit name/description split'));
     run(sliceBetween('    function renderAppFightersDetail() {', '    function appFightersKitPick(id, key) {'));
@@ -208,7 +211,7 @@ check('runtime F9: counter reads 2/3 OWNED (2 of the 3 fixture brawlers unlocked
 
 // Detail render, locked brawler: upgrade + play both disabled.
 run(`appFightersState.focused = 'lockedEpic'; renderAppFightersDetail();`);
-const lockedDetail = elements.appFightersDetail.innerHTML;
+const lockedDetail = elements.appFighterDetail.innerHTML;
 const upgBtn = (lockedDetail.match(/<button[^>]*data-app-action="upgrade"[^>]*>/) || [''])[0];
 const playBtn = (lockedDetail.match(/<button[^>]*data-app-action="play"[^>]*>/) || [''])[0];
 check('runtime F1: UPGRADE button is disabled on a locked brawler',
@@ -220,7 +223,7 @@ check('runtime slots: kit slot buttons actually render (g1/g2/sp1/sp2/hyper)',
 
 // Detail render, unlocked brawler with everything unlocked: full desc + enabled upgrade.
 run(`appFightersState.focused = 'unlockedStarter'; renderAppFightersDetail();`);
-const openDetail = elements.appFightersDetail.innerHTML;
+const openDetail = elements.appFighterDetail.innerHTML;
 const openUpgBtn = (openDetail.match(/<button[^>]*data-app-action="upgrade"[^>]*>/) || [''])[0];
 check('runtime F1: UPGRADE button is enabled on an unlocked, affordable brawler',
     !openUpgBtn.includes('disabled'));
@@ -231,7 +234,7 @@ check('runtime F6: Core Surge slot shows the name plus the desc line',
 
 // Detail render, brawler with no g2: no TOOL 2 slot, no coming-soon text.
 run(`appFightersState.focused = 'noG2'; renderAppFightersDetail();`);
-const noG2Detail = elements.appFightersDetail.innerHTML;
+const noG2Detail = elements.appFighterDetail.innerHTML;
 check('runtime F7: brawler with no g2 gets no TOOL 2 slot and no coming-soon text',
     !noG2Detail.includes('data-app-kit="g2"') && !/coming soon/i.test(noG2Detail));
 check('runtime F7: brawler with no g2 still gets its TOOL 1 slot',
