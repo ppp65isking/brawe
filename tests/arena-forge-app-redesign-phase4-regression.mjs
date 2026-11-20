@@ -109,7 +109,7 @@ check('kit pick handles weekly-trial loadouts through the trial setter',
 // --- All 416 kit slots still carry descriptions ---
 {
     const start = game.indexOf('const brawlerData = {');
-    const endMark = '\n  };\n\n    // Player-facing BRAWE vocabulary';
+    const endMark = '\n  };\n    // Player-facing BRAWE vocabulary';
     const end = game.indexOf(endMark, start);
     check('brawlerData block extracts cleanly', start !== -1 && end !== -1);
     if (start !== -1 && end !== -1) {

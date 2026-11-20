@@ -13,7 +13,7 @@ assert.match(game, /FORGE FRENZY!/);
 assert.match(game, /UNSTOPPABLE x/);
 assert.match(game, /function renderHypeChainHud\(\)/);
 assert.match(game, /registerHypeChainTakedown\(target\)/);
-assert.match(game, /resetGoldEventMatchLedger\(\);\s*resetHypeChain\(\)/);
+assert.match(game, /hasHandledGameOver = false;\n      resetHypeChain\(\);/);
 assert.match(game, /target\._legendaryTakedownFxPlayed = false; target\._hypeChainCounted = false/);
 
 console.log('Hype Chains regression checks passed.');

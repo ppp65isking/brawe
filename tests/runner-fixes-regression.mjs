@@ -39,7 +39,9 @@ check('hyper expiry drops a shoe pickup (no silent auto-grant)', game.includes('
 check('hyper expiry spawns SHOE DROPPED! text', game.includes("spawnFloatingText(b.x, b.y - 30, 'SHOE DROPPED!', '#ffd166')"));
 check('pickup collection grants reload buff + text', game.includes("pkOwner.runnerReloadBuffUntil = performance.now() + RUNNER_HYPER_RELOAD_MS") && game.includes("spawnFloatingText(pkOwner.x, pkOwner.y - 30, '+20% RELOAD', '#ffd166')"));
 check('pickup renders as a glowing gold-ring shoe', game.includes("ctx.strokeStyle = '#ffd166'; ctx.lineWidth = 3;") && game.includes('ctx.roundRect(pk.x - 21, pk.y - 7, 42, 14, 6)'));
-check('pickups expire and clear on match reset', game.includes('RUNNER_HYPER_SHOE_PICKUP_MS = 8000') && game.includes('runnerHyperShoePickups.length = 0;'));
+// The old full-clear line lived only in the vaulted WeeFee boss map (deleted with the boss modes);
+// live cleanup is expiry in the pickup update loop.
+check('pickups expire via the update loop', game.includes('RUNNER_HYPER_SHOE_PICKUP_MS = 8000') && game.includes('if (now >= pk.until) { runnerHyperShoePickups.splice(i, 1); continue; }'));
 
 console.log(`runner-fixes: ${passed} passed, ${failed} failed`);
 if (failed) { console.log('FAILURES:', failures.join(' | ')); process.exit(1); }

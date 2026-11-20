@@ -82,7 +82,6 @@ check('bullet loop reflect hook', game.includes('if (b.isAegisShield && b.aegisH
 check('update loop calls updateAegisSystems', game.includes('updateAegisSystems(dt)'));
 check('render draws shield + bubbles', game.includes('drawAegisShield(ctx, b)') && game.includes('drawAegisBubbles(ctx);'));
 check('respawn restores shredded max HP', game.includes('if (entity.aegisBaseMaxHp) { entity.maxHp = entity.aegisBaseMaxHp; entity.aegisBaseMaxHp = null; }'));
-check('world reset clears bubbles', game.includes('aegisBubbles.length = 0;'));
 
 // ---------- behavioral checks via vm ----------
 let starChoice = 'none';

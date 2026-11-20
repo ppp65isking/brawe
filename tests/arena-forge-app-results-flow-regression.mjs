@@ -81,7 +81,7 @@ check('exactly one reload call remains in code, and it is the Tutorial Complete 
 })());
 check('returnToLobbyFromResults is defined once, before render()', game.indexOf('function returnToLobbyFromResults(resultsOverlay) {') !== -1 && game.indexOf('function returnToLobbyFromResults(resultsOverlay) {') < game.indexOf('function render(){'));
 check('return helper removes the results overlay', returnSrc.includes('if (resultsOverlay && resultsOverlay.remove) resultsOverlay.remove();'));
-check('return helper keeps the original event-flag resets verbatim', ['currentMapOverride = null;', 'isHyperEvent = false;', 'isBeastBossEvent = false;', 'isLavaBossEvent = false;', 'isHeadlessBossEvent = false;', 'isTombstoneBossEvent = false;', 'isMegasteinBossEvent = false;', 'isOverlordTrialEvent = false;'].every((s) => returnSrc.includes(s)));
+check('return helper keeps the original event-flag resets verbatim', ['currentMapOverride = null;', 'isHyperEvent = false;'].every((s) => returnSrc.includes(s)));
 check('return helper does NOT contain a reload call', !returnSrc.includes('window.location.reload()'));
 
 // --- R1: every replicated reset is pinned in the helper source ---
@@ -91,22 +91,17 @@ const expectedResets = [
     'savedPlayerSuper = 0;', 'savedPlayerHyper = 0;', 'savedBotSuper = 0;', 'savedBotHyper = 0;',
     'clearRankedSessionState();', 'clearShowdownModifier();',
     'isTournamentMatch = false;', 'tournamentLastResult = null;', 'tournamentMatchContext = null;',
-    'isDuels = false;', 'isFusedMode = false;', 'player.fusedParts = null;',
-    'isTowerDuelEvent = false;', 'isTowerDuelsMode = false;', 'isDuelsMaxedMode = false;',
-    'isBossFight = false;', 'isTowerDefenseEvent = false;', 'isBouncinBossEvent = false;',
-    'isTowerTroubleMode = false;', 'isTowerPowerVaultWeekendMatch = false;',
-    'isSlopSushiMode = false;', 'sushiMatchArmed = false;', 'slopSushiActiveCards = [];',
-    'isTraining = false;', 'isTutorialMode = false;', 'isSoloTrial = false;', 'isSoloTdMode = false;',
+    'isDuels = false;', 'player.fusedParts = null;',
+    'isDuelsMaxedMode = false;',
+    'isBossFight = false;',
+    'isTraining = false;', 'isTutorialMode = false;', 'isSoloTrial = false;',
     'isDuoShowdown = false;', 'isObjectiveMode = false;',
     'isTurkeyCaptureMode = false;', 'turkeyCaptureState = null;',
     'isPropHuntMode = false;', 'propHuntState = null;',
-    'isConstructionMode = false;', 'isBrickVaultMode = false;', 'isArenaForgeMode = false;',
-    'isHyperForgeLTM = false;', 'isMarkedMayhemMode = false;', 'isTugZoneMode = false;',
-    'isTrioShowdownMode = false;', 'isDamageFillerMode = false;', 'isSplitterPoweredMode = false;',
-    'isPowerGodsMode = false;', 'isMirrorMode = false;', 'isImpossibleMode = false;',
-    'isKnockDonateMode = false;', 'isWeeFeeBossMode = false;', 'isDemonVillainsBossMode = false;',
-    'isOrboBossMode = false;', 'isRamageBossMode = false;', 'isBlinkEyeDodgeMode = false;',
-    'isCorruptedShowdownMode = false;', 'isPowerPlayShowdownMode = false;', 'isSuperShowdownMode = false;',
+    'isBrickVaultMode = false;', 'isArenaForgeMode = false;',
+    'isTrioShowdownMode = false;', 'isDamageFillerMode = false;',
+    'isMirrorMode = false;',
+    'isKnockDonateMode = false;',
     'isWarperEvent = false;',
 ];
 for (const reset of expectedResets) check(`return helper resets ${reset}`, returnSrc.includes(reset));
@@ -131,7 +126,6 @@ check('PLAY AGAIN keeps 48px min-height under 560px', css.includes('.match-resul
 check('play-again helper refuses tournament matches (PLAY NEXT MATCH owns those)', playAgainSrc.includes('if (isTournamentMatch) return false;'));
 check('play-again helper removes the overlay first', playAgainSrc.includes('if (resultsOverlay && resultsOverlay.remove) resultsOverlay.remove();'));
 check('play-again duels branch mirrors the draft launch (scores + charges + re-arm)', playAgainSrc.includes('playerScore = 0;') && playAgainSrc.includes('savedPlayerSuper = 0;') && playAgainSrc.includes('hasHandledGameOver = false;') && playAgainSrc.includes('startDuelsRound();'));
-check('play-again duels branch skips the Tower Duels weekend floor (own launch flow)', playAgainSrc.includes('if (isDuels && !isTowerDuelEvent) {'));
 check('play-again showdown branch clicks the existing PLAY button', playAgainSrc.includes("document.getElementById('startMatch')?.click();"));
 
 // --- Tournament results behavior unchanged ---
@@ -149,23 +143,18 @@ function baseSandbox() {
     const topbar = { textContent: 'Arena Forge - Tournament • Gold League • Final' };
     const startBtn = { clicked: false, click() { this.clicked = true; } };
     const sandbox = {
-        currentMapOverride: 3, isHyperEvent: true, isBeastBossEvent: true, isLavaBossEvent: true,
-        isHeadlessBossEvent: true, isTombstoneBossEvent: true, isMegasteinBossEvent: true, isOverlordTrialEvent: true,
+        currentMapOverride: 3, isHyperEvent: true,
         playing: true, gameOver: true, hasHandledGameOver: true, duelRoundState: 'botDied',
         playerScore: 3, botScore: 2, savedPlayerSuper: 80, savedPlayerHyper: 55, savedBotSuper: 40, savedBotHyper: 90,
         isTournamentMatch: true, tournamentLastResult: { outcome: 'advanced' }, tournamentMatchContext: { league: 'gold' },
-        isDuels: true, isFusedMode: true, isTowerDuelEvent: true, isTowerDuelsMode: true, isDuelsMaxedMode: true,
-        isBossFight: true, isTowerDefenseEvent: true, isBouncinBossEvent: true, isTowerTroubleMode: true,
-        isTowerPowerVaultWeekendMatch: true, isSlopSushiMode: true, sushiMatchArmed: true, slopSushiActiveCards: ['a', 'b'],
-        isTraining: true, isTutorialMode: true, isSoloTrial: true, isSoloTdMode: true, isDuoShowdown: true,
+        isDuels: true, isDuelsMaxedMode: true,
+        isBossFight: true,
+        isTraining: true, isTutorialMode: true, isSoloTrial: true, isDuoShowdown: true,
         isObjectiveMode: true, isTurkeyCaptureMode: true, turkeyCaptureState: { scores: { player: 1 } },
         isPropHuntMode: true, propHuntState: { winner: 'seekers' },
-        isConstructionMode: true, isBrickVaultMode: true, isArenaForgeMode: true, isHyperForgeLTM: true,
-        isMarkedMayhemMode: true, isTugZoneMode: true, isTrioShowdownMode: true, isDamageFillerMode: true,
-        isSplitterPoweredMode: true, isPowerGodsMode: true, isMirrorMode: true, isImpossibleMode: true,
-        isKnockDonateMode: true, isWeeFeeBossMode: true, isDemonVillainsBossMode: true, isOrboBossMode: true,
-        isRamageBossMode: true, isBlinkEyeDodgeMode: true, isCorruptedShowdownMode: true,
-        isPowerPlayShowdownMode: true, isSuperShowdownMode: true, isWarperEvent: true,
+        isBrickVaultMode: true, isArenaForgeMode: true, isTrioShowdownMode: true, isDamageFillerMode: true,
+        isMirrorMode: true,
+        isKnockDonateMode: true, isWarperEvent: true,
         showdownMode: 'lava_boss_s3', selectedBrawler: 'outlit',
         player: { fusedParts: ['a', 'b'] },
         homeScreen, brawlerSelect, topbar, startBtn, calls,
@@ -192,7 +181,7 @@ function runHelpers(sandbox) {
     const ov = makeOverlay();
     vm.runInContext('returnToLobbyFromResults(__ov)', Object.assign(sandbox, { __ov: ov.el }));
     check('VM return: overlay removed', ov.removed);
-    const falseFlags = ['isHyperEvent', 'isBeastBossEvent', 'isLavaBossEvent', 'isHeadlessBossEvent', 'isTombstoneBossEvent', 'isMegasteinBossEvent', 'isOverlordTrialEvent', 'playing', 'gameOver', 'hasHandledGameOver', 'isTournamentMatch', 'isDuels', 'isFusedMode', 'isTowerDuelEvent', 'isTowerDuelsMode', 'isDuelsMaxedMode', 'isBossFight', 'isTowerDefenseEvent', 'isBouncinBossEvent', 'isTowerTroubleMode', 'isTowerPowerVaultWeekendMatch', 'isSlopSushiMode', 'sushiMatchArmed', 'isTraining', 'isTutorialMode', 'isSoloTrial', 'isSoloTdMode', 'isDuoShowdown', 'isObjectiveMode', 'isTurkeyCaptureMode', 'isPropHuntMode', 'isConstructionMode', 'isBrickVaultMode', 'isArenaForgeMode', 'isHyperForgeLTM', 'isMarkedMayhemMode', 'isTugZoneMode', 'isTrioShowdownMode', 'isDamageFillerMode', 'isSplitterPoweredMode', 'isPowerGodsMode', 'isMirrorMode', 'isImpossibleMode', 'isKnockDonateMode', 'isWeeFeeBossMode', 'isDemonVillainsBossMode', 'isOrboBossMode', 'isRamageBossMode', 'isBlinkEyeDodgeMode', 'isCorruptedShowdownMode', 'isPowerPlayShowdownMode', 'isSuperShowdownMode', 'isWarperEvent'];
+    const falseFlags = ['isHyperEvent', 'playing', 'gameOver', 'hasHandledGameOver', 'isTournamentMatch', 'isDuels', 'isDuelsMaxedMode', 'isBossFight', 'isTraining', 'isTutorialMode', 'isSoloTrial', 'isDuoShowdown', 'isObjectiveMode', 'isTurkeyCaptureMode', 'isPropHuntMode', 'isBrickVaultMode', 'isArenaForgeMode', 'isTrioShowdownMode', 'isDamageFillerMode', 'isMirrorMode', 'isKnockDonateMode', 'isWarperEvent'];
     for (const flag of falseFlags) check(`VM return: ${flag} is false`, sandbox[flag] === false);
     const zeroFlags = ['playerScore', 'botScore', 'savedPlayerSuper', 'savedPlayerHyper', 'savedBotSuper', 'savedBotHyper'];
     for (const flag of zeroFlags) check(`VM return: ${flag} is 0`, sandbox[flag] === 0);
@@ -202,7 +191,6 @@ function runHelpers(sandbox) {
     check('VM return: turkeyCaptureState is null', sandbox.turkeyCaptureState === null);
     check('VM return: propHuntState is null', sandbox.propHuntState === null);
     check('VM return: player.fusedParts is null', sandbox.player.fusedParts === null);
-    check('VM return: slopSushiActiveCards is empty', Array.isArray(sandbox.slopSushiActiveCards) && sandbox.slopSushiActiveCards.length === 0);
     check("VM return: duelRoundState is 'playing'", sandbox.duelRoundState === 'playing');
     check('VM return: home shown (display flex)', homeScreen.style.display === 'flex');
     check('VM return: brawler select re-enabled', brawlerSelect.disabled === false);
@@ -231,8 +219,6 @@ function runHelpers(sandbox) {
     // Regular Duels: same teams, fresh scores/charges, straight into startDuelsRound.
     const d = baseSandbox();
     d.sandbox.isTournamentMatch = false;
-    d.sandbox.isTowerDuelEvent = false;
-    d.sandbox.isTowerDuelsMode = false;
     runHelpers(d.sandbox);
     const ov = makeOverlay();
     const ret = vm.runInContext('playAgainFromResults(__ov)', Object.assign(d.sandbox, { __ov: ov.el }));
@@ -243,38 +229,15 @@ function runHelpers(sandbox) {
     check('VM play-again: duels results screen re-armed', d.sandbox.hasHandledGameOver === false);
     check('VM play-again: duels starts a new round', d.calls.includes('startDuelsRound'));
     check('VM play-again: duels world reset to 1000x1000 with cleared pickups', d.sandbox.WORLD_W === 1000 && d.sandbox.WORLD_H === 1000 && d.sandbox.cubes.length === 0 && d.sandbox.powerups.length === 0);
-    check('VM play-again: duels topbar says Duels', d.topbar.textContent === 'Arena Forge - Duels • Tower Power');
+    check('VM play-again: duels topbar says Duels', d.topbar.textContent === 'Arena Forge - Duels');
     check('VM play-again: duels hides home + disables select', d.homeScreen.style.display === 'none' && d.brawlerSelect.disabled === true);
     check('VM play-again: duels does NOT click PLAY', !d.startBtn.clicked);
-}
-{
-    // Tower Duels (draft) variant: gold topbar text, same duels branch.
-    const d = baseSandbox();
-    d.sandbox.isTournamentMatch = false;
-    d.sandbox.isTowerDuelEvent = false;
-    d.sandbox.isTowerDuelsMode = true;
-    runHelpers(d.sandbox);
-    const ov = makeOverlay();
-    vm.runInContext('playAgainFromResults(__ov)', Object.assign(d.sandbox, { __ov: ov.el }));
-    check('VM play-again: tower duels topbar says Tower Duels', d.topbar.textContent === 'Arena Forge - Tower Duels • ALL 8 Tower Powers');
-}
-{
-    // Tower Duels weekend floor: NOT the duels branch — re-enters via PLAY.
-    const w = baseSandbox();
-    w.sandbox.isTournamentMatch = false;
-    w.sandbox.isTowerDuelEvent = true;
-    runHelpers(w.sandbox);
-    const ov = makeOverlay();
-    const ret = vm.runInContext('playAgainFromResults(__ov)', Object.assign(w.sandbox, { __ov: ov.el }));
-    check('VM play-again: weekend floor returns true via PLAY', ret === true && w.startBtn.clicked);
-    check('VM play-again: weekend floor does NOT call startDuelsRound directly', !w.calls.includes('startDuelsRound'));
 }
 {
     // Showdown: clicks the existing PLAY button, nothing else launches.
     const s = baseSandbox();
     s.sandbox.isTournamentMatch = false;
     s.sandbox.isDuels = false;
-    s.sandbox.isTowerDuelEvent = false;
     runHelpers(s.sandbox);
     const ov = makeOverlay();
     const ret = vm.runInContext('playAgainFromResults(__ov)', Object.assign(s.sandbox, { __ov: ov.el }));

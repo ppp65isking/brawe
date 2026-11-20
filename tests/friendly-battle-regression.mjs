@@ -12,7 +12,7 @@ import vm from 'node:vm';
 //     'mine' preserves the saved level.
 //  4. enemyPool 'same' spawns only the player's brawler as enemies.
 //  5. Mutators selected in Friendly behave identically to Custom
-//     (always_hyper case).
+//     (hyper_overdrive case).
 //  6. Prop Hunt launched from Friendly still opens the role picker and pays
 //     no event coins.
 // Plus: setup + results screens both say
@@ -46,10 +46,7 @@ const mapOverrideAssigns = [...game.matchAll(/currentMapOverride\s*=(?!=)\s*([^;
 assert.deepEqual(mapOverrideAssigns.filter(v => v !== 'null' && v !== 'n'), [], `currentMapOverride must only ever be cleared (null) or debug-set (n), got: ${mapOverrideAssigns.join(', ')}`);
 assert.match(game, /function progressSeasonPassQuest\(questKey, amount = 1\) \{\s*\/\/ Friendly Battles record no quest\/season progress[\s\S]*?if \(isFriendlyBattle\) return false;/, 'season-pass funnel must no-op in Friendly');
 assert.match(game, /function addEventQuestProgress\(questKey, amount = 1\) \{\s*\/\/ Friendly Battles record no quest progress[\s\S]*?if \(isFriendlyBattle\) return false;/, 'event-quest funnel must no-op in Friendly');
-assert.match(game, /function progressSeason3Quest\(kind,amount=1,absolute=false\)\{\s*\/\/ Friendly Battles record no season-quest progress\.\s*if \(isFriendlyBattle\) return false;/, 'season-3 quest funnel must no-op in Friendly');
 assert.match(game, /function awardSeasonPassXp\(amount = 0\) \{\s*\/\/ Friendly Battles pay no season progress of any kind\.\s*if \(isFriendlyBattle\) return false;/, 'season-pass XP must no-op in Friendly');
-assert.match(game, /function addSpecialQuestProgress\(fighterId, kind, amount=1\) \{\s*\/\/ Friendly Battles record no quest progress\.\s*if \(isFriendlyBattle\) return false;/, 'special-quest funnel must no-op in Friendly');
-assert.match(game, /function recordOverdriveActivation\(now = Date\.now\(\)\) \{\s*\/\/ Friendly Battles feed no community-event progress\.\s*if \(isFriendlyBattle\) return false;/, 'overdrive activation must no-op in Friendly');
 assert.match(game, /const brickDelta = isFriendlyBattle \? 0 : \(isDuels/, 'friendly results must award 0 Bricks');
 assert.match(game, /if \(isFriendlyBattle\) \{ rewardCoins = 0; soulReward = 0; \}/, 'friendly results must zero placement coins/souls');
 assert.match(game, /friendlyNote\.textContent = '🤝 Friendly Battle — no rewards, no quests, no rank';/, 'results screen must state no rewards, no quests, no rank');
@@ -228,19 +225,21 @@ const save11 = { persistent: { coins: 1000, gems: 999, selectedBrawler: 'spikey'
   assert.ok(api.bots.some(b => b.brawler !== 'spikey'), 'enemyPool any must not collapse the pool (control)');
 }
 
-// ---- 5. Mutators in Friendly behave like Custom (always_hyper case) ----
-// NOTE: the no-mutator control runs first in a fresh boot on purpose —
-// launchShowdownMatch never resets the player hypercharge state, so an
-// always_hyper match leaves the player hypercharged into the NEXT launch
-// (pre-existing Custom Mutator behaviour, not introduced here; see report).
+// ---- 5. Mutators in Friendly behave like Custom (hyper_overdrive case) ----
+// hyper_overdrive grants +4/s passive Hypercharge; the no-mutator control
+// must accrue nothing over the same second.
 {
   const { api } = boot(save5);
   api.launchFriendlyBattle({ mode: 'solo', mapIndex: null, powerRule: 'mine', enemyPool: 'any', modifiers: [] });
+  api.hyperChargeCharge = 0;
+  frames(api, 60);
+  assert.equal(api.hyperChargeCharge, 0, 'no mutators must accrue no Hypercharge (control)');
   assert.equal(api.isHypercharged, false, 'no mutators must leave the player un-hypercharged (control)');
-  assert.ok(api.bots.every(b => !b.isHypercharged), 'no mutators must leave bots un-hypercharged (control)');
-  api.launchFriendlyBattle({ mode: 'solo', mapIndex: null, powerRule: 'mine', enemyPool: 'any', modifiers: ['always_hyper'] });
-  assert.equal(api.isHypercharged, true, 'always_hyper in Friendly must hypercharge the player');
-  assert.ok(api.bots.every(b => b.isHypercharged), 'always_hyper in Friendly must hypercharge every bot');
+  api.launchFriendlyBattle({ mode: 'solo', mapIndex: null, powerRule: 'mine', enemyPool: 'any', modifiers: ['hyper_overdrive'] });
+  api.hyperChargeCharge = 0;
+  api.isHypercharged = false;
+  frames(api, 60);
+  assert.ok(Math.abs(api.hyperChargeCharge - 4) < 1.0, `hyper_overdrive in Friendly must accrue ~4 Hypercharge in 1s (got ${api.hyperChargeCharge})`);
 }
 
 // ---- 2. No rewards, no quests, no rank, no season progress ----
@@ -249,7 +248,9 @@ const save11 = { persistent: { coins: 1000, gems: 999, selectedBrawler: 'spikey'
   const { api, body } = boot(save11);
   launchNormalSolo(api);
   assert.equal(api.addEventQuestProgress('play_match', 1), true, 'event funnel must advance in a normal match (control)');
-  assert.equal(api.progressSeasonPassQuest('play_match', 1), true, 'season funnel must advance in a normal match (control)');
+  // Season quests were deleted: the season funnel has no quest to advance, so it
+  // returns false even in a normal match (the event funnel above still advances).
+  assert.equal(api.progressSeasonPassQuest('play_match', 1), false, 'season funnel returns false with no season quests (control)');
   const coinsBefore = api.playerData.coins;
   const soulsBefore = api.playerData.souls || 0;
   const bricksBefore = api.playerData.brawlers.spikey.bricks;
@@ -266,7 +267,6 @@ const save11 = { persistent: { coins: 1000, gems: 999, selectedBrawler: 'spikey'
   api.launchFriendlyBattle({ mode: 'solo', mapIndex: null, powerRule: 'mine', enemyPool: 'any', modifiers: [] });
   assert.equal(api.addEventQuestProgress('play_match', 1), false, 'event funnel must no-op during a Friendly Battle');
   assert.equal(api.progressSeasonPassQuest('play_match', 1), false, 'season funnel must no-op during a Friendly Battle');
-  assert.equal(api.progressSeason3Quest('play_match', 1), false, 'season-3 funnel must no-op during a Friendly Battle');
   const progress2 = playMatchProgress(api);
   api.gameOver = true;
   api.render();

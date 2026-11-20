@@ -49,24 +49,21 @@ assert.match(section, /champion: \{ label: 'CHAMPION', color: '#ff6b81', botLeve
 
 // Engine hooks.
 assert.match(game, /if \(isTournamentMatch\) return TOURNAMENT_DUELS_WIN_SCORE;/, 'getDuelsWinScore returns 3 for tournament matches');
-assert.match(game, /const botLevel = isDuelsMaxedMode \? 12 : \(isTowerDuelEvent \? 11 : getBotLevelNearPlayer\(\)\);/, 'startDuelsRound bot level line is untouched');
+assert.match(game, /const botLevel = isDuelsMaxedMode \? 12 : getBotLevelNearPlayer\(\);/, 'startDuelsRound bot level is 12 in maxed mode, near-player otherwise (no Tower Duels arm)');
 assert.match(game, /const duelBotLevel = isTournamentMatch \? tournamentBotLevel : botLevel;/, 'tournament bot level overrides via duelBotLevel');
 assert.match(game, /tournamentCadenceMult: isTournamentMatch \? tournamentBotCadenceMult : 1,/, 'bot entity carries its tournament cadence multiplier');
 assert.match(game, /if \(bot\.tournamentCadenceMult\) cadence \*= bot\.tournamentCadenceMult;/, 'shouldBotShootTarget applies the tournament cadence multiplier');
-assert.equal(game.split('\n').filter((l) => l.trim().startsWith('isTournamentMatch = false;')).length, 5, 'isTournamentMatch is reset in all 4 non-tournament Duels launch paths + the in-place lobby return (returnToLobbyFromResults, 2026-11-19)');
+assert.equal(game.split('\n').filter((l) => l.trim().startsWith('isTournamentMatch = false;')).length, 3, 'isTournamentMatch is reset in the live non-tournament launch paths + the in-place lobby return (Tower/Fused launches deleted)');
 
 // Brawler lock (follow-up 2026-11-18): a bot's brawler is read back from
 // the stored bracket, never re-rolled from shared Duels state.
 assert.match(section, /playerBrawler: active\.playerBrawler \};/, 'match context carries the locked player brawler');
-assert.match(game, /isFusedMode = false;\n      player\.fusedParts = null;\n      duelsTargetWins = TOURNAMENT_DUELS_WIN_SCORE;/, 'tournament launch resets Fused state like every other Duels launch');
+assert.match(game, /player\.fusedParts = null;\n      duelsTargetWins = TOURNAMENT_DUELS_WIN_SCORE;/, 'tournament launch clears fused parts like every other Duels launch');
 assert.match(game, /selectedBrawler = \(isTournamentMatch && tournamentMatchContext\) \? tournamentMatchContext\.playerBrawler : playerTeam\[Math\.floor\(Math\.random\(\) \* playerTeam\.length\)\];/, 'tournament player fighter comes from the locked bracket entrant');
-assert.match(game, /const bBrawler = \(isTournamentMatch && tournamentMatchContext\) \? tournamentMatchContext\.opponentBrawler : \(isFusedMode \? fusedBotParts\[0\] : botTeam\[Math\.floor\(Math\.random\(\) \* botTeam\.length\)\]\);/, 'tournament bot fighter comes from the locked bracket entrant, never a re-roll');
+assert.match(game, /const bBrawler = \(isTournamentMatch && tournamentMatchContext\) \? tournamentMatchContext\.opponentBrawler : botTeam\[Math\.floor\(Math\.random\(\) \* botTeam\.length\)\];/, 'tournament bot fighter comes from the locked bracket entrant, never a re-roll');
 
 // Tournament polish (2026-11-18): no Tower Powers, Champion's Ring map,
 // seamless next round, UI improvements.
-assert.match(game, /if \(isTournamentMatch\) \{\n\s+isSlopSushiMode = false;\n\s+sushiMatchArmed = false;\n\s+isTowerTroubleMode = false;\n\s+slopSushiActiveCards = \[\];/, 'tournament matches deal no Tower Powers deck in startDuelsRound');
-assert.match(game, /if \(isTournamentMatch\) return; \/\/ Tournament matches have NO Tower Powers/, 'assignSlopSushiBotPowers skips tournament matches');
-assert.match(game, /isSlopSushiMode = false;\n\s+sushiMatchArmed = false;\n\s+\/\/ Seamless next round/, 'tournament launch leaves the Slop Sushi deck off');
 assert.match(game, /if \(isTournamentMatch\) \{\n\s+buildTournamentArenaMap\(\);/, 'tournament matches build the Champion\'s Ring map');
 assert.match(game, /const TOURNAMENT_MAP_NAME = "Champion's Ring";/, 'new map is named Champion\'s Ring');
 assert.match(game, /const TOURNAMENT_MAP_PLAYER_SPAWN = \{ x: 150, y: 150 \};/, 'tournament player spawns top-left');
@@ -82,7 +79,7 @@ assert.match(game, /Bots: \$\{league\.tierMix\.rookie\} Rookie • \$\{league\.t
 
 // Home screen entry.
 assert.match(game, /\['tournament', '👑', 'Tournament', '32-player bracket • Bronze → Diamond leagues'\]/, 'Tournament mode card exists');
-assert.match(game, /const HOME_PERMANENT_MODE_IDS = \['tournament', 'blink_eye_dodge'/, 'Tournament is first in the permanent mode list');
+assert.match(game, /const HOME_PERMANENT_MODE_IDS = \['tournament', 'custom_clash'/, 'Tournament is first in the permanent mode list');
 assert.match(game, /'custom_clash', 'tournament'\]/, 'Tournament is in the popular mode list');
 assert.match(game, /tournament: '#ffd166',/, 'Tournament mode color exists');
 assert.match(game, /else if \(id === 'tournament'\) tag = '32P';/, 'Tournament card tag is 32P');

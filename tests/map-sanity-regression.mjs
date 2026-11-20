@@ -26,10 +26,9 @@ const PROBE = `  globalThis.__mapProbe = (() => { let __tmp;
   return {
     generateCubes, buildNextShowdownMap, buildBotNavGrid, findBotNavPath, isNavigationWall, rectCircleCollides,
     cubes, destructibleWalls, bushZones, waterZones,
-    getTugZoneSpawnPoint, getBraweBallSpawnPoint, getKnockoutSpawnPoint, getConstructionSpawnPoint,
-    getDamageFillerSpawnPoint, getBrickVaultSpawnPoint, getArenaForgeSpawnPoint, getMarkedMayhemSpawnPoint,
+    getDamageFillerSpawnPoint, getBrickVaultSpawnPoint, getArenaForgeSpawnPoint,
     getMirrorSpawnPoint, getShowdownSpawnPosition, SHOWDOWN_MAP_THEMES,
-    ARENA_FORGE_TEAM_SIZE, MARKED_MAYHEM_TEAM_SIZE,
+    ARENA_FORGE_TEAM_SIZE,
     setVar: (n, v) => { __tmp = v; eval(n + ' = __tmp'); },
     getWorld: () => ({ w: WORLD_W, h: WORLD_H }),
     gridArrays: () => botNavGrid ? { cols: botNavGrid.cols, rows: botNavGrid.rows, blocked: Array.from(botNavGrid.blocked), water: Array.from(botNavGrid.water) } : null,
@@ -129,7 +128,7 @@ try { vm.runInContext(booted, ctx, { filename: 'game.js' }); } catch { /* stub-l
 const P = ctx.__mapProbe;
 assert.ok(P, 'map probe must be installed');
 
-const ALL_FLAGS = ['isWarperEvent', 'isBossFight', 'isDuels', 'isTraining', 'isSoloTrial', 'isBlinkEyeDodgeMode', 'isImpossibleMode', 'isBraweBallMode', 'isKnockoutMode', 'isMirrorMode', 'isBrickVaultMode', 'isArenaForgeMode', 'isMarkedMayhemMode', 'isTugZoneMode', 'isDamageFillerMode', 'isKnockDonateMode', 'isConstructionMode', 'isPowerGodsMode', 'isSplitterPoweredMode'];
+const ALL_FLAGS = ['isWarperEvent', 'isBossFight', 'isDuels', 'isTraining', 'isSoloTrial', 'isMirrorMode', 'isBrickVaultMode', 'isArenaForgeMode', 'isDamageFillerMode', 'isKnockDonateMode'];
 function resetFlags() { for (const f of ALL_FLAGS) P.setVar(f, false); P.setVar('currentMapOverride', null); }
 
 function rectDist(px, py, r) {
@@ -285,20 +284,10 @@ P.setVar('currentMapOverride', 7); P.setVar('WORLD_W', 4000); P.setVar('WORLD_H'
 P.generateCubes();
 assert.equal(P.waterZones.length, 4, 'Gearfall Foundry must keep its 4 pinwheel canals after generateCubes (Phase 4 fix)');
 
-run('Tug Zone', () => { P.setVar('isTugZoneMode', true); P.setVar('WORLD_W', 2400); P.setVar('WORLD_H', 1600); }, () => bothTeams(P.getTugZoneSpawnPoint, 3));
 run('Damage Filler', () => { P.setVar('isDamageFillerMode', true); P.setVar('WORLD_W', 2200); P.setVar('WORLD_H', 1600); }, () => { const s = []; for (let k = 0; k < 3; k++) s.push(...bothTeams(P.getDamageFillerSpawnPoint, 2, 2)); return s; });
-run('Damage Filler (Splitter)', () => { P.setVar('isDamageFillerMode', true); P.setVar('isSplitterPoweredMode', true); P.setVar('WORLD_W', 3600); P.setVar('WORLD_H', 2600); }, () => { const s = []; for (let k = 0; k < 3; k++) s.push(...bothTeams(P.getDamageFillerSpawnPoint, 2, 2)); return s; });
 run('Brick Vault', () => { P.setVar('isBrickVaultMode', true); P.setVar('WORLD_W', 1800); P.setVar('WORLD_H', 2600); }, () => bothTeams(P.getBrickVaultSpawnPoint, 3, 3));
 run('Mirror', () => { P.setVar('isMirrorMode', true); P.setVar('WORLD_W', 2400); P.setVar('WORLD_H', 1800); }, () => { const s = []; for (let k = 0; k < 3; k++) s.push(...bothTeams(P.getMirrorSpawnPoint, 4, 4)); return s; });
-for (let ci = 0; ci < 2; ci++) {
-  run(`Construction ${ci}`, () => { P.setVar('isConstructionMode', true); P.setVar('constructionMapIndex', ci); P.setVar('WORLD_W', 4000); P.setVar('WORLD_H', 4000); }, () => bothTeams(P.getConstructionSpawnPoint, 3, 3));
-}
-run('Impossible', () => { P.setVar('isImpossibleMode', true); P.setVar('WORLD_W', 1800); P.setVar('WORLD_H', 1300); }, () => [{ x: 900, y: 1130 }, { x: 900, y: 170 }]);
 run('Arena Forge', () => { P.setVar('isArenaForgeMode', true); P.setVar('WORLD_W', 2400); P.setVar('WORLD_H', 3000); }, () => bothTeams(P.getArenaForgeSpawnPoint, P.ARENA_FORGE_TEAM_SIZE, P.ARENA_FORGE_TEAM_SIZE));
-run('Marked Mayhem', () => { P.setVar('isMarkedMayhemMode', true); P.setVar('WORLD_W', 2200); P.setVar('WORLD_H', 1500); }, () => bothTeams(P.getMarkedMayhemSpawnPoint, P.MARKED_MAYHEM_TEAM_SIZE, P.MARKED_MAYHEM_TEAM_SIZE));
-run('BlinkEye Dodge', () => { P.setVar('isBlinkEyeDodgeMode', true); P.setVar('WORLD_W', 2000); P.setVar('WORLD_H', 2000); }, () => [{ x: 1000, y: 1000 }]);
-run('Brawe Ball', () => { P.setVar('isBraweBallMode', true); P.setVar('WORLD_W', 4000); P.setVar('WORLD_H', 4000); }, () => bothTeams(P.getBraweBallSpawnPoint, 3, 3));
-run('Knockout', () => { P.setVar('isKnockoutMode', true); P.setVar('WORLD_W', 4000); P.setVar('WORLD_H', 4000); }, () => bothTeams(P.getKnockoutSpawnPoint, 3, 3));
 
 // (e) scatter fall-through: protected points must stay clear of every strip,
 // using the same radii the production scatter protects.

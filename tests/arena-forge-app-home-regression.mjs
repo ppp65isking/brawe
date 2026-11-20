@@ -103,7 +103,7 @@ check('hero side cards stopPropagation so they never open Fighters', game.includ
 
 // --- Sync: hero stays fresh, tab follows web tab state, visibility follows home ---
 check('syncAppHome is hooked at the end of renderHomeBrawlerCard', (() => { const start = game.indexOf('function renderHomeBrawlerCard() {'); const hook = game.indexOf('syncAppHome();', start); const next = game.indexOf('const FASTPASS_MOMENTUM_PER_HIT', start); return start !== -1 && hook !== -1 && hook < next; })());
-check('syncAppHome is hooked at the end of refreshPersonalizedHome', game.includes('season.innerHTML = homeSeasonProfile.key === ') && /Packets have been retired\.`; \}\n      syncAppHome\(\);\n  \}\n\n  function setHomeTab/.test(game));
+check('syncAppHome is hooked at the end of refreshPersonalizedHome', game.includes('season.innerHTML = homeSeasonProfile.key === ') && /Packets have been retired\.`; \}\n      syncAppHome\(\);\n  \}\n  function setHomeTab/.test(game));
 check('syncAppHome is hooked at the end of setHomeTab', game.includes("document.getElementById('homePanel')?.scrollTo({ top: 0, behavior: 'smooth' });\n      syncAppHome();"));
 // App home optimize: the app tab is internal appHomeTab state, not the
 // web events view's is-active class — the moved web view stays hidden in

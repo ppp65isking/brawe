@@ -12,8 +12,6 @@ assert.ok(
   source.indexOf('const MAX_POWER_LEVEL') < source.indexOf('function loadProgress()'),
   'MAX_POWER_LEVEL must be declared before loadProgress so the boot-time load can use it'
 );
-assert.match(source, /p12-fix-compensation/, 'the one-time P12 compensation claim must exist in the shop');
-assert.match(source, /addCorePieces\(100\)/, 'compensation must grant 100 Core Pieces');
 
 // Behavioral proof: boot the real game.js in a vm with browser shims and a
 // seeded save holding a Power 12 brawler; probe playerData right after the

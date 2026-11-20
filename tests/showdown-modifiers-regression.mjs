@@ -7,22 +7,17 @@ import vm from 'node:vm';
 // showdownModifierOverride debug hook instead of the 20-minute rotation:
 //   none            -> baseline getters, 75 boxes
 //   heavy_storm     -> 90s storm, one storm tick deals exactly x1.35
-//   power_surge     -> attack-hit Super gain x1.2 AND Core Surge gain x1.2
-//                      (player and bot), via grantMainAttackCharge
-//   no_free_cubes   -> Box Scarcity: cubes (structural walls) identical to
-//                      the none launch, Power Boxes 75 -> 49 / 90 -> 59
-//   core_instability-> implemented: 20s surge telegraphs 3 live boxes and
-//                      converts them to Charged (4800 HP); solo never does
+// Arena Forge big changes deleted power_surge, no_free_cubes (Box Scarcity)
+// and core_instability (Corrupted Packet Storm); the rotation pools now
+// hold only none / heavy_storm.
 
 const source = fs.readFileSync(new URL('../game.js', import.meta.url), 'utf8');
 
 // ---- Static pins: registry, vault, hooks ----
 assert.match(source, /const SHOWDOWN_MODIFIER_DEFS = \{/, 'modifier registry must exist');
-for (const id of ['none', 'heavy_storm', 'power_surge', 'no_free_cubes', 'core_instability']) {
+for (const id of ['none', 'heavy_storm']) {
   assert.match(source, new RegExp(`${id}: \\{ label: '`), `registry must define ${id}`);
 }
-assert.match(source, /no_free_cubes: \{ label: 'Box Scarcity'/, 'no_free_cubes must be relabelled Box Scarcity');
-assert.match(source, /core_instability: \{ label: 'Corrupted Packet Storm'/, 'core_instability label must stay Corrupted Packet Storm');
 const mapRulesAt = source.indexOf('function applyShowdownModifierMapRules()');
 assert.ok(mapRulesAt >= 0, 'applyShowdownModifierMapRules must still exist as the launch hook');
 const mapRules = source.slice(mapRulesAt, mapRulesAt + 900);
@@ -32,9 +27,6 @@ assert.match(source, /getShowdownBoxScarcityMultiplier\(\)/, 'generatePowerBoxes
 assert.match(source, /function getModeHyperGainMultiplier\(\)/, 'power_surge widening needs a dedicated Core Surge multiplier');
 const grantAt = source.indexOf('function grantMainAttackCharge');
 assert.match(source.slice(grantAt, grantAt + 4200), /getModeHyperGainMultiplier\(\)/, 'grantMainAttackCharge must route hyper gain through the mode hyper multiplier');
-assert.match(source, /const CORE_INSTABILITY_SURGE_INTERVAL_MS = 20000;/, 'core_instability surge interval must be 20s');
-assert.match(source, /function updateCoreInstability/, 'core_instability must have a real update (it was a placebo label)');
-assert.match(source, /initCoreInstability\(\);/, 'launch must initialise core_instability state');
 assert.match(source, /getShowdownModifierDef\(activeShowdownModifier\)/, 'HUD must read the modifier description from the registry via the lookup helper');
 assert.match(source, /function isShowdownModifierActive\(id\)/, 'one active-check must exist for the modifier family');
 assert.match(source, /function getShowdownModifierDef\(id\)/, 'one registry lookup must exist for the modifier family');
@@ -56,13 +48,11 @@ const PROBE = `  globalThis.__modProbe = (() => { let __tmp;
     getModeStormDurationSeconds, getModeStormDamageMultiplier,
     getModeSuperGainMultiplier, getModeHyperGainMultiplier,
     getShowdownBoxScarcityMultiplier, applyShowdownModifierMapRules,
-    getAttackChargeMultiplier, grantMainAttackCharge, updateCoreInstability,
+    getAttackChargeMultiplier, grantMainAttackCharge,
     get activeShowdownModifier() { return activeShowdownModifier; },
     get superCharge() { return superCharge; },
     get cubes() { return cubes; },
     get destructibleWalls() { return destructibleWalls; },
-    get coreInstabilityState() { return coreInstabilityState; },
-    get CORE_INSTABILITY_TELEGRAPH_MS() { return CORE_INSTABILITY_TELEGRAPH_MS; },
     setVar: (n, v) => { __tmp = v; eval(n + ' = __tmp'); },
   }; })();
 ` + ANCHOR;
@@ -162,13 +152,12 @@ assert.equal(P.getShowdownModifierDef('heavy_storm').colour, '#7fb2ff', 'heavy_s
 // Active-check truth table, driven through the real launch path + direct sets.
 launch('solo', 'heavy_storm');
 assert.equal(P.isShowdownModifierActive('heavy_storm'), true, 'heavy_storm must be active after a heavy_storm launch');
-assert.equal(P.isShowdownModifierActive('power_surge'), false, 'power_surge must not be active during heavy_storm');
 assert.equal(P.isShowdownModifierActive('none'), false, 'none must not be active during heavy_storm');
 assert.equal(P.getModeStormDurationSeconds(), 90, 'the storm getter must still read the active modifier through the check');
 P.setVar('activeShowdownModifier', 'none');
 assert.equal(P.isShowdownModifierActive('none'), true, 'none must be active when set');
 assert.equal(P.isShowdownModifierActive('heavy_storm'), false, 'heavy_storm must not be active when none is set');
-P.setVar('activeShowdownModifier', null); // Tower gauntlet floors set no modifier
+P.setVar('activeShowdownModifier', null); // a null modifier is active for nothing
 assert.equal(P.isShowdownModifierActive('none'), false, 'null modifier must not count as none');
 assert.equal(P.isShowdownModifierActive('heavy_storm'), false, 'null modifier must not count as heavy_storm');
 assert.equal(P.isShowdownModifierActive('bogus'), false, 'an unknown ID must never be active');
@@ -179,10 +168,12 @@ const realNow = Date.now;
 try {
   const pickAt = (ms, mode) => { Date.now = () => ms; return P.pickShowdownModifierForMode(mode); };
   assert.equal(pickAt(0, 'solo'), 'heavy_storm', 'slot 0 of the solo pool must be heavy_storm');
-  assert.equal(pickAt(P.MODE_MODIFIER_ROTATE_MS, 'solo'), 'power_surge', 'slot 1 of the solo pool must be power_surge');
-  assert.equal(pickAt(2 * P.MODE_MODIFIER_ROTATE_MS, 'solo'), 'no_free_cubes', 'slot 2 of the solo pool must be no_free_cubes');
+  assert.equal(pickAt(P.MODE_MODIFIER_ROTATE_MS, 'solo'), 'heavy_storm', 'the solo pool holds only heavy_storm, so every slot picks it');
+  assert.equal(pickAt(2 * P.MODE_MODIFIER_ROTATE_MS, 'solo'), 'heavy_storm', 'slot 2 of the solo pool must still be heavy_storm');
   assert.equal(pickAt(3 * P.MODE_MODIFIER_ROTATE_MS, 'solo'), 'heavy_storm', 'the solo pool must wrap back to heavy_storm');
-  assert.equal(pickAt(7 * P.MODE_MODIFIER_ROTATE_MS, 'corrupted_showdown'), 'core_instability', 'corrupted_showdown has only core_instability');
+  assert.equal(pickAt(0, 'trio'), 'heavy_storm', 'the trio pool holds only heavy_storm');
+  assert.equal(pickAt(0, 'duo'), 'none', 'the duo pool holds only none');
+  assert.equal(pickAt(7 * P.MODE_MODIFIER_ROTATE_MS, 'corrupted_showdown'), 'none', 'corrupted_showdown has only none');
   assert.equal(pickAt(0, 'definitely_not_a_mode'), 'none', 'an unknown mode must fall back to none');
   P.setVar('showdownModifierOverride', 'none');
   assert.equal(pickAt(0, 'solo'), 'none', 'the override hook must win over the rotation pick');
@@ -221,92 +212,6 @@ const tickNone = stormTickDamage('none');
 assert.equal(tickNone, 1600, `none: first storm tick on 20000 max HP must be 8% = 1600 (got ${tickNone})`);
 const tickHeavy = stormTickDamage('heavy_storm');
 assert.equal(tickHeavy, 2160, `heavy_storm: first tick must be 1600 x1.35 = 2160 (got ${tickHeavy})`);
-
-// ---- power_surge: Super x1.2 AND Core Surge x1.2, player and bot ----
-launch('solo', 'none');
-function measureCharge(owner) {
-  owner.brawler = 'warrior'; // pin a non-multi-super brawler for a clean single charge path
-  if (owner === api.player) { P.setVar('superCharge', 0); api.hyperChargeCharge = 0; }
-  else { owner.superCharge = 0; owner.hyperChargeCharge = 0; }
-  const ok = P.grantMainAttackCharge(owner, { isPrimaryChargeProjectile: true, ownerBrawler: 'warrior' });
-  assert.equal(ok, true, 'grantMainAttackCharge must land for a live owner');
-  return owner === api.player
-    ? { s: P.superCharge, h: api.hyperChargeCharge }
-    : { s: owner.superCharge, h: owner.hyperChargeCharge };
-}
-const bot = api.bots[0];
-const playerNone = measureCharge(api.player);
-const botNone = measureCharge(bot);
-assert.ok(playerNone.s > 0 && playerNone.h > 0, 'baseline grant must charge Super and Core Surge');
-P.setVar('activeShowdownModifier', 'power_surge');
-assert.equal(P.getAttackChargeMultiplier(api.player) / 1 > 0, true);
-const playerSurge = measureCharge(api.player);
-const botSurge = measureCharge(bot);
-for (const [who, base, surge] of [['player', playerNone, playerSurge], ['bot', botNone, botSurge]]) {
-  assert.ok(Math.abs(surge.s / base.s - 1.2) < 0.02, `power_surge: ${who} Super gain ratio must be x1.2 (got ${surge.s / base.s})`);
-  assert.ok(Math.abs(surge.h / base.h - 1.2) < 0.02, `power_surge: ${who} Core Surge gain ratio must be x1.2 (got ${surge.h / base.h})`);
-}
-P.setVar('activeShowdownModifier', 'none');
-
-// ---- no_free_cubes (Box Scarcity): cover untouched, boxes reduced ----
-launch('solo', 'no_free_cubes');
-assert.equal(P.activeShowdownModifier, 'no_free_cubes');
-assert.equal(P.cubes.length, cubesBaseline, 'Box Scarcity must NEVER delete structural wall cubes');
-const cubesBeforeRule = cubesFingerprint();
-P.applyShowdownModifierMapRules();
-assert.equal(cubesFingerprint(), cubesBeforeRule, 'the vaulted map rule must be a pure no-op even when invoked directly');
-assert.equal(powerBoxes().length, 49, 'Box Scarcity: Solo boxes 75 -> 49');
-launch('duo', 'no_free_cubes');
-assert.equal(powerBoxes().length, 59, 'Box Scarcity: Duo/Trio boxes 90 -> 59');
-launch('duo', 'none');
-assert.equal(powerBoxes().length, 90, 'none: Duo launch must spawn the full 90 boxes');
-
-// ---- core_instability: the placebo becomes real ----
-launch('corrupted_showdown', 'core_instability');
-assert.equal(P.activeShowdownModifier, 'core_instability');
-const ci = P.coreInstabilityState;
-assert.ok(ci, 'core_instability state must be created at launch');
-assert.equal(ci.surges, 0, 'no surge may fire before the first interval');
-const typesBefore = powerBoxes().map(b => b.powerBoxType).join(',');
-P.updateCoreInstability(ci.nextSurgeAt - 1);
-assert.equal(ci.telegraphs.length, 0, 'no telegraphs before the first surge');
-assert.equal(powerBoxes().map(b => b.powerBoxType).join(','), typesBefore, 'no box may convert before the first surge');
-const surgeAt = ci.nextSurgeAt;
-// PR #42 guard: snapshot every wall's HP before the surge fires, so the
-// only HP write the surge may make is provably on Power Boxes, never on
-// towers or any other structure.
-const wallsHpBefore = P.destructibleWalls.map(w => w.hp);
-P.updateCoreInstability(surgeAt);
-assert.equal(ci.surges, 1, 'the surge counter must advance at the interval');
-assert.equal(ci.telegraphs.length, 3, 'a surge must telegraph exactly 3 live boxes');
-const targets = ci.telegraphs.map(t => t.box);
-for (const b of targets) assert.equal(b.coreInstabilityTelegraphed, true, 'telegraphed boxes must be flagged');
-P.updateCoreInstability(surgeAt + P.CORE_INSTABILITY_TELEGRAPH_MS - 1);
-assert.equal(ci.telegraphs.length, 3, 'telegraphs must stay pending for the telegraph delay');
-P.updateCoreInstability(surgeAt + P.CORE_INSTABILITY_TELEGRAPH_MS);
-assert.equal(ci.telegraphs.length, 0, 'telegraphs must resolve after the delay');
-for (const b of targets) {
-  assert.equal(b.isPowerBox, true, 'a surged box must be a Power Box (towers/structures are never surge targets)');
-  assert.equal(b.powerBoxType, 'charged', 'a surged box must convert to charged');
-  assert.equal(b.hp, 4800, 'a converted box must refill to the charged spec HP (4800)');
-  assert.equal(b.maxHp, 4800, 'a converted box maxHp must be the charged spec');
-  assert.equal(b.powerBoxReward, 'charged', 'a converted box must drop the charged reward');
-}
-const changedWalls = P.destructibleWalls.filter((w, i) => w.hp !== wallsHpBefore[i]);
-// Subset, not equality: a telegraphed box that was ALREADY a full-HP charged
-// box converts to charged with the same 4800 HP, so its HP legitimately
-// does not move. What must hold is that every wall whose HP DID move is one
-// of the telegraphed Power Boxes — never a tower or other structure.
-for (const w of changedWalls) {
-  assert.ok(targets.includes(w), 'only telegraphed boxes may change HP from a surge');
-  assert.equal(w.isPowerBox, true, 'no non-Power-Box wall (tower/structure) may gain or lose HP from a surge');
-}
-// Negative control: outside core_instability nothing ever converts.
-launch('solo', 'power_surge');
-assert.equal(P.coreInstabilityState, null, 'core_instability state must not exist in a Solo power_surge match');
-const snapshot = powerBoxes().map(b => `${b.powerBoxType}:${b.hp}`).join(',');
-P.updateCoreInstability(Date.now() + 999999999);
-assert.equal(powerBoxes().map(b => `${b.powerBoxType}:${b.hp}`).join(','), snapshot, 'no box may convert outside core_instability');
 
 console.log('showdown-modifiers-regression: all assertions passed');
 process.exit(0);

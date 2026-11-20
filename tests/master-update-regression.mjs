@@ -15,24 +15,13 @@ const checks = [
   ['Soul Summoner explicit picks are never overridden by auto-target', /Explicit player picks are never overridden/.test(game)],
   ['Soul Summoner pool still excludes Starters, unlocked, and disabled brawlers', /const locked = allBrawlers\.filter\(b => getBrawlerRarity\(b\) !== 'Starter' && !isBrawlerUnlocked\(b\) && !disabledBrawlers\.has\(b\)\);/.test(game)],
 
-  // 3. Pins: ownership, equip cap, hub, in-match use
-  ['Pin equip cap is 6', /const PIN_EQUIP_MAX = 6;/.test(game)],
-  ['Pin starter set is forge_wave, good_game, ouch', /const PIN_STARTER_IDS = Object\.freeze\(\['forge_wave', 'good_game', 'ouch'\]\);/.test(game)],
-  ['Pins hub opener exists', /function openPinsHub\(\)/.test(game)],
-  ['In-match pin button + send with cooldown exist', /function ensurePinButton\(\)/.test(game) && /function sendPin\(pinId\)/.test(game)],
-  ['Pin packs grant via grantPinPack', /function grantPinPack\(count = 3\)/.test(game)],
-  ['addPins silently ignores unknown ids', /function addPins\(pinIds\)/.test(game)],
-
   // 4. Match-start profile cards + AI names
   ['Match-start profile cards builder exists', /function buildMatchCard\(entry\)/.test(game)],
   ['Match-start intro cards show with a timed dismiss', /function showMatchIntroCards\(\)/.test(game) && /setTimeout\(\(\) => \{ document\.getElementById\('matchIntroCards'\)\?\.remove\(\); \}, 2800\);/.test(game)],
   ['Opponent cards cap at 9 with a MORE FIGHTERS footer', /MORE FIGHTERS IN THE ARENA/.test(game)],
   ['AI display names assigned with a Forge Fighter fallback', /function assignBotDisplayNames\(\)/.test(game) && /Forge Fighter \$\{k \+ 1\}/.test(game)],
 
-  // 5. Ranked weekly max-out (full coverage lives in ranked-weekly-maxout-regression.mjs)
-  ['Ranked weekly cap constants exist', /const RANKED_WEEKLY_PASS_XP_CAP = 2000;/.test(game) && /const RANKED_WEEKLY_MAX_BONUS_COINS = 300;/.test(game)],
-  ['Ranked settlement caps pass XP and converts overflow to coins', /rankedPassXpGained = Math\.min\(grossPassXpGained, weeklyRoom\);/.test(game) && /weeklyOverflowCoins = Math\.floor\(weeklyOverflowXp \* RANKED_WEEKLY_OVERFLOW_COINS_PER_XP\);/.test(game)],
-  ['Ranked pass has 50 tiers with pin packs at 5/15/25/35/45', (game.match(/type: 'pinpack'/g) || []).length === 5],
+  // 5. Ranked (weekly Pass XP cap + pin-pack tiers deleted with the old Ranked Pass)
   ['Draft state machine uses protect/swap/veto/ready, never complete', game.includes("draftState = 'protect'") && game.includes("draftState = 'swap'") && game.includes("draftState = 'veto'") && game.includes("draftState = 'ready'") && !game.includes("draftState = 'complete'")],
 
   // 6. Season 7 Ember Forge (new pass, date-gated, Xplodemis untouched)

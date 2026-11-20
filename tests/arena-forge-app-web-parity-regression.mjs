@@ -53,52 +53,17 @@ check('openAppMoreSheet is defined and app-mode gated',
     game.includes('function openAppMoreSheet()') && game.includes('if (!isNativeAppMode()) return;'));
 check('MORE sheet calls the SAME openers as the web buttons',
     game.includes("if (which === 'ranked' && typeof openRankedQueueUI === 'function') openRankedQueueUI();") &&
-    game.includes("else if (which === 'season-hub' && typeof openSeason3Hub === 'function') openSeason3Hub();") &&
-    game.includes("else if (which === 'brick-bon' && typeof openBrickBonV2 === 'function') openBrickBonV2('road');") &&
-    game.includes("else if (which === 'brick-road' && typeof openBrickRoadModal === 'function') openBrickRoadModal();") &&
-    game.includes("else if (which === 'pins' && typeof openPinsHub === 'function') openPinsHub();") &&
     game.includes("else if (which === 'souls' && typeof openSoulSummoner === 'function') openSoulSummoner();") &&
-    game.includes("else if (which === 'blog' && typeof openBalanceBlog === 'function') openBalanceBlog();") &&
     game.includes("else if (which === 'tutorial' && typeof launchTutorialMatch === 'function') launchTutorialMatch();"));
-check('MORE sheet rows cover all 8 web utility actions',
-    game.includes('data-app-more="ranked"') && game.includes('data-app-more="season-hub"') &&
-    game.includes('data-app-more="brick-bon"') && game.includes('data-app-more="brick-road"') &&
-    game.includes('data-app-more="pins"') && game.includes('data-app-more="souls"') &&
-    game.includes('data-app-more="blog"') && game.includes('data-app-more="tutorial"'));
+check('MORE sheet rows cover all 3 remaining web utility actions',
+    game.includes('data-app-more="ranked"') && game.includes('data-app-more="souls"') &&
+    game.includes('data-app-more="tutorial"'));
 check('ranked row label is live (tier + RP from getRankedTierInfo)',
     game.includes('getRankedTierInfo(playerData?.ranked?.points || 0)') &&
     game.includes('RANKED · ${info.label.toUpperCase()}'));
-check('season hub row label is live (season profile, never hardcoded)',
-    game.includes('const s = getActiveSeasonProfile();') &&
-    game.includes('${s.upperName} HUB'));
 check('MORE sheet styles exist (bottom-sheet language, safe-area aware)',
     game.includes('.app-more-sheet{') && game.includes('.app-more-card{') &&
     game.includes('.app-more-btn{') && game.includes('env(safe-area-inset-bottom)'));
-
-// --- GOAL 1: season hub routes to the APP events tab ---
-check('season hub has the app-aware tab helper',
-    game.includes('const goAppEventsTab = () =>') &&
-    game.includes("if (typeof isNativeAppMode === 'function' && isNativeAppMode())") &&
-    game.includes("setAppHomeTab('events')"));
-check('all 5 hub mode buttons route through the helper',
-    count(game, 'goAppEventsTab();') === 5);
-check('no hub handler still switches the hidden WEB events tab',
-    count(game, "updateShowdownModeUI();setHomeTab('events');") === 0 &&
-    game.includes("if (localStorage.getItem(HOME_LAST_TAB_KEY) === 'events') setHomeTab('events');") &&
-    game.includes("const focusHomeEvents = () => setHomeTab('events');")); // the only two remaining web uses: restore-last-tab + the web nav — the helper's else-branch is the web path, not a hub handler
-check('hub refreshes the app event chip when it picks a mode in app mode',
-    game.includes("if (typeof renderAppHomeEventChip === 'function') renderAppHomeEventChip();"));
-
-// --- GOAL 1: Overdrive card in the app Events view ---
-check('Events view renders the Overdrive card while the event is live',
-    game.includes("if (typeof isOverdriveActive === 'function' && isOverdriveActive())") &&
-    game.includes('data-app-overdrive="1"') &&
-    game.includes('CORE SURGE OVERDRIVE'));
-check('Overdrive card shows the same community totals as the web card',
-    game.includes('getOverdriveMainTier()') && game.includes('getOverdriveDailyTier()') &&
-    game.includes('OVERDRIVE_MAIN_TIERS.length'));
-check('Overdrive card opens the quest board overdrive tab',
-    game.includes("if (typeof openQuestBoard === 'function') openQuestBoard('overdrive');"));
 
 // --- GOAL 1: per-mode info buttons on app event slots ---
 check('event slots carry an info button beside (never inside) the slot button',
@@ -248,19 +213,14 @@ function clickButton(sheet, which) {
 {
     const { calls, sheet } = runSheet();
     const html = sheet.innerHTML || '';
-    check('mirror: sheet renders all 8 rows',
-        ['RANKED', 'XPLODEMIS HUB', 'BRICK BON', 'BRICK ROAD', 'EMOTE PINS', 'SOUL SUMMONER', 'BALANCE BLOG', 'TUTORIAL'].every((t) => html.includes(t)));
+    check('mirror: sheet renders all 3 rows',
+        ['RANKED', 'SOUL SUMMONER', 'TUTORIAL'].every((t) => html.includes(t)));
     check('mirror: ranked row shows the live tier + RP',
         html.includes('RANKED · GOLD') && html.includes('250 RP') && html.includes('next: Platinum'));
-    check('mirror: season hub row shows the live season name',
-        html.includes('XPLODEMIS HUB') && html.includes('Season 6 events'));
-    const rows = ['ranked', 'season-hub', 'brick-road', 'pins', 'souls', 'blog', 'tutorial'];
+    const rows = ['ranked', 'souls', 'tutorial'];
     for (const row of rows) clickButton(sheet, row);
     check('mirror: every row calls its web opener',
         rows.every((r) => calls.includes(r)));
-    clickButton(sheet, 'brick-bon');
-    check('mirror: Brick Bon opens on the road tab',
-        calls.includes('brick-bon:road'));
     check('mirror: sheet closes after a tap', sheet.removed === true);
 }
 

@@ -3,25 +3,18 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 
 // Thanksgiving big update Phase 5 — Ranked / Custom mutators rework.
-// PURE centralization/dedupe: one MUTATOR_DEFS registry + isMutatorActive(),
-// the two duplicate defs removed as definitions (kept as canonicalising
-// aliases), Ranked leaving exclusions as rankedPool:false flags.
-// NO behaviour change is intended, so this suite pins the AS-SHIPPED
-// behaviour of every mutator, each with a `classic` negative control.
+// PURE centralization/dedupe: one MUTATOR_DEFS registry + isMutatorActive().
+// Arena Forge big changes deleted 7 mutators (colossus_friend,
+// crowd_uncontrol, always_hyper, timed_detonation, friendly_fire_plus,
+// super_rate_90, giant_projectiles) and emptied MUTATOR_ALIASES, so this
+// suite pins the AS-SHIPPED behaviour of the 5 kept mutators, each with a
+// `classic` negative control.
 // Known as-shipped quirks pinned here (NOT fixed by this rework):
 //   - quickfire refunds max(0.35, maxAmmo x 0.12) = 12%, not the 10% the
 //     copy claims; a Super refunds 0; refund is once per activation.
-//   - crowd_uncontrol reflects slow/stun/root/freeze but NOT knockback.
-//   - timed_detonation splices Power Boxes (no reward) like any wall.
-//   - colossus_friend respawn restores shared HP but the shield granted in
-//     restoreRespawningEntity is wiped by the later shield reset in the
-//     same function, so a respawned fighter ends with shield 0.
-//   - the bullets.push giant hook is dead at runtime: a later push override
-//     (charge stamping) replaces it, so giant scaling happens only in the
-//     bullet update loop, not at push time.
-//   - timed_detonation / giant family can no longer be drafted in Ranked
-//     (unchanged); the single-modifier fallback can no longer roll the
-//     super_rate_plus ALIAS id (mechanically identical to super_rate_90).
+// NOTE: the deleted mutators' helper functions still exist in game.js as
+// inert dead code (no def can ever activate them); this suite does not
+// pin them.
 
 const source = fs.readFileSync(new URL('../game.js', import.meta.url), 'utf8');
 
@@ -30,8 +23,8 @@ assert.match(source, /const MUTATOR_DEFS = \{/, 'MUTATOR_DEFS registry must exis
 assert.ok(!source.includes('RANKED_MODIFIERS'), 'old RANKED_MODIFIERS table must be gone');
 assert.ok(!source.includes('rankedLeavingModifiers'), 'side leaving Set must be gone');
 assert.ok(!source.includes('colossal_projectiles'), 'phantom alias must stay absent');
-assert.match(source, /const MUTATOR_ALIASES = \{[^}]*'super_rate_plus': 'super_rate_90'[^}]*'projectiles_150': 'giant_projectiles'/,
-  'alias map must hold exactly the two duplicate pairs');
+assert.match(source, /const MUTATOR_ALIASES = \{\};/,
+  'alias map must be empty after the deletions');
 assert.ok(!/'super_rate_plus':\s*\{/.test(source), 'super_rate_plus must not be a def');
 assert.ok(!/'projectiles_150':\s*\{/.test(source), 'projectiles_150 must not be a def');
 assert.match(source, /function isMutatorActive\(id\)/, 'isMutatorActive must exist');
@@ -44,8 +37,6 @@ assert.ok(!source.includes('activeRankedModifierSecondary ==='), 'no secondary =
 assert.ok(!source.includes('activeRankedModifierTertiary ==='), 'no tertiary === chain may remain');
 assert.ok(!source.includes('activeRankedModifierSecondary !=='), 'no secondary !== chain may remain');
 assert.ok(!source.includes('activeRankedModifierTertiary !=='), 'no tertiary !== chain may remain');
-assert.match(source, /'timed_detonation': \{[\s\S]*?rankedPool: false/, 'timed_detonation must be rankedPool:false');
-assert.match(source, /'giant_projectiles': \{[\s\S]*?rankedPool: false/, 'giant_projectiles must be rankedPool:false');
 
 // ---- Behavioural harness: the real game booted in a vm sandbox ----
 const ANCHOR = '  window.__pureHTMLGame = window.__pureHTMLGame || {};\n  Object.defineProperties(window.__pureHTMLGame';
@@ -54,12 +45,7 @@ const PROBE = `  globalThis.__mutProbe = (() => { let __tmp;
   return {
     MUTATOR_DEFS, MUTATOR_ALIASES, resolveMutatorId, getMutatorDef,
     isMutatorActive, getRankedMutatorPoolKeys, setActiveMutators,
-    isFriendlyFireActive, isFriendlyFirePlusActive, isSuperRate90Active,
-    isGiantProjectilesActive, applyGiantProjectilesModifier,
-    applyStatusEffect, grantMainAttackCharge, triggerTimedDetonationWave,
-    restoreRespawningEntity, grantFriendlyFirePlusBonus,
-    get activeColossusMaxHp() { return activeColossusMaxHp; },
-    get timedDetonationStage() { return timedDetonationStage; },
+    isFriendlyFireActive, grantMainAttackCharge,
     get superCharge() { return superCharge; },
     set superCharge(v) { superCharge = v; },
     get ammo() { return ammo; },
@@ -127,8 +113,8 @@ const api = sandbox.window.__pureHTMLGame;
 const P = sandbox.__mutProbe;
 assert.ok(api && P, 'game test API + mutator probe must boot');
 
-// Force the rotating Showdown modifier to 'none' so Phase 4's power_surge
-// (x1.2 Super gain) can never skew the mutator charge measurements.
+// Force the rotating Showdown modifier to 'none' so Heavy Storm can never
+// skew the mutator charge measurements (power_surge is deleted).
 function launchCustom(mode, primary, secondary = null, tertiary = null) {
   P.setVar('showdownModifierOverride', 'none');
   api.isRankedMatch = false;
@@ -162,22 +148,24 @@ function measureCharge(owner) {
     : { s: owner.superCharge, h: owner.hyperChargeCharge };
 }
 
-// ---- Registry: 12 canonical defs, 11 mechanics + classic baseline ----
+// ---- Registry: 5 canonical defs, 4 mechanics + classic baseline ----
 const defKeys = Object.keys(P.MUTATOR_DEFS);
-assert.equal(defKeys.length, 12, `registry must hold 12 canonical defs (got ${defKeys.length})`);
-for (const id of ['classic', 'colossus_friend', 'crowd_uncontrol', 'hyper_overdrive', 'always_hyper', 'quickfire', 'timed_detonation', 'super_surge', 'friendly_fire', 'friendly_fire_plus', 'super_rate_90', 'giant_projectiles']) {
+assert.equal(defKeys.length, 5, `registry must hold 5 canonical defs (got ${defKeys.length})`);
+for (const id of ['classic', 'hyper_overdrive', 'quickfire', 'super_surge', 'friendly_fire']) {
   const d = P.MUTATOR_DEFS[id];
   assert.ok(d, `registry must define ${id}`);
   assert.equal(d.id, id, `${id}: def id must match its key`);
   assert.ok(d.name && d.icon && d.color && d.desc, `${id}: def needs name/icon/color/desc`);
   assert.equal(d.testId, `mutator-${id.replace(/_/g, '-')}`, `${id}: testId must be mutator-<kebab-id>`);
 }
-assert.deepEqual(Object.keys(P.MUTATOR_ALIASES).sort(), ['projectiles_150', 'super_rate_plus'], 'alias map must hold exactly the two duplicate pairs');
-assert.equal(P.resolveMutatorId('super_rate_plus'), 'super_rate_90', 'super_rate_plus must resolve to super_rate_90');
-assert.equal(P.resolveMutatorId('projectiles_150'), 'giant_projectiles', 'projectiles_150 must resolve to giant_projectiles');
-assert.equal(P.resolveMutatorId('super_rate_90'), 'super_rate_90', 'canonical ids must resolve to themselves');
-assert.equal(P.getMutatorDef('super_rate_plus'), P.MUTATOR_DEFS.super_rate_90, 'alias def lookup must return the canonical def');
-assert.equal(P.getMutatorDef('projectiles_150'), P.MUTATOR_DEFS.giant_projectiles, 'alias def lookup must return the canonical def');
+assert.deepEqual(Object.keys(P.MUTATOR_ALIASES).sort(), [], 'alias map must be empty after the deletions');
+assert.equal(P.resolveMutatorId('super_rate_plus'), null, 'deleted alias id must resolve to null');
+assert.equal(P.resolveMutatorId('projectiles_150'), null, 'deleted alias id must resolve to null');
+assert.equal(P.resolveMutatorId('super_rate_90'), null, 'deleted mutator id must resolve to null');
+assert.equal(P.resolveMutatorId('giant_projectiles'), null, 'deleted mutator id must resolve to null');
+assert.equal(P.getMutatorDef('super_rate_plus'), null, 'deleted alias id must have no def');
+assert.equal(P.getMutatorDef('projectiles_150'), null, 'deleted alias id must have no def');
+assert.equal(P.resolveMutatorId('classic'), 'classic', 'kept canonical ids must resolve to themselves');
 assert.equal(P.resolveMutatorId('colossal_projectiles'), null, 'phantom id must resolve to null');
 assert.equal(P.getMutatorDef('colossal_projectiles'), null, 'phantom id must have no def');
 assert.equal(P.resolveMutatorId(null), null, 'null slot must resolve to null');
@@ -185,16 +173,9 @@ assert.equal(P.resolveMutatorId('nope'), null, 'unknown id must resolve to null'
 
 // ---- Ranked pool: leaving exclusions as registry flags ----
 const poolNoClassic = P.getRankedMutatorPoolKeys(false);
-assert.ok(!poolNoClassic.includes('classic'), 'multi-modifier pool must never roll classic');
-assert.ok(!poolNoClassic.includes('timed_detonation'), 'ranked pool must exclude timed_detonation');
-assert.ok(!poolNoClassic.includes('giant_projectiles'), 'ranked pool must exclude giant_projectiles');
-assert.ok(!poolNoClassic.includes('super_rate_plus') && !poolNoClassic.includes('projectiles_150'), 'ranked pool must not contain alias ids');
-assert.equal(poolNoClassic.length, 9, `multi-modifier pool must hold 9 keys (got ${poolNoClassic.length})`);
+assert.deepEqual(poolNoClassic.sort(), ['friendly_fire', 'hyper_overdrive', 'quickfire', 'super_surge'], 'multi-modifier pool must hold exactly the 4 kept non-classic mutators');
 const poolWithClassic = P.getRankedMutatorPoolKeys(true);
-assert.ok(poolWithClassic.includes('classic'), 'single-modifier fallback pool must still offer classic');
-assert.equal(poolWithClassic.length, 10, `single-modifier pool must hold 10 keys (got ${poolWithClassic.length})`);
-assert.equal(P.MUTATOR_DEFS.timed_detonation.rankedPool, false, 'timed_detonation flag must be false');
-assert.equal(P.MUTATOR_DEFS.giant_projectiles.rankedPool, false, 'giant_projectiles flag must be false');
+assert.deepEqual(poolWithClassic.sort(), ['classic', 'friendly_fire', 'hyper_overdrive', 'quickfire', 'super_surge'], 'single-modifier pool must hold classic + the 4 kept mutators');
 
 // ---- isMutatorActive: slots, context, alias resolution ----
 api.isRankedMatch = true; api.isCustomMutatorMatch = false;
@@ -204,83 +185,26 @@ assert.equal(P.isMutatorActive('quickfire'), true, 'secondary slot must activate
 assert.equal(P.isMutatorActive('hyper_overdrive'), true, 'tertiary slot must activate');
 assert.equal(P.isMutatorActive('classic'), false, 'classic in no slot must not activate');
 assert.equal(P.isMutatorActive('colossus_friend'), false, 'unset mutator must not activate');
-api.activeRankedModifier = 'super_rate_plus'; // legacy alias id, raw slot write
-assert.equal(P.isMutatorActive('super_rate_90'), true, 'alias id in a slot must activate its canonical mechanic');
-api.activeRankedModifier = 'projectiles_150';
-assert.equal(P.isMutatorActive('giant_projectiles'), true, 'alias id in a slot must activate giant_projectiles');
+api.activeRankedModifier = 'super_rate_90'; // deleted id, raw slot write
+assert.equal(P.isMutatorActive('super_rate_90'), false, 'deleted id in a slot must activate nothing');
+api.activeRankedModifier = 'giant_projectiles';
+assert.equal(P.isMutatorActive('giant_projectiles'), false, 'deleted id in a slot must activate nothing');
 api.activeRankedModifier = 'colossal_projectiles';
-assert.equal(P.isMutatorActive('giant_projectiles'), false, 'phantom id in a slot must activate nothing');
+assert.equal(P.isMutatorActive('colossal_projectiles'), false, 'phantom id in a slot must activate nothing');
 api.isRankedMatch = false; api.isCustomMutatorMatch = false;
 api.setActiveMutators('super_surge', null, null);
 assert.equal(P.isMutatorActive('super_surge'), false, 'mutators must be inert outside Ranked/Custom matches');
 api.setActiveMutators('classic', null, null);
 assert.equal(P.isMutatorActive('classic'), false, 'classic must never count as an active mutator');
-assert.equal(P.isFriendlyFirePlusActive(), false, 'FF+ helper must be false on classic');
-assert.equal(P.isSuperRate90Active(), false, 'super-rate helper must be false on classic');
-assert.equal(P.isGiantProjectilesActive(), false, 'giant-projectiles helper must be false on classic');
 assert.equal(P.isFriendlyFireActive(), false, 'friendly-fire helper must be false on classic solo');
 
 // ---- classic: the negative control launch ----
 launchCustom('solo', 'classic');
 assert.equal(P.isMutatorActive('classic'), false, 'classic launch must activate nothing');
-assert.equal(api.player.shield, 0, 'classic launch must grant no colossus shield');
+assert.equal(api.player.shield, 0, 'classic launch must grant no shield');
 P.superCharge = 0;
 const classicCharge = measureCharge(api.player);
 assert.ok(classicCharge.s > 0, 'classic baseline grant must charge Super');
-
-// ---- colossus_friend: shared HP + 4000 shield, respawn restores HP ----
-launchCustom('solo', 'colossus_friend');
-const sharedHp = P.activeColossusMaxHp;
-assert.ok(sharedHp > 0, 'colossus launch must record the lobby max HP');
-assert.equal(api.player.maxHp, sharedHp, 'colossus: player maxHp must be the lobby max');
-assert.equal(api.player.hp, sharedHp, 'colossus: player hp must be the lobby max');
-assert.equal(api.player.shield, 4000, 'colossus: player must spawn with a 4000 shield');
-const fighterBots = api.bots.filter(b => b && !b.isStructure && !b.isDummy);
-assert.ok(fighterBots.length > 0, 'colossus: fighter bots must exist to check');
-for (const b of fighterBots) {
-  assert.equal(b.maxHp, sharedHp, 'colossus: every fighter bot must share the lobby max HP');
-  assert.equal(b.shield, 4000, 'colossus: every fighter bot must hold the 4000 shield');
-}
-const respawnBot = fighterBots[0];
-respawnBot.hp = 0; respawnBot.isDead = true;
-P.restoreRespawningEntity(respawnBot, { x: respawnBot.baseX || respawnBot.x, y: respawnBot.baseY || respawnBot.y }, false, 0);
-assert.equal(respawnBot.maxHp, sharedHp, 'colossus respawn must restore the shared max HP');
-assert.equal(respawnBot.hp, sharedHp, 'colossus respawn must restore the shared HP');
-// As-shipped quirk (NOT fixed here): the shield granted above is wiped by
-// the later `entity.shield = 0` reset in the same restore function.
-assert.equal(respawnBot.shield, 0, 'colossus respawn shield is wiped by the later reset (as-shipped quirk)');
-
-// ---- colossus_friend in Arena Forge: towers can NEVER gain HP (PR #42) ----
-launchCustom('arena_forge', 'colossus_friend');
-assert.ok(P.activeColossusMaxHp < 72000, 'colossus lobby max must be fighter-derived, never tower HP');
-const structures = api.bots.filter(b => b && b.isArenaForgeStructure);
-assert.ok(structures.length >= 8, `arena forge must spawn its 8 structures (got ${structures.length})`);
-for (const s of structures) {
-  const base = s.isArenaForgeCore ? 120000 : 72000;
-  assert.equal(s.maxHp, base, `colossus must not raise a ${s.isArenaForgeCore ? 'core' : 'tower'} maxHp above ${base}`);
-  assert.equal(s.hp, base, `colossus must not raise a ${s.isArenaForgeCore ? 'core' : 'tower'} hp above ${base}`);
-}
-const forgeFighters = api.bots.filter(b => b && !b.isStructure && !b.isDummy);
-assert.ok(forgeFighters.length > 0, 'arena forge fighters must exist');
-for (const b of forgeFighters) assert.equal(b.maxHp, P.activeColossusMaxHp, 'arena forge fighters must still share the lobby max HP');
-
-// ---- crowd_uncontrol: slow + stun reflect exactly once; classic: none ----
-launchCustom('solo', 'crowd_uncontrol');
-const ccBot = api.bots.find(b => b && !b.isStructure && !b.isDummy);
-assert.ok(ccBot, 'crowd test needs a live bot');
-api.player.slowUntil = 0; api.player.stunUntil = 0; ccBot.slowUntil = 0; ccBot.stunUntil = 0;
-P.applyStatusEffect(ccBot, 'slow', 1000, api.player);
-assert.ok(ccBot.slowUntil > Date.now(), 'crowd: target must be slowed');
-assert.ok(api.player.slowUntil > Date.now(), 'crowd: slow must reflect to the attacker');
-assert.ok(api.player.slowUntil <= Date.now() + 1500, 'crowd: reflect must land exactly once (no double duration)');
-P.applyStatusEffect(ccBot, 'stun', 1000, api.player);
-assert.ok(ccBot.stunUntil > Date.now(), 'crowd: target must be stunned');
-assert.ok(api.player.stunUntil > Date.now(), 'crowd: stun must reflect to the attacker');
-launchCustom('solo', 'classic');
-api.player.slowUntil = 0; api.player.stunUntil = 0; ccBot.slowUntil = 0; ccBot.stunUntil = 0;
-P.applyStatusEffect(ccBot, 'slow', 1000, api.player);
-assert.ok(ccBot.slowUntil > Date.now(), 'classic: target must still be slowed');
-assert.equal(api.player.slowUntil, 0, 'classic: slow must NOT reflect to the attacker');
 
 // ---- hyper_overdrive: +4/s passive, none while Hypercharged ----
 launchCustom('solo', 'hyper_overdrive');
@@ -295,20 +219,6 @@ launchCustom('solo', 'classic');
 api.hyperChargeCharge = 0;
 runSeconds(1);
 assert.equal(api.hyperChargeCharge, 0, 'classic: no passive Hypercharge gain');
-
-// ---- always_hyper: permanent Hypercharge past normal expiry ----
-launchCustom('solo', 'always_hyper');
-assert.equal(api.isHypercharged, true, 'always_hyper: player must start Hypercharged');
-assert.equal(api.hyperChargeCharge, 100, 'always_hyper: player Hypercharge must start full');
-assert.ok(api.hyperchargeUntil > Date.now() + 1000000, 'always_hyper: expiry must be pushed far out');
-api.hyperchargeUntil = Date.now() - 1000; // force a past expiry and let the loop re-assert
-runSeconds(1);
-assert.equal(api.isHypercharged, true, 'always_hyper: player must stay Hypercharged past expiry');
-assert.ok(api.hyperchargeUntil > Date.now() + 1000000, 'always_hyper: loop must re-assert the far-out expiry');
-launchCustom('solo', 'classic');
-api.isHypercharged = true; api.hyperchargeUntil = Date.now() - 1000;
-runSeconds(0.2);
-assert.equal(api.isHypercharged, false, 'classic: Hypercharge must expire once its timestamp passes');
 
 // ---- quickfire: as-shipped 12% refund, once per activation, Super = 0 ----
 launchCustom('solo', 'quickfire');
@@ -339,34 +249,6 @@ P.ammo = 0;
 P.grantMainAttackCharge(api.player, { isPrimaryChargeProjectile: true, ownerBrawler: 'warrior' });
 assert.equal(P.ammo, 0, 'classic: no ammo refund');
 
-// ---- timed_detonation: wave clears terrain/bushes, stage advances ----
-launchCustom('solo', 'timed_detonation');
-const stageBefore = P.timedDetonationStage;
-const cx = 2000, cy = 2000; // world centre (WORLD_W/H are 4000); stage-1 radius is 440
-const myWall = { x: cx - 21, y: cy - 21, w: 42, h: 42, hp: 100, maxHp: 100 };
-const myBox = { x: cx - 21, y: cy + 60, w: 42, h: 42, hp: 4500, maxHp: 4500, isPowerBox: true, powerBoxType: 'standard' };
-const myBush = { x: cx - 21, y: cy - 100, w: 42, h: 42 };
-P.destructibleWalls.push(myWall);
-P.destructibleWalls.push(myBox);
-P.bushZones.push(myBush);
-P.triggerTimedDetonationWave();
-assert.equal(P.timedDetonationStage, stageBefore + 1, 'timed_detonation: wave must advance the stage');
-// As-shipped: the wave splices every destructible wall in radius, Power
-// Boxes included (no reward) — the plan's exclusion is NOT part of this
-// pure rework, so the suite pins the current behaviour.
-assert.ok(!P.destructibleWalls.includes(myWall), 'timed_detonation: terrain wall in radius must be spliced');
-assert.ok(!P.destructibleWalls.includes(myBox), 'timed_detonation: power box in radius must be spliced too (as-shipped)');
-assert.ok(!P.bushZones.includes(myBush), 'timed_detonation: bush in radius must be removed');
-// The 8s timer path: rewind the window timer and let update() fire a wave.
-const stageMid = P.timedDetonationStage;
-sandbox._lastTimedDetonationAt = Date.now() - 9000;
-runSeconds(0.2);
-assert.ok(P.timedDetonationStage > stageMid, 'timed_detonation: update loop must fire a wave after 8s');
-launchCustom('solo', 'classic');
-const classicStage = P.timedDetonationStage;
-P.triggerTimedDetonationWave();
-assert.equal(P.timedDetonationStage, classicStage, 'classic: trigger must be a no-op');
-
 // ---- super_surge: +5/s passive and x1.4 on hit ----
 launchCustom('solo', 'super_surge');
 P.superCharge = 0;
@@ -390,74 +272,6 @@ api.showdownMode = 'knock_donate';
 assert.equal(P.isFriendlyFireActive(), true, 'knock_donate: mode clause must enable friendly fire even on classic');
 api.showdownMode = 'solo';
 assert.equal(P.isFriendlyFireActive(), false, 'back to solo classic: helper must be false again');
-
-// ---- friendly_fire_plus: +18 Super / +12 Hyper, on top of FF damage ----
-launchCustom('duo', 'friendly_fire_plus');
-assert.equal(P.isFriendlyFirePlusActive(), true, 'FF+: helper must be true');
-assert.equal(P.isFriendlyFireActive(), true, 'FF+: friendly fire must be active too');
-const ffBot = api.bots.find(b => b && !b.isStructure && !b.isDummy);
-ffBot.superCharge = 0; ffBot.hyperChargeCharge = 0; ffBot.isHypercharged = false;
-P.grantFriendlyFirePlusBonus(ffBot);
-assert.equal(ffBot.superCharge, 18, 'FF+: ally hit must grant +18 Super to a bot');
-assert.equal(ffBot.hyperChargeCharge, 12, 'FF+: ally hit must grant +12 Hypercharge to a bot');
-P.superCharge = 0; api.hyperChargeCharge = 0; api.isHypercharged = false;
-P.grantFriendlyFirePlusBonus(api.player);
-assert.equal(P.superCharge, 18, 'FF+: ally hit must grant +18 Super to the player');
-assert.equal(api.hyperChargeCharge, 12, 'FF+: ally hit must grant +12 Hypercharge to the player');
-launchCustom('solo', 'classic');
-assert.equal(P.isFriendlyFirePlusActive(), false, 'classic: FF+ helper must be false');
-
-// ---- super_rate_90 (+ alias): x1.9 on hit, +9/s passive ----
-launchCustom('solo', 'super_rate_90');
-assert.equal(P.isSuperRate90Active(), true, 'super_rate_90: helper must be true');
-P.superCharge = 0;
-runSeconds(1);
-assert.ok(Math.abs(P.superCharge - 9) < 1.0, `super_rate_90: 1s must gain ~9 Super (got ${P.superCharge})`);
-const srPlayer = measureCharge(api.player);
-assert.ok(Math.abs(srPlayer.s / classicCharge.s - 1.9) < 0.05, `super_rate_90: on-hit gain must be x1.9 (got ${srPlayer.s / classicCharge.s})`);
-api.activeRankedModifier = 'super_rate_plus'; // legacy alias id, raw slot write
-assert.equal(P.isSuperRate90Active(), true, 'super_rate_plus slot must activate the same helper');
-const srAlias = measureCharge(api.player);
-assert.ok(Math.abs(srAlias.s / classicCharge.s - 1.9) < 0.05, `super_rate_plus slot: on-hit gain must still be x1.9 (got ${srAlias.s / classicCharge.s})`);
-launchCustom('solo', 'classic');
-assert.equal(P.isSuperRate90Active(), false, 'classic: super-rate helper must be false');
-
-// ---- giant_projectiles (+ alias): bullets x2.5, phantom rejected ----
-// As-shipped wiring note: the bullets.push hook at the giant check is dead
-// at runtime — a later push override (charge stamping) replaces it. The
-// LIVE path is the bullet update loop, which calls
-// applyGiantProjectilesModifier(b) every frame. This block proves the live
-// path (push + one update frame) plus the direct modifier gate.
-launchCustom('solo', 'giant_projectiles');
-assert.equal(P.isGiantProjectilesActive(), true, 'giant_projectiles: helper must be true');
-api.bullets.length = 0;
-const big = { x: api.player.x, y: api.player.y, vx: 0, vy: 0, ownerId: api.player.id, hitboxMod: 1, radius: 10 };
-api.bullets.push(big);
-assert.equal(big.hitboxMod, 1, 'giant_projectiles: push alone must NOT scale (push hook is shadowed as-shipped)');
-runSeconds(0.05);
-assert.equal(big.hitboxMod, 2.5, 'giant_projectiles: update loop must scale a live bullet hitboxMod x2.5');
-assert.equal(big.radius, 25, 'giant_projectiles: update loop must scale a live bullet radius x2.5');
-const bigDirect = { hitboxMod: 1, radius: 10 };
-P.applyGiantProjectilesModifier(bigDirect);
-assert.equal(bigDirect.hitboxMod, 2.5, 'giant_projectiles: direct modifier must scale hitboxMod x2.5');
-api.activeRankedModifier = 'projectiles_150'; // legacy alias id, raw slot write
-assert.equal(P.isGiantProjectilesActive(), true, 'projectiles_150 slot must activate the same helper');
-const bigAlias = { hitboxMod: 1, radius: 10 };
-P.applyGiantProjectilesModifier(bigAlias);
-assert.equal(bigAlias.hitboxMod, 2.5, 'projectiles_150 slot: bullet must still grow x2.5');
-api.activeRankedModifier = 'colossal_projectiles'; // phantom id, raw slot write
-assert.equal(P.isGiantProjectilesActive(), false, 'phantom id in a slot must not activate giant projectiles');
-const small = { hitboxMod: 1, radius: 10 };
-P.applyGiantProjectilesModifier(small);
-assert.equal(small.hitboxMod, 1, 'phantom id: bullet must stay unscaled');
-assert.equal(small.radius, 10, 'phantom id: bullet radius must stay unscaled');
-launchCustom('solo', 'classic');
-api.bullets.length = 0;
-const plain = { x: api.player.x, y: api.player.y, vx: 0, vy: 0, ownerId: api.player.id, hitboxMod: 1, radius: 10 };
-api.bullets.push(plain);
-runSeconds(0.05);
-assert.equal(plain.hitboxMod, 1, 'classic: live bullet must stay unscaled');
-assert.equal(plain.radius, 10, 'classic: live bullet radius must stay unscaled');
 
 console.log('mutators-regression: all assertions passed');
 process.exit(0);

@@ -155,7 +155,7 @@ check('match-end hook sits at the one career settlement site (right after the wi
     const j = game.indexOf('endCareer.matchesPlayed += 1');
     return i !== -1 && j !== -1 && i > j && game.indexOf('saveProgress();', i) - i < 200;
 })());
-check('player profile overlay inserts the bricks section under the hero', game.includes('main.appendChild(createBricksSection());'));
+check('player profile overlay shows lifetime Bricks in the header', game.includes('lifetime Bricks</p>') && game.includes('s.totalBricks.toLocaleString()'));
 check('Brick Bon career tab inserts the bricks section under the hero', game.includes('container.appendChild(createBricksSection());'));
 check('home top chip shows total lifetime bricks', game.includes("trophyEl.textContent = `🧱 ${getTotalBrickBonBricks().toLocaleString()}`"));
 check('hero chip shows the selected fighter lifetime bricks', game.includes('getLifetimeBricks(playerData.brawlers?.[selectedBrawler])'));

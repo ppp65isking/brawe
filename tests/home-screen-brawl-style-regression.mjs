@@ -229,9 +229,9 @@ check('cleanup: no absolute float left on the action row in this sheet',
 check('cleanup: empty right-rail zones collapse instead of blank boxes',
   /#homeScreen\s+#homeBsRight\s+\.home-season-pulse:empty[^}]*display:\s*none/.test(css) &&
   /#homeScreen\s+#homeBsRight\s+\.home-career-snapshot:empty[^}]*display:\s*none/.test(css));
-for (const id of ['brickBonBtn', 'playerProfileBtn', 'pinsHubBtn', 'brickRoadBtn',
+for (const id of ['playerProfileBtn',
   'soulSummonerBtn', 'gemShopBtn', 'downloadSaveBtn', 'importSaveBtn',
-  'dailyBrickRushBtn', 'eventHubBtn', 'seasonPassBtn', 'dailyWeeklyQuestBtn']) {
+  'eventHubBtn', 'seasonPassBtn', 'dailyWeeklyQuestBtn']) {
   const assigns = game.match(new RegExp("\\.id\\s*=\\s*['\"]" + id + "['\"]", 'g')) || [];
   check('cleanup: JS home button created exactly once: ' + id, assigns.length === 1);
 }

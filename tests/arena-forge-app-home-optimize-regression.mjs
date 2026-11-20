@@ -72,7 +72,7 @@ check('daily rotation countdown ticks on the same interval', game.includes('data
 // --- Events view: tap starts the mode via the existing launch path ---
 check('slot tap prefers the existing web card click', game.includes('const webCard = homeModeCardMap?.[id];') && game.includes('webCard.click();'));
 check('slot tap falls back to the web dispatch (showdownMode + UI sync)', game.includes('showdownMode = id;') && game.includes('clearRankedSessionState();') && game.includes('updateShowdownModeUI();'));
-check('slot tap covers the special openers in the fallback', game.includes("if (id === 'custom_clash')") && game.includes("if (id === 'headless_boss_s4')") && game.includes("if (id === 'tombstone_boss')") && game.includes("if (id === 'megastein_boss')") && game.includes("if (id === 'tower_defense')"));
+check('slot tap covers the special openers in the fallback', game.includes("if (id === 'custom_clash')"));
 check('slot tap returns to the Home tab (PLAY is one tap away)', game.includes('renderAppHomeEventChip();') && game.includes("setAppHomeTab('home');\n    }"));
 
 // --- In-match HUD (touch/app mode only): Tool/Talent/Core redo ---

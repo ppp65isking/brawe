@@ -30,13 +30,13 @@ assert.match(source, /healing_pad:\s*\{[^}]*blocksMove: false[^}]*blocksShots: f
 assert.match(source, /wall\.isProp && \(!PROPS_V1_ENABLED \|\| !wall\.blocksMove\)/, 'isNavigationWall must gate props by blocksMove + kill switch');
 assert.match(source, /damageableObject = !!\([^)]*dw\.isProp\)/, 'bullet damage gate must include props');
 assert.match(source, /if \(playing && !gameOver\) updatePropPads\(\);/, 'pad tick must run in the update loop');
-assert.ok((source.match(/placeProp\('/g) || []).length >= 30, 'the 3 touched maps must place props (30+ placeProp calls)');
+assert.ok((source.match(/placeProp\('/g) || []).length >= 6, 'the kept Showdown map still places props (6 placeProp calls)');
 
 // ---- Boot harness (mirrors spikey-regression.mjs) ----
 const ANCHOR = '  window.__pureHTMLGame = window.__pureHTMLGame || {};\n  Object.defineProperties(window.__pureHTMLGame';
 assert.ok(source.includes(ANCHOR), 'test-export block anchor must exist for the probe');
 const PROBE =
-  '  globalThis.__propsProbe = { buildNextShowdownMap, buildKnockoutMap, buildBraweBallMap, getTerrainMoveMultiplier, isNavigationWall, markBotNavGridDirty, refreshBotNavGridDirty,\n' +
+  '  globalThis.__propsProbe = { buildNextShowdownMap, getTerrainMoveMultiplier, isNavigationWall, markBotNavGridDirty, refreshBotNavGridDirty,\n' +
   '    navCellBlockedAt: (x, y) => { const i = botNavCellOf(x, y); return !!(botNavGrid && i >= 0 && botNavGrid.blocked[i] === 1); },\n' +
   '    setWorld: (w, h) => { WORLD_W = w; WORLD_H = h; },\n' +
   '    buildNav: () => buildBotNavGrid() };\n' + ANCHOR;
@@ -234,25 +234,6 @@ P.buildNextShowdownMap(0);
     { x: 2000, y: 460 }, { x: 2000, y: 3540 }, { x: 460, y: 2000 }, { x: 3440, y: 2000 },
   ], 'Showdown theme 0');
 }
-P.buildKnockoutMap();
-{
-  const { solids, pads } = propCounts();
-  assert.deepEqual(solids, { barrel: 2, crate: 2, plant_pot: 2, sign_post: 2 }, 'Knockout solid prop set');
-  assert.deepEqual(pads, { healing_pad: 2, speed_pad: 2 }, 'Knockout pad set');
-  assertSpawnClearance(teamSpawns(2000, 1740, 260, 1000, 150), 'Knockout');
-}
-P.buildBraweBallMap();
-{
-  const { solids, pads } = propCounts();
-  assert.deepEqual(solids, { barrel: 2, crate: 2, plant_pot: 2, sign_post: 2 }, 'Brawe Ball solid prop set');
-  assert.deepEqual(pads, { healing_pad: 2, speed_pad: 2 }, 'Brawe Ball pad set');
-  assertSpawnClearance(teamSpawns(2400, 2080, 320, 900, 170), 'Brawe Ball');
-  for (const w of api.destructibleWalls.filter(w => w.isProp)) {
-    const d = Math.hypot(w.x + w.w / 2 - 900, w.y + w.h / 2 - 1200);
-    assert.ok(d >= 200, `Brawe Ball: solid props must keep the ball spawn clear (${Math.round(d)}px)`);
-  }
-}
-
 // ---- Nav grid: blocking props register; death frees the cell ----
 // The Phase 3 grid marks a cell blocked when terrain touches the cell
 // CENTER (radius 18) - the same rule 48px arena-wall tiles already live

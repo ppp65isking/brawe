@@ -6,22 +6,10 @@ const game = fs.readFileSync(new URL('../game.js', import.meta.url), 'utf8');
 const checks = [
   // 1. Ranked Rotation: knock_donate, arena_forge, and brick_vault
   ['RANKED_TEAM_MODE_POOL includes knock_donate, arena_forge, and brick_vault', /RANKED_TEAM_MODE_POOL\s*=\s*\[[^\]]*'knock_donate'[^\]]*'arena_forge'[^\]]*'brick_vault'[^\]]*\]/.test(game)],
-  ['Showdown mode labels include Brawe Ball 3v3 and Knockout 3v3', /if\s*\(mode === 'brawe_ball'\)\s*return 'Brawe Ball 3v3';[\s\S]*?if\s*\(mode === 'knockout_3v3'\)\s*return 'Knockout 3v3';/],
-  ['HOME_MODE_CARDS includes brawe_ball and knockout_3v3', /\['brawe_ball',\s*'⚽',\s*'Brawe Ball 3v3'[\s\S]*?\['knockout_3v3',\s*'🥊',\s*'Knockout 3v3'/],
-  ['HOME_PERMANENT_MODE_IDS includes brawe_ball and knockout_3v3', /HOME_PERMANENT_MODE_IDS\s*=\s*\[[\s\S]*?'brawe_ball'[\s\S]*?'knockout_3v3'/],
-  ['HOME_EVENT_REWARDS includes brawe_ball and knockout_3v3', /brawe_ball:\s*\{\s*type:\s*'coins',\s*amount:\s*80[\s\S]*?knockout_3v3:\s*\{\s*type:\s*'coins',\s*amount:\s*80/],
-  ['HOME_MODE_RULES includes brawe_ball and knockout_3v3', /brawe_ball:\s*\[[\s\S]*?3v3 Soccer clash[\s\S]*?knockout_3v3:\s*\[[\s\S]*?Best of 3 Rounds/],
 
-  // 2. Ranked Modifiers: Bug Fixes & Always Hyper
-  ['always_hyper modifier registered in MUTATOR_DEFS', /const MUTATOR_DEFS = \{[\s\S]*?'always_hyper':\s*\{\s*id:\s*'always_hyper',\s*name:\s*'Always Hyper'/],
-  ['always_hyper continuously hypercharges player and bots in update loop', /isMutatorActive\('always_hyper'\)[\s\S]*?isHypercharged = true;[\s\S]*?setEntityHypercharged\(b, now \+ 999999999, now\);/],
-  ['always_hyper initializes hypercharge on match start', /isMutatorActive\('always_hyper'\)[\s\S]*?isHypercharged = true;[\s\S]*?hyperChargeCharge = 100;/],
-  ['always_hyper persists hypercharge across respawns', /isMutatorActive\('always_hyper'\)[\s\S]*?setEntityHypercharged\(entity, now \+ 999999999, now\);/],
-  ['always_hyper exempted from player and bot hypercharge expiration', /!isMutatorActive\('always_hyper'\)/.test(game)],
-  ['timed_detonation crash fixed: uses bushZones and bushes without grassZones', !game.includes('grassZones') && game.includes("isMutatorActive('timed_detonation')") && game.includes('bushZones.splice(i, 1);')],
+  // 2. Ranked Modifiers: kept mutators
   ['hyper_overdrive passive charge fixed to call updateHyperButton', /hyperChargeCharge = Math\.min\(100,\s*hyperChargeCharge \+ 4\.0 \* dt\);[\s\S]*?if \(typeof updateHyperButton === 'function'\) updateHyperButton\(\);/],
   ['super_surge passive super charge calls updateSuperButton', /superCharge = Math\.min\(100,\s*superCharge \+ 5\.0 \* dt\);[\s\S]*?if \(typeof updateSuperButton === 'function'\) updateSuperButton\(\);/],
-  ['colossus_friend persists max HP across respawns with 4,000 HP bonus shield', /isMutatorActive\('colossus_friend'\) && activeColossusMaxHp[\s\S]*?grantShield\(entity,\s*4000,\s*4000\);/],
   ['quickfire only refunds ammo on main attacks, not supers', /isMutatorActive\('quickfire'\) && !source\?\.super && !source\?\.isSuper/],
   ['Ranked modifier HUD badge helper implemented', /function renderRankedModifierHUD\(ctx\)/],
   ['friendly_fire modifier registered in MUTATOR_DEFS', /const MUTATOR_DEFS = \{[\s\S]*?'friendly_fire':\s*\{\s*id:\s*'friendly_fire',\s*name:\s*'Friendly Fire'/],
@@ -39,35 +27,7 @@ const checks = [
   ['Available brawler choices reduce dynamically as earlier draft picks claim brawlers', /getAvailablePool = \(pickingTeam = 'blue'\) => \{[\s\S]*?const banned = new Set\(getAllBanned\(\)\);[\s\S]*?const picked = new Set\(getAllPicked\(\)\);[\s\S]*?enemyProtected/],
   ['Ranked match launch preserves teammate picks, enemy picks, and multi-bans', /rankedTeammatePicks = bluePicks\.filter[\s\S]*?rankedEnemyPicks = redPicks\.slice[\s\S]*?rankedBans = \{/],
 
-  // 4. Brawe Ball 3v3 Implementation
-  ['isBraweBallMode runtime flag and state initialized', /let isBraweBallMode\s*=\s*false;\s*let braweBallState\s*=\s*null;/],
-  ['initBraweBallState creates ball physics and score tracker', /function initBraweBallState\(\)[\s\S]*?ball:\s*\{[\s\S]*?carrier:\s*null,[\s\S]*?scores:\s*\{\s*player:\s*0,\s*enemy:\s*0\s*\}/],
-  ['attack handler intercepts normal kick when holding ball', /if \(isBraweBallMode && braweBallState && braweBallState\.ball && braweBallState\.ball\.carrier === fromEntity\.id\) \{[\s\S]*?kickBraweBall\(fromEntity,\s*targetX,\s*targetY,\s*false\);/],
-  ['fireSuper intercepts Super Power Shot when player holds ball', /if \(isBraweBallMode && braweBallState && braweBallState\.ball && braweBallState\.ball\.carrier === player\.id\) \{[\s\S]*?kickBraweBall\(player,\s*wm\.x,\s*wm\.y,\s*true\);/],
-  ['fireSuperBot intercepts Super Power Shot when bot holds ball', /if \(isBraweBallMode && braweBallState && braweBallState\.ball && braweBallState\.ball\.carrier === bot\.id\) \{[\s\S]*?kickBraweBall\(bot,\s*targetX,\s*targetY,\s*true\);/],
-  ['updateBraweBall processes physics, bounce, carrier, and goal detection', /function updateBraweBall\(dt\)[\s\S]*?b\.x \+= b\.vx \* dt;[\s\S]*?b\.y \+= b\.vy \* dt;/],
-  ['Brawe Ball overtime triggers sudden death and clears obstacles', /s\.isOvertime = true;[\s\S]*?destructibleWalls\.length = 0;[\s\S]*?OVERTIME! NEXT GOAL WINS!/],
-  ['Brawe Ball bot AI advances, dribbles, and shoots at goal', /if \(b\.carrier === bot\.id\) \{[\s\S]*?distToGoal <= 560[\s\S]*?kickBraweBall\(bot,/],
-  ['renderBraweBallWorld draws pitch, goals, nets, and soccer ball', /function renderBraweBallWorld\(ctx\)[\s\S]*?Goal Lines[\s\S]*?Soccer Pattern/],
-  ['renderBraweBallHUD displays scores, timer, and overtime status', /function renderBraweBallHUD\(ctx\)[\s\S]*?s\.scores\.player[\s\S]*?s\.scores\.enemy/],
-
-  // 5. Knockout 3v3 Implementation
-  ['isKnockoutMode runtime flag and state initialized', /let isKnockoutMode\s*=\s*false;\s*let knockoutState\s*=\s*null;/],
-  ['initKnockoutState sets best-of-3 rounds tracking', /function initKnockoutState\(\)[\s\S]*?currentRound:\s*1,[\s\S]*?maxRounds:\s*3,[\s\S]*?roundWins:\s*\{\s*player:\s*0,\s*enemy:\s*0\s*\}/],
-  ['Knockout suppresses respawns during active rounds', /player\.respawnTimer = 0;[\s\S]*?for \(const bot of bots\) bot\.respawnTimer = 0;/],
-  ['updateKnockout shrinks poison gas after delay', /function updateKnockout\(dt\)[\s\S]*?s\.roundTimer <= 35[\s\S]*?s\.stormActive = true;[\s\S]*?s\.stormRadius/],
-  ['checkKnockoutRoundEnd awards round win and triggers intermission or victory', /s\.roundWins\[roundWinTeam\]\+\+;[\s\S]*?intermissionUntil/],
-  ['Knockout intermission revives fighters with full HP for next round', /restoreRespawningEntity\(player,[\s\S]*?restoreRespawningEntity\(bot,/],
-  ['renderKnockoutWorld renders toxic storm circle and danger zone', /function renderKnockoutWorld\(ctx\)[\s\S]*?s\.stormActive[\s\S]*?s\.stormRadius/],
-  ['renderKnockoutHUD displays best-of-3 round dots and surviving fighters', /function renderKnockoutHUD\(ctx\)[\s\S]*?ROUND[\s\S]*?Alive vs/],
-
-  // 6. Match Results Screen Handlers
-  ['showdownResults handles Brawe Ball and Knockout custom outcomes', /if \(isBraweBallMode\) \{[\s\S]*?BRAWE BALL VICTORY![\s\S]*?\} else if \(isKnockoutMode\) \{[\s\S]*?KNOCKOUT MATCH VICTORY!/],
-
-  // 7. Master update: queue pool twins + ranked-pass pin packs
-  ['super_rate_plus removed as a duplicate def, kept as a canonicalising alias', /MUTATOR_ALIASES\s*=\s*\{[^}]*'super_rate_plus':\s*'super_rate_90'/.test(game) && !/'super_rate_plus':\s*\{/.test(game) && /getRankedMutatorPoolKeys/.test(game)],
-  ['ranked-pass pinpack claim branch grants via grantPinPack', /reward\.type === 'pinpack'/.test(game) && /grantPinPack\(reward\.amount \|\| 3\);/.test(game)],
-  ['ranked-pass pinpack claim fails closed when grantPinPack is missing', /reward\.type === 'pinpack' && typeof grantPinPack !== 'function'/.test(game)],
+  // 3. Master update: queue pool twins (ranked-pass pin packs deleted)
   ['no rp_* pin ids exist anywhere', !game.includes('rp_weekly_max') && !game.includes('rp_bronze') && !game.includes('rp_legend')]
 ];
 

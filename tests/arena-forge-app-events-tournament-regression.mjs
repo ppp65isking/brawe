@@ -36,9 +36,9 @@ check('appEventMapName helper exists', game.includes('function appEventMapName(i
 check('slot html calls appEventMapName and renders a map line', game.includes('const mapName = appEventMapName(id);') && game.includes('<span class="app-event-map">'));
 check('map line has app CSS', game.includes('.app-event-slot .app-event-map{'));
 check('map helper mirrors the HUD map label (showdown theme default)', game.includes('return getActiveShowdownTheme().name || null;'));
-check('map helper uses the HUD named arenas (Mirror / Vault / Foundry / Target / Tug / Knock)', game.includes("if (id === 'mirror') return 'Mirror Arena';") && game.includes("if (id === 'brick_vault') return 'Vault Siege Arena';") && game.includes("return 'Three-Lane Foundry';") && game.includes("if (id === 'marked_mayhem') return 'Target Circuit';") && game.includes("if (id === 'tug_zone') return 'Open Tug Field';"));
-check('map helper uses the construction map name + tournament Champion Ring', game.includes("if (id === 'construction') return getConstructionMapName();") && game.includes("if (id === 'tournament') return TOURNAMENT_MAP_NAME;"));
-check('map helper labels the Duels arena and leaves friendly nameless (round 2: duels / tower duels / fused share Duels Arena; friendly still picks its map at launch)', game.includes("if (id === 'duels' || id === 'tower_duels' || id === 'fused') return 'Duels Arena';") && game.includes("if (id === 'custom_clash') return null;"));
+check('map helper uses the HUD named arenas (Mirror / Vault / Foundry / Knock / Damage Filler / Prop Hunt)', game.includes("if (id === 'mirror') return 'Mirror Arena';") && game.includes("if (id === 'brick_vault') return 'Vault Siege Arena';") && game.includes("return 'Three-Lane Foundry';") && game.includes("if (id === 'knock_donate') return 'Knock n Donate Arena';") && game.includes("if (id === 'damage_filler') return 'Damage Filler Arena';") && game.includes("if (id === 'prop_hunt') return 'Prop Hunt — Crown Collapse';"));
+check('map helper uses the tournament Champion Ring', game.includes("if (id === 'tournament') return TOURNAMENT_MAP_NAME;"));
+check('map helper labels the Duels arena and leaves friendly nameless (friendly still picks its map at launch)', game.includes("if (id === 'duels') return 'Duels Arena';") && game.includes("if (id === 'custom_clash') return null;"));
 
 // Extract appEventMapName and run it for real with stubbed theme/map fns.
 function extractFunction(src, name) {
@@ -52,17 +52,16 @@ const mapFnSrc = extractFunction(game, 'appEventMapName');
 check('appEventMapName source extracts cleanly', !!mapFnSrc);
 let appEventMapName = null;
 if (mapFnSrc) {
-    const factory = new Function('getActiveShowdownTheme', 'getConstructionMapName', 'TOURNAMENT_MAP_NAME', `${mapFnSrc}; return appEventMapName;`);
-    appEventMapName = factory(() => ({ name: 'Verdant Delta' }), () => 'S-Curve Depot', "Champion's Ring");
+    const factory = new Function('getActiveShowdownTheme', 'TOURNAMENT_MAP_NAME', `${mapFnSrc}; return appEventMapName;`);
+    appEventMapName = factory(() => ({ name: 'Verdant Delta' }), "Champion's Ring");
 }
 if (appEventMapName) {
-    check('map: showdown modes use the active showdown theme name', appEventMapName('solo') === 'Verdant Delta' && appEventMapName('duo') === 'Verdant Delta' && appEventMapName('super_showdown') === 'Verdant Delta' && appEventMapName('power_play_showdown') === 'Verdant Delta' && appEventMapName('christmas_showdown') === 'Verdant Delta');
+    check('map: showdown modes use the active showdown theme name', appEventMapName('solo') === 'Verdant Delta' && appEventMapName('duo') === 'Verdant Delta' && appEventMapName('christmas_showdown') === 'Verdant Delta');
     check('map: trio uses Trio Showdown Arena, not the theme', appEventMapName('trio') === 'Trio Showdown Arena');
-    check('map: construction uses the construction map name', appEventMapName('construction') === 'S-Curve Depot');
-    check('map: arena forge variants share Three-Lane Foundry', appEventMapName('arena_forge') === 'Three-Lane Foundry' && appEventMapName('arena_forge_overclocked') === 'Three-Lane Foundry' && appEventMapName('arena_forge_minion_surge') === 'Three-Lane Foundry' && appEventMapName('arena_forge_hyper') === 'Three-Lane Foundry');
-    check('map: named arenas match the HUD labels', appEventMapName('mirror') === 'Mirror Arena' && appEventMapName('damage_filler') === 'Damage Filler Arena' && appEventMapName('brick_vault') === 'Vault Siege Arena' && appEventMapName('marked_mayhem') === 'Target Circuit' && appEventMapName('tug_zone') === 'Open Tug Field' && appEventMapName('knock_donate') === 'Knock n Donate Arena' && appEventMapName('prop_hunt') === 'Prop Hunt — Crown Collapse');
+    check('map: arena forge uses Three-Lane Foundry', appEventMapName('arena_forge') === 'Three-Lane Foundry');
+    check('map: named arenas match the HUD labels', appEventMapName('mirror') === 'Mirror Arena' && appEventMapName('damage_filler') === 'Damage Filler Arena' && appEventMapName('brick_vault') === 'Vault Siege Arena' && appEventMapName('knock_donate') === 'Knock n Donate Arena' && appEventMapName('prop_hunt') === 'Prop Hunt — Crown Collapse');
     check('map: tournament uses Champion\'s Ring', appEventMapName('tournament') === "Champion's Ring");
-    check('map: duels / tower duels / fused share Duels Arena, friendly still has no map line', appEventMapName('duels') === 'Duels Arena' && appEventMapName('tower_duels') === 'Duels Arena' && appEventMapName('fused') === 'Duels Arena' && appEventMapName('custom_clash') === null);
+    check('map: duels is Duels Arena, friendly still has no map line', appEventMapName('duels') === 'Duels Arena' && appEventMapName('custom_clash') === null);
     check('map: boss + tower modes fall back to the showdown theme (HUD default)', appEventMapName('orbo_boss') === 'Verdant Delta' && appEventMapName('brawe_ball') === 'Verdant Delta' && appEventMapName('chaos_crown') === 'Verdant Delta' && appEventMapName('tower_defense') === 'Verdant Delta');
     // Every id the Events view can actually render gets a string or an
     // explicit null — never undefined, never a crash.
@@ -72,9 +71,9 @@ if (appEventMapName) {
     };
     const popular = extractList('HOME_POPULAR_MODE_IDS');
     const pool = extractList('HOME_DAILY_ROTATION_POOL');
-    const extra = ['beast_boss_god_mode', 'megastein_boss', 'christmas_showdown', 'slop_sushi_plus'];
+    const extra = ['christmas_showdown'];
     const allIds = [...new Set([...(popular || []), ...(pool || []), ...extra])];
-    check('map: every popular + rotation id resolves without throwing', allIds.length > 20 && allIds.every((id) => { try { const v = appEventMapName(id); return v === null || (typeof v === 'string' && v.length > 0); } catch (_) { return false; } }));
+    check('map: every popular + rotation id resolves without throwing', allIds.length > 10 && allIds.every((id) => { try { const v = appEventMapName(id); return v === null || (typeof v === 'string' && v.length > 0); } catch (_) { return false; } }));
     check('map: every popular slot shows a real map name except friendly (no single map)', (popular || []).every((id) => (id === 'custom_clash' ? appEventMapName(id) === null : typeof appEventMapName(id) === 'string')));
 }
 

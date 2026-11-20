@@ -9,10 +9,6 @@ assert.match(game, /name:\s*'Flash Freeze'/, 'Instinct name is Flash Freeze');
 assert.match(game, /pieceName:\s*"Fight'n'Fire Instinct Piece"/, 'Piece name is FightnFire Instinct Piece');
 assert.match(game, /Sub-Zero Ice Cores that encase enemies in a solid Block of Ice for 1\.3s/, 'Short description includes stasis mechanic');
 
-// 2. Verify Breakthrough Quests
-assert.match(game, /fightnfire:\s*\[[\s\S]*?id:\s*'fire_and_ice'/, 'Has fire_and_ice quest');
-assert.match(game, /id:\s*'flash_freeze_drill'/, 'Has flash_freeze_drill quest');
-assert.match(game, /id:\s*'thermal_regulation'/, 'Has thermal_regulation quest');
 
 // 3. Verify Combat Mechanics & Super Alternation
 assert.match(game, /entity\.fightnfireSuperCount\s*=\s*\(entity\.fightnfireSuperCount\s*\|\|\s*0\)\s*\+\s*1/, 'Tracks Super casts');

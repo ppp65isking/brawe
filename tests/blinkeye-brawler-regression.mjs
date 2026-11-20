@@ -94,7 +94,8 @@ test('BlinkEye Super remains controllable and detonatable on desktop and mobile'
 });
 
 test('BlinkEye main attack supports Slop Sushi range buffs and 2.0x bounceMultiplier indicator', () => {
-  assert.match(gameCode, /const rangeMult = 1 \+ \(isSlopSushiMode \? getEntitySlopEffectTotal\(fromEntity, 'sushiAttackRangePct'\) : 0\);/);
+  // Slop Sushi is deleted: the range buff is a constant 0, so BlinkEye's main range is fixed at 650.
+  assert.match(gameCode, /const rangeMult = 1 \+ \(0\);/);
   assert.match(gameCode, /traceRicochetPath\(player\.x, player\.y, ang, maxRange, 2, 16, 2\.0\)/);
   assert.match(gameCode, /const bounceRangeMultiplier = 1 \+ b\.blinkeyeBounceCount;/);
 });
