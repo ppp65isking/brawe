@@ -50,8 +50,8 @@ function sliceBetween(startMarker, endMarker) {
 check('fighters: strip is a horizontal paging scroller (fixes round: 4 small per column, swipe left/right)',
     game.includes("#appFightersStrip{display:flex;flex-direction:row;gap:10px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;padding:4px 2px 12px;background:transparent;border-radius:0;flex:1 1 auto;min-height:0;max-height:520px}"));
 check('fighters: strip pages are one column of 4 (118px portrait, 96px landscape)',
-    game.includes('#appFightersStrip .app-fighters-page{flex:0 0 auto;width:118px;display:grid;grid-template-rows:repeat(4,minmax(0,1fr));gap:8px;scroll-snap-align:start}') &&
-    game.includes("@media (orientation:landscape){#appFightersStrip .app-fighters-page{width:96px}}"));
+    game.includes('#appFightersStrip .app-fighters-page{flex:1 0 118px;max-width:260px;display:grid;grid-template-rows:repeat(4,minmax(0,1fr));gap:8px;scroll-snap-align:start}') &&
+    game.includes("@media (orientation:landscape){#appFightersStrip .app-fighters-page{flex-basis:96px;max-width:220px}}"));
 check('fighters: view is the one scroller (touch-action pan-y, momentum kept)',
     game.includes('#appHomeFightersView{touch-action:pan-y}') &&
     game.includes('#appHomeFightersView{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}'));

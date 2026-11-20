@@ -39,8 +39,8 @@ function sliceBetween(startMarker, endMarker) {
 // --- Fighters: wide landscape cards, kit strip, upgrade badge ---
 check('v2 fighters: grid is wide landscape cards (280px, 300px landscape)',
     game.includes("#appFightersStrip{display:flex;flex-direction:row;gap:10px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x proximity") &&
-    game.includes("#appFightersStrip .app-fighters-page{flex:0 0 auto;width:118px;display:grid;grid-template-rows:repeat(4,minmax(0,1fr));gap:8px;scroll-snap-align:start}") &&
-    game.includes("@media (orientation:landscape){#appFightersStrip .app-fighters-page{width:96px}}"));
+    game.includes("#appFightersStrip .app-fighters-page{flex:1 0 118px;max-width:260px;display:grid;grid-template-rows:repeat(4,minmax(0,1fr));gap:8px;scroll-snap-align:start}") &&
+    game.includes("@media (orientation:landscape){#appFightersStrip .app-fighters-page{flex-basis:96px;max-width:220px}}"));
 check('v2 fighters: card is a small card with a dark border + hard shadow (fixes round)',
     !game.includes('aspect-ratio:16/10') && game.includes('background:var(--card-color,#0b69bd)') &&
     game.includes('border:2px solid #0a1428;box-shadow:0 3px 0 rgba(0,0,0,.45);'));

@@ -811,8 +811,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         #appHomeFightersView{touch-action:pan-y}
         #appHomeFightersView{touch-action:pan-y}
         #appFightersStrip{display:flex;flex-direction:row;gap:10px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;padding:4px 2px 12px;background:transparent;border-radius:0;flex:1 1 auto;min-height:0;max-height:520px}
-        #appFightersStrip .app-fighters-page{flex:0 0 auto;width:118px;display:grid;grid-template-rows:repeat(4,minmax(0,1fr));gap:8px;scroll-snap-align:start}
-        @media (orientation:landscape){#appFightersStrip .app-fighters-page{width:96px}}
+        #appFightersStrip .app-fighters-page{flex:1 0 118px;max-width:260px;display:grid;grid-template-rows:repeat(4,minmax(0,1fr));gap:8px;scroll-snap-align:start}
+        @media (orientation:landscape){#appFightersStrip .app-fighters-page{flex-basis:96px;max-width:220px}}
         .app-fighter-card{position:relative;width:auto;padding:0;border-radius:10px;overflow:hidden;text-align:left;border:2px solid #0a1428;box-shadow:0 3px 0 rgba(0,0,0,.45);background:var(--card-color,#0b69bd)}
         .app-fighter-card .app-fighter-portrait{position:absolute;inset:0;width:100%;height:100%;margin:0;border:0;border-radius:0;display:grid;place-items:center}
         .app-fighter-card .app-fighter-portrait svg{width:82%;height:82%}
@@ -1068,13 +1068,34 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
            landscape too — the portrait-only query above is exactly
            what the landscape playtest never saw. Same column toolbar,
            search hidden until the icon opens it. */
-        @media (orientation:landscape) and (max-width:900px){
+        @media (orientation:landscape){
         .app-fighters-toolbar{flex-direction:column;align-items:stretch;gap:6px;padding:2px 2px 8px}
         .app-fighters-topbar{display:flex;align-items:center;gap:8px;flex:none}
         #appHomeFightersView:not(.app-fighters-search-open) .app-fighters-search-wrap{display:none}
         #appHomeFightersView.app-fighters-search-open .app-fighters-search-wrap{display:flex;flex:none;width:100%}
         .app-fighters-filter-row{display:flex;align-items:center;gap:8px;flex:none}
         }
+        /* ---- Arena Forge fixes round 2 (2026-11-20): the icon top bar
+           + collapsed search are the default at EVERY width in app mode,
+           not just inside the portrait/landscape queries above. A
+           landscape phone is ~915-1140 CSS px wide, so the old
+           (max-width:900px) landscape query never matched it: the
+           filter/sort/favorites buttons were invisible and the search
+           bar sat open full-width across the top (Anthony's screenshot).
+           These later rules win over the display:none base above. ---- */
+        .app-fighters-toolbar{flex-direction:column;align-items:stretch;gap:6px;padding:2px 2px 8px}
+        .app-fighters-topbar{display:flex;align-items:center;gap:8px;flex:none}
+        #appHomeFightersView:not(.app-fighters-search-open) .app-fighters-search-wrap{display:none}
+        #appHomeFightersView.app-fighters-search-open .app-fighters-search-wrap{display:flex;flex:none;width:100%}
+        .app-fighters-filter-row{display:flex;align-items:center;gap:8px;flex:none}
+        /* Clear-filters escape hatch (round 2): when any filter or the
+           favorites-only toggle is on, a chip sits next to the count so
+           a filtered roster never looks stuck with no way back. */
+        .app-fighters-clear-chip{flex:none;padding:7px 10px;border-radius:999px;border:1px solid rgba(255,209,102,.6);background:rgba(255,159,28,.22);color:#ffd166;font-size:11px;font-weight:1000;cursor:pointer;white-space:nowrap}
+        .app-fighters-clear-chip[hidden]{display:none}
+        /* Filter sheet close button (round 2): a visible X in the header,
+           next to DONE / CLEAR ALL at the bottom and tap-outside. */
+        .app-filter-close{flex:none;width:36px;height:36px;display:grid;place-items:center;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.12);color:#fff;font-size:16px;font-weight:1000;line-height:1;cursor:pointer}
         `;
         document.head.appendChild(styleSheet);
     function getScaledStats(brawlerId, levelOverride) {
@@ -6625,6 +6646,15 @@ const bolznstienPendingStrikes = [];
             if (typeof storedFilters.favoritesOnly === 'boolean') appFightersState.favoritesOnly = storedFilters.favoritesOnly;
         }
     } catch (_) {}
+    // Fixes round 2 (2026-11-20): one reset for every "clear
+    // filters" path (sheet CLEAR ALL + toolbar chip) so they can never
+    // drift apart — rarity/power/owned/sort/favorites all back to
+    // default, persisted, strip re-rendered, buttons re-synced.
+    function resetAppFightersFilters() {
+        appFightersState.rarity = 'all'; appFightersState.minPower = 0; appFightersState.owned = 'all'; appFightersState.sort = 'favorites'; appFightersState.favoritesOnly = false;
+        try { localStorage.setItem(APP_FIGHTERS_SORT_KEY, 'favorites'); } catch (_) {}
+        saveAppFightersFilters(); renderAppFightersStrip(); syncAppFightersFilterBtn(); syncAppFightersFavBtn(); syncAppFightersClearChip();
+    }
     function saveAppFightersFilters() {
         try { localStorage.setItem(APP_FIGHTERS_FILTERS_KEY, JSON.stringify({ rarity: appFightersState.rarity || 'all', minPower: Number(appFightersState.minPower) || 0, owned: appFightersState.owned || 'all', favoritesOnly: !!appFightersState.favoritesOnly })); } catch (_) {}
     }
@@ -6720,6 +6750,7 @@ const bolznstienPendingStrikes = [];
                 </div>
                 <div class="app-fighters-filter-row">
                 <span id="appFightersCount" class="app-fighters-count"></span>
+                <button type="button" id="appFightersClearFilters" class="app-fighters-clear-chip" aria-label="Clear all filters" hidden>✕ Clear filters</button>
                 </div>
               </div>
               <div id="appFightersStrip" class="app-fighters-grid"></div>`;
@@ -6766,9 +6797,16 @@ const bolznstienPendingStrikes = [];
                 appBuzz(10);
                 appFightersState.favoritesOnly = !appFightersState.favoritesOnly;
                 saveAppFightersFilters();
-                syncAppFightersFavBtn();
                 syncAppFightersFilterBtn();
+                syncAppFightersFavBtn();
+                syncAppFightersClearChip();
                 renderAppFightersStrip();
+            });
+            // Fixes round 2 (2026-11-20): the clear-filters chip resets
+            // without opening the sheet — the way out of a filtered view.
+            view.querySelector('#appFightersClearFilters')?.addEventListener('click', () => {
+                appBuzz(10);
+                resetAppFightersFilters();
             });
             view.querySelector('#appFightersStrip')?.addEventListener('click', (event) => {
                 // Round 2: the ★ on a card favorites it — it must not
@@ -6789,6 +6827,7 @@ const bolznstienPendingStrikes = [];
         renderAppFightersStrip();
         syncAppFightersFilterBtn();
         syncAppFightersFavBtn();
+        syncAppFightersClearChip();
     }
     // Mobile UI (2026-11-20): the filter icon lights up while any
     // filter-sheet filter is set, so a filtered roster never looks
@@ -6800,6 +6839,15 @@ const bolznstienPendingStrikes = [];
         const active = (appFightersState.rarity && appFightersState.rarity !== 'all') || (Number(appFightersState.minPower) || 0) > 0 || (appFightersState.owned && appFightersState.owned !== 'all') || !!appFightersState.favoritesOnly;
         btn.classList.toggle('is-active', !!active);
         btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    }
+    // Fixes round 2 (2026-11-20): the clear-filters chip shows
+    // whenever any filter is on (rarity / power / owned / sort /
+    // favorites-only) — the escape hatch for a filtered roster.
+    function syncAppFightersClearChip() {
+        const chip = document.getElementById('appFightersClearFilters');
+        if (!chip) return;
+        const active = (appFightersState.rarity && appFightersState.rarity !== 'all') || (Number(appFightersState.minPower) || 0) > 0 || (appFightersState.owned && appFightersState.owned !== 'all') || !!appFightersState.favoritesOnly || (appFightersState.sort && appFightersState.sort !== 'favorites');
+        chip.hidden = !active;
     }
     // Fixes round (2026-11-20): the ★ favorites toggle lights up
     // while the favorites-only filter is on.
@@ -7207,7 +7255,7 @@ const bolznstienPendingStrikes = [];
         overlay.innerHTML = `
           <div class="app-kit-sheet" role="dialog" aria-label="Filter fighters">
             <div class="app-kit-sheet-label">FIGHTERS · FILTER</div>
-            <h3>Filter fighters</h3>
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;"><h3>Filter fighters</h3><button type="button" class="app-filter-close" data-app-filter-close="1" aria-label="Close filters">✕</button></div>
             <label class="app-filter-field"><small>RARITY</small><select id="appFilterRarity">${['all', ...APP_FIGHTER_RARITIES].map((r) => opt(r, r === 'all' ? 'All rarities' : r, rarity)).join('')}</select></label>
             <label class="app-filter-field"><small>POWER</small><select id="appFilterPower">${APP_FIGHTER_POWER_BANDS.map((p) => opt(p, p === 0 ? 'All powers' : p === 12 ? 'Power 12 (max)' : `Power ${p}+`, minPower)).join('')}</select></label>
             <label class="app-filter-field"><small>OWNED</small><select id="appFilterOwned">${[['all', 'All fighters'], ['owned', 'Owned'], ['locked', 'Locked']].map(([v, l]) => opt(v, l, owned)).join('')}</select></label>
@@ -7218,11 +7266,9 @@ const bolznstienPendingStrikes = [];
             </div>
           </div>`;
         overlay.addEventListener('click', (event) => {
-            if (event.target === overlay || event.target.closest('[data-app-filter-done]')) { closeAppFightersFilterSheet(); return; }
+            if (event.target === overlay || event.target.closest('[data-app-filter-done]') || event.target.closest('[data-app-filter-close]')) { closeAppFightersFilterSheet(); return; }
             if (event.target.closest('[data-app-filter-clear]')) {
-                appFightersState.rarity = 'all'; appFightersState.minPower = 0; appFightersState.owned = 'all'; appFightersState.sort = 'favorites'; appFightersState.favoritesOnly = false;
-                try { localStorage.setItem(APP_FIGHTERS_SORT_KEY, 'favorites'); } catch (_) {}
-                saveAppFightersFilters(); renderAppFightersStrip(); syncAppFightersFilterBtn(); syncAppFightersFavBtn(); closeAppFightersFilterSheet(); return;
+                resetAppFightersFilters(); closeAppFightersFilterSheet(); return;
             }
         });
         overlay.addEventListener('change', (event) => {
@@ -7234,12 +7280,21 @@ const bolznstienPendingStrikes = [];
             else if (t.id === 'appFilterSort' && APP_FIGHTERS_SORTS.includes(t.value)) { appFightersState.sort = t.value; try { localStorage.setItem(APP_FIGHTERS_SORT_KEY, t.value); } catch (_) {} }
             else return;
             appBuzz(10);
-            saveAppFightersFilters(); renderAppFightersStrip(); syncAppFightersFilterBtn();
+            saveAppFightersFilters(); renderAppFightersStrip(); syncAppFightersFilterBtn(); syncAppFightersClearChip();
         });
         document.body.appendChild(overlay);
+        document.addEventListener('keydown', appFightersFilterSheetKeyHandler);
         appBuzz(10);
     }
+    // Fixes round 2 (2026-11-20): Escape dismisses the filter
+    // sheet, like the quest board / soul summoner sheets. The listener
+    // is added when the sheet opens and removed when it closes, so it
+    // never fires twice and never leaks.
+    function appFightersFilterSheetKeyHandler(event) {
+        if (event.key === 'Escape') { event.stopPropagation(); closeAppFightersFilterSheet(); }
+    }
     function closeAppFightersFilterSheet() {
+        try { document.removeEventListener('keydown', appFightersFilterSheetKeyHandler); } catch (_) {}
         try { document.getElementById('appFightersFilterOverlay')?.remove(); } catch (_) {}
     }
     function appFightersPlay(id) {
@@ -10558,7 +10613,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
               seed=(seed*1664525+1013904223)>>>0;
               const target=base.targets[seed%base.targets.length];
               return { id:`${prefix}_${index}_${base.kind}`, kind:base.kind, title:base.title, desc:`${base.desc} Goal: ${target.toLocaleString()}.`, target,
-                  rewards: weekly ? { coins:500+index*150, souls:35+index*10, questXP:35 } : { coins:150+index*40, questXP:20 } };
+                  rewards: weekly ? { coins:500+index*150, souls:35+index*10, questXP:35, passXP:100 } : { coins:150+index*40, questXP:20, passXP:25 } };
           });
           return buildQuestBucket(defs);
       }
@@ -10687,6 +10742,16 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
               playerData.questBoard.weeklyKey = nowWeek;
               playerData.questBoard.weekly = buildRandomContractBucket(WEEKLY_CONTRACT_POOL, 4, nowWeek, 'weekly', true);
           }
+          // Fixes round 2 (2026-11-20): contracts built before pass XP
+          // existed carry no passXP — backfill today's / this week's
+          // buckets in place (progress + claims untouched).
+          for (const [bucketName, amount] of [['daily', 25], ['weekly', 100]]) {
+              const bucket = playerData.questBoard[bucketName];
+              if (!bucket) continue;
+              for (const q of Object.values(bucket)) {
+                  if (q && q.rewards && !Number.isFinite(q.rewards.passXP)) q.rewards.passXP = amount;
+              }
+          }
       }
       function getQuestProgressCount(bucket) {
           if (!bucket) return 0;
@@ -10803,6 +10868,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           if (rewards.presents) grantReward({ type: 'present', amount: rewards.presents });
           if (rewards.corePieces) grantReward({ type: 'corePieces', amount: rewards.corePieces });
           if (rewards.questXP) grantReward({ type: 'questXP', amount: rewards.questXP });
+          if (rewards.passXP) grantReward({ type: 'xp', amount: rewards.passXP });
           if (rewards.randomPieces) grantReward({ type: 'randomPiece', amount: rewards.randomPieces });
           if (rewards.brawlerUnlock && grantReward({ type: 'brawlerUnlock', id: rewards.brawlerUnlock })) {
               spawnFloatingText(innerWidth / 2, 120, `${brawlerData[rewards.brawlerUnlock]?.name || rewards.brawlerUnlock} UNLOCKED!`, '#ffd166');
@@ -10817,7 +10883,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           return true;
       }
       function questRewardText(rewards = {}) {
-          const labels = {coins:['Coin','Coins'],gems:['Gem','Gems'],souls:['Soul','Souls'],tappers:['Tapper','Tappers'],superTappers:['Super Tapper','Super Tappers'],hyperTappers:['Surge Tapper','Surge Tappers'],spookyBoxes:['Spooky Box','Spooky Boxes'],presents:['Present','Presents'],corePieces:['Core Piece','Core Pieces'],questXP:['Contract XP','Contract XP']};
+          const labels = {coins:['Coin','Coins'],gems:['Gem','Gems'],souls:['Soul','Souls'],tappers:['Tapper','Tappers'],superTappers:['Super Tapper','Super Tappers'],hyperTappers:['Surge Tapper','Surge Tappers'],spookyBoxes:['Spooky Box','Spooky Boxes'],presents:['Present','Presents'],corePieces:['Core Piece','Core Pieces'],questXP:['Contract XP','Contract XP'],passXP:['Pass XP','Pass XP']};
           const parts = [];
           for (const [key, names] of Object.entries(labels)) {
               const amount = Number(rewards?.[key]);
@@ -10946,6 +11012,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
                   if (quest.rewards?.presents) rewardParts.push(`${quest.rewards.presents} Present${quest.rewards.presents > 1 ? 's' : ''}`);
                   if (quest.rewards?.corePieces) rewardParts.push(`${quest.rewards.corePieces} Core Pieces`);
                   if (quest.rewards?.questXP) rewardParts.push(`${quest.rewards.questXP} Contract XP`);
+                  if (quest.rewards?.passXP) rewardParts.push(quest.rewards.passXP + ' Pass XP');
                   if (quest.rewards?.brawlerUnlock) rewardParts.push(`Unlock ${brawlerData[quest.rewards.brawlerUnlock]?.name || quest.rewards.brawlerUnlock}`);
                   if (quest.rewards?.skin) rewardParts.push(`Unlock ${skinsDatabase[quest.rewards.skin]?.name || 'Exclusive Skin'}`);
                   const reward = rewardParts.join(' / ') || 'None';
@@ -11049,7 +11116,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
                           <div style="font-size:11px;color:${rewardClaimed ? '#58e4b6' : (done ? '#ffb15a' : (unlocked ? '#8fd8ff' : '#7f97b2'))};font-weight:800;">${rewardClaimed ? 'Claimed' : (done ? 'Claim Ready' : (unlocked ? 'In Progress' : 'Locked'))}</div>
                       </div>
                       <div style="font-size:11px;color:#95b8d4;margin:4px 0 6px 0;line-height:1.3;">${quest.desc}</div>
-                      <div style="font-size:11px;color:#ffda8f;margin-bottom:6px;">Quest Reward: ${questRewardText(questState.rewards || quest.rewards)}</div>
+                      <div style="font-size:11px;color:#ffda8f;margin-bottom:6px;">Quest Reward: ${questRewardText(Object.assign({}, questState.rewards || quest.rewards, { passXP: questState.xpReward || quest.xpReward || 100 }))}</div>
                       <div style="height:6px;border-radius:999px;overflow:hidden;background:#0d1c2c;">
                           <div style="height:100%;width:${percent}%;background:${rewardClaimed ? '#58e4b6' : (done ? '#ffb15a' : '#5ec4ff')};"></div>
                       </div>

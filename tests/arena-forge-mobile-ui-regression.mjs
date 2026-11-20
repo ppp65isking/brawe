@@ -42,8 +42,8 @@ function sliceBetween(startMarker, endMarker) {
 // columns left-to-right, swipe to page — same in portrait AND landscape.
 check('grid: strip is a horizontal paging scroller with 4-per-column pages',
     game.includes('#appFightersStrip{display:flex;flex-direction:row;gap:10px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x proximity') &&
-    game.includes('#appFightersStrip .app-fighters-page{flex:0 0 auto;width:118px;display:grid;grid-template-rows:repeat(4,minmax(0,1fr));gap:8px;scroll-snap-align:start}') &&
-    game.includes("@media (orientation:landscape){#appFightersStrip .app-fighters-page{width:96px}}"));
+    game.includes('#appFightersStrip .app-fighters-page{flex:1 0 118px;max-width:260px;display:grid;grid-template-rows:repeat(4,minmax(0,1fr));gap:8px;scroll-snap-align:start}') &&
+    game.includes("@media (orientation:landscape){#appFightersStrip .app-fighters-page{flex-basis:96px;max-width:220px}}"));
 check('grid: old 280px/300px grid and 16/10 + 3/4 cards are gone',
     !game.includes('#appFightersStrip{display:grid') && !game.includes('repeat(auto-fill,minmax(280px,1fr))') &&
     !game.includes('aspect-ratio:16/10') && !game.includes('aspect-ratio:3/4'));
