@@ -1,11 +1,11 @@
 // Delete-disabled-brawlers regression: the eight formerly disabled fighters are
 // fully gone from game.js, the module rosters, the 2.5D roster, the sushi cards
-// and every test fixture. The roster is 104 ids with an empty disabled set, so
+// and every test fixture. The roster is 105 ids with an empty disabled set, so
 // selectable == total.
 //
 // The removed ids are assembled from fragments at runtime (never written as
 // literals) so this file itself passes the zero-reference scan below.
-// Roster note: 104 = 112 on main after Gravy merged, minus the 8 deleted here.
+// Roster note: 105 = 113 on main after Gravy + Pitch merged, minus the 8 deleted here.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -88,8 +88,8 @@ for (const file of fs.readdirSync(testDir).filter(f => f.endsWith('.mjs'))) {
 
 // --- 4. Roster counts ---
 const all = [...game.match(/const allBrawlers\s*=\s*\[([\s\S]*?)\];/)[1].matchAll(/'([^']+)'/g)].map(m => m[1]);
-// 104 = 112 on main after Gravy merged, minus the 8 deleted here.
-check('roster is 104 ids', all.length === 104);
+// 105 = 113 on main after Gravy + Pitch merged, minus the 8 deleted here.
+check('roster is 105 ids', all.length === 105);
 check('roster ids unique', new Set(all).size === all.length);
 const disabledSrc = game.match(/const disabledBrawlers\s*=\s*new Set\(\[([\s\S]*?)\]\);/);
 check('disabled set exists and is empty', !!disabledSrc && disabledSrc[1].trim() === '');

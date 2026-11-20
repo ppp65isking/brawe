@@ -76,7 +76,7 @@ check('roster includes snipa (104 ids with Gravy)', game.includes("'pandy', 'sni
 check('selectable is 104 (104 ids, none disabled, snipa not disabled)', (() => {
   const all = [...game.match(/const allBrawlers\s*=\s*\[([\s\S]*?)\];/)[1].matchAll(/'([^']+)'/g)].map(m => m[1]);
   const disabled = [];
-  return all.length === 104 && all.filter(id => !disabled.includes(id)).length === 104;
+  return all.length === 105 && all.filter(id => !disabled.includes(id)).length === 105;
 })());
 check('rarity Epic (170 souls)', game.includes("snipa: 'Epic',") && game.includes('Epic: 170'));
 check('role Marksman', game.includes("snipa:'Marksman',"));

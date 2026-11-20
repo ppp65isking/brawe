@@ -86,7 +86,7 @@ check('TOOL button icon is a swappable slot', game.includes('function getMobileT
 check('TOOL button carries the circular cooldown ring', game.includes("gadgetTouchBtn.style.setProperty('--mobile-charge', `${gadgetFrac * 360}deg`);"));
 check('TOOL ring fraction comes from the real cooldown', game.includes('getPlayerGadgetCooldownUntil(selectedGadget, performance.now())') && game.includes('getGadgetCooldownMsForBrawler(selectedBrawler, selectedGadget)'));
 check('TOOL ring clamps 0..1 and is full when ready', game.includes('clamp(1 - (gadgetReadyAt - performance.now()) / gadgetTotalMs, 0, 1)'));
-check('per-gadget icons are built (round 2 HUD: map covers all 208 gadgets)', game.includes('const MOBILE_GADGET_ICONS = {') && (game.match(/^        '[a-z0-9_]+:g[12]': '/gm) || []).length === 208);
+check('per-gadget icons are built (round 2 HUD: map covers all 210 gadgets)', game.includes('const MOBILE_GADGET_ICONS = {') && (game.match(/^        '[a-z0-9_]+:g[12]': '/gm) || []).length === 210);
 
 // --- Thrower telegraphs: every thrower has one; touch matches the throw ---
 check('aim helper exists and uses the fire vector on touch', game.includes('function getPlayerAimWorld(){') && game.includes('player.x + (mobileInput.aimX || 0) * 1200'));

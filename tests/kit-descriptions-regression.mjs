@@ -56,13 +56,13 @@ if (km) {
     if (start !== -1 && end !== -1) {
         const block = game.slice(start, end);
         const fields = [...block.matchAll(/\b(g1|g2|sp1|sp2)\s*:\s*'((?:[^'\\]|\\.)*)'/g)];
-        check('brawlerData has exactly 416 kit slots (104 brawlers x 4)', fields.length === 416);
+        check('brawlerData has exactly 420 kit slots (105 brawlers x 4)', fields.length === 420);
         let withDesc = 0, bare = 0;
         for (const [, , value] of fields) {
             if (kitSplit(value).desc) withDesc++;
             else bare++;
         }
-        check('all 416 kit slots now carry a description', withDesc === 416);
+        check('all 420 kit slots now carry a description', withDesc === 420);
         check('zero bare kit slots remain in brawlerData', bare === 0);
     }
 }
