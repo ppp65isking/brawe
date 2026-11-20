@@ -130,6 +130,7 @@ async function startLegacyRuntime() {
     './modules/audio/freezeon-voicelines.js',
     './modules/audio/driller-voicelines.js',
     './modules/audio/gravy-voicelines.js',
+    './modules/audio/pitch-voicelines.js',
     './modules/core/registry.js',
     './modules/brawlers/common/roster.js',
     './modules/brawlers/common/outlit.js',

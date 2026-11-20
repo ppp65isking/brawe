@@ -1308,6 +1308,11 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             const hpScale = getLevelHpScale(level);
             return { hp: Math.round(5200 * hpScale), dmg: Math.round(650 * scale), speed: 270 };
         }
+        if (brawlerId === 'pitch') {
+            const scale = 0.55 + (level - 1) * 0.045;
+            const hpScale = getLevelHpScale(level);
+            return { hp: Math.round(5200 * hpScale), dmg: Math.round(700 * scale), speed: 270 };
+        }
         if (brawlerId === 'looma') {
             const scale = 0.55 + (level - 1) * 0.045;
             const hpScale = getLevelHpScale(level);
@@ -1917,6 +1922,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             if (selectedBrawler === 'driller') { try { window.BraweDrillerVoice?.play('kill'); } catch (e) {} }
             // Gravy voice: player kill line.
             if (selectedBrawler === 'gravy') { try { window.BraweGravyVoice?.play('kill'); } catch (e) {} }
+            // Pitch voice: player kill line.
+            if (selectedBrawler === 'pitch') { try { window.BrawePitchVoice?.play('kill'); } catch (e) {} }
         }
         if (target && target.hp <= 0 && hasTrinket(owner, 'fresh_magazine')) {
             if (now - (target.trinketFreshMagazineKillAt || 0) > 1000) {
@@ -4411,6 +4418,8 @@ function updateGadgetInfo() {
         'driller:g2': '⛏',
         'gravy:g1': '🫕',
         'gravy:g2': '🥄',
+        'pitch:g1': '✳️',
+        'pitch:g2': '➕',
   };
   function getMobileToolButtonIcon(brawlerId, gadgetSlot) {
       // selectedBrawler / selectedGadget are let bindings declared later
@@ -5916,6 +5925,7 @@ const bolznstienPendingStrikes = [];
             freezeon: 1600,
             driller: 1600,
             gravy: 1600,
+            pitch: 1600,
             carmela_fudge: 1400,
             oil_maker: 90,
             magnatar: 1450,
@@ -5989,6 +5999,7 @@ const bolznstienPendingStrikes = [];
             freezeon: 300,
             driller: 300,
             gravy: 300,
+            pitch: 300,
             carmela_fudge: 180,
             oil_maker: 112,
             magnatar: 200,
@@ -7817,7 +7828,7 @@ const bolznstienPendingStrikes = [];
     // end (modules expose no stop); every later play() is silenced
     // immediately, no reload needed.
     const APP_MUTED_KEY = 'arenaForgeMutedV1';
-    const APP_AUDIO_MODULE_NAMES = ['BraweOutlitVoice', 'BraweFuserVoice', 'BraweVoodoyouVoice', 'BrawePandyVoice', 'BraweSnipaVoice', 'BraweBookwormVoice', 'BraweFreezeonVoice', 'BraweDrillerVoice', 'BraweGravyVoice', 'BraweHyperchargeSfx'];
+    const APP_AUDIO_MODULE_NAMES = ['BraweOutlitVoice', 'BraweFuserVoice', 'BraweVoodoyouVoice', 'BrawePandyVoice', 'BraweSnipaVoice', 'BraweBookwormVoice', 'BraweFreezeonVoice', 'BraweDrillerVoice', 'BraweGravyVoice', 'BrawePitchVoice', 'BraweHyperchargeSfx'];
     function appSoundMuted() {
         try { return localStorage.getItem(APP_MUTED_KEY) === '1'; } catch (_) { return false; }
     }
@@ -8400,7 +8411,7 @@ const bolznstienPendingStrikes = [];
         'boom_arang', 'teether', 'fuel', 'xray', 'angel', 'demon', 'warrior', 'relay',
         'upiedown', 'chickpig', 'jetpack', 'snapper', 'rocketeer',
         'carmela_fudge', 'peter_pickle', 'unstable', 'homer', 'orbo', 'predator', 'fastpass', 'freestyle', 'portalo', 'ghoul', 'jacktrade', 'darkener', 'awakenator', 'ice_cream', 'kage', 'drainbow', 'draflygon', 'axeywaxy', 'trampaheal', 'mageny', 'ramage', 'upgradart', 'cinderion', 'cursed', 'king', 'anti_royal', 'sir_cheeseburger', 'weefee', 'blinkeye', 'bolznstien', 'magnatar', 'oil_maker', 'rager', 'badbat', 'looma',
-        'feathers', 'spikey', 'electrostien', 'mallow', 'nightshade', 'aegis', 'runner', 'aura_charmer', 'voltastein', 'staticstein', 'healnstein', 'voodoyou', 'pandy', 'snipa', 'bookworm', 'freezeon', 'driller', 'gravy'
+        'feathers', 'spikey', 'electrostien', 'mallow', 'nightshade', 'aegis', 'runner', 'aura_charmer', 'voltastein', 'staticstein', 'healnstein', 'voodoyou', 'pandy', 'snipa', 'bookworm', 'freezeon', 'driller', 'gravy', 'pitch'
     ];
     const registeredBrawlerModules = window.ArenaForgeModules?.brawlers || Object.create(null);
     for (const moduleId of Object.keys(registeredBrawlerModules)) {
@@ -8496,6 +8507,7 @@ const bolznstienPendingStrikes = [];
             freezeon: 'Epic',
             driller: 'Epic',
             gravy: 'Epic',
+            pitch: 'Epic',
             // Mythic (13)
             dashaholic: 'Mythic',
             classy: 'Mythic',
@@ -12463,6 +12475,17 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           g2: 'Gravy Ladle (Instantly splash a gravy pool at your feet that damages nearby enemies)',
           sp1: 'Rich & Savory (Enemies standing in your gravy pools take damage over time)',
           sp2: 'Seconds, Please (Standing in your own gravy pool heals you)'
+      },
+      'pitch': {
+          name: 'Pitch', role: 'Thrower', rarity: 'Epic', color: '#a855f7',
+          desc: 'A pig hex-caster who hurls bubbling hex pots that burst into sharp shards. Her pigs charge in after her, and every takedown she scores spawns a pig to fight beside her.',
+          attack: 'Hex Toss', attackDesc: 'Pitch lobs a hex pot in an arc over walls, farther than most throws. On landing it splashes for damage, then bursts into a plus-shaped spray of 4 shards.',
+          super: 'Pig Parade', superDesc: 'Pitch calls in 4 pigs that charge the nearest enemies, ramming them for damage and knocking them back. The pigs have modest health and fight until defeated.',
+          hyper: 'Hex Storm: Hex Toss bursts in a plus AND an X — 8 shards — and Pig Parade calls in 6 pigs instead of 4.',
+          g1: 'Hex Cross (Next Hex Toss explodes in a plus AND an X — eight shards in eight directions)',
+          g2: 'Echo Hex (Next Hex Toss fires a second plus-shaped burst when it lands)',
+          sp1: 'Curveball (Her main-attack shards curve clockwise as they fly)',
+          sp2: 'Stampede (Pigs from her Super run 50% faster for the first 3 seconds)'
       }
   };
     // Player-facing BRAWE vocabulary. Legacy save keys and combat identifiers
@@ -12486,7 +12509,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
     }
     // V4 standardized primary-role organization: exactly one gameplay role per brawler.
     const PRIMARY_ROLE_BY_BRAWLER = {
-        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank', rager:'Controller', looma:'Controller', feathers:'Controller', spikey:'Damage Dealer', electrostien:'Assassin', mallow:'Controller', nightshade:'Assassin', runner:'Controller', aura_charmer:'Support', voltastein:'Artillery', staticstein:'Damage Dealer', healnstein:'Support', voodoyou:'Controller', pandy:'Damage Dealer', bookworm:'Controller', freezeon:'Controller', driller:'Damage Dealer', gravy:'Artillery',
+        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank', rager:'Controller', looma:'Controller', feathers:'Controller', spikey:'Damage Dealer', electrostien:'Assassin', mallow:'Controller', nightshade:'Assassin', runner:'Controller', aura_charmer:'Support', voltastein:'Artillery', staticstein:'Damage Dealer', healnstein:'Support', voodoyou:'Controller', pandy:'Damage Dealer', bookworm:'Controller', freezeon:'Controller', driller:'Damage Dealer', gravy:'Artillery', pitch:'Artillery',
     carmela_fudge:'Damage Dealer', bolznstien:'Damage Dealer', badbat:'Damage Dealer', magnatar:'Controller', oil_maker:'Controller', sir_cheeseburger:'Tank',
         kage:'Assassin', drainbow:'Controller', bowlin_rida:'Assassin', dashaholic:'Assassin', demon:'Assassin', jetpack:'Assassin', malakor:'Assassin', predator:'Assassin', teether:'Assassin',
         boom_arang:'Marksman', cheseypuff:'Marksman', crystila:'Marksman', homer:'Marksman', hunter:'Marksman', orbo:'Marksman', snapper:'Marksman', xray:'Marksman', snipa:'Marksman',
@@ -12522,6 +12545,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
             freezeon: '⛄',
             driller: '⛏️',
             gravy: '🫕',
+            pitch: '🐷',
     looma: '🪡🧵',
         sir_cheeseburger: '🛡️',
         anti_royal: '🏴‍☠️',
@@ -13294,6 +13318,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
       freezeon: { g1: 14000, g2: 16000 },
       driller: { g1: 14000, g2: 16000 },
       gravy: { g1: 14000, g2: 16000 },
+      pitch: { g1: 14000, g2: 16000 },
       carmela_fudge: { g1: 8000, g2: 8000 },
       bolznstien: { g1: 14000, g2: 15000 },
       sir_cheeseburger: { g1: 13000, g2: 14000 },
@@ -25891,6 +25916,332 @@ let heistFeverActive = false;
             gravyVoicePrevGameOver = gameOver;
         } catch (e) {}
     }
+    // ===== Pitch systems (2026-11-20, Anthony's spec) =====
+    // Main: Hex Toss — a hex pot lobbed in an arc (Gravy glob pattern: a
+    // thrown object, not a bullet, so it arcs OVER walls) that travels
+    // FARTHER than a gravy glob (800px range). On landing it splashes
+    // for damage, then bursts into a plus-shaped spray of 4 shards
+    // (Kage shard pattern: short-lived piercing-free bullets flying
+    // outward). Hyper (and G1) burst in a plus AND an X: 8 shards.
+    // Super: Pig Parade — spawns 4 knockback pigs (the chickpig-pig
+    // mechanic: same ramming AI, same 600-damage ram + knockback, but
+    // LESSER health, 2000 HP at Power 11 instead of 3690). Hyper
+    // spawns 6 pigs. Pigs fight until defeated; at most 6 per owner,
+    // oldest evicted.
+    // G1 Hex Cross: next Hex Toss explodes in a plus AND an X (8 shards).
+    // G2 Echo Hex: next Hex Toss fires a second plus-shaped burst when
+    // it lands (300ms later, same spot).
+    // SP1 Curveball (Anthony): main-attack shards curve clockwise as
+    // they fly (1.6 rad/s, builder pick). SP2 Stampede (Anthony): pigs
+    // from her Super run 50% faster for the first 3 seconds.
+    // Specialty (innate): every takedown Pitch scores spawns a pig.
+    // Pigs damage/knock back brawlers only — never structures.
+    const PITCH_THROW_SPEED = 1100; // px/s lobbed flight speed (Gravy glob pattern)
+    const PITCH_THROW_RANGE = 800; // px — farther than a gravy glob (620)
+    const PITCH_THROW_ARC_HEIGHT = 80; // arc peak px
+    const PITCH_SPLASH_RADIUS = 100; // px center splash radius on landing
+    const PITCH_SPLASH_DMG = 700; // P11 center splash damage (see getScaledStats 'pitch'.dmg)
+    const PITCH_SHARD_DMG = 300; // P11 damage per plus/X shard
+    const PITCH_SHARD_SPEED = 540; // px/s shard flight speed (Kage shard pattern)
+    const PITCH_SHARD_MAX_LIFE = 0.35; // s shard lifetime (~189px travel)
+    const PITCH_SUPER_PIG_COUNT = 4; // pigs per Pig Parade
+    const PITCH_SUPER_PIG_COUNT_HYPER = 6; // Hyper Pig Parade spawns more pigs
+    const PITCH_PIG_HP = 2000; // P11 pig health — lesser than the chickpig pig (3690)
+    const PITCH_PIG_SPEED = 330; // px/s pig chase speed (same as the chickpig pig)
+    const PITCH_MAX_PIGS_PER_OWNER = 6; // oldest pig evicted past the cap
+    const PITCH_BOT_SUPER_RANGE = 650; // px — bots cast Pig Parade when an enemy is this close
+    const PITCH_G2_ECHO_DELAY_MS = 300; // Echo Hex fires its second burst this long after landing
+    const PITCH_SP1_CURVE_RAD_PER_S = 1.6; // Curveball: shards rotate this fast, clockwise
+    const PITCH_SP2_PIG_SPEED_MULT = 1.5; // Stampede: +50% pig speed (Anthony's number)
+    const PITCH_SP2_PIG_SPEED_DURATION_MS = 3000; // Stampede: first 3 seconds (Anthony's number)
+    const PITCH_SUPER_CHARGE_HITS = 7; // 7 main-attack hits to charge
+    let pitchThrownHexes = []; // {startX, startY, targetX, targetY, createdAt, impactAt, ownerId, hyper, crossArmed, echoArmed, curve} — lobbed hex pots in flight
+    let pitchPendingEchoes = []; // {x, y, ownerId, hyper, curve, fireAt} — G2 second bursts waiting to fire
+    let pitchVoicePrevPlaying = false;
+    let pitchVoicePrevGameOver = false;
+    let pitchVoiceMatchEndPlayed = false;
+    let pitchVoiceLastHp = null;
+    let pitchVoiceLastActionAt = 0;
+    let pitchVoiceLastIdleAt = 0;
+    function pitchLevelScale(entity) {
+        const lvl = entity === player ? getSelectedBrawlerLevel() : (entity.level || 11);
+        return 0.55 + (lvl - 1) * 0.045;
+    }
+    function pitchStarChoice(entity) { return getEntityStarChoice(entity); }
+    function pitchHasSP1(entity) { return pitchStarChoice(entity) === 'slow'; }
+    function pitchHasSP2(entity) { return pitchStarChoice(entity) === 'long'; }
+    function isPitch(entity) { return !!entity && (entity.brawler === 'pitch' || (entity.id === player.id && selectedBrawler === 'pitch')); }
+    function pitchFindOwner(ownerId) { if (player && player.id === ownerId) return player; return bots.find((b) => b && b.id === ownerId) || null; }
+    // Spawn one knockback pig for a Pitch owner (chickpig-pig entity, so
+    // it reuses the ramming AI and pig rendering; isPitchPig marks it as
+    // hers for ram attribution, the Stampede boost, and the pig cap).
+    // Unlike the chickpig pig, this never evicts the owner's other pigs
+    // outright — only the 6-pig cap evicts the oldest.
+    function pitchSpawnPig(owner, x, y, boost) {
+        if (!owner) return null;
+        const now = performance.now();
+        const mine = bots.filter((b) => b && b.isPitchPig && b.ownerId === owner.id);
+        if (mine.length >= PITCH_MAX_PIGS_PER_OWNER) { const idx = bots.indexOf(mine[0]); if (idx !== -1) bots.splice(idx, 1); }
+        const level = owner.id === player.id ? getSelectedBrawlerLevel() : (owner.level || 11);
+        const hp = Math.round(PITCH_PIG_HP * getLevelDamageScale(level));
+        const pig = { id: nextId++, x: clamp(x, 28, WORLD_W - 28), y: clamp(y, 28, WORLD_H - 28), z: 0, vx: 0, vy: 0, hp: hp, maxHp: hp, powerCubes: owner.powerCubes || 0, isDead: false, shield: 0, shieldMax: 0, radius: 22, speed: PITCH_PIG_SPEED, slowUntil: 0, brawler: 'chickpig_pig', lastTargetId: null, targetLockUntil: 0, lastShot: 0, superCharge: 0, hyperChargeCharge: 0, isHypercharged: false, gadgetArmed: false, gadgetCooldownUntil: 0, selectedStar: 'none', isPet: true, isChickpigPig: true, chickpigPigHyper: false, isPitchPig: true, pitchPigBoostUntil: boost ? now + PITCH_SP2_PIG_SPEED_DURATION_MS : 0, ownerId: owner.id, team: owner.team || 'player', ramCooldownUntil: 0, charging: false };
+        bots.push(pig);
+        return pig;
+    }
+    // Specialty: every takedown Pitch scores spawns a pig at the victim.
+    // Called once per death from the death-drops loop (isDead guard), so
+    // a kill can never spawn two pigs. Pig kills credit their owner, so
+    // a pig's ram takedown spawns a pig too. Pigs, structures, pets, and
+    // allied victims never spawn one.
+    function pitchHandleKill(victim) {
+        if (!victim || victim.isStructure || victim.isPet || victim.isPitchPig || victim.isChickpigPig) return false;
+        const killer = victim.lastDamagerId ? getEntityById(victim.lastDamagerId) : null;
+        if (!killer || !isPitch(killer)) return false;
+        if (areAlliedEntities(killer, victim)) return false;
+        return !!pitchSpawnPig(killer, victim.x, victim.y, false);
+    }
+    // Main: lob a hex pot in an arc to the aimed point (Gravy glob
+    // pattern — a thrown object, so it arcs over walls). Hyper bursts
+    // plus AND X on landing; G1 Hex Cross arms the same 8-way burst;
+    // G2 Echo Hex arms a second plus burst after landing. SP1 Curveball
+    // rides the pot and its shards. Armed flags are consumed on fire.
+    function firePitchMain(fromEntity, targetX, targetY, isBot) {
+        const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
+        const ang = Math.atan2(targetY - fromEntity.y, targetX - fromEntity.x);
+        const dist = clamp(Math.hypot(targetX - fromEntity.x, targetY - fromEntity.y) || 0, 0, PITCH_THROW_RANGE);
+        const x = clamp(fromEntity.x + Math.cos(ang) * dist, 40, WORLD_W - 40);
+        const y = clamp(fromEntity.y + Math.sin(ang) * dist, 40, WORLD_H - 40);
+        const now = performance.now();
+        const flightMs = clamp(Math.hypot(x - fromEntity.x, y - fromEntity.y) / PITCH_THROW_SPEED * 1000, 150, 800);
+        const cross = !!fromEntity.pitchCrossArmed;
+        const echo = !!fromEntity.pitchEchoArmed;
+        fromEntity.pitchCrossArmed = false;
+        fromEntity.pitchEchoArmed = false;
+        pitchThrownHexes.push({ startX: fromEntity.x, startY: fromEntity.y, targetX: x, targetY: y, createdAt: now, impactAt: now + flightMs, ownerId: fromEntity.id, hyper: hyper, crossArmed: cross, echoArmed: echo, curve: pitchHasSP1(fromEntity) });
+        return true;
+    }
+    // A hex pot landed: center splash (brawlers only), then the plus/X
+    // shard burst. The burst visual carries the pot's REAL Hyper state
+    // (Snipa lesson: never a faked flag). G2's echo is scheduled, not
+    // fired here — it goes off when the main attack ends.
+    function pitchFireBurst(x, y, owner, hyper, cross, curve) {
+        const now = performance.now();
+        const eightWay = !!(hyper || cross);
+        const dmg = owner ? Math.round(PITCH_SPLASH_DMG * pitchLevelScale(owner)) : PITCH_SPLASH_DMG;
+        const shardDmg = owner ? Math.round(PITCH_SHARD_DMG * pitchLevelScale(owner)) : PITCH_SHARD_DMG;
+        if (owner) {
+            for (const target of [player, ...bots]) {
+                if (!target || target.hp <= 0 || target.id === owner.id || areAlliedEntities(owner, target)) continue;
+                if (target.isStructure || target.isPet) continue;
+                if (Math.hypot(target.x - x, target.y - y) <= PITCH_SPLASH_RADIUS + (target.radius || 14)) {
+                    checkHit(target, { ownerBrawler: 'pitch', ownerId: owner.id, damage: dmg, pierce: true, hitIds: {}, isPitchHexSplash: true }, -1);
+                }
+            }
+            const dirs = eightWay ? 8 : 4;
+            for (let a = 0; a < dirs; a++) {
+                const ang = a * (Math.PI / 2) + (eightWay && a >= 4 ? Math.PI / 4 : 0);
+                bullets.push({ ownerBrawler: 'pitch', isPitchShard: true, pitchCurve: !!curve, x: x, y: y, vx: Math.cos(ang) * PITCH_SHARD_SPEED, vy: Math.sin(ang) * PITCH_SHARD_SPEED, life: 0, maxLife: PITCH_SHARD_MAX_LIFE, damage: shardDmg, pierce: false, ownerId: owner.id, hitIds: {}, hitboxMod: 1.25, hyperVisual: !!hyper });
+            }
+        }
+        explosions.push({ x: x, y: y, radius: PITCH_SPLASH_RADIUS, life: 0, maxLife: .4, color: hyper ? 'rgba(192,132,252,.55)' : 'rgba(168,85,247,.55)', legendary: true, fxKind: 'pitchHexBurst', hyper: !!hyper });
+        spawnFloatingText(x, y - 40, hyper ? '🐷 HEX STORM!' : '🐷 HEX BURST!', hyper ? '#e9d5ff' : '#ddd6fe');
+        return true;
+    }
+    function pitchLandHex(hex) {
+        let owner = pitchFindOwner(hex.ownerId);
+        // If the owner died mid-flight we skip damage and shards (the
+        // burst itself still shows) — Gravy glob precedent.
+        if (owner && owner.hp <= 0) owner = null;
+        pitchFireBurst(hex.targetX, hex.targetY, owner, !!hex.hyper, !!hex.crossArmed, !!hex.curve);
+        if (owner && hex.echoArmed) {
+            pitchPendingEchoes.push({ x: hex.targetX, y: hex.targetY, ownerId: hex.ownerId, hyper: !!hex.hyper, curve: !!hex.curve, fireAt: performance.now() + PITCH_G2_ECHO_DELAY_MS });
+        }
+        return true;
+    }
+    // SP1 Curveball: rotate a shard's velocity clockwise (on screen,
+    // y-down, so the standard rotation matrix with a positive angle
+    // turns it clockwise) by the curve rate over this frame.
+    function pitchCurveShardVelocity(vx, vy, dt) {
+        const a = PITCH_SP1_CURVE_RAD_PER_S * dt;
+        const cos = Math.cos(a), sin = Math.sin(a);
+        return { vx: vx * cos - vy * sin, vy: vx * sin + vy * cos };
+    }
+    // Super: call in a parade of knockback pigs around the owner. Hyper
+    // calls in more pigs. With SP2 Stampede the pigs run 50% faster
+    // for their first 3 seconds (Anthony's numbers).
+    function castPitchSuper(entity, hyper, targetX, targetY) {
+        if (!entity || entity.hp <= 0) return false;
+        const count = hyper ? PITCH_SUPER_PIG_COUNT_HYPER : PITCH_SUPER_PIG_COUNT;
+        const boost = pitchHasSP2(entity);
+        for (let i = 0; i < count; i++) {
+            const ang = (i / count) * Math.PI * 2 + 0.6;
+            pitchSpawnPig(entity, entity.x + Math.cos(ang) * 48, entity.y + Math.sin(ang) * 48, boost);
+        }
+        if (entity.id === player.id) { try { window.BrawePitchVoice?.play('super'); } catch (e) {} }
+        spawnFloatingText(entity.x, entity.y - 46, hyper ? '🐷 PIG PARADE!' : '🐷 PIG PARADE!', hyper ? '#e9d5ff' : '#ddd6fe');
+        return true;
+    }
+    // Gadgets: G1 Hex Cross (next Hex Toss explodes in a plus AND an X),
+    // G2 Echo Hex (next Hex Toss fires a second plus burst on landing).
+    function executePitchGadget(entity, gadget, isBot) {
+        if (!entity) return false;
+        if (gadget === 'g1') {
+            entity.pitchCrossArmed = true;
+            spawnFloatingText(entity.x, entity.y - 40, '✳️ HEX CROSS!', '#ddd6fe');
+            return true;
+        }
+        if (gadget === 'g2') {
+            entity.pitchEchoArmed = true;
+            spawnFloatingText(entity.x, entity.y - 40, '➕ ECHO HEX!', '#ddd6fe');
+            return true;
+        }
+        return false;
+    }
+    // Per-frame Pitch maintenance: hex landings, G2 echo bursts. Armed
+    // flags clear when the owner dies (Gravy precedent).
+    function updatePitchSystems(dt) {
+        const now = performance.now();
+        for (const e of [player, ...bots]) {
+            if (!e) continue;
+            if (e.hp <= 0) { e.pitchCrossArmed = false; e.pitchEchoArmed = false; continue; }
+        }
+        // Lobbed hex pots fly in an arc, then splash + burst.
+        for (let i = pitchThrownHexes.length - 1; i >= 0; i--) {
+            const h = pitchThrownHexes[i];
+            if (now < h.impactAt) continue;
+            pitchThrownHexes.splice(i, 1);
+            pitchLandHex(h);
+        }
+        // G2 echoes: a second plus burst at the landing spot, once the
+        // main attack has ended. A dead owner cancels the echo.
+        for (let i = pitchPendingEchoes.length - 1; i >= 0; i--) {
+            const e = pitchPendingEchoes[i];
+            if (now < e.fireAt) continue;
+            pitchPendingEchoes.splice(i, 1);
+            let owner = pitchFindOwner(e.ownerId);
+            if (owner && owner.hp <= 0) owner = null;
+            pitchFireBurst(e.x, e.y, owner, e.hyper, false, e.curve);
+        }
+    }
+    // Render Pitch effects: hex pots in flight (with an SP1 clockwise
+    // wobble on the pot itself), pending echo markers, Hyper aura. All
+    // keyed off real state — never a faked flag (Snipa lesson).
+    function renderPitchEffects() {
+        const now = performance.now();
+        for (const g of pitchThrownHexes) {
+            const progress = clamp((now - g.createdAt) / Math.max(1, g.impactAt - g.createdAt), 0, 1);
+            const arc = Math.sin(progress * Math.PI) * PITCH_THROW_ARC_HEIGHT;
+            const gx = g.startX + (g.targetX - g.startX) * progress;
+            const gy = g.startY + (g.targetY - g.startY) * progress;
+            // SP1 Curveball: the pot itself wobbles clockwise as it flies.
+            const flightAng = Math.atan2(g.targetY - g.startY, g.targetX - g.startX);
+            const wobble = g.curve ? Math.sin(progress * Math.PI * 2) * 26 : 0;
+            const wx = gx + -Math.sin(flightAng) * wobble;
+            const wy = gy + Math.cos(flightAng) * wobble;
+            ctx.save();
+            // Landing marker (the real splash radius).
+            ctx.globalAlpha = 0.5;
+            ctx.strokeStyle = g.hyper ? '#c084fc' : '#a855f7';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([10, 8]);
+            ctx.beginPath(); ctx.arc(g.targetX, g.targetY, PITCH_SPLASH_RADIUS, 0, Math.PI * 2); ctx.stroke();
+            ctx.setLineDash([]);
+            // Ground shadow under the pot.
+            ctx.globalAlpha = 0.3;
+            ctx.fillStyle = '#3b0764';
+            ctx.beginPath(); ctx.ellipse(gx, gy, 16 * (1 - progress * 0.3), 7, 0, 0, Math.PI * 2); ctx.fill();
+            // The hex pot itself, riding the arc.
+            ctx.translate(wx, wy - arc);
+            ctx.globalAlpha = 0.95;
+            ctx.shadowColor = g.hyper ? '#c084fc' : '#a855f7';
+            ctx.shadowBlur = 16;
+            ctx.fillStyle = g.hyper ? '#c084fc' : '#a855f7';
+            ctx.beginPath(); ctx.arc(0, 0, 13, 0, Math.PI * 2); ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#86efac';
+            ctx.beginPath(); ctx.arc(-3, -4, 4, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#4ade80';
+            ctx.beginPath(); ctx.arc(5, 5, 3, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+        }
+        // Pending G2 echoes: a pulsing plus outline at the landing spot.
+        for (const e of pitchPendingEchoes) {
+            const pulse = 0.5 + 0.3 * Math.sin(now / 120);
+            ctx.save();
+            ctx.globalAlpha = pulse;
+            ctx.strokeStyle = '#c084fc';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(e.x - 18, e.y); ctx.lineTo(e.x + 18, e.y);
+            ctx.moveTo(e.x, e.y - 18); ctx.lineTo(e.x, e.y + 18);
+            ctx.stroke();
+            ctx.restore();
+        }
+        // Hyper aura ring around Pitch (Pandy/Snipa pattern).
+        for (const e of [player, ...bots]) {
+            if (!e || e.hp <= 0 || !isPitch(e)) continue;
+            const hyper = e.id === player.id ? !!isHypercharged : !!e.isHypercharged;
+            if (!hyper) continue;
+            ctx.save();
+            ctx.globalAlpha = 0.9;
+            ctx.strokeStyle = 'rgba(192,132,252,0.9)';
+            ctx.lineWidth = 5;
+            ctx.shadowColor = '#a855f7';
+            ctx.shadowBlur = 28;
+            ctx.beginPath();
+            ctx.arc(e.x, e.y, (e.radius || 14) + 20 + Math.sin(now / 200) * 3, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+        }
+    }
+    // Pitch voice watcher: spawn / win / death / hurt / idle (Gravy pattern).
+    function updatePitchVoiceState() {
+        try {
+            if (typeof selectedBrawler === 'undefined' || !player) return;
+            const now = performance.now();
+            const isPitchBrawler = selectedBrawler === 'pitch';
+            if (playing && !pitchVoicePrevPlaying) {
+                pitchVoiceMatchEndPlayed = false;
+                pitchVoiceLastHp = player.hp;
+                pitchVoiceLastActionAt = now;
+                pitchVoiceLastIdleAt = 0;
+                player.pitchWinAt = 0;
+                player.pitchDeathAt = 0;
+                if (isPitchBrawler) window.BrawePitchVoice?.play('spawn');
+            }
+            if (gameOver && !pitchVoicePrevGameOver && !pitchVoiceMatchEndPlayed) {
+                pitchVoiceMatchEndPlayed = true;
+                if (isPitchBrawler) {
+                    if (player.hp > 0) {
+                        player.pitchWinAt = now;
+                        window.BrawePitchVoice?.play('win');
+                    } else {
+                        player.pitchDeathAt = now;
+                        window.BrawePitchVoice?.play('death');
+                        explosions.push({ x: player.x, y: player.y, radius: 60, life: 0, maxLife: .8, color: 'rgba(168,85,247,.55)' });
+                        spawnFloatingText(player.x, player.y - 46, '🐷 CURSED!', '#a855f7');
+                    }
+                }
+            }
+            if (playing && !gameOver && isPitchBrawler && player.hp > 0 && pitchVoiceLastHp !== null && player.hp < pitchVoiceLastHp) {
+                pitchVoiceLastActionAt = now;
+                window.BrawePitchVoice?.play('hurt');
+            }
+            if (player) pitchVoiceLastHp = player.hp;
+            if (playing && !gameOver && isPitchBrawler && player.hp > 0) {
+                const moved = Math.hypot((player.x || 0) - (player.pitchVoicePrevX ?? player.x ?? 0), (player.y || 0) - (player.pitchVoicePrevY ?? player.y ?? 0)) > 4;
+                if (moved || (player.lastAttackAt || 0) > pitchVoiceLastActionAt) pitchVoiceLastActionAt = now;
+                player.pitchVoicePrevX = player.x;
+                player.pitchVoicePrevY = player.y;
+                if (now - pitchVoiceLastActionAt > 20000 && now - pitchVoiceLastIdleAt > 25000) {
+                    pitchVoiceLastIdleAt = now;
+                    window.BrawePitchVoice?.play('idle');
+                }
+            }
+            pitchVoicePrevPlaying = playing;
+            pitchVoicePrevGameOver = gameOver;
+        } catch (e) {}
+    }
     // ===== Christmas Showdown buffs (Season 6: Xplodemis) =====
     let christmasBuffTimer = 0;
     function isChristmasShowdownMatch() { return showdownMode === 'christmas_showdown' && !isTraining; }
@@ -28687,6 +29038,7 @@ let heistFeverActive = false;
         if (bot.brawler === 'freezeon') return distance < FREEZEON_SUPER_THROW_RANGE; // ice rink throw range
         if (bot.brawler === 'driller') return distance < DRILLER_DRILL_RANGE + 60; // drill form: get close, then drive into them
         if (bot.brawler === 'gravy') return distance < GRAVY_SUPER_RANGE; // Gravy Boat wave reach
+        if (bot.brawler === 'pitch') return distance < PITCH_BOT_SUPER_RANGE; // Pig Parade: pigs need to reach the enemy
         const targetHpPct = target.hp ? target.hp / Math.max(1, target.maxHp || target.hp) : 1;
         const clustered = getBotLivingEnemies(bot).filter((enemy) => Math.hypot(enemy.x - target.x, enemy.y - target.y) < 190).length;
         const objectiveFight = isObjectiveMode && Math.hypot(target.x - (objectiveZone?.x || WORLD_W*0.5), target.y - (objectiveZone?.y || WORLD_H*0.5)) < (objectiveZone?.r || 240) + 80;
@@ -30511,7 +30863,7 @@ let heistFeverActive = false;
       beam:8, fuser:24, heater_miser:20, minigunnin:72, money_and_tax:24, outlit:30, steamer:8,
       bouncin_balls:6, chickpig:12, classy:6, copyphase:6, goonbob:6, hoop:5, hyperorigin:5,
       portalo:7, ghoul:6, jacktrade:18, darkener:6, awakenator:8, trampaheal:6, axeywaxy:6, mageny:6, draflygon:6, ramage:6, upgradart:10, cinderion:10, cursed:7, king:6, anti_royal:6, weefee:6, rager:4,
-    carmela_fudge:5, bolznstien:5, sir_cheeseburger:4, blinkeye:4, magnatar:6, oil_maker:16, badbat:5, looma:7, feathers:5, spikey:6, electrostien:14, mallow:12, nightshade: 6, runner: 6, aura_charmer: 6, voltastein: 6, staticstein: 6, healnstein: 6, voodoyou: 6, pandy: 6, snipa: 6, bookworm: 7, freezeon: 7, driller: 7, gravy: 7
+    carmela_fudge:5, bolznstien:5, sir_cheeseburger:4, blinkeye:4, magnatar:6, oil_maker:16, badbat:5, looma:7, feathers:5, spikey:6, electrostien:14, mallow:12, nightshade: 6, runner: 6, aura_charmer: 6, voltastein: 6, staticstein: 6, healnstein: 6, voodoyou: 6, pandy: 6, snipa: 6, bookworm: 7, freezeon: 7, driller: 7, gravy: 7, pitch: 7
   });
   let nextMainAttackActivationId = 1;
   function getSuperChargeHitsForBrawler(brawler) {
@@ -30934,7 +31286,7 @@ let heistFeverActive = false;
     resetPlayerHyperchargeState();
     outlitWallChains.length = 0;
     bullets.length = 0; ragerWarTotems.length = 0;
-    bolznstienPendingStrikes.length = 0; bolznstienShockTrails.length = 0; bolznstienChainArcs.length = 0; chocolatePuddles.length = 0; magnatarVortices.length = 0; oilMakerPuddles.length = 0; oilMakerBarrels.length = 0; oilMakerPendingPuddles.length = 0; steamerPoles.length = 0; weefeePoles.length = 0; chickpigEggZones.length = 0; rings.length = 0; cheeseFields.length = 0; healingPods.length = 0; explosions.length = 0; pendingClones.length = 0; destructibleWalls.length = 0; floatingTexts.length = 0; stickyNotes.length = 0; amplifierToolboxes.length = 0; amplifierScrewZones.length = 0; skeleParachutes.length = 0; skelePortals.length = 0; malakorHellZones.length = 0; malakorHands.length = 0; relativityZones.length = 0; packetTimeFields.length = 0; packetTelegraphs.length = 0; fastpassCheckpoints.length = 0; freestyleMicrophones.length = 0; portaloPortalPairs.length = 0; portaloPrisons.length = 0; portaloShockTimers.length = 0; ghoulHaunts.length = 0; darkenerClouds.length = 0; darkagons.length = 0; cursedStorms.length = 0; cursedHyperClouds.length = 0; antiRoyalMortarShells.length = 0; antiRoyalMortarZones.length = 0; jackTradeVolleys.length = 0; jackTradeThrownEffects.length = 0; jackTradeZones.length = 0; jackTradeEndpointShots.length = 0; badbatSwarm.length = 0; badbatShieldOrbs.length = 0; loomaThreads.length = 0; loomaWeaves.length = 0; feathersWindZones.length = 0; feathersStorms.length = 0; spikeyParkedBalls.length = 0; spikeyMegaBalls.length = 0; spikeyPendingSlams.length = 0; electricRealms.length = 0; electrostienPendingStrikes.length = 0; freezeonPatches.length = 0; freezeonSlipZones.length = 0; freezeonShatters.length = 0; freezeonThrownRinks.length = 0; freezeonPendingCones.length = 0; gravyPools.length = 0; gravyWaves.length = 0; gravyThrownGlobs.length = 0;
+    bolznstienPendingStrikes.length = 0; bolznstienShockTrails.length = 0; bolznstienChainArcs.length = 0; chocolatePuddles.length = 0; magnatarVortices.length = 0; oilMakerPuddles.length = 0; oilMakerBarrels.length = 0; oilMakerPendingPuddles.length = 0; steamerPoles.length = 0; weefeePoles.length = 0; chickpigEggZones.length = 0; rings.length = 0; cheeseFields.length = 0; healingPods.length = 0; explosions.length = 0; pendingClones.length = 0; destructibleWalls.length = 0; floatingTexts.length = 0; stickyNotes.length = 0; amplifierToolboxes.length = 0; amplifierScrewZones.length = 0; skeleParachutes.length = 0; skelePortals.length = 0; malakorHellZones.length = 0; malakorHands.length = 0; relativityZones.length = 0; packetTimeFields.length = 0; packetTelegraphs.length = 0; fastpassCheckpoints.length = 0; freestyleMicrophones.length = 0; portaloPortalPairs.length = 0; portaloPrisons.length = 0; portaloShockTimers.length = 0; ghoulHaunts.length = 0; darkenerClouds.length = 0; darkagons.length = 0; cursedStorms.length = 0; cursedHyperClouds.length = 0; antiRoyalMortarShells.length = 0; antiRoyalMortarZones.length = 0; jackTradeVolleys.length = 0; jackTradeThrownEffects.length = 0; jackTradeZones.length = 0; jackTradeEndpointShots.length = 0; badbatSwarm.length = 0; badbatShieldOrbs.length = 0; loomaThreads.length = 0; loomaWeaves.length = 0; feathersWindZones.length = 0; feathersStorms.length = 0; spikeyParkedBalls.length = 0; spikeyMegaBalls.length = 0; spikeyPendingSlams.length = 0; electricRealms.length = 0; electrostienPendingStrikes.length = 0; freezeonPatches.length = 0; freezeonSlipZones.length = 0; freezeonShatters.length = 0; freezeonThrownRinks.length = 0; freezeonPendingCones.length = 0; gravyPools.length = 0; gravyWaves.length = 0; gravyThrownGlobs.length = 0; pitchThrownHexes.length = 0; pitchPendingEchoes.length = 0;
     snapperWaves.length = 0;
     rocketeerFireZones.length = 0;
     jetpackFireZones.length = 0;
@@ -35723,6 +36075,8 @@ let heistFeverActive = false;
     if (!isBot && fromEntity === player && (fromEntity.fusedPartCall || selectedBrawler) === 'driller') { try { window.BraweDrillerVoice?.play('attack'); } catch (e) {} }
     // Gravy voice: player attack line (throttled inside the voice module).
     if (!isBot && fromEntity === player && (fromEntity.fusedPartCall || selectedBrawler) === 'gravy') { try { window.BraweGravyVoice?.play('attack'); } catch (e) {} }
+    // Pitch voice: player attack line (throttled inside the voice module).
+    if (!isBot && fromEntity === player && (fromEntity.fusedPartCall || selectedBrawler) === 'pitch') { try { window.BrawePitchVoice?.play('attack'); } catch (e) {} }
     fireArenaForgeCapturedHyperAttacks(fromEntity, ang, now);
     if (brawler === 'weefee') {
         const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
@@ -38307,6 +38661,9 @@ let heistFeverActive = false;
     } else if (brawler === 'gravy') {
         fireGravyMain(fromEntity, targetX, targetY, isBot);
         return;
+    } else if (brawler === 'pitch') {
+        firePitchMain(fromEntity, targetX, targetY, isBot);
+        return;
     } else if (brawler === 'nightshade') {
         fireNightshadeMain(fromEntity, ang, targetX, targetY, { isBot, now, damageMult: 1, hitboxMult: 1, donorMode: false });
         return;
@@ -40437,6 +40794,7 @@ let heistFeverActive = false;
     if (combatBrawler === 'freezeon') { castFreezeonSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'driller') { castDrillerSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'gravy') { castGravySuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
+    if (combatBrawler === 'pitch') { castPitchSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'nightshade') { castNightshadeSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'aegis') { castAegisSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'runner') { castRunnerSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
@@ -41621,6 +41979,10 @@ let heistFeverActive = false;
       executeGravyGadget(bot, 'g1', true);
     } else if (bot.brawler === 'gravy' && g === 'g2') {
       executeGravyGadget(bot, 'g2', true);
+    } else if (bot.brawler === 'pitch' && g === 'g1') {
+      executePitchGadget(bot, 'g1', true);
+    } else if (bot.brawler === 'pitch' && g === 'g2') {
+      executePitchGadget(bot, 'g2', true);
     } else if (bot.brawler === 'nightshade' && g === 'g1') {
       executeNightshadeG1(bot, target?.x ?? (bot.x + Math.cos(ang) * 200), target?.y ?? (bot.y + Math.sin(ang) * 200));
     } else if (bot.brawler === 'nightshade' && g === 'g2') {
@@ -42155,6 +42517,7 @@ let heistFeverActive = false;
     if (botCombatBrawler === 'freezeon') { castFreezeonSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'driller') { castDrillerSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'gravy') { castGravySuper(bot, isHyper, targetX, targetY); return; }
+    if (botCombatBrawler === 'pitch') { castPitchSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'nightshade') { castNightshadeSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'aegis') { castAegisSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'runner') { castRunnerSuper(bot, isHyper, targetX, targetY); return; }
@@ -43753,6 +44116,18 @@ let heistFeverActive = false;
         return;
     } else if (curBrawler === 'gravy' && curGadget === 'g2') {
         executeGravyGadget(player, 'g2', false);
+        gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
+        setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
+        updateGadgetButton();
+        return;
+    } else if (curBrawler === 'pitch' && curGadget === 'g1') {
+        executePitchGadget(player, 'g1', false);
+        gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
+        setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
+        updateGadgetButton();
+        return;
+    } else if (curBrawler === 'pitch' && curGadget === 'g2') {
+        executePitchGadget(player, 'g2', false);
         gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
         setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
         updateGadgetButton();
@@ -49306,7 +49681,7 @@ let heistFeverActive = false;
       isBossFight = false;
       isBossFight = false;
       activeSkinTrial = null; // real matches never use trial skins
-      feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; freezeonPendingCones = []; gravyPools = []; gravyWaves = []; gravyThrownGlobs = [];
+      feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; freezeonPendingCones = []; gravyPools = []; gravyWaves = []; gravyThrownGlobs = []; pitchThrownHexes = []; pitchPendingEchoes = [];
       isHyperEvent = false;
       isSoloTrial = false;
       isTraining = false;
@@ -50533,7 +50908,7 @@ isBrawlerLabMode = false;
       isDuelsMaxedMode = false;
       isWarperEvent = false;
       isObjectiveMode = false;
-      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; freezeonPendingCones = []; gravyPools = []; gravyWaves = []; gravyThrownGlobs = []; isPropHuntMode = false; propHuntState = null;
+      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; freezeonPendingCones = []; gravyPools = []; gravyWaves = []; gravyThrownGlobs = []; pitchThrownHexes = []; pitchPendingEchoes = []; isPropHuntMode = false; propHuntState = null;
       soloTrialWave = 0;
       soloTrialPending = false;
       playing = true;
@@ -50657,7 +51032,7 @@ isBrawlerLabMode = false;
       isDuelsMaxedMode = false;
       isWarperEvent = false;
       isObjectiveMode = false;
-      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; freezeonPendingCones = []; gravyPools = []; gravyWaves = []; gravyThrownGlobs = []; isPropHuntMode = false; propHuntState = null;
+      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; freezeonPendingCones = []; gravyPools = []; gravyWaves = []; gravyThrownGlobs = []; pitchThrownHexes = []; pitchPendingEchoes = []; isPropHuntMode = false; propHuntState = null;
       if (document.getElementById('topbar')) document.getElementById('topbar').textContent = 'Arena Forge - Rookie Course';
       playing = true;
       gameOver = false;
@@ -55694,6 +56069,7 @@ function checkHit(target, b, i){
     if (playing && !gameOver) updateBookwormSystems(dt);
     if (playing && !gameOver) updateFreezeonSystems(dt);
     if (playing && !gameOver) updateGravySystems(dt);
+    if (playing && !gameOver) updatePitchSystems(dt);
     if (playing && !gameOver) updateDrillerSystems(dt);
     if (playing && !gameOver) updatePropPads();
     if (playing && !gameOver) updateChristmasShowdown(dt);
@@ -56201,6 +56577,7 @@ function checkHit(target, b, i){
     for (const e of [player, ...bots]) {
         if (e.hp <= 0 && !e.isDead && !e.isDummy) {
             e.isDead = true;
+            pitchHandleKill(e); // Pitch specialty: every takedown spawns a pig.
             if (isArenaForgeMode) handleArenaForgeDeath(e);
             if (isKnockDonateMode) handleKnockDonateEntityDeath(e);
             if (isMirrorMode && !e._mirrorDeathCounted) {
@@ -58399,6 +58776,8 @@ function checkHit(target, b, i){
               });
           }
       }
+      // Pitch SP1 Curveball: main-attack shards curve clockwise as they travel.
+      if (b.isPitchShard && b.pitchCurve) { const curved = pitchCurveShardVelocity(b.vx, b.vy, dt); b.vx = curved.vx; b.vy = curved.vy; }
       b.x += b.vx * dt;
       b.y += b.vy * dt;
       // Runner: super shoes home to their ally; main shoes lay trail + G2 shields.
@@ -61386,19 +61765,19 @@ function checkHit(target, b, i){
           t.charging=!!target;
           if(t.chickpigPigHyper&&t.charging){t.defenseUntil=now+180;t.defenseMult=.6;}
           if(target){
-              const angle=Math.atan2(target.y-t.y,target.x-t.x),moveSpeed=t.speed*(t.charging?1.28:1);
+              const angle=Math.atan2(target.y-t.y,target.x-t.x),moveSpeed=t.speed*(t.charging?1.28:1)*(now<(t.pitchPigBoostUntil||0)?PITCH_SP2_PIG_SPEED_MULT:1); // Pitch SP2 Stampede: super pigs run 50% faster for their first 3s.
               const contactDistance=t.radius+(target.radius||14)+12;
               const travel=Math.max(0,Math.min(moveSpeed*dt,best-contactDistance));
               const nx=clamp(t.x+Math.cos(angle)*travel,t.radius,WORLD_W-t.radius),ny=clamp(t.y+Math.sin(angle)*travel,t.radius,WORLD_H-t.radius);
               if(travel>0&&canMoveToPosition(t,nx,ny)){t.x=nx;t.y=ny;}
               if(best<=contactDistance+9&&now>=(t.ramCooldownUntil||0)){
                   t.ramCooldownUntil=now+692; // Sheet Round 41: pig hits 30% faster (900ms > 900/1.3 = 692ms).
-                  checkHit(target,{ownerBrawler:'chickpig',ownerId:t.ownerId,damage:600,pierce:true,isChickpigRam:true},-1);
+                  checkHit(target,{ownerBrawler:t.isPitchPig?'pitch':'chickpig',ownerId:t.ownerId,damage:600,pierce:true,isChickpigRam:true,isPitchPigRam:!!t.isPitchPig},-1);
                   const knock=Math.atan2(target.y-t.y,target.x-t.x);target.x=clamp(target.x+Math.cos(knock)*70,target.radius,WORLD_W-target.radius);target.y=clamp(target.y+Math.sin(knock)*70,target.radius,WORLD_H-target.radius);
                   // Recoil keeps the pig beside its victim instead of stacked on top of it.
                   t.x=clamp(t.x-Math.cos(knock)*24,t.radius,WORLD_W-t.radius);
                   t.y=clamp(t.y-Math.sin(knock)*24,t.radius,WORLD_H-t.radius);
-                  explosions.push({x:target.x,y:target.y,radius:42,life:0,maxLife:.2,color:t.chickpigPigHyper?'#d970ff':'#f29b59'});
+                  explosions.push({x:target.x,y:target.y,radius:42,life:0,maxLife:.2,color:t.isPitchPig?'#c084fc':(t.chickpigPigHyper?'#d970ff':'#f29b59')});
               }
           }
           continue;
@@ -65001,6 +65380,42 @@ function checkHit(target, b, i){
                 ctx.beginPath(); ctx.arc(entity.x + size * 0.26, drawY - size * 0.08, size * 0.03, 0, Math.PI * 2); ctx.fill();
                 ctx.restore();
             }
+            if (brawlerId === 'pitch') {
+                ctx.save();
+                ctx.shadowColor = '#a855f7';
+                ctx.shadowBlur = 8;
+                // Purple hex-caster robe body.
+                ctx.fillStyle = '#7e22ce';
+                ctx.strokeStyle = '#3b0764';
+                ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(entity.x, drawY + size * 0.16, size * 0.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                // Head: pink pig face.
+                ctx.fillStyle = '#f9a8d4';
+                ctx.beginPath(); ctx.arc(entity.x, drawY - size * 0.08, size * 0.15, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                // Pig ears.
+                ctx.fillStyle = '#ec4899';
+                ctx.beginPath(); ctx.moveTo(entity.x - size * 0.12, drawY - size * 0.18); ctx.lineTo(entity.x - size * 0.16, drawY - size * 0.3); ctx.lineTo(entity.x - size * 0.05, drawY - size * 0.2); ctx.closePath(); ctx.fill();
+                ctx.beginPath(); ctx.moveTo(entity.x + size * 0.12, drawY - size * 0.18); ctx.lineTo(entity.x + size * 0.16, drawY - size * 0.3); ctx.lineTo(entity.x + size * 0.05, drawY - size * 0.2); ctx.closePath(); ctx.fill();
+                // Purple pointed hat.
+                ctx.fillStyle = '#a855f7';
+                ctx.beginPath(); ctx.moveTo(entity.x - size * 0.17, drawY - size * 0.16); ctx.lineTo(entity.x + size * 0.17, drawY - size * 0.16); ctx.lineTo(entity.x + size * 0.03, drawY - size * 0.38); ctx.closePath(); ctx.fill();
+                ctx.fillRect(entity.x - size * 0.2, drawY - size * 0.17, size * 0.4, size * 0.04);
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = '#0f172a';
+                ctx.beginPath();
+                ctx.arc(entity.x - size * 0.05, drawY - size * 0.08, size * 0.02, 0, Math.PI * 2);
+                ctx.arc(entity.x + size * 0.05, drawY - size * 0.08, size * 0.02, 0, Math.PI * 2);
+                ctx.fill();
+                // Snout.
+                ctx.fillStyle = '#f472b6';
+                ctx.beginPath(); ctx.ellipse(entity.x, drawY - size * 0.03, size * 0.06, size * 0.04, 0, 0, Math.PI * 2); ctx.fill();
+                // Hex pot held up (purple pot, green brew).
+                ctx.fillStyle = '#7e22ce';
+                ctx.beginPath(); ctx.ellipse(entity.x + size * 0.26, drawY - size * 0.05, size * 0.09, size * 0.06, -0.4, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#4ade80';
+                ctx.beginPath(); ctx.arc(entity.x + size * 0.26, drawY - size * 0.08, size * 0.03, 0, Math.PI * 2); ctx.fill();
+                ctx.restore();
+            }
             ctx.textAlign = 'left';
             ctx.textBaseline = 'alphabetic';
     }
@@ -65824,6 +66239,7 @@ function checkHit(target, b, i){
     renderBookwormEffects();
     renderFreezeonEffects();
     renderGravyEffects();
+    renderPitchEffects();
     renderDrillerEffects();
     renderNightshadeEffects();
     renderRunnerEffects(ctx);
@@ -76262,6 +76678,23 @@ function checkHit(target, b, i){
               }
               ctx.closePath();
               ctx.fill();
+          } else if (b.isPitchShard) {
+              // Pitch hex shard: a small purple diamond with a green core.
+              const size = 8;
+              ctx.fillStyle = b.hyperVisual ? '#e9d5ff' : '#c084fc';
+              ctx.shadowColor = '#a855f7';
+              ctx.shadowBlur = 6;
+              ctx.beginPath();
+              ctx.moveTo(0, -size);
+              ctx.lineTo(size * 0.7, 0);
+              ctx.lineTo(0, size);
+              ctx.lineTo(-size * 0.7, 0);
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = '#86efac';
+              ctx.beginPath();
+              ctx.arc(0, 0, 2.5, 0, Math.PI * 2);
+              ctx.fill();
           } else {
               // Regular Ninja Star: Charcoal Obsidian Body with Razor Silver Edge & White Core
               const size = 10;
@@ -81196,6 +81629,7 @@ function checkHit(target, b, i){
         updateBookwormVoiceState();
         updateFreezeonVoiceState();
         updateGravyVoiceState();
+        updatePitchVoiceState();
         updateDrillerVoiceState();
         const homeVisible = homeScreen && homeScreen.style.display !== 'none';
         if (playing || !homeVisible) render();

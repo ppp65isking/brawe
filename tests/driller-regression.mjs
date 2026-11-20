@@ -42,7 +42,7 @@
 // activation. Voice lines are flavor-only (RULE ONE) and silent until
 // Anthony picks a voice. Roster: Driller makes 111 ids / 103 selectable.
 // Gravy (2026-11-16) now makes 112 ids / 104 selectable.
-// Delete-disabled (2026-11-16) now makes 104 ids / 104 selectable.
+// Delete-disabled (2026-11-16) now makes 104 ids / 104 selectable. Pitch (2026-11-20) now makes 105 ids / 105 selectable.
 // Dirt/slow/debuff effects affect brawlers only, never structures.
 // Fused mode skips the drill form (the fused component fires the normal
 // main attack instead — Bookworm pattern).
@@ -62,11 +62,11 @@ function check(name, cond) {
 const near = (a, b, eps = 0.01) => Math.abs(a - b) < eps;
 
 // ---------------------------------------------------------- 1. source pins
-check('roster includes driller (104 ids)', game.includes("'pandy', 'snipa', 'bookworm', 'freezeon', 'driller'"));
-check('selectable is 104 (104 ids, none disabled, driller not disabled)', (() => {
+check('roster includes driller (105 ids)', game.includes("'pandy', 'snipa', 'bookworm', 'freezeon', 'driller'"));
+check('selectable is 105 (105 ids, none disabled, driller not disabled)', (() => {
   const all = [...game.match(/const allBrawlers\s*=\s*\[([\s\S]*?)\];/)[1].matchAll(/'([^']+)'/g)].map(m => m[1]);
   const disabled = [];
-  return all.length === 104 && all.filter(id => !disabled.includes(id)).length === 104;
+  return all.length === 105 && all.filter(id => !disabled.includes(id)).length === 105;
 })());
 check('rarity Epic (170 souls)', game.includes("driller: 'Epic',") && game.includes('Epic: 170'));
 check('role Damage Dealer', game.includes("driller:'Damage Dealer',"));

@@ -115,13 +115,13 @@ check('kit pick handles weekly-trial loadouts through the trial setter',
     if (start !== -1 && end !== -1) {
         const block = game.slice(start, end);
         const fields = [...block.matchAll(/\b(g1|g2|sp1|sp2)\s*:\s*'((?:[^'\\]|\\.)*)'/g)];
-        check('brawlerData still has exactly 416 kit slots (104 brawlers x 4)', fields.length === 416);
+        check('brawlerData still has exactly 420 kit slots (105 brawlers x 4)', fields.length === 420);
         let withDesc = 0;
         for (const [, , raw] of fields) {
             const pi = raw.indexOf('('), ci = raw.indexOf(': ');
             if (pi !== -1 || ci !== -1) withDesc++;
         }
-        check('all 416 kit slots still carry a description', withDesc === 416);
+        check('all 420 kit slots still carry a description', withDesc === 420);
     }
 }
 
