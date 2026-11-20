@@ -115,9 +115,10 @@ check('v2 pass: tier is a two-row column with the rail through the bubble',
     circuitCss.includes('.circuit-tier h2::before{content:"";position:absolute;top:50%;left:-75px;right:-75px;height:6px;') &&
     circuitCss.includes('.circuit-tier .circuit-reward.premium{order:2}') &&
     circuitCss.includes('.circuit-tier .circuit-reward.free{order:4}'));
-check('v2 pass: tabs sit below the content; app portrait keeps the v1 side-by-side cards',
+check('v2 pass: tabs sit below the content (round 4: tabs last at the very bottom, footer note above them); app portrait keeps the v1 side-by-side cards',
     circuitCss.includes('.circuit-panel .circuit-content{order:3}') &&
-    circuitCss.includes('.circuit-panel .circuit-tabs{order:4}') &&
+    circuitCss.includes('.circuit-panel .circuit-tabs{order:5}') &&
+    circuitCss.includes('.circuit-panel footer{order:4}') &&
     circuitCss.includes('.native-app .circuit-tier-cards{display:grid}') &&
     circuitCss.includes('.native-app .circuit-tier::before{display:block}'));
 
