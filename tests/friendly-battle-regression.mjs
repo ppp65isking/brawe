@@ -248,9 +248,9 @@ const save11 = { persistent: { coins: 1000, gems: 999, selectedBrawler: 'spikey'
   const { api, body } = boot(save11);
   launchNormalSolo(api);
   assert.equal(api.addEventQuestProgress('play_match', 1), true, 'event funnel must advance in a normal match (control)');
-  // Season quests were deleted: the season funnel has no quest to advance, so it
-  // returns false even in a normal match (the event funnel above still advances).
-  assert.equal(api.progressSeasonPassQuest('play_match', 1), false, 'season funnel returns false with no season quests (control)');
+  // Season quests were rebuilt (stage 10): the season funnel advances in a
+  // normal match again (the event funnel above still advances too).
+  assert.equal(api.progressSeasonPassQuest('play_match', 1), true, 'season funnel advances in a normal match now that season quests exist again (control)');
   const coinsBefore = api.playerData.coins;
   const soulsBefore = api.playerData.souls || 0;
   const bricksBefore = api.playerData.brawlers.spikey.bricks;

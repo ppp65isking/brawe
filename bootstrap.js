@@ -51,10 +51,10 @@ function installPassTokenFallback() {
     { id: 'coin-cache', name: 'Coin Cache', icon: '🪙', cost: 100, limit: 10, reward: { type: 'coins', amount: 200 } },
     { id: 'soul-cache', name: 'Soul Cache', icon: '✦', cost: 200, limit: 5, reward: { type: 'souls', amount: 30 } },
     { id: 'super-tapper', name: 'Super Tapper', icon: '🎁', cost: 400, limit: 3, reward: { type: 'superTapper', amount: 1 } },
-    { id: 'astral-portalo', name: 'Astral Navigator Portalo', icon: '🪐', cost: 1600, limit: 1, reward: { type: 'skin', id: 'astral-portalo' } },
-    { id: 'neon-jacktrade', name: 'Neon Casino JackTrade', icon: '♠', cost: 1600, limit: 1, reward: { type: 'skin', id: 'neon-jacktrade' } }
+    { id: 'core-cache', name: 'Core Piece Cache', icon: '💠', cost: 800, limit: 3, reward: { type: 'corePieces', amount: 25 } },
+    { id: 'random-piece', name: 'Random Piece Bundle', icon: '🧩', cost: 1200, limit: 2, reward: { type: 'randomPiece', amount: 3 } }
   ]);
-  function normalize(pass, maxLevel = 25) {
+  function normalize(pass, maxLevel = 50) {
     pass.xp = integer(pass.xp);
     pass.level = Math.min(maxLevel, Math.max(1, integer(pass.level), Math.floor(pass.xp / 100) + 1));
     if (pass.tokenSchema !== 1) {
@@ -68,7 +68,7 @@ function installPassTokenFallback() {
     if (!pass.tokenPurchases || typeof pass.tokenPurchases !== 'object') pass.tokenPurchases = {};
     return pass;
   }
-  function earn(pass, amount, maxLevel = 25) {
+  function earn(pass, amount, maxLevel = 50) {
     normalize(pass, maxLevel);
     amount = integer(amount);
     if (!amount) return false;

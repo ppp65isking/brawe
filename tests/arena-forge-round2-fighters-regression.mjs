@@ -146,9 +146,9 @@ check('skins: selector lists only owned skins for this brawler, plus DEFAULT',
     game.includes('function appFighterOwnedSkins(id) {') &&
     game.includes('data-app-skin="default">DEFAULT</button>') &&
     game.includes('data-app-skin="${skin.id}"'));
-check('skins: the real skins exist in skinsDatabase (Tree Freeze / Molten Rock Chaird / Xploder)',
-    game.includes("'tree-freeze-freezeon'") && game.includes("'molten-rock-chaird'") &&
-    game.includes("'xploder-rocketeer'"));
+check('skins: the deleted skins are gone; the Holiday Lights skin is the first skin in the new system (rebuild stage 3-4)',
+    !game.includes("'molten-rock-chaird'") && !game.includes("'xploder-rocketeer'") &&
+    game.includes("'holiday-lights-freezeon'") && game.includes('skinsDatabase'));
 check('skins: equip uses the existing selectedSkins path the shop uses; unowned/foreign refused',
     game.includes('function appFightersSkinPick(id, skinId) {') &&
     game.includes('playerData.selectedSkins[id] = skinId;') &&

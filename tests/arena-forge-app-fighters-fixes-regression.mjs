@@ -43,8 +43,10 @@ check('F1: PLAY is still disabled when locked (unchanged guard)',
 check('F1: appFightersUpgrade refuses locked brawlers, same shape as PLAY',
     game.includes('function appFightersUpgrade(id) {') &&
     game.includes("if (!isBrawlerUnlocked(id) && !isWeeklyTrialBrawler(id)) return;"));
-check('F1: trial + max-level guards still present in the handler',
-    game.includes('if (isWeeklyTrialBrawler(id) || (pData.level || 1) >= MAX_POWER_LEVEL) return;'));
+check('F1: unowned trial brawlers stay blocked, owned trials upgrade from permanent progress (rebuild stage 5)',
+    game.includes('if (isWeeklyTrialBrawler(id) && !trialOwned) return;') &&
+    game.includes('const pData = trialOwned ? getOrCreateProgress(id) : getEffectiveBrawlerProgress(id);') &&
+    game.includes('if ((pData.level || 1) >= MAX_POWER_LEVEL) return;'));
 check('F1: upgrade cost path untouched (coins + core pieces, level++, save)',
     game.includes('const cost = getUpgradeCost(pData.level);') &&
     game.includes('playerData.coins -= cost;') && game.includes('pData.level++;'));

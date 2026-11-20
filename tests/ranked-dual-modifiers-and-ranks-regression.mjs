@@ -44,8 +44,8 @@ const checks = [
   // 6. Master update: prestige ladder, 2400 floor (weekly cap + pin packs deleted)
   ['Division safety floor adds the 2400 RP rung above 2200', /if\s*\(points\s*>=\s*2400\)\s*return 2400;[\s\S]*?if\s*\(points\s*>=\s*2200\)\s*return 2200;/.test(game)],
   ['Prestige ladder steps 500 RP to a max of 5 above 2400', /const RANKED_PRESTIGE_STEP_RP = 500;/.test(game) && /const RANKED_PRESTIGE_MAX = 5;/.test(game) && /function getRankedPrestige\(pointsRaw\)[\s\S]*?if \(points < 2400\) return 0;/.test(game)],
-  ['Prestige display label appends Prestige N above 2400', /function getRankedDisplayLabel\(pointsRaw\)[\s\S]*?Prestige \$\{prestige\}/.test(game)],
-  ['MVP rule requires 3000 damage on a win or 6000 on a loss', /isRankedMVP = \(won && fullOnDamageEarned >= 3000\) \|\| \(!won && fullOnDamageEarned >= 6000\);/.test(game)],
+  ['Prestige display label appends Prestige League PLn above 2400', /function getRankedDisplayLabel\(pointsRaw\)[\s\S]*?Prestige League PL\$\{prestige\}/.test(game)],
+  ['MVP rule requires 3000 damage on a win or 6000 on a loss (per-match ledger now)', /isRankedMVP = \(won && matchDamageDealt >= 3000\) \|\| \(!won && matchDamageDealt >= 6000\);/.test(game)],
   ['draft state machine no longer uses complete', !game.includes("draftState = 'complete'") && !game.includes("draftState === 'complete'") && !game.includes("draftState !== 'complete'")]
 ];
 

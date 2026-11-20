@@ -1407,7 +1407,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     function getRankedDisplayLabel(pointsRaw) {
         const info = getRankedTierInfo(pointsRaw);
         const prestige = getRankedPrestige(pointsRaw);
-        return prestige > 0 ? `${info.label} • Prestige ${prestige}` : info.label;
+        return prestige > 0 ? `${info.label} • Prestige League PL${prestige}` : info.label;
     }
     function getRankedTierInfo(pointsRaw) {
         const points = Math.max(0, Math.floor(pointsRaw || 0));
@@ -1641,14 +1641,46 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         player.trinketFirstStrikeReady = false;
         player.trinketThickSkinReady = false;
     }
+    // Ranked RP ledger (Arena Forge rebuild 2026-11-20): per-match stats
+    // for the Ranked RP formula. Kills and damage are counted here because
+    // the career eliminations counter is cumulative and no per-match
+    // ledger existed (the old Full-On Damage ledger was deleted).
+    // Objective = damage dealt to vaults / Arena Forge structures.
+    let matchKills = 0;
+    let matchDamageDealt = 0;
+    let matchObjectiveDamage = 0;
+    function resetMatchRpLedger() { matchKills = 0; matchDamageDealt = 0; matchObjectiveDamage = 0; }
+    // Ranked RP (rebuild 2026-11-20): RP now comes from game mode + kills
+    // + damage + objective + win — not just win/loss. Builder-pick
+    // numbers (flagged in the rebuild report): win +20 / loss -10; kills
+    // +2 each (max +10); damage +1 per 1000 (max +10); objective +1 per
+    // 1000 objective damage (max +5); Arena Forge mode +5 base, other
+    // ranked modes +0; streak +5 at 2 wins then +2 per extra win (max
+    // +15, unchanged); MVP +10 on a win, +5 on a loss (unchanged).
+    const RANKED_RP_MODE_BASE = { arena_forge: 5, knock_donate: 0, brick_vault: 0 };
+    function calcRankedRpGain({ mode, kills, damage, objectiveDamage, won, streak, mvp }) {
+        const modeRp = RANKED_RP_MODE_BASE[mode] || 0;
+        const winRp = won ? 20 : -10;
+        const killRp = Math.min(10, Math.max(0, kills || 0) * 2);
+        const damageRp = Math.min(10, Math.floor(Math.max(0, damage || 0) / 1000));
+        const objectiveRp = Math.min(5, Math.floor(Math.max(0, objectiveDamage || 0) / 1000));
+        const streakRp = won && streak >= 2 ? Math.min(15, 5 + (streak - 2) * 2) : 0;
+        const mvpRp = mvp ? (won ? 10 : 5) : 0;
+        const total = modeRp + winRp + killRp + damageRp + objectiveRp + streakRp + mvpRp;
+        return { total, modeRp, winRp, killRp, damageRp, objectiveRp, streakRp, mvpRp };
+    }
     function handleTrinketDamageDealt(owner, target, dealtDamage) {
         if (!owner || owner.id !== player.id || !(dealtDamage > 0)) return;
+        // Ranked RP ledger: every point of player-dealt damage counts.
+        matchDamageDealt += dealtDamage;
+        if (target && (target.isVault || target.isArenaForgeStructure)) matchObjectiveDamage += dealtDamage;
         const now = performance.now();
         owner.trinketLastCombatAt = now;
         if (owner.trinketFirstStrikeReady) owner.trinketFirstStrikeReady = false;
         if (target && target.hp <= 0 && now - (target.profileCareerKillAt || 0) > 1200) {
             target.profileCareerKillAt = now;
             ensureProfileProgressionState().profile.careerStats.eliminations += 1;
+            matchKills += 1; // Ranked RP ledger
             // Outlit voice: player kill line.
             if (selectedBrawler === 'outlit') { try { window.BraweOutlitVoice?.play('kill'); } catch (e) {} }
             // Fuser voice: player kill line.
@@ -1714,6 +1746,17 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             }
         }
     }
+    // Brawler Prestige brick rate (Arena Forge rebuild 2026-11-20):
+    // bricks/match drop after P5: 10 -> 8 -> 5. Past P10 it stays 5
+    // forever per brawler. The placement table is a base-10 rate, so
+    // positive placement deltas scale by rate/10 (1st place 30 -> 24
+    // at P6-10, 15 at P11+). Negative deltas are never scaled.
+    function getPrestigeBricksPerMatch(prestige) {
+        const p = Math.max(0, Math.floor(prestige || 0));
+        if (p <= 5) return 10;
+        if (p <= 10) return 8;
+        return 5;
+    }
     function getBrickDeltaForPlacement(placement) {
         const awards = [30, 26, 22, 18, 14, 10, 6, 2, -1, -3, -5, -7, -9, -11, -13];
         return awards[Math.max(1, Math.min(15, placement)) - 1] ?? -5;
@@ -1736,13 +1779,18 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         return delta;
     }
     function awardBricksForPlacement(progress, placement, multiplier = 1) {
-        return applyBrickDelta(progress, applyPositiveBrickMultiplier(getBrickDeltaForPlacement(placement), multiplier));
+        const delta = applyPositiveBrickMultiplier(getBrickDeltaForPlacement(placement), multiplier);
+        // Brawler Prestige (rebuild 2026-11-20): positive deltas scale by
+        // the brawler's prestige rate (10/8/5 per match).
+        const rate = getPrestigeBricksPerMatch(progress.prestige || 0);
+        return applyBrickDelta(progress, delta > 0 ? Math.round(delta * rate / 10) : delta);
     }
     function awardBricksAcrossTeam(team, placement, multiplier = 1) {
         const roster = Array.isArray(team) && team.length ? team : [selectedBrawler];
         const totalDelta = applyPositiveBrickMultiplier(getBrickDeltaForPlacement(placement), multiplier);
         const baseShare = Math.trunc(totalDelta / roster.length);
         let remainder = totalDelta - (baseShare * roster.length);
+        let awardedTotal = 0;
         roster.forEach((bid) => {
             const progress = playerData.brawlers[bid] || (playerData.brawlers[bid] = { level: 1, bricks: 0, prestige: 0, gadgetUnlocked: false, starPowerUnlocked: false, hyperchargeUnlocked: false, selectedStar: 'slow', selectedGadget: 'g1' });
             let share = baseShare;
@@ -1750,9 +1798,14 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
                 share += remainder > 0 ? 1 : -1;
                 remainder += remainder > 0 ? -1 : 1;
             }
+            // Brawler Prestige (rebuild 2026-11-20): each brawler's share
+            // scales by its own prestige rate (positive shares only).
+            const rate = getPrestigeBricksPerMatch(progress.prestige || 0);
+            if (share > 0) share = Math.round(share * rate / 10);
             applyBrickDelta(progress, share);
+            awardedTotal += share;
         });
-        return totalDelta;
+        return awardedTotal;
     }
     const BRICK_BON_V2_ROAD = [
         { threshold:100, label:'100 Coins', rewards:[['coins',100]] },
@@ -6176,7 +6229,7 @@ const bolznstienPendingStrikes = [];
                 <h2>☰ MORE</h2>
                 <p class="app-more-sub">Everything else from the website home — same screens, same rewards.</p>
                 <button type="button" class="app-more-btn" data-app-more="ranked"><span aria-hidden="true">⚔️</span><b>${rankedLabel}<small>${rankedSub}</small></b><span aria-hidden="true">›</span></button>
-                <button type="button" class="app-more-btn" data-app-more="souls"><span aria-hidden="true">🧪</span><b>SOUL SUMMONER<small>Summon + reroll brawlers</small></b><span aria-hidden="true">›</span></button>
+                <button type="button" class="app-more-btn" data-app-more="souls"><span aria-hidden="true">🧪</span><b>SOUL SUMMONER<small>Summon brawlers</small></b><span aria-hidden="true">›</span></button>
                 <button type="button" class="app-more-btn" data-app-more="tutorial"><span aria-hidden="true">🎓</span><b>TUTORIAL<small>Learn the ropes</small></b><span aria-hidden="true">›</span></button>
                 <button type="button" class="app-more-close" data-app-more="close">CLOSE</button>
             </div>`;
@@ -6802,12 +6855,18 @@ const bolznstienPendingStrikes = [];
         let upgDisabled = false;
         // F1: UPGRADE is disabled on a locked brawler, exactly like PLAY
         // below — upgrading something unowned makes no sense.
+        // Weekly Trials (rebuild 2026-11-20): an UNOWNED trial brawler is
+        // play-only at Power 11, but an OWNED trial brawler upgrades from
+        // its permanent progress — the trial lock is temporary, the
+        // brawler underneath is yours.
+        const trialOwned = trial && !!(playerData.unlockedBrawlers && playerData.unlockedBrawlers[id]);
+        const upgLevel = trialOwned ? (getOrCreateProgress(id).level || 1) : level;
         if (locked) { upgLabel = '🔒 LOCKED'; upgDisabled = true; }
-        else if (trial) { upgLabel = 'WEEKLY TRIAL'; upgDisabled = true; }
-        else if (level >= MAX_POWER_LEVEL) { upgLabel = 'MAX LEVEL'; upgDisabled = true; }
+        else if (trial && !trialOwned) { upgLabel = 'WEEKLY TRIAL'; upgDisabled = true; }
+        else if (upgLevel >= MAX_POWER_LEVEL) { upgLabel = 'MAX LEVEL'; upgDisabled = true; }
         else {
-            const cost = getUpgradeCost(level);
-            const cpCost = getCorePieceUpgradeCost(level);
+            const cost = getUpgradeCost(upgLevel);
+            const cpCost = getCorePieceUpgradeCost(upgLevel);
             const canAfford = (playerData.coins || 0) >= cost && getCorePieces() >= cpCost;
             upgLabel = `⬆ UPGRADE · ${cost} 🪙${cpCost > 0 ? ` + ${cpCost} 💎` : ''}`;
             upgDisabled = !canAfford;
@@ -6972,10 +7031,14 @@ const bolznstienPendingStrikes = [];
     }
     function appFightersUpgrade(id) {
         // F1: a locked brawler cannot be upgraded, even by a direct call —
-        // same guard as PLAY (appFightersPlay). Trials stay blocked below.
+        // same guard as PLAY (appFightersPlay). An unowned trial brawler
+        // stays blocked (play-only at Power 11); an OWNED trial brawler
+        // upgrades its permanent progress (rebuild 2026-11-20).
         if (!isBrawlerUnlocked(id) && !isWeeklyTrialBrawler(id)) return;
-        const pData = getEffectiveBrawlerProgress(id);
-        if (isWeeklyTrialBrawler(id) || (pData.level || 1) >= MAX_POWER_LEVEL) return;
+        const trialOwned = isWeeklyTrialBrawler(id) && !!(playerData.unlockedBrawlers && playerData.unlockedBrawlers[id]);
+        if (isWeeklyTrialBrawler(id) && !trialOwned) return;
+        const pData = trialOwned ? getOrCreateProgress(id) : getEffectiveBrawlerProgress(id);
+        if ((pData.level || 1) >= MAX_POWER_LEVEL) return;
         const cost = getUpgradeCost(pData.level);
         const cpCost = getCorePieceUpgradeCost(pData.level);
         if ((playerData.coins || 0) < cost || getCorePieces() < cpCost) return;
@@ -8148,9 +8211,9 @@ const bolznstienPendingStrikes = [];
             if (!ss.pendingWaterReward) return null;
             const r = ss.pendingWaterReward;
             ss.pendingWaterReward = null;
-            if (r.type === 'coins') playerData.coins = (playerData.coins || 0) + (r.amount || 0);
-            else if (r.type === 'gems') playerData.gems = (playerData.gems || 0) + (r.amount || 0);
-            else if (r.type === 'starrDrop') playerData.starrDrops = (playerData.starrDrops || 0) + 1;
+            if (r.type === 'coins') grantReward({ type: 'coins', amount: r.amount || 0 });
+            else if (r.type === 'gems') grantReward({ type: 'gems', amount: r.amount || 0 });
+            else if (r.type === 'starrDrop') grantReward({ type: 'tapper', amount: 1 });
             saveProgress();
             checkSoulWaterRewards(); // immediately roll next if enough water
             return r;
@@ -8267,13 +8330,12 @@ const bolznstienPendingStrikes = [];
             const remaining = allBrawlers.filter(b => getBrawlerRarity(b) !== 'Starter' && !isBrawlerUnlocked(b) && !disabledBrawlers.has(b));
             if (remaining.length > 0) {
                 const choices = typeof getOrGenerateCurrentChoices === 'function' ? getOrGenerateCurrentChoices(3) : remaining.slice(0, 3);
-                const activeTier = typeof getActiveConstellationTier === 'function' ? getActiveConstellationTier() : getBrawlerRarity(choices[0] || remaining[0]);
-                const curCost = getSoulUnlockCostForRarity(activeTier);
+                const curCost = getSoulUnlockCostForRarity(getBrawlerRarity(choices[0] || remaining[0]));
                 const nextSection = document.createElement('div');
                 nextSection.style.cssText = 'width:100%;background:rgba(8,14,28,0.7);border:1px solid rgba(138,92,255,0.25);border-radius:16px;padding:12px;box-sizing:border-box;margin-top:4px;';
                 nextSection.innerHTML = `
                     <div style="font-size:11px;font-weight:900;color:#caa6ff;text-transform:uppercase;letter-spacing:0.06em;">
-                        🛤️ NEXT ON SOUL ROAD · ${activeTier.toUpperCase()} CHOICE
+                        🛤️ NEXT SUMMON · PICK A FIGHTER
                     </div>
                     <div style="font-size:12px;color:#dbe8ff;margin-top:2px;">
                         Choose your next target or let random decide (${curCost} Souls):
@@ -8453,7 +8515,91 @@ const bolznstienPendingStrikes = [];
             }
         }
     // Skin Database with Sets
-    const skinsDatabase = {};
+    // Holiday Lights (Arena Forge rebuild, 2026-11-20) — the FIRST skin in
+    // the new system and the first Anomaly skin (highest rarity). Season
+    // Pass tier 50, November + December 2026 only, pass-only — NEVER in
+    // the shop once its window passes. Visual only: same hitbox/mechanics.
+    const skinsDatabase = {
+        'holiday-lights-freezeon': {
+            id: 'holiday-lights-freezeon',
+            name: 'Holiday Lights',
+            brawler: 'freezeon',
+            rarity: 'Anomaly',
+            set: 'Holiday Lights 2026',
+            price: 0,
+            currency: 'gems',
+            passOnly: true,
+            availableFrom: '2026-11-01',
+            availableTo: '2026-12-31',
+            description: 'FreeZeon wrapped in holiday lights with a holiday hat — his cones become four strands of detailed colored lights, his Super lays an ice rink of holiday lighting, and his arrival ties the whole arena in lights.',
+            _displayColor: '#ff5d8f',
+            icon: '💡',
+            hyperTransform: false,
+            isHyperchargeSkin: false,
+            isAlwaysAvailable: false,
+            model: { hat: 'holiday', wrap: 'red-green-lights', notes: 'Holiday hat + wrapped in red/green lights' },
+            strandColors: ['#ff3b30', '#34c759', '#0a84ff', '#ffd60a'],
+            attackEffect: { type: 'holidayLightStrands', colors: ['#ff3b30', '#34c759', '#0a84ff', '#ffd60a'], color: '#ff3b30', glow: true },
+            superEffect: { type: 'holidayIceRink', colors: ['#ff3b30', '#34c759', '#0a84ff', '#ffd60a'], color: '#ffd60a', glow: true },
+            spawnEffect: { type: 'holidayLightsWrap', color: '#ffd60a', glow: true },
+            takedownEffect: { type: 'holidayLightsKnot', color: '#ff3b30', glow: true },
+            sounds: { spawn: 'holiday-jingle-spawn', attack: 'holiday-jingle-pop', super: 'holiday-jingle-rink', takedown: 'holiday-jingle-burst' },
+            chromas: [
+                { id: 'holiday-lights-freezeon-blue-yellow', name: 'Blue & Yellow' },
+                { id: 'holiday-lights-freezeon-purple-white', name: 'Purple & White' }
+            ]
+        },
+        'holiday-lights-freezeon-blue-yellow': {
+            id: 'holiday-lights-freezeon-blue-yellow',
+            name: 'Holiday Lights — Blue & Yellow',
+            brawler: 'freezeon',
+            rarity: 'Anomaly',
+            set: 'Holiday Lights 2026',
+            price: 0,
+            currency: 'gems',
+            passOnly: true,
+            isChroma: true,
+            baseSkin: 'holiday-lights-freezeon',
+            description: 'Holiday Lights chroma: blue and yellow lights. Color-only change — spawn and takedown stay the base set.',
+            _displayColor: '#0a84ff',
+            icon: '💡',
+            hyperTransform: false,
+            isHyperchargeSkin: false,
+            isAlwaysAvailable: false,
+            model: { hat: 'holiday', wrap: 'blue-yellow-lights' },
+            strandColors: ['#0a84ff', '#ffd60a', '#0a84ff', '#ffd60a'],
+            attackEffect: { type: 'holidayLightStrands', colors: ['#0a84ff', '#ffd60a', '#0a84ff', '#ffd60a'], color: '#0a84ff', glow: true },
+            superEffect: { type: 'holidayIceRink', colors: ['#0a84ff', '#ffd60a', '#0a84ff', '#ffd60a'], color: '#0a84ff', glow: true },
+            spawnEffect: { type: 'holidayLightsWrap', color: '#ffd60a', glow: true },
+            takedownEffect: { type: 'holidayLightsKnot', color: '#ff3b30', glow: true },
+            sounds: { spawn: 'holiday-jingle-spawn', attack: 'holiday-jingle-pop', super: 'holiday-jingle-rink', takedown: 'holiday-jingle-burst' }
+        },
+        'holiday-lights-freezeon-purple-white': {
+            id: 'holiday-lights-freezeon-purple-white',
+            name: 'Holiday Lights — Purple & White',
+            brawler: 'freezeon',
+            rarity: 'Anomaly',
+            set: 'Holiday Lights 2026',
+            price: 0,
+            currency: 'gems',
+            passOnly: true,
+            isChroma: true,
+            baseSkin: 'holiday-lights-freezeon',
+            description: 'Holiday Lights chroma: purple and white lights. Color-only change — spawn and takedown stay the base set.',
+            _displayColor: '#bf5af2',
+            icon: '💡',
+            hyperTransform: false,
+            isHyperchargeSkin: false,
+            isAlwaysAvailable: false,
+            model: { hat: 'holiday', wrap: 'purple-white-lights' },
+            strandColors: ['#bf5af2', '#ffffff', '#bf5af2', '#ffffff'],
+            attackEffect: { type: 'holidayLightStrands', colors: ['#bf5af2', '#ffffff', '#bf5af2', '#ffffff'], color: '#bf5af2', glow: true },
+            superEffect: { type: 'holidayIceRink', colors: ['#bf5af2', '#ffffff', '#bf5af2', '#ffffff'], color: '#bf5af2', glow: true },
+            spawnEffect: { type: 'holidayLightsWrap', color: '#ffd60a', glow: true },
+            takedownEffect: { type: 'holidayLightsKnot', color: '#ff3b30', glow: true },
+            sounds: { spawn: 'holiday-jingle-spawn', attack: 'holiday-jingle-pop', super: 'holiday-jingle-rink', takedown: 'holiday-jingle-burst' }
+        }
+    };
     // Global fixed timestamp for Featured rotation (UTC).
     // Set to May 8, 2026 so featured period (5 days) ends on May 13 when event starts
     // After 5/13, featured skins move to regular catalog for coins
@@ -8703,7 +8849,8 @@ const bolznstienPendingStrikes = [];
         'epic': { label: 'Epic', border: '#9b59b6', glow: '#9b59b6', effects: 'Custom attack and super effects' },
         'mythic': { label: 'Mythic', border: '#ff6b6b', glow: '#ff6b6b', effects: 'Current visuals plus takedown effect' },
         'legendary': { label: 'Legendary', border: '#ffd700', glow: '#ffd700', effects: 'Everything: spawn, attack, super, takedown, death' },
-        'hypercharge': { label: 'Hypercharge', border: '#ff00ff', glow: '#ff00ff', effects: 'Hypercharge Transfiguration: custom model, transformed form, and custom attack & super visuals' }
+        'hypercharge': { label: 'Hypercharge', border: '#ff00ff', glow: '#ff00ff', effects: 'Hypercharge Transfiguration: custom model, transformed form, and custom attack & super visuals' },
+        'Anomaly': { label: 'Anomaly', border: '#a855f7', glow: '#a855f7', effects: 'Custom attack and super effects, custom model, custom takedown, custom spawn, custom sounds — no Core Surge transform' }
     };
     function getActiveSkinForBrawler(brawlerId) {
         if (!brawlerId) return null;
@@ -9369,6 +9516,14 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
     function getSkinRarityMeta(rarity) {
         return SKIN_RARITY_META[rarity] || SKIN_RARITY_META['super-rare'];
     }
+    // Holiday Lights palettes: the equipped chroma changes ONLY the attack
+    // strands + Super rink colors. Spawn/takedown always use the base set.
+    const HOLIDAY_LIGHTS_BASE_COLORS = ['#ff3b30', '#34c759', '#0a84ff', '#ffd60a'];
+    function getHolidayLightsPalette(skin) {
+        const s = skin || (typeof getActiveSkinForBrawler === 'function' ? getActiveSkinForBrawler('freezeon') : null);
+        if (s && Array.isArray(s.strandColors) && s.strandColors.length >= 2) return s.strandColors;
+        return HOLIDAY_LIGHTS_BASE_COLORS;
+    }
     function getFeaturedDurationMs(skin) {
         return (skin?.featuredDurationDays || 5) * 24 * 60 * 60 * 1000;
     }
@@ -9409,6 +9564,21 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
             // twinkling bauble lights. Visual only — no damage, knockback
             // or status changes (Anthony 2026-11-18).
             explosions.push({ x: entity.x, y: entity.y, radius: 42, life: 0, maxLife: 0.55, fxKind: 'treeFreezeArrival', legendary: true, skinId: skin.id });
+            return;
+        }
+        if (kind === 'takedown' && (skin.id === 'holiday-lights-freezeon' || skin.id === 'holiday-lights-freezeon-blue-yellow' || skin.id === 'holiday-lights-freezeon-purple-white')) {
+            // Holiday Lights takedown: the lights tie a knot around the
+            // defeated enemy and boom, they explode. Visual only — no
+            // damage, knockback or status changes. Spawn/takedown never
+            // change across chromas: always the base colors.
+            explosions.push({ x: entity.x, y: entity.y, radius: 46, life: 0, maxLife: 0.65, fxKind: 'holidayLightsKnot', legendary: true, skinId: skin.id });
+            return;
+        }
+        if (kind === 'spawn' && (skin.id === 'holiday-lights-freezeon' || skin.id === 'holiday-lights-freezeon-blue-yellow' || skin.id === 'holiday-lights-freezeon-purple-white')) {
+            // Holiday Lights spawn: a string of lights wraps around
+            // FreeZeon, then unwraps. Visual only — no damage, knockback
+            // or status changes. Base colors on every chroma.
+            explosions.push({ x: entity.x, y: entity.y, radius: 42, life: 0, maxLife: 0.55, fxKind: 'holidayLightsWrap', legendary: true, skinId: skin.id });
             return;
         }
         const color = effect.color || getSkinRarityMeta(skin.rarity).border;
@@ -9490,139 +9660,20 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           return quests;
       }
       const EVENT_QUEST_TOTAL = buildEventQuests().length;
-      const SEASON_PASS_SCHEMA_VERSION = 6;
-      const SEASON_PASS_ID = 'arenaween-arena-forge-2026-s4';
-      const ARENAWEEN_SEASON_END_UTC = Date.UTC(2026, 10, 1, 0, 0, 0); // Arenaaween runs through Oct 31, 2026
+      const SEASON_PASS_SCHEMA_VERSION = 7;
       const TURKEY_TROUBLE_SEASON_ID = 'turkey-trouble-arena-forge-2026-s5';
       const TURKEY_TROUBLE_START_UTC = Date.UTC(2026, 10, 1, 0, 0, 0); // Season 5 starts Nov 1, 2026
       const TURKEY_TROUBLE_END_UTC = Date.UTC(2026, 11, 1, 0, 0, 0); // Season 5 runs through Nov 30, 2026
       const XPLODEMIS_SEASON_ID = 'xplodemis-arena-forge-2026-s6';
-      const XPLODEMIS_START_UTC = Date.UTC(2026, 11, 1, 0, 0, 0); // Season 6 starts Dec 1, 2026
+      const XPLODEMIS_START_UTC = Date.UTC(2026, 10, 20, 0, 0, 0); // Rebuilt 50-tier pass starts Nov 20, 2026 — live November AND December 2026
       const XPLODEMIS_END_UTC = Date.UTC(2027, 0, 1, 0, 0, 0); // Season 6 runs through Dec 31, 2026
       const EMBER_FORGE_SEASON_ID = 'ember-forge-arena-forge-2027-s7';
       const EMBER_FORGE_START_UTC = Date.UTC(2027, 0, 1, 0, 0, 0); // Season 7 starts Jan 1, 2027
       const EMBER_FORGE_END_UTC = Date.UTC(2027, 1, 1, 0, 0, 0); // Season 7 runs through Jan 31, 2027
-      const SEASON_PASS_MAX_LEVEL = 25;
+      const SEASON_PASS_MAX_LEVEL = 50;
       const SEASON_PASS_XP_PER_LEVEL = 100;
-      const SEASON_2_ARCHIVE_TIERS = [
-          { tier: 1, title: 'Tower Gates', free: { type: 'coins', amount: 200 }, premium: { type: 'towerDrop', amount: 1 } },
-          { tier: 2, title: 'First Transformation', free: { type: 'towerDrop', amount: 1 }, premium: { type: 'coins', amount: 350 } },
-          { tier: 3, title: 'Stone Staircase', free: { type: 'souls', amount: 30 }, premium: { type: 'towerDrop', amount: 1 } },
-          { tier: 4, title: 'Verdant Gate', free: { type: 'coins', amount: 300 }, premium: { type: 'souls', amount: 40 } },
-          { tier: 5, title: 'Fusion Cache', free: { type: 'towerDrop', amount: 1 }, premium: { type: 'gems', amount: 5 } },
-          { tier: 6, title: 'Rust Ramparts', free: { type: 'souls', amount: 40 }, premium: { type: 'coins', amount: 500 } },
-          { tier: 7, title: 'Floor Breaker', free: { type: 'coins', amount: 400 }, premium: { type: 'towerDrop', amount: 1 } },
-          { tier: 8, title: 'Double Drop Chamber', free: { type: 'towerDrop', amount: 1 }, premium: { type: 'towerDrop', amount: 2 } },
-          { tier: 9, title: 'Ember Bastion', free: { type: 'souls', amount: 50 }, premium: { type: 'coins', amount: 750 } },
-          { tier: 10, title: 'Bronze Crown', free: { type: 'gems', amount: 3 }, premium: { type: 'hyperTapper', amount: 1 } },
-          { tier: 11, title: 'Lotus Watch', free: { type: 'coins', amount: 450 }, premium: { type: 'towerDrop', amount: 1 } },
-          { tier: 12, title: 'Transformation Engine', free: { type: 'towerDrop', amount: 1 }, premium: { type: 'superTapper', amount: 1 } },
-          { tier: 13, title: 'Frost Keep', free: { type: 'coins', amount: 500 }, premium: { type: 'gems', amount: 8 } },
-          { tier: 14, title: 'Blueprint Vault', free: { type: 'towerDrop', amount: 2 }, premium: { type: 'coins', amount: 900 } },
-          { tier: 15, title: 'Silver Crown', free: { type: 'souls', amount: 75 }, premium: { type: 'towerDrop', amount: 2 } },
-          { tier: 16, title: 'Sunset Citadel', free: { type: 'coins', amount: 600 }, premium: { type: 'souls', amount: 80 } },
-          { tier: 17, title: 'Crownspire Keep', free: { type: 'towerDrop', amount: 1 }, premium: { type: 'gems', amount: 12 } },
-          { tier: 18, title: 'Gearfall Foundry', free: { type: 'superTapper', amount: 1 }, premium: { type: 'towerDrop', amount: 3 } },
-          { tier: 19, title: 'Stormglass Heights', free: { type: 'coins', amount: 700 }, premium: { type: 'souls', amount: 100 } },
-          { tier: 20, title: 'Gold Crown', free: { type: 'gems', amount: 5 }, premium: { type: 'towerDrop', amount: 3 } },
-          { tier: 21, title: 'Voidtower Key', free: { type: 'coins', amount: 800 }, premium: { type: 'souls', amount: 120 } },
-          { tier: 22, title: 'Master Fusion', free: { type: 'towerDrop', amount: 2 }, premium: { type: 'hyperTapper', amount: 1 } },
-          { tier: 23, title: 'Final Ascent', free: { type: 'gems', amount: 8 }, premium: { type: 'coins', amount: 1500 } },
-          { tier: 24, title: 'Tower Drop Storm', free: { type: 'towerDrop', amount: 3 }, premium: { type: 'gems', amount: 15 } },
-          { tier: 25, title: 'Tower Conqueror', free: { type: 'coins', amount: 2000 }, premium: { type: 'towerDrop', amount: 5 } }
-      ];
-      const ARENAWEEN_PASS_TIERS = [
-          {tier:1,title:'First Fright',free:{type:'coins',amount:250},premium:{type:'souls',amount:30}},
-          {tier:2,title:'Candy Stash',free:{type:'souls',amount:25},premium:{type:'gems',amount:4}},
-          {tier:3,title:'Spooky Box I',free:{type:'spookyBox',amount:1},premium:{type:'coins',amount:450}},
-          {tier:4,title:'Graveyard Shift',free:{type:'coins',amount:400},premium:{type:'superTapper',amount:1}},
-          {tier:5,title:'Soul Harvest',free:{type:'gems',amount:3},premium:{type:'profileCosmetic',id:'arenaween_night'}},
-          {tier:6,title:'Trick or Treat',free:{type:'coins',amount:450},premium:{type:'spookyBox',amount:1}},
-          {tier:7,title:'Witching Hour',free:{type:'souls',amount:50},premium:{type:'coins',amount:600}},
-          {tier:8,title:'Tapper Treats',free:{type:'tapper',amount:1},premium:{type:'souls',amount:60}},
-          {tier:9,title:'Spooky Box II',free:{type:'spookyBox',amount:1},premium:{type:'gems',amount:7}},
-          {tier:10,title:'Haunted Hoard',free:{type:'coins',amount:600},premium:{type:'superTapper',amount:1}},
-          {tier:11,title:'Creepy Credits',free:{type:'coins',amount:550},premium:{type:'spookyBox',amount:1}},
-          {tier:12,title:'Monster Mash',free:{type:'souls',amount:70},premium:{type:'coins',amount:850}},
-          {tier:13,title:'Fearsome Fortune',free:{type:'gems',amount:5},premium:{type:'spookyBox',amount:1}},
-          {tier:14,title:'Hyper Haunt',free:{type:'coins',amount:750},premium:{type:'hyperTapper',amount:1}},
-          {tier:15,title:'Spooky Box III',free:{type:'spookyBox',amount:1},premium:{type:'coins',amount:1100}},
-          {tier:16,title:'Full Moon Funds',free:{type:'souls',amount:85},premium:{type:'gems',amount:9}},
-          {tier:17,title:'Soul Feast',free:{type:'coins',amount:900},premium:{type:'spookyBox',amount:1}},
-          {tier:18,title:'Double Spooky',free:{type:'superTapper',amount:1},premium:{type:'spookyBox',amount:2}},
-          {tier:19,title:'Terror Treasury',free:{type:'souls',amount:110},premium:{type:'coins',amount:1300}},
-          {tier:20,title:'Arenaween Night',free:{type:'gems',amount:7},premium:{type:'spookyBox',amount:2}},
-          {tier:21,title:'Spooky Box IV',free:{type:'spookyBox',amount:1},premium:{type:'hyperTapper',amount:1}},
-          {tier:22,title:'Nightmare Riches',free:{type:'coins',amount:1100},premium:{type:'gems',amount:12}},
-          {tier:23,title:'Final Fright Funds',free:{type:'souls',amount:130},premium:{type:'coins',amount:1500}},
-          {tier:24,title:'Double Trouble Boxes',free:{type:'spookyBox',amount:2},premium:{type:'spookyBox',amount:2}},
-          {tier:25,title:'PUMPKIN KING',free:{type:'spookyBox',amount:2},premium:{type:'skin',id:'pumpkin-king',name:'Pumpkin King'}}
-      ];
-      const FUTURE_SEASON_PASS_ID = 'midnight-swarm-future'; // planned future season, not Season 4
-      const FUTURE_SEASON_NAME = 'Midnight Swarm';
-      const FUTURE_SEASON_FEATURED_BRAWLER = 'badbat';
-      const FUTURE_SEASON_PASS_TIERS = [
-          {tier:1,title:'Nocturnal Awakening',free:{type:'coins',amount:300},premium:{type:'profileCosmetic',id:'midnight_wings_frame'}},
-          {tier:2,title:'Bat Echoes',free:{type:'souls',amount:30},premium:{type:'gems',amount:5}},
-          {tier:3,title:'Sonic Resonator',free:{type:'coins',amount:400},premium:{type:'tapper',amount:1}},
-          {tier:4,title:'Colony Roost',free:{type:'souls',amount:40},premium:{type:'coins',amount:600}},
-          {tier:5,title:'Punk Studs',free:{type:'gems',amount:5},premium:{type:'profileCosmetic',id:'punk_bat_badge'}},
-          {tier:10,title:'Vampiric Crest',free:{type:'souls',amount:60},premium:{type:'superTapper',amount:1}},
-          {tier:15,title:'Frenzied Wings',free:{type:'coins',amount:800},premium:{type:'hyperTapper',amount:1}},
-          {tier:20,title:'Midnight Swarm Cache',free:{type:'gems',amount:10},premium:{type:'souls',amount:150}},
-          {tier:25,title:'BADBAT UNLOCK',free:{type:'coins',amount:2000},premium:{type:'brawler',id:'badbat',name:'BadBat'}}
-      ];
-      const SEASON_PREMIUM_UNLOCK_GEMS = 79;
-      const SEASON_PREMIUM_UNLOCK_COINS = 6500;
-      const SEASON_2_ARCHIVE_QUEST_DEFS = [
-          { id: 'season_01', stage: 1, kind: 'play_match', title: 'Warmup Run', desc: 'Play 3 matches.', target: 3, rewards: { coins: 180, souls: 10 }, xpReward: 100 },
-          { id: 'season_02', stage: 2, kind: 'deal_damage', title: 'Frontline Fire', desc: 'Deal 20,000 damage.', target: 20000, rewards: { coins: 220, souls: 12 }, xpReward: 100 },
-          { id: 'season_03', stage: 3, kind: 'win_match', title: 'Winner Path', desc: 'Win 2 matches.', target: 2, rewards: { souls: 18 }, xpReward: 100 },
-          { id: 'season_04', stage: 4, kind: 'defeat_enemies', title: 'Elim Sprint', desc: 'Defeat 14 enemies.', target: 14, rewards: { coins: 280, tappers: 1 }, xpReward: 100 },
-          { id: 'season_05', stage: 5, kind: 'collect_cubes', title: 'Power Hoarder', desc: 'Collect 20 cubes.', target: 20, rewards: { souls: 20, coins: 220 }, xpReward: 100 },
-          { id: 'season_06', stage: 6, kind: 'perform_supers', title: 'Power Rhythm', desc: 'Use 10 Power Moves.', target: 10, rewards: { coins: 320, souls: 20 }, xpReward: 100 },
-          { id: 'season_07', stage: 7, kind: 'use_gadget', title: 'Utility Expert', desc: 'Use 8 Tools.', target: 8, rewards: { coins: 340, souls: 22 }, xpReward: 100 },
-          { id: 'season_08', stage: 8, kind: 'deal_damage', title: 'Heavy Pressure', desc: 'Deal 70,000 damage.', target: 70000, rewards: { souls: 28, superTappers: 1 }, xpReward: 100 },
-          { id: 'season_09', stage: 9, kind: 'win_match', title: 'Clutch Series', desc: 'Win 5 matches.', target: 5, rewards: { coins: 500, souls: 30 }, xpReward: 100 },
-          { id: 'season_10', stage: 10, kind: 'defeat_enemies', title: 'Final Sweep', desc: 'Defeat 40 enemies.', target: 40, rewards: { coins: 700, souls: 40, hyperTappers: 1 }, xpReward: 100 },
-          { id: 'season_11', stage: 11, kind: 'deal_damage', title: 'Damage Trial I', desc: 'Deal 500,000 damage.', target: 500000, rewards: { souls: 100 }, xpReward: 100 },
-          { id: 'season_12', stage: 12, kind: 'deal_damage', title: 'Damage Trial II', desc: 'Deal 1,500,000 damage.', target: 1500000, rewards: { souls: 150 }, xpReward: 100 },
-          { id: 'season_13', stage: 13, kind: 'play_match', title: 'Match Marathon', desc: 'Play 10 matches.', target: 10, rewards: { coins: 600, souls: 35 }, xpReward: 100 },
-          { id: 'season_14', stage: 14, kind: 'win_match', title: 'Victory Streak', desc: 'Win 8 matches.', target: 8, rewards: { coins: 800, gems: 5 }, xpReward: 100 },
-          { id: 'season_15', stage: 15, kind: 'defeat_enemies', title: 'Bounty Hunter', desc: 'Defeat 50 enemies.', target: 50, rewards: { souls: 80, hyperTappers: 1 }, xpReward: 100 },
-          { id: 'season_16', stage: 16, kind: 'collect_cubes', title: 'Cube Harvester', desc: 'Collect 50 power cubes.', target: 50, rewards: { coins: 700, souls: 45 }, xpReward: 100 },
-          { id: 'season_17', stage: 17, kind: 'use_gadget', title: 'Tool Guru', desc: 'Use 20 Tools.', target: 20, rewards: { coins: 750, souls: 50 }, xpReward: 100 },
-          { id: 'season_18', stage: 18, kind: 'perform_supers', title: 'Power Charger', desc: 'Use 35 Power Moves.', target: 35, rewards: { souls: 90, superTappers: 1 }, xpReward: 100 },
-          { id: 'season_19', stage: 19, kind: 'deal_damage', title: 'Colossus', desc: 'Deal 3,000,000 damage.', target: 3000000, rewards: { coins: 1000 }, xpReward: 100 },
-          { id: 'season_20', stage: 20, kind: 'win_match', title: 'Champion Ascent', desc: 'Win 15 matches.', target: 15, rewards: { gems: 10 }, xpReward: 100 },
-          { id: 'season_21', stage: 21, kind: 'play_match', title: 'Endgame Prep', desc: 'Play 20 matches.', target: 20, rewards: { coins: 1200, souls: 80 }, xpReward: 100 },
-          { id: 'season_22', stage: 22, kind: 'defeat_enemies', title: 'Tower Wrecker', desc: 'Defeat 80 enemies across the tower battlefields.', target: 80, rewards: { souls: 120, towerDrops: 2 }, xpReward: 100 },
-          { id: 'season_23', stage: 23, kind: 'collect_cubes', title: 'Energy Eater', desc: 'Collect 100 power cubes.', target: 100, rewards: { coins: 1500, souls: 100 }, xpReward: 100 },
-          { id: 'season_24', stage: 24, kind: 'perform_supers', title: 'Power Hurricane', desc: 'Use 60 Power Moves.', target: 60, rewards: { gems: 15 }, xpReward: 100 },
-          { id: 'season_25', stage: 25, kind: 'deal_damage', title: 'Godlike Force', desc: 'Deal 8,000,000 damage.', target: 8000000, rewards: { coins: 3000, souls: 300, hyperTappers: 2 }, xpReward: 100 }
-      ];
-      const ARENAWEEN_QUEST_DEFS = [
-          {id:'arenaween_01',stage:1,kind:'play_match',title:'Trick or Treat',desc:'Play 3 matches.',target:3,rewards:{coins:250,souls:15},xpReward:100},
-          {id:'arenaween_02',stage:2,kind:'defeat_enemies',title:'Monster Mash',desc:'Defeat 25 enemies.',target:25,rewards:{souls:30},xpReward:100},
-          {id:'arenaween_03',stage:3,kind:'win_match',title:'Soul Starter',desc:'Win 2 battles.',target:2,rewards:{coins:350},xpReward:100},
-          {id:'arenaween_04',stage:4,kind:'deal_damage',title:'Damage Fright',desc:'Deal 50,000 damage.',target:50000,rewards:{coins:400,souls:35},xpReward:100},
-          {id:'arenaween_05',stage:5,kind:'collect_cubes',title:'Cube Cauldron',desc:'Collect 25 power cubes.',target:25,rewards:{gems:4},xpReward:100},
-          {id:'arenaween_06',stage:6,kind:'win_match',title:'Spooky Box Break',desc:'Win 4 battles.',target:4,rewards:{spookyBoxes:1},xpReward:100},
-          {id:'arenaween_07',stage:7,kind:'perform_supers',title:'Power Potion',desc:'Activate 15 Power Moves.',target:15,rewards:{souls:50,superTappers:1},xpReward:100},
-          {id:'arenaween_08',stage:8,kind:'deal_damage',title:'Graveyard Grind',desc:'Deal 150,000 damage.',target:150000,rewards:{coins:650},xpReward:100},
-          {id:'arenaween_09',stage:9,kind:'different_fighters',title:'Haunt Squad',desc:'Finish battles with 6 different Fighters.',target:6,rewards:{souls:65},xpReward:100},
-          {id:'arenaween_10',stage:10,kind:'win_match',title:'Halfway Haunt',desc:'Win 8 battles.',target:8,rewards:{spookyBoxes:1,coins:500},xpReward:100},
-          {id:'arenaween_11',stage:11,kind:'corrupted_matches',title:'Corrupted Carnival',desc:'Play Corrupted Showdown 3 times.',target:3,rewards:{gems:6},xpReward:100},
-          {id:'arenaween_12',stage:12,kind:'defeat_enemies',title:'Soul Reaper',desc:'Defeat 75 enemies.',target:75,rewards:{superTappers:1,souls:80},xpReward:100},
-          {id:'arenaween_13',stage:13,kind:'boss_hard',title:'Headless Legends',desc:'Clear Hard in the Headless Bolznstien Boss Fight.',target:1,rewards:{coins:800},xpReward:100},
-          {id:'arenaween_14',stage:14,kind:'win_match',title:'Fright Night',desc:'Win 12 battles.',target:12,rewards:{spookyBoxes:1},xpReward:100},
-          {id:'arenaween_15',stage:15,kind:'deal_damage',title:'Box Bonanza',desc:'Deal 500,000 damage.',target:500000,rewards:{spookyBoxes:2},xpReward:100},
-          {id:'arenaween_16',stage:16,kind:'perform_supers',title:'Super Scare',desc:'Activate 40 Power Moves.',target:40,rewards:{hyperTappers:1,souls:90},xpReward:100},
-          {id:'arenaween_17',stage:17,kind:'corrupted_wins',title:'Corruption Survivor',desc:'Win 2 Corrupted Showdown matches.',target:2,rewards:{coins:1000},xpReward:100},
-          {id:'arenaween_18',stage:18,kind:'deal_damage',title:'Damage Demon',desc:'Deal 1,000,000 damage.',target:1000000,rewards:{souls:120,gems:10},xpReward:100},
-          {id:'arenaween_19',stage:19,kind:'boss_impossible_2',title:'Impossible Pumpkin',desc:'Clear Impossible II in the Headless Bolznstien Boss Fight.',target:1,rewards:{spookyBoxes:2},xpReward:100},
-          {id:'arenaween_20',stage:20,kind:'win_match',title:'ARENAAWEEN MASTER',desc:'Win 20 battles this season.',target:20,rewards:{coins:1500,spookyBoxes:2,hyperTappers:1},xpReward:100}
-      ];
+      const SEASON_PREMIUM_UNLOCK_GEMS = 100;
+      const SEASON_PREMIUM_UNLOCK_COINS = 11999;
       const TURKEY_TROUBLE_PASS_TIERS = [
           {tier:1,title:'First Helping',free:{type:'coins',amount:250},premium:{type:'souls',amount:30}},
           {tier:2,title:'Gravy Train',free:{type:'souls',amount:25},premium:{type:'gems',amount:4}},
@@ -9687,7 +9738,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           {tier:12,title:'Carol Core',free:{type:'corePieces',amount:15},premium:{type:'coins',amount:850}},
           {tier:13,title:'Blizzard Fortune',free:{type:'gems',amount:5},premium:{type:'present',amount:1}},
           {tier:14,title:'Surge Tidings',free:{type:'coins',amount:750},premium:{type:'hyperTapper',amount:1}},
-          {tier:15,title:'Present III',free:{type:'present',amount:1},premium:{type:'coins',amount:1100}},
+          {tier:15,title:'Present III',free:{type:'present',amount:1},premium:{type:'randomPiece',amount:3}},
           {tier:16,title:'Full Sleigh Funds',free:{type:'souls',amount:85},premium:{type:'corePieces',amount:20}},
           {tier:17,title:'Soul Feastivities',free:{type:'coins',amount:900},premium:{type:'present',amount:1}},
           {tier:18,title:'Double Presents',free:{type:'superTapper',amount:1},premium:{type:'present',amount:2}},
@@ -9697,7 +9748,32 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           {tier:22,title:'Firework Riches',free:{type:'coins',amount:1100},premium:{type:'gems',amount:12}},
           {tier:23,title:'Final Frost Funds',free:{type:'souls',amount:130},premium:{type:'corePieces',amount:25}},
           {tier:24,title:'Present Storm',free:{type:'present',amount:2},premium:{type:'present',amount:2}},
-          {tier:25,title:'XPLODER',free:{type:'present',amount:2},premium:{type:'skin',id:'xploder-rocketeer',name:'Xploder Rocketeer'}}
+          {tier:25,title:'Midwinter Cache',free:{type:'gems',amount:10},premium:{type:'superTapper',amount:3}},
+          {tier:26,title:'Snowdrift Coins',free:{type:'coins',amount:1300},premium:{type:'souls',amount:150}},
+          {tier:27,title:'Jingle Core',free:{type:'corePieces',amount:25},premium:{type:'present',amount:2}},
+          {tier:28,title:'Aurora Gems',free:{type:'gems',amount:12},premium:{type:'coins',amount:1600}},
+          {tier:29,title:'Present V',free:{type:'present',amount:2},premium:{type:'hyperTapper',amount:1}},
+          {tier:30,title:'Starlight Hoard',free:{type:'coins',amount:1600},premium:{type:'randomPiece',amount:3}},
+          {tier:31,title:'Frostbite Souls',free:{type:'souls',amount:160},premium:{type:'present',amount:2}},
+          {tier:32,title:'Candy Cane Cache',free:{type:'coins',amount:1800},premium:{type:'gems',amount:15}},
+          {tier:33,title:'Tapper Blizzard',free:{type:'superTapper',amount:2},premium:{type:'corePieces',amount:30}},
+          {tier:34,title:'Present VI',free:{type:'present',amount:2},premium:{type:'present',amount:3}},
+          {tier:35,title:'Ember Glow',free:{type:'gems',amount:15},premium:{type:'hyperTapper',amount:2}},
+          {tier:36,title:'Snowfall Fortune',free:{type:'coins',amount:2000},premium:{type:'souls',amount:200}},
+          {tier:37,title:'Core Noel',free:{type:'corePieces',amount:30},premium:{type:'present',amount:3}},
+          {tier:38,title:'Jingle Gems',free:{type:'gems',amount:18},premium:{type:'coins',amount:2400}},
+          {tier:39,title:'Present VII',free:{type:'present',amount:3},premium:{type:'superTapper',amount:3}},
+          {tier:40,title:'Aurora Hoard',free:{type:'coins',amount:2400},premium:{type:'randomPiece',amount:3}},
+          {tier:41,title:'Frostfire Souls',free:{type:'souls',amount:220},premium:{type:'present',amount:3}},
+          {tier:42,title:'Starlight Coins',free:{type:'coins',amount:2800},premium:{type:'gems',amount:20}},
+          {tier:43,title:'Tapper Storm',free:{type:'superTapper',amount:3},premium:{type:'hyperTapper',amount:2}},
+          {tier:44,title:'Present VIII',free:{type:'present',amount:3},premium:{type:'present',amount:4}},
+          {tier:45,title:'Noel Fortune',free:{type:'gems',amount:25},premium:{type:'corePieces',amount:40}},
+          {tier:46,title:'Blizzard Riches',free:{type:'coins',amount:3200},premium:{type:'souls',amount:250}},
+          {tier:47,title:'Core Celebration',free:{type:'corePieces',amount:40},premium:{type:'present',amount:4}},
+          {tier:48,title:'Jingle Jackpot',free:{type:'gems',amount:30},premium:{type:'hyperTapper',amount:3}},
+          {tier:49,title:'Eve Countdown',free:{type:'present',amount:4},premium:{type:'randomPiece',amount:3}},
+          {tier:50,title:'HOLIDAY LIGHTS',free:{type:'coins',amount:5000},premium:{type:'skin',id:'holiday-lights-freezeon'}}
       ];
       const EMBER_FORGE_PASS_TIERS = [
           {tier:1,title:'First Spark',free:{type:'coins',amount:250},premium:{type:'souls',amount:30}},
@@ -9739,13 +9815,13 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           {id:'xplodemis_10',stage:10,kind:'christmas_powerups',title:'Buff Collector',desc:'Pick up 5 buffs in Christmas Showdown.',target:5,rewards:{presents:1,coins:500},xpReward:100},
           {id:'xplodemis_11',stage:11,kind:'win_match',title:'Halfway to Christmas',desc:'Win 8 battles.',target:8,rewards:{coins:500,tappers:1},xpReward:100},
           {id:'xplodemis_12',stage:12,kind:'defeat_enemies',title:'Krampus Reaper',desc:'Defeat 75 enemies.',target:75,rewards:{superTappers:1,corePieces:12},xpReward:100},
-          {id:'xplodemis_13',stage:13,kind:'boss_hard',title:'Still Headless (Holiday Edition)',desc:'Clear Hard in the Headless Bolznstien Boss Fight.',target:1,rewards:{coins:800},xpReward:100},
+          {id:'xplodemis_13',stage:13,kind:'perform_supers',title:'Twinkle Toes',desc:'Activate 25 Power Moves.',target:25,rewards:{coins:800},xpReward:100},
           {id:'xplodemis_14',stage:14,kind:'christmas_showdown_wins',title:'Christmas Champion',desc:'Win a Christmas Showdown.',target:1,rewards:{presents:1,souls:90},xpReward:100},
           {id:'xplodemis_15',stage:15,kind:'deal_damage',title:'Present Bonanza',desc:'Deal 500,000 damage.',target:500000,rewards:{presents:2},xpReward:100},
           {id:'xplodemis_16',stage:16,kind:'perform_supers',title:'Super Stockings',desc:'Activate 40 Power Moves.',target:40,rewards:{hyperTappers:1,corePieces:15},xpReward:100},
           {id:'xplodemis_17',stage:17,kind:'christmas_powerups',title:'Buff Blizzard',desc:'Pick up 15 buffs in Christmas Showdown.',target:15,rewards:{coins:1000},xpReward:100},
           {id:'xplodemis_18',stage:18,kind:'deal_damage',title:'Damage Decorator',desc:'Deal 1,000,000 damage.',target:1000000,rewards:{souls:120,gems:10},xpReward:100},
-          {id:'xplodemis_19',stage:19,kind:'boss_impossible_2',title:'Impossible Snowfall',desc:'Clear Impossible II in the Headless Bolznstien Boss Fight.',target:1,rewards:{presents:2,coins:1200},xpReward:100},
+          {id:'xplodemis_19',stage:19,kind:'defeat_enemies',title:'Snowball Fight Finale',desc:'Defeat 100 enemies.',target:100,rewards:{presents:2,coins:1200},xpReward:100},
           {id:'xplodemis_20',stage:20,kind:'win_match',title:'XPLODEMIS MASTER',desc:'Win 20 battles this season.',target:20,rewards:{coins:1500,presents:2,hyperTappers:1},xpReward:100}
       ];
       const EMBER_FORGE_QUEST_DEFS = [
@@ -9780,7 +9856,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           if (now >= TURKEY_TROUBLE_START_UTC) {
               return { key:'turkey', seasonNumber:5, id:TURKEY_TROUBLE_SEASON_ID, name:'Turkey Trouble', upperName:'TURKEY TROUBLE', tiers:TURKEY_TROUBLE_PASS_TIERS, quests:TURKEY_TROUBLE_QUEST_DEFS, startUtc:TURKEY_TROUBLE_START_UTC, endUtc:TURKEY_TROUBLE_END_UTC, endLabel:'November 30, 2026' };
           }
-          return { key:'arenaween', seasonNumber:4, id:SEASON_PASS_ID, name:'Arenaaween', upperName:'ARENAAWEEN', tiers:ARENAWEEN_PASS_TIERS, quests:ARENAWEEN_QUEST_DEFS, startUtc:0, endUtc:ARENAWEEN_SEASON_END_UTC, endLabel:'October 31, 2026' };
+          return { key:'xplodemis', seasonNumber:6, id:XPLODEMIS_SEASON_ID, name:'Xplodemis', upperName:'XPLODEMIS', tiers:XPLODEMIS_PASS_TIERS, quests:XPLODEMIS_QUEST_DEFS, startUtc:XPLODEMIS_START_UTC, endUtc:XPLODEMIS_END_UTC, endLabel:'December 31, 2026' };
       }
       function getActiveSeasonPassId() { return getActiveSeasonProfile().id; }
       function getActiveSeasonPassTiers() { return getActiveSeasonProfile().tiers; }
@@ -9811,13 +9887,13 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           if (!daily.played || (daily.claimed || 0) >= allowance) return false;
           const grant = allowance - (daily.claimed || 0);
           daily.claimed = allowance;
-          playerData.presentCount = (playerData.presentCount || 0) + grant;
+          grantReward({ type: 'present', amount: grant });
           saveProgress();
           return grant;
       }
-      const SEASON_QUEST_STAGE_COUNT = 0;
+      const SEASON_QUEST_STAGE_COUNT = 20;
       function buildSeasonPassQuests() {
-          return [].map(def => ({
+          return getActiveSeasonProfile().quests.map(def => ({
               id: def.id,
               kind: def.kind,
               stage: def.stage,
@@ -9841,7 +9917,9 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
               claimedFreeRewards: [],
               claimedPremiumRewards: [],
               quests: {},
-              questSchemaVersion: SEASON_PASS_SCHEMA_VERSION
+              questSchemaVersion: SEASON_PASS_SCHEMA_VERSION,
+              overflowSteps: 0,
+              overflowSuperSteps: 0
           };
           for (const q of buildSeasonPassQuests()) {
               playerData.seasonPass.quests[q.id] = {
@@ -9873,6 +9951,8 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           BrawePassTokens.normalize(pass, SEASON_PASS_MAX_LEVEL);
           if (!Array.isArray(pass.claimedFreeRewards)) pass.claimedFreeRewards = [];
           if (!Array.isArray(pass.claimedPremiumRewards)) pass.claimedPremiumRewards = [];
+          if (pass.overflowSteps == null) pass.overflowSteps = 0;
+          if (pass.overflowSuperSteps == null) pass.overflowSuperSteps = 0;
           if (!pass.quests || typeof pass.quests !== 'object') pass.quests = {};
           const seasonDefs = buildSeasonPassQuests();
           const validIds = new Set(seasonDefs.map(q => q.id));
@@ -9907,6 +9987,32 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           updateEventBadge();
           updateQuestBadge();
       }
+      // Pass overflow (Arena Forge rebuild): past tier 50, every extra
+      // 1000 XP = 2 random tappers and every extra 2500 XP = a super
+      // tapper. Steps are tracked so each threshold pays exactly once.
+      function grantRandomTappers(count) {
+          const kinds = ['tapper', 'superTapper', 'hyperTapper'];
+          for (let i = 0; i < count; i++) {
+              grantReward({ type: kinds[Math.floor(Math.random() * kinds.length)], amount: 1 });
+          }
+      }
+      function awardSeasonPassOverflow(pass) {
+          if (!pass) return;
+          const maxXp = (SEASON_PASS_MAX_LEVEL - 1) * SEASON_PASS_XP_PER_LEVEL;
+          const over = Math.max(0, Math.floor(pass.xp || 0) - maxXp);
+          const steps = Math.floor(over / 1000);
+          const superSteps = Math.floor(over / 2500);
+          const prev = pass.overflowSteps || 0;
+          const prevSuper = pass.overflowSuperSteps || 0;
+          if (steps > prev) {
+              for (let i = 0; i < (steps - prev); i++) grantRandomTappers(2);
+              pass.overflowSteps = steps;
+          }
+          if (superSteps > prevSuper) {
+              grantReward({ type: 'superTapper', amount: superSteps - prevSuper });
+              pass.overflowSuperSteps = superSteps;
+          }
+      }
       function awardSeasonPassXp(amount = 0) {
           // Friendly Battles pay no season progress of any kind.
           if (isFriendlyBattle) return false;
@@ -9914,6 +10020,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           if (!isSeason3PassActive()) return false;
           ensureSeasonPassState();
           if (!BrawePassTokens.earn(playerData.seasonPass, amount, SEASON_PASS_MAX_LEVEL)) return false;
+          awardSeasonPassOverflow(playerData.seasonPass);
           saveProgress();
           updateEventBadge();
           return true;
@@ -9954,18 +10061,122 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           if (!reward) return false;
           return claimSeasonPassTrackReward(tier, 'free');
       }
+      // ── Central reward grant (Arena Forge rebuild, 2026-11-20) ──
+      // ONE place that turns a reward descriptor into player state. Every
+      // claim path (season pass, quests, ranked promotions, soul water,
+      // shop, match settlement, tappers) routes through here so amounts
+      // stay identical everywhere and a new reward kind needs one branch.
+      // Shapes: {type:'coins'|'gems'|'souls'|'tapper'|'superTapper'|
+      // 'hyperTapper'|'present'|'corePieces'|'randomPiece'|'soulWater'|
+      // 'skin'|'brawlerUnlock'|'xp'|'questXP'|'bricks', amount?, id?}.
+      // Quest-bucket plural aliases (tappers, superTappers, hyperTappers,
+      // presents) and {kind} are accepted too. Returns true when something
+      // was granted, false for unknown/empty rewards. Never saves — callers
+      // save. Never changes amounts — consolidation only.
+      function grantReward(reward, opts = {}) {
+          if (!reward || typeof reward !== 'object') return false;
+          if (typeof playerData === 'undefined' || !playerData) return false;
+          const type = reward.type || reward.kind;
+          const amount = Math.max(0, Math.floor(Number(reward.amount) || 0));
+          if (!type) return false;
+          switch (type) {
+              case 'coins':
+                  if (!amount) return false;
+                  playerData.coins = (playerData.coins || 0) + amount;
+                  return true;
+              case 'gems':
+                  if (!amount) return false;
+                  playerData.gems = (playerData.gems || 0) + amount;
+                  return true;
+              case 'souls':
+                  if (!amount) return false;
+                  // addSouls keeps the all-unlocked split (25% Soul Bank /
+                  // 75% Soul Water) — a direct souls += would bypass it.
+                  if (typeof addSouls === 'function') addSouls(amount);
+                  else playerData.souls = (playerData.souls || 0) + amount;
+                  return true;
+              case 'tapper': case 'tappers': case 'starrDrop': case 'drop':
+                  if (!amount) return false;
+                  playerData.starrDrops = (playerData.starrDrops || 0) + amount;
+                  return true;
+              case 'superTapper': case 'superTappers': case 'super_tapper':
+                  if (!amount) return false;
+                  playerData.superTapperCount = (playerData.superTapperCount || 0) + amount;
+                  return true;
+              case 'hyperTapper': case 'hyperTappers': case 'hyper_tapper':
+                  if (!amount) return false;
+                  playerData.hyperTapperCount = (playerData.hyperTapperCount || 0) + amount;
+                  return true;
+              case 'present': case 'presents':
+                  if (!amount) return false;
+                  playerData.presentCount = (playerData.presentCount || 0) + amount;
+                  return true;
+              case 'corePieces':
+                  if (!amount) return false;
+                  if (typeof addCorePieces === 'function') addCorePieces(amount);
+                  else playerData.corePieces = (playerData.corePieces || 0) + amount;
+                  return true;
+              case 'randomPiece': case 'randomPieces':
+                  if (!amount) return false;
+                  if (typeof grantRandomPiece === 'function') return grantRandomPiece(amount);
+                  playerData.randomPieces = (playerData.randomPieces || 0) + amount;
+                  return true;
+              case 'soulWater':
+                  if (!amount) return false;
+                  if (typeof ensureSoulSummonerData === 'function') ensureSoulSummonerData();
+                  if (!playerData.soulSummoner) playerData.soulSummoner = {};
+                  playerData.soulSummoner.soulWater = (playerData.soulSummoner.soulWater || 0) + amount;
+                  if (typeof checkSoulWaterRewards === 'function') checkSoulWaterRewards();
+                  return true;
+              case 'skin': {
+                  const skin = (typeof skinsDatabase !== 'undefined' && skinsDatabase[reward.id]) || null;
+                  if (!skin) return false;
+                  if (!playerData.ownedSkins) playerData.ownedSkins = {};
+                  if (!playerData.ownedSkins[skin.brawler]) playerData.ownedSkins[skin.brawler] = [];
+                  if (!playerData.ownedSkins[skin.brawler].includes(skin.id)) playerData.ownedSkins[skin.brawler].push(skin.id);
+                  // Chromas ride with the skin: the tier-50 skin grants both.
+                  if (Array.isArray(skin.chromas)) {
+                      for (const c of skin.chromas) {
+                          const cid = (c && c.id) || c;
+                          if (cid && !playerData.ownedSkins[skin.brawler].includes(cid)) playerData.ownedSkins[skin.brawler].push(cid);
+                      }
+                  }
+                  return true;
+              }
+              case 'brawlerUnlock': {
+                  const id = reward.id || reward.brawler;
+                  if (!id || (playerData.unlockedBrawlers && playerData.unlockedBrawlers[id])) return false;
+                  if (typeof unlockBrawler === 'function') return unlockBrawler(id);
+                  if (!playerData.unlockedBrawlers) playerData.unlockedBrawlers = {};
+                  playerData.unlockedBrawlers[id] = true;
+                  return true;
+              }
+              case 'xp': case 'seasonXp':
+                  if (!amount) return false;
+                  if (typeof awardSeasonPassXp === 'function') return awardSeasonPassXp(amount);
+                  return false;
+              case 'questXP':
+                  if (!amount) return false;
+                  if (typeof grantContractXP === 'function') { grantContractXP(amount); return true; }
+                  return false;
+              case 'bricks': {
+                  if (!amount) return false;
+                  const bid = (opts && opts.brawlerId) || (typeof selectedBrawler !== 'undefined' ? selectedBrawler : null);
+                  if (!bid) return false;
+                  const prog = (typeof getOrCreateProgress === 'function') ? getOrCreateProgress(bid) : (playerData.brawlers && playerData.brawlers[bid]);
+                  if (!prog) return false;
+                  if (typeof applyBrickDelta === 'function') applyBrickDelta(prog, amount);
+                  else prog.bricks = (prog.bricks || 0) + amount;
+                  return true;
+              }
+              default:
+                  return false;
+          }
+      }
       function grantSeasonReward(reward) {
-          if (!reward || !reward.type) return false;
-          if (reward.type === 'coins') playerData.coins = (playerData.coins || 0) + (reward.amount || 0);
-          else if (reward.type === 'gems') playerData.gems = (playerData.gems || 0) + (reward.amount || 0);
-          else if (reward.type === 'souls') playerData.souls=(playerData.souls||0)+(reward.amount||0);
-          else if (reward.type === 'tapper') playerData.starrDrops = (playerData.starrDrops || 0) + (reward.amount || 0);
-          else if (reward.type === 'superTapper') playerData.superTapperCount = (playerData.superTapperCount || 0) + (reward.amount || 0);
-          else if (reward.type === 'present') playerData.presentCount = (playerData.presentCount || 0) + (reward.amount || 0);
-          else if (reward.type === 'corePieces') addCorePieces(reward.amount || 0);
-          else if (reward.type === 'hyperTapper') playerData.hyperTapperCount = (playerData.hyperTapperCount || 0) + (reward.amount || 0);
-          else return false;
-          return true;
+          // Season-pass claims are one grantReward call now; 'skin' (the
+          // tier-50 Holiday Lights skin) grants through the same path.
+          return grantReward(reward);
       }
       function claimSeasonPassTrackReward(tier, track = 'free') {
           if (!ENABLE_SEASON_QUESTS) return false;
@@ -10244,7 +10455,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
                   schemaVersion: DAILY_WEEKLY_QUEST_SCHEMA_VERSION,
                   dailyKey: getLocalDayKey(),
                   weeklyKey: getLocalWeekKey(),
-                  daily: buildRandomContractBucket(DAILY_CONTRACT_POOL, 3, getLocalDayKey(), 'daily'),
+                  daily: buildRandomContractBucket(DAILY_CONTRACT_POOL, getDailyQuestCountForDay(getLocalDayKey()), getLocalDayKey(), 'daily'),
                   weekly: buildRandomContractBucket(WEEKLY_CONTRACT_POOL, 4, getLocalWeekKey(), 'weekly', true),
                   starter: buildQuestBucket(SOUL_STARTER_QUESTS),
                   limited: buildQuestBucket(LIMITED_QUESTS),
@@ -10274,6 +10485,11 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
               playerData.questBoard.limited = buildQuestBucket(LIMITED_QUESTS);
           }
       }
+      function getDailyQuestCountForDay(dayKey) {
+          // Daily quests: 2 or 3 per day, seeded by the day key so the
+          // count is stable within a day and varies across days.
+          return 2 + (hashShopKey(dayKey || getLocalDayKey()) % 2);
+      }
       function refreshDailyWeeklyQuests() {
           if (!ENABLE_DAILY_WEEKLY_QUESTS) return;
           ensureDailyWeeklyQuestData();
@@ -10281,7 +10497,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           const nowWeek = getLocalWeekKey();
           if (playerData.questBoard.dailyKey !== nowDay) {
               playerData.questBoard.dailyKey = nowDay;
-              playerData.questBoard.daily = buildRandomContractBucket(DAILY_CONTRACT_POOL, 3, nowDay, 'daily');
+              playerData.questBoard.daily = buildRandomContractBucket(DAILY_CONTRACT_POOL, getDailyQuestCountForDay(nowDay), nowDay, 'daily');
           }
           if (playerData.questBoard.weeklyKey !== nowWeek) {
               playerData.questBoard.weeklyKey = nowWeek;
@@ -10434,27 +10650,22 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           const quest = bucket && bucket[questId];
           if (!quest || !quest.completed || quest.claimed) return false;
           const rewards = quest.rewards || {};
-          if (rewards.coins) playerData.coins = (playerData.coins || 0) + rewards.coins;
-          if (rewards.gems) playerData.gems = (playerData.gems || 0) + rewards.gems;
-          if (rewards.souls) addSouls(rewards.souls);
-          if (rewards.tappers) playerData.starrDrops = (playerData.starrDrops || 0) + rewards.tappers;
-          if (rewards.superTappers) playerData.superTapperCount = (playerData.superTapperCount || 0) + rewards.superTappers;
-          if (rewards.hyperTappers) playerData.hyperTapperCount = (playerData.hyperTapperCount || 0) + rewards.hyperTappers;
-          if (rewards.presents) playerData.presentCount = (playerData.presentCount || 0) + rewards.presents;
-          if (rewards.corePieces) addCorePieces(rewards.corePieces);
-          if (rewards.questXP) grantContractXP(rewards.questXP);
-          if (rewards.brawlerUnlock && !playerData.unlockedBrawlers[rewards.brawlerUnlock]) {
-              playerData.unlockedBrawlers[rewards.brawlerUnlock] = true;
+          if (rewards.coins) grantReward({ type: 'coins', amount: rewards.coins });
+          if (rewards.gems) grantReward({ type: 'gems', amount: rewards.gems });
+          if (rewards.souls) grantReward({ type: 'souls', amount: rewards.souls });
+          if (rewards.tappers) grantReward({ type: 'tapper', amount: rewards.tappers });
+          if (rewards.superTappers) grantReward({ type: 'superTapper', amount: rewards.superTappers });
+          if (rewards.hyperTappers) grantReward({ type: 'hyperTapper', amount: rewards.hyperTappers });
+          if (rewards.presents) grantReward({ type: 'present', amount: rewards.presents });
+          if (rewards.corePieces) grantReward({ type: 'corePieces', amount: rewards.corePieces });
+          if (rewards.questXP) grantReward({ type: 'questXP', amount: rewards.questXP });
+          if (rewards.randomPieces) grantReward({ type: 'randomPiece', amount: rewards.randomPieces });
+          if (rewards.brawlerUnlock && grantReward({ type: 'brawlerUnlock', id: rewards.brawlerUnlock })) {
               spawnFloatingText(innerWidth / 2, 120, `${brawlerData[rewards.brawlerUnlock]?.name || rewards.brawlerUnlock} UNLOCKED!`, '#ffd166');
           }
-          if (rewards.skin) {
-              const skin = skinsDatabase[rewards.skin];
-              if (skin) {
-                  if (!playerData.ownedSkins[skin.brawler]) playerData.ownedSkins[skin.brawler] = [];
-                  if (!playerData.ownedSkins[skin.brawler].includes(skin.id)) playerData.ownedSkins[skin.brawler].push(skin.id);
-                  playerData.selectedSkins[skin.brawler] = skin.id;
-                  spawnFloatingText(innerWidth / 2, 120, `${skin.name || 'SKIN'} UNLOCKED!`, '#00f0ff');
-              }
+          if (rewards.skin && grantReward({ type: 'skin', id: rewards.skin })) {
+              // Quest skins are owned, never auto-equipped.
+              spawnFloatingText(innerWidth / 2, 120, `${(typeof skinsDatabase !== 'undefined' && skinsDatabase[rewards.skin]?.name) || 'SKIN'} UNLOCKED!`, '#00f0ff');
           }
           quest.claimed = true;
           saveProgress();
@@ -10591,7 +10802,6 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
                   if (quest.rewards?.tappers) rewardParts.push(`${quest.rewards.tappers} Tapper Upper${quest.rewards.tappers > 1 ? 's' : ''}`);
                   if (quest.rewards?.superTappers) rewardParts.push(`${quest.rewards.superTappers} Super Tapper${quest.rewards.superTappers > 1 ? 's' : ''}`);
                   if (quest.rewards?.hyperTappers) rewardParts.push(`${quest.rewards.hyperTappers} Surge Tapper${quest.rewards.hyperTappers > 1 ? 's' : ''}`);
-                  if (quest.rewards?.spookyBoxes) rewardParts.push(`${quest.rewards.spookyBoxes} Spooky Box${quest.rewards.spookyBoxes > 1 ? 'es' : ''}`);
                   if (quest.rewards?.presents) rewardParts.push(`${quest.rewards.presents} Present${quest.rewards.presents > 1 ? 's' : ''}`);
                   if (quest.rewards?.corePieces) rewardParts.push(`${quest.rewards.corePieces} Core Pieces`);
                   if (quest.rewards?.questXP) rewardParts.push(`${quest.rewards.questXP} Contract XP`);
@@ -13515,6 +13725,7 @@ let blinkEyeDodgeState = null;
     let isMirrorMode = false;
     let isRankedMatch = false;
     let rankedTeammatePicks = [];
+    let rankedTeammateNames = [];
     let rankedBans = { player: [], enemy: [] };
     let rankedDraftSummary = '';
     const RANKED_TEAM_MODE_POOL = ['knock_donate', 'arena_forge', 'brick_vault'];
@@ -13600,8 +13811,10 @@ let blinkEyeDodgeState = null;
     // Ranked draft pool: canonical mechanics only, minus rankedPool: false.
     // includeClassic mirrors the old two-pool shape -- multi-modifier drafts
     // never roll 'classic', the single-modifier fallback can.
+    // Routed through the shared modifier registry (rebuild 2026-11-20):
+    // Ranked uses the shared list first; other modes follow later.
     function getRankedMutatorPoolKeys(includeClassic) {
-        return Object.keys(MUTATOR_DEFS).filter((k) => (includeClassic || k !== 'classic') && MUTATOR_DEFS[k].rankedPool !== false);
+        return getSharedModifierPool('ranked').filter((d) => (includeClassic || d.id !== 'classic') && MUTATOR_DEFS[d.id].rankedPool !== false).map((d) => d.id);
     }
     // Canonicalising slot assignment: draft / veto / picker paths resolve
     // aliases on selection so a slot never stores a duplicate id.
@@ -15007,11 +15220,8 @@ let blinkEyeDodgeState = null;
         }
     }
     let timedDetonationTimer = 0;
-    const RANKED_PASS_TIERS = 50;
-    const RANKED_PASS_XP_PER_TIER = 200;
-    const RANKED_WEEKLY_PASS_XP_CAP = 2000;
-    const RANKED_WEEKLY_OVERFLOW_COINS_PER_XP = 1 / 5;
-    const RANKED_WEEKLY_MAX_BONUS_COINS = 300;
+    // Ranked Pass deleted in the Arena Forge rebuild (2026-11-20):
+    // no pass XP accrual, no weekly cap, no pass tiers.
     function getRankedWeekKey(now = Date.now()) {
         const d = new Date(now);
         d.setHours(0, 0, 0, 0);
@@ -15023,58 +15233,100 @@ let blinkEyeDodgeState = null;
         const week = 1 + Math.round((d - firstThursday) / (7 * 24 * 60 * 60 * 1000));
         return `${d.getFullYear()}-W${String(Math.max(1, week)).padStart(2, '0')}`;
     }
-    const RANKED_PASS_REWARDS = [
-        { tier: 1, type: 'coins', amount: 250, label: '250 Coins', icon: '🪙', rarity: 'common' },
-        { tier: 2, type: 'souls', amount: 30, label: '30 Souls', icon: '🔮', rarity: 'common' },
-        { tier: 3, type: 'gems', amount: 5, label: '5 Gems', icon: '💎', rarity: 'rare' },
-        { tier: 4, type: 'tapper', amount: 1, label: 'Tapper Upper', icon: '📦', rarity: 'rare' },
-        { tier: 5, type: 'pinpack', amount: 3, label: 'Bronze Pin Pack (3 pins)', icon: '📌', rarity: 'rare' },
-        { tier: 6, type: 'coins', amount: 350, label: '350 Coins', icon: '🪙', rarity: 'common' },
-        { tier: 7, type: 'title', titleId: 'Brick Scout', label: 'Title: "Brick Scout"', icon: '🏷️', rarity: 'rare' },
-        { tier: 8, type: 'souls', amount: 40, label: '40 Souls', icon: '🔮', rarity: 'common' },
-        { tier: 9, type: 'coins', amount: 450, label: '450 Coins', icon: '🪙', rarity: 'common' },
-        { tier: 10, type: 'drop', dropRarity: 'rare', label: 'Rare Starr Drop', icon: '⭐', rarity: 'rare' },
-        { tier: 11, type: 'gems', amount: 8, label: '8 Gems', icon: '💎', rarity: 'rare' },
-        { tier: 12, type: 'coins', amount: 500, label: '500 Coins', icon: '🪙', rarity: 'common' },
-        { tier: 13, type: 'souls', amount: 50, label: '50 Souls', icon: '🔮', rarity: 'common' },
-        { tier: 14, type: 'drop', dropRarity: 'super-rare', label: 'Super Rare Starr Drop', icon: '⭐', rarity: 'super-rare' },
-        { tier: 15, type: 'pinpack', amount: 3, label: 'Silver Pin Pack (3 pins)', icon: '📌', rarity: 'epic' },
-        { tier: 16, type: 'coins', amount: 600, label: '600 Coins', icon: '🪙', rarity: 'common' },
-        { tier: 17, type: 'tapper', amount: 1, label: 'Tapper Upper', icon: '📦', rarity: 'rare' },
-        { tier: 18, type: 'souls', amount: 60, label: '60 Souls', icon: '🔮', rarity: 'common' },
-        { tier: 19, type: 'gems', amount: 10, label: '10 Gems', icon: '💎', rarity: 'epic' },
-        { tier: 20, type: 'frame', frameId: 'ranked_cyber', label: 'Ranked Cyber Frame', icon: '🖼️', rarity: 'epic' },
-        { tier: 21, type: 'title', titleId: 'Point Vanguard', label: 'Title: "Point Vanguard"', icon: '🏷️', rarity: 'epic' },
-        { tier: 22, type: 'coins', amount: 750, label: '750 Coins', icon: '🪙', rarity: 'common' },
-        { tier: 23, type: 'souls', amount: 75, label: '75 Souls', icon: '🔮', rarity: 'common' },
-        { tier: 24, type: 'tapper', amount: 2, label: '2x Tapper Upper', icon: '📦', rarity: 'epic' },
-        { tier: 25, type: 'pinpack', amount: 3, label: 'Gold Pin Pack (3 pins)', icon: '📌', rarity: 'epic' },
-        { tier: 26, type: 'coins', amount: 850, label: '850 Coins', icon: '🪙', rarity: 'common' },
-        { tier: 27, type: 'gems', amount: 12, label: '12 Gems', icon: '💎', rarity: 'epic' },
-        { tier: 28, type: 'souls', amount: 80, label: '80 Souls', icon: '🔮', rarity: 'common' },
-        { tier: 29, type: 'tapper', amount: 2, label: '2x Tapper Upper', icon: '📦', rarity: 'epic' },
-        { tier: 30, type: 'frame', frameId: 'ranked_gold_crest', label: 'Golden Division Frame', icon: '🖼️', rarity: 'epic' },
-        { tier: 31, type: 'coins', amount: 950, label: '950 Coins', icon: '🪙', rarity: 'common' },
-        { tier: 32, type: 'souls', amount: 90, label: '90 Souls', icon: '🔮', rarity: 'common' },
-        { tier: 33, type: 'drop', dropRarity: 'mythic', label: 'Mythic Starr Drop', icon: '⭐', rarity: 'mythic' },
-        { tier: 34, type: 'gems', amount: 15, label: '15 Gems', icon: '💎', rarity: 'epic' },
-        { tier: 35, type: 'pinpack', amount: 3, label: 'Fume Pin Pack (3 pins)', icon: '📌', rarity: 'mythic' },
-        { tier: 36, type: 'coins', amount: 1100, label: '1,100 Coins', icon: '🪙', rarity: 'common' },
-        { tier: 37, type: 'tapper', amount: 2, label: '2x Tapper Upper', icon: '📦', rarity: 'epic' },
-        { tier: 38, type: 'souls', amount: 100, label: '100 Souls', icon: '🔮', rarity: 'epic' },
-        { tier: 39, type: 'drop', dropRarity: 'mythic', label: 'Mythic Starr Drop', icon: '⭐', rarity: 'mythic' },
-        { tier: 40, type: 'frame', frameId: 'ranked_fume_master', label: 'Master Fume Crest Frame', icon: '🖼️', rarity: 'mythic' },
-        { tier: 41, type: 'coins', amount: 1300, label: '1,300 Coins', icon: '🪙', rarity: 'common' },
-        { tier: 42, type: 'gems', amount: 20, label: '20 Gems', icon: '💎', rarity: 'mythic' },
-        { tier: 43, type: 'souls', amount: 120, label: '120 Souls', icon: '🔮', rarity: 'epic' },
-        { tier: 44, type: 'tapper', amount: 3, label: '3x Tapper Upper', icon: '📦', rarity: 'mythic' },
-        { tier: 45, type: 'pinpack', amount: 3, label: 'Legend Pin Pack (3 pins)', icon: '📌', rarity: 'legendary' },
-        { tier: 46, type: 'coins', amount: 1600, label: '1,600 Coins', icon: '🪙', rarity: 'common' },
-        { tier: 47, type: 'drop', dropRarity: 'legendary', label: 'Legendary Starr Drop', icon: '⭐', rarity: 'legendary' },
-        { tier: 48, type: 'gems', amount: 30, label: '30 Gems', icon: '💎', rarity: 'legendary' },
-        { tier: 49, type: 'tapper', amount: 5, label: '5x Mega Tapper Pack', icon: '📦', rarity: 'legendary' },
-        { tier: 50, type: 'skin', skinId: 'ranked-rocketeer', brawler: 'rocketeer', label: 'Ranked Rocketeer Skin', icon: '🚀', rarity: 'legendary' }
+    // --- Prestige League (Arena Forge rebuild 2026-11-20) -------------------
+    // Ranked Prestige is now the Prestige League: a 3-day-cycle leaderboard.
+    // Max PL5 (getRankedPrestige, capped at 5). The leaderboard resets
+    // every 3 days; top 3 at cycle end get gems + tappers (paid at
+    // rollover). The 2 names shown with you are your teammates. Opponents'
+    // RP moves up/down every match, synced to your result.
+    const PRESTIGE_LEAGUE_MAX = 5;
+    const PRESTIGE_LEAGUE_CYCLE_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
+    // Top-3 rewards (builder pick, flagged in the rebuild report):
+    // 1st 100 gems + 5 tappers, 2nd 50 gems + 3 tappers, 3rd 25 gems + 2 tappers.
+    const PRESTIGE_LEAGUE_TOP3_REWARDS = [
+        { gems: 100, tappers: 5 },
+        { gems: 50, tappers: 3 },
+        { gems: 25, tappers: 2 }
     ];
+    const PRESTIGE_LEAGUE_OPPONENT_COUNT = 5;
+    function getPrestigeLeagueCycleKey(now = Date.now()) {
+        return Math.floor(now / PRESTIGE_LEAGUE_CYCLE_MS);
+    }
+    function getPrestigeLeagueLevel(pointsRaw) {
+        return Math.min(PRESTIGE_LEAGUE_MAX, getRankedPrestige(pointsRaw));
+    }
+    function buildPrestigeLeagueOpponents(cycleKey) {
+        const names = TOURNAMENT_BOT_NAMES;
+        const out = [];
+        let seed = ((cycleKey * 2654435761) >>> 0) || 1;
+        const next = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+        const used = new Set();
+        while (out.length < PRESTIGE_LEAGUE_OPPONENT_COUNT) {
+            const name = names[Math.floor(next() * names.length)];
+            if (used.has(name)) continue;
+            used.add(name);
+            out.push({ name, rp: 1000 + Math.floor(next() * 800) });
+        }
+        return out;
+    }
+    function payPrestigeLeagueTop3Rewards(league) {
+        const rank = getPrestigeLeaguePlayerRank(league);
+        league.lastCycleRank = rank;
+        if (rank >= 1 && rank <= 3) {
+            const reward = PRESTIGE_LEAGUE_TOP3_REWARDS[rank - 1];
+            grantReward({ type: 'gems', amount: reward.gems });
+            for (let i = 0; i < reward.tappers; i++) grantReward({ type: 'tapper', amount: 1 });
+            league.lastCycleReward = { rank, gems: reward.gems, tappers: reward.tappers };
+        } else {
+            league.lastCycleReward = null;
+        }
+    }
+    function ensurePrestigeLeagueState(now = Date.now()) {
+        if (!playerData.prestigeLeague || typeof playerData.prestigeLeague !== 'object') playerData.prestigeLeague = {};
+        const league = playerData.prestigeLeague;
+        const key = getPrestigeLeagueCycleKey(now);
+        if (league.cycleKey !== key) {
+            // New 3-day cycle: pay out last cycle's top-3 rewards, then reset.
+            // League points reset; ranked.points (RP) does NOT reset.
+            if (league.cycleKey != null && Array.isArray(league.opponents)) payPrestigeLeagueTop3Rewards(league);
+            league.cycleKey = key;
+            league.points = 0;
+            league.matchesPlayed = 0;
+            league.opponents = buildPrestigeLeagueOpponents(key);
+            league.teammates = (rankedTeammateNames || []).slice(0, 2);
+            if (league.lastCycleRank == null) league.lastCycleRank = null;
+        }
+        if (league.points == null) league.points = 0;
+        if (!Array.isArray(league.opponents)) league.opponents = buildPrestigeLeagueOpponents(key);
+        if (!Array.isArray(league.teammates)) league.teammates = (rankedTeammateNames || []).slice(0, 2);
+        if (league.matchesPlayed == null) league.matchesPlayed = 0;
+        return league;
+    }
+    function getPrestigeLeagueStandings(league) {
+        const rows = [{ name: 'YOU', rp: league.points || 0, isPlayer: true }, ...(league.opponents || []).map(o => ({ name: o.name, rp: o.rp, isPlayer: false }))];
+        rows.sort((a, b) => b.rp - a.rp);
+        return rows;
+    }
+    function getPrestigeLeaguePlayerRank(league) {
+        return getPrestigeLeagueStandings(league).findIndex(r => r.isPlayer) + 1;
+    }
+    function recordPrestigeLeagueMatch(won, rankedDelta) {
+        const league = ensurePrestigeLeagueState();
+        league.points = Math.max(0, (league.points || 0) + rankedDelta);
+        league.matchesPlayed = (league.matchesPlayed || 0) + 1;
+        // Opponents' RP moves up/down every match, synced to your result:
+        // when you win they slip, when you lose they climb. Deterministic
+        // per (cycle, match) so the movement is the same every time it is
+        // computed for that match.
+        let seed = (((league.cycleKey || 0) * 2654435761 + league.matchesPlayed * 40503) >>> 0) || 1;
+        const next = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+        for (const opp of league.opponents) {
+            const swing = 5 + Math.floor(next() * 11); // 5..15
+            opp.rp = Math.max(0, opp.rp + (won ? -swing : swing));
+        }
+        league.teammates = (rankedTeammateNames || []).slice(0, 2);
+        return league;
+    }
     function ensureRankedSeasonState() {
         if (!playerData.ranked || typeof playerData.ranked !== 'object') {
             playerData.ranked = { points: 0, rewardsClaimed: [] };
@@ -15082,21 +15334,13 @@ let blinkEyeDodgeState = null;
         playerData.ranked.points = Math.max(0, Math.floor(playerData.ranked.points || 0));
         if (playerData.ranked.highPoints == null) playerData.ranked.highPoints = playerData.ranked.points;
         playerData.ranked.highPoints = Math.max(playerData.ranked.highPoints, playerData.ranked.points);
-        if (playerData.ranked.passXp == null) playerData.ranked.passXp = 0;
-        if (!Array.isArray(playerData.ranked.passClaimed)) playerData.ranked.passClaimed = [];
         if (!Array.isArray(playerData.ranked.rewardsClaimed)) playerData.ranked.rewardsClaimed = [];
         if (playerData.ranked.winStreak == null) playerData.ranked.winStreak = 0;
         if (playerData.ranked.seasonId == null) playerData.ranked.seasonId = 1;
         if (playerData.ranked.weekKey == null) playerData.ranked.weekKey = getRankedWeekKey();
         if (playerData.ranked.weekKey !== getRankedWeekKey()) {
             playerData.ranked.weekKey = getRankedWeekKey();
-            playerData.ranked.weeklyPassXp = 0;
-            playerData.ranked.weeklyMaxed = false;
-            playerData.ranked.weeklyMaxClaimed = false;
         }
-        if (playerData.ranked.weeklyPassXp == null) playerData.ranked.weeklyPassXp = 0;
-        if (playerData.ranked.weeklyMaxed == null) playerData.ranked.weeklyMaxed = false;
-        if (playerData.ranked.weeklyMaxClaimed == null) playerData.ranked.weeklyMaxClaimed = false;
         if (!playerData.ownedSkins) playerData.ownedSkins = {};
         if (!playerData.selectedSkins) playerData.selectedSkins = {};
     }
@@ -15147,6 +15391,31 @@ let blinkEyeDodgeState = null;
     // Tower floor rule) reads as 'none' instead of crashing the HUD.
     function getShowdownModifierDef(id) {
         return SHOWDOWN_MODIFIER_DEFS[id] || SHOWDOWN_MODIFIER_DEFS.none;
+    }
+    // --- Shared modifier registry (Arena Forge rebuild 2026-11-20) --------
+    // Modifiers = ONE shared list. The kept mutators (Classic,
+    // Hypercharge Overdrive, Quickfire, Super Surge, Friendly Fire) and
+    // the kept Showdown modifiers (No Modifier, Heavy Storm) are
+    // normalized to one shape: {id, name, icon, color, description,
+    // family, testId}. The old tables keep their own shapes for their
+    // existing call sites; the registry is the single source of truth
+    // for pools. Ranked uses it first; other modes follow later.
+    const SHARED_MODIFIER_REGISTRY = Object.freeze([
+        ...Object.values(MUTATOR_DEFS).map(d => ({ id: d.id, name: d.name, icon: d.icon, color: d.color, description: d.desc || '', family: 'mutator', testId: d.testId })),
+        ...Object.values(SHOWDOWN_MODIFIER_DEFS).map(d => ({ id: d.id, name: d.name, icon: d.icon, color: d.colour, description: d.description || '', family: 'showdown', testId: d.testId }))
+    ]);
+    function getSharedModifierDef(id) {
+        if (!id || typeof id !== 'string') return null;
+        return SHARED_MODIFIER_REGISTRY.find(d => d.id === id) || null;
+    }
+    function getSharedModifierPool(family) {
+        // Array.from: the registry lives in the game scope; pooled arrays
+        // are returned as plain host arrays so strict deep-equality in
+        // the vm-booted suites (which share host intrinsics) compares
+        // prototypes cleanly.
+        if (family === 'ranked') return Array.from(SHARED_MODIFIER_REGISTRY.filter(d => d.family === 'mutator'));
+        if (family === 'showdown') return Array.from(SHARED_MODIFIER_REGISTRY.filter(d => d.family === 'showdown'));
+        return Array.from(SHARED_MODIFIER_REGISTRY);
     }
     let activeShowdownModifier = 'none';
     let activeShowdownModifierLabel = 'No Modifier';
@@ -15548,7 +15817,9 @@ let heistFeverActive = false;
           claimedFreeRewards: [],
           claimedPremiumRewards: [],
           quests: {},
-          questSchemaVersion: SEASON_PASS_SCHEMA_VERSION
+          questSchemaVersion: SEASON_PASS_SCHEMA_VERSION,
+          overflowSteps: 0,
+          overflowSuperSteps: 0
       },
       seasonPassHistory: {},
       // Event progress (quests, drops and tapper rewards)
@@ -15636,6 +15907,11 @@ let heistFeverActive = false;
   // declaration leaves it in the temporal dead zone — the load threw on the
   // first level clamp and no brawler progress was restored (the P12 bug).
   const MAX_POWER_LEVEL = 12; // Power 12 update (2026-10-21): cap raised from 11.
+  // Weekly Trials (Arena Forge rebuild): 2 trial fighters per week.
+  // Declared here (not with the trials block below) because loadProgress()
+  // calls ensureWeeklyTrialState() during initial load — a const declared
+  // after that call site would throw a TDZ ReferenceError and break boot.
+  const WEEKLY_TRIAL_FIGHTER_COUNT = 2;
   function loadProgress() {
       try {
           let savedSelectedBrawler = null;
@@ -15875,7 +16151,9 @@ let heistFeverActive = false;
               claimedFreeRewards: [],
               claimedPremiumRewards: [],
               quests: {},
-              questSchemaVersion: SEASON_PASS_SCHEMA_VERSION
+              questSchemaVersion: SEASON_PASS_SCHEMA_VERSION,
+              overflowSteps: 0,
+              overflowSuperSteps: 0
           };
           // Persist event data
            save.persistent.event = playerData.event || { questsCompleted:0, quests:{}, milestonesClaimed:[], drops:[], dropHistory:[], startDropClaimed:false, pendingDropOpen:false };
@@ -16190,10 +16468,10 @@ let heistFeverActive = false;
       playerData.starrDrops = 0;
       playerData.superTapperCount = 0;
       playerData.hyperTapperCount = 0;
-      playerData.coins += totalCoins;
-      playerData.gems += totalGems;
-      addSouls(totalSouls);
-      if (totalCorePieces) addCorePieces(totalCorePieces);
+      grantReward({ type: 'coins', amount: totalCoins });
+      grantReward({ type: 'gems', amount: totalGems });
+      grantReward({ type: 'souls', amount: totalSouls });
+      if (totalCorePieces) grantReward({ type: 'corePieces', amount: totalCorePieces });
       saveProgress();
       if (selectedBrawler && typeof updateHyperButton === 'function') updateHyperButton();
       if (typeof refreshBrawlerList === 'function') refreshBrawlerList();
@@ -16325,9 +16603,9 @@ let heistFeverActive = false;
               const tapperCorePieces = Math.random() < 0.15 ? (2 + Math.floor(Math.random() * 9)) : 0;
               if (tapperCorePieces) addCorePieces(tapperCorePieces);
               const tapperSkinDrop = rollTapperSkinDrop(0.02);
-              playerData.coins += rewardCoins;
-              playerData.gems += gemReward;
-              addSouls(soulReward);
+              grantReward({ type: 'coins', amount: rewardCoins });
+              grantReward({ type: 'gems', amount: gemReward });
+              grantReward({ type: 'souls', amount: soulReward });
               saveProgress();
               if (typeof refreshBrawlerList === 'function') refreshBrawlerList();
               rewardRevealed = true;
@@ -16466,9 +16744,9 @@ let heistFeverActive = false;
               instruction.textContent = 'TAP ANYWHERE TO CLOSE';
               instruction.style.animation = 'none';
           }, 110 * rolls.length + 60);
-          playerData.gems += gemReward;
-          addSouls(soulReward);
-          playerData.coins += total;
+          grantReward({ type: 'gems', amount: gemReward });
+          grantReward({ type: 'souls', amount: soulReward });
+          grantReward({ type: 'coins', amount: total });
           saveProgress();
           if (typeof refreshBrawlerList === 'function') refreshBrawlerList();
       };
@@ -16530,7 +16808,7 @@ let heistFeverActive = false;
                   const chosenId = lockedHyperBrawlers[Math.floor(Math.random() * lockedHyperBrawlers.length)];
                   const chosenProg = getOrCreateProgress(chosenId);
                   chosenProg.hyperchargeUnlocked = true;
-                  playerData.gems += 8;
+                  grantReward({ type: 'gems', amount: 8 });
                   if (selectedBrawler === chosenId) updateHyperButton();
                   const chosenName = (brawlerData[chosenId] && brawlerData[chosenId].name) || chosenId;
                   resultDiv.innerHTML = `✨ CORE SURGE UNLOCKED! ✨<br><span style="font-size: 20px; color: #59f2d6; margin-top: 12px; display: block;">${chosenName}'s Core Surge is now unlocked! +8 GEMS! +${soulReward} SOULS!</span>`;
@@ -16539,7 +16817,7 @@ let heistFeverActive = false;
               } else {
                   // All Core Surges unlocked: the surge overflows into Core Pieces.
                   addCorePieces(60);
-                  playerData.gems += 8;
+                  grantReward({ type: 'gems', amount: 8 });
                   resultDiv.innerHTML = `✨ ALL CORE SURGES ALREADY UNLOCKED! ✨<br><span style="font-size: 20px; color: #59f2d6; margin-top: 12px; display: block;">Surge overflow: +60 CORE PIECES and +8 GEMS. +${soulReward} SOULS!</span>`;
                   resultDiv.style.color = '#ffd700';
                   resultDiv.style.textShadow = '0 0 20px #ffd700';
@@ -16547,7 +16825,7 @@ let heistFeverActive = false;
           } else {
               // Surge overflow: Core Pieces instead of a surge unlock.
               addCorePieces(60);
-              playerData.gems += 8;
+              grantReward({ type: 'gems', amount: 8 });
               resultDiv.innerHTML = `💠 SURGE OVERFLOW: +60 CORE PIECES! 💠<br><span style="font-size: 20px; color: #59f2d6; margin-top: 12px; display: block;">The surge had nowhere to go! +8 GEMS! +${soulReward} SOULS!</span>`;
               resultDiv.style.color = '#ffd700';
               resultDiv.style.textShadow = '0 0 20px #ffd700';
@@ -16668,7 +16946,6 @@ let heistFeverActive = false;
           color: '#5df2c2',
           glow: 'rgba(93, 242, 194, 0.4)',
           cost: 70,
-          milestoneReward: { coins: 300, gems: 30, label: '300 Coins + 30 Gems' },
           brawlers: ['echo', 'cheseypuff', 'unopcoloco', 'minigunnin', 'bowlin_rida', 'chaird', 'forest', 'goonbob', 'bolznstien', 'drainbow', 'trampaheal', 'upgradart', 'rager', 'fuel', 'axeywaxy', 'sir_cheeseburger']
       },
       {
@@ -16679,7 +16956,6 @@ let heistFeverActive = false;
           color: '#f1c40f',
           glow: 'rgba(241, 196, 15, 0.4)',
           cost: 170,
-          milestoneReward: { coins: 600, gems: 60, label: '600 Coins + 60 Gems' },
           brawlers: ['trapper', 'heater_miser', 'money_and_tax', 'hunter', 'bouncin_balls', 'fightnfire', 'splitter', 'scuba_diver', 'hoop', 'beam', 'teether', 'warrior', 'peter_pickle', 'ramage', 'fastpass', 'draflygon', 'homer', 'predator', 'ice_cream']
       },
       {
@@ -16690,7 +16966,6 @@ let heistFeverActive = false;
           color: '#ff7bd1',
           glow: 'rgba(255, 123, 209, 0.4)',
           cost: 270,
-          milestoneReward: { coins: 1000, gems: 100, label: '1,000 Coins + 100 Gems' },
           brawlers: ['dashaholic', 'classy', 'steamer', 'tempo_maker', 'amplifier', 'skeleflying', 'evil_doctor', 'boom_arang', 'upiedown', 'chickpig', 'jetpack', 'freestyle']
       },
       {
@@ -16701,7 +16976,6 @@ let heistFeverActive = false;
           color: '#b983ff',
           glow: 'rgba(185, 131, 255, 0.4)',
           cost: 420,
-          milestoneReward: { coins: 1500, gems: 150, label: '1,500 Coins + 150 Gems' },
           brawlers: ['copyphase', 'snapper', 'portalo', 'ghoul', 'jacktrade', 'mageny', 'cinderion', 'cursed', 'anti_royal']
       },
       {
@@ -16712,7 +16986,6 @@ let heistFeverActive = false;
           color: '#ff9b42',
           glow: 'rgba(255, 155, 66, 0.4)',
           cost: 600,
-          milestoneReward: { coins: 2500, gems: 250, label: '2,500 Coins + 250 Gems' },
           brawlers: ['decayer', 'hyperorigin', 'overlord', 'beast', 'hope', 'screener', 'kage', 'malakor', 'paradox', 'sera_eclipse', 'xray', 'angel', 'demon', 'relay', 'unstable', 'orbo', 'king']
       },
       {
@@ -16723,7 +16996,6 @@ let heistFeverActive = false;
           color: '#a855f7',
           glow: 'rgba(168, 85, 247, 0.4)',
           cost: 850,
-          milestoneReward: { coins: 4000, gems: 400, label: '4,000 Coins + 400 Gems' },
           brawlers: ['crystila', 'darkener', 'awakenator', 'carmela_fudge']
       }
   ]);
@@ -16748,22 +17020,23 @@ let heistFeverActive = false;
       }
       return 'Anomaly';
   }
+  // Plain soul summoner (Arena Forge rebuild, 2026-11-20): a summon offers
+  // 3 RANDOM brawlers from the whole locked roster — no rarity lock, no
+  // constellation tier gate, no reroll. Summon costs are unchanged
+  // (SOUL_UNLOCK_COST_BY_RARITY, per the target brawler's own rarity).
   function getOrGenerateCurrentChoices(count = 3) {
       ensureSoulSummonerData();
       const ss = playerData.soulSummoner;
-      const activeTier = getActiveConstellationTier();
-      const c = SOUL_CONSTELLATIONS.find(x => x.id === activeTier);
-      if (!c) return [];
-      const availableInTier = c.brawlers.filter(b => !disabledBrawlers.has(b) && !brawlerData?.[b]?.disabled && !isBrawlerUnlocked(b));
-      if (availableInTier.length === 0) return [];
+      const available = allBrawlers.filter(b => getBrawlerRarity(b) !== 'Starter' && !disabledBrawlers.has(b) && !brawlerData?.[b]?.disabled && !isBrawlerUnlocked(b));
+      if (available.length === 0) return [];
       // Validate existing choices
       if (Array.isArray(ss.currentChoices) && ss.currentChoices.length > 0) {
-          const validChoices = ss.currentChoices.filter(b => availableInTier.includes(b));
+          const validChoices = ss.currentChoices.filter(b => available.includes(b));
           if (validChoices.length > 0) {
               // Fill up to count if more available
-              if (validChoices.length < Math.min(count, availableInTier.length)) {
-                  const remaining = availableInTier.filter(b => !validChoices.includes(b));
-                  while (validChoices.length < Math.min(count, availableInTier.length) && remaining.length > 0) {
+              if (validChoices.length < Math.min(count, available.length)) {
+                  const remaining = available.filter(b => !validChoices.includes(b));
+                  while (validChoices.length < Math.min(count, available.length) && remaining.length > 0) {
                       const pickIdx = Math.floor(Math.random() * remaining.length);
                       validChoices.push(remaining.splice(pickIdx, 1)[0]);
                   }
@@ -16776,7 +17049,7 @@ let heistFeverActive = false;
           }
       }
       // Generate fresh choices (2 or 3)
-      const pool = [...availableInTier];
+      const pool = [...available];
       const selected = [];
       const targetCount = Math.min(count, pool.length);
       while (selected.length < targetCount && pool.length > 0) {
@@ -16790,27 +17063,20 @@ let heistFeverActive = false;
       saveProgress();
       return selected;
   }
+  // No reroll (Arena Forge rebuild): the 3 offered brawlers are the offer.
+  // Kept as a function so old call sites stay safe; it just returns the
+  // current choices without regenerating them.
   function rerollCurrentChoices() {
       ensureSoulSummonerData();
       const ss = playerData.soulSummoner;
-      ss.currentChoices = null;
+      if (Array.isArray(ss.currentChoices) && ss.currentChoices.length > 0) return ss.currentChoices;
       return getOrGenerateCurrentChoices(3);
   }
+  // No milestone rewards (Arena Forge rebuild): constellations are now a
+  // plain progress display. Kept as a no-op so old saves/call sites stay
+  // safe; it never grants anything.
   function claimConstellationMilestone(constellationId) {
-      ensureSoulSummonerData();
-      if (!playerData.soulSummoner.claimedMilestones) playerData.soulSummoner.claimedMilestones = {};
-      const c = SOUL_CONSTELLATIONS.find(x => x.id === constellationId);
-      if (!c) return false;
-      const prog = getConstellationProgress(constellationId);
-      if (!prog.completed) return false;
-      if (playerData.soulSummoner.claimedMilestones[constellationId]) return false;
-      playerData.soulSummoner.claimedMilestones[constellationId] = true;
-      if (c.milestoneReward) {
-          if (c.milestoneReward.coins) playerData.coins = (playerData.coins || 0) + c.milestoneReward.coins;
-          if (c.milestoneReward.gems) playerData.gems = (playerData.gems || 0) + c.milestoneReward.gems;
-      }
-      saveProgress();
-      return true;
+      return false;
   }
   function openSoulSummoner() {
       ensureSoulSummonerData();
@@ -16865,10 +17131,10 @@ let heistFeverActive = false;
           const body = document.createElement('div');
           body.style.cssText = 'padding:16px;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:14px;box-sizing:border-box;flex:1;';
           if (!allUnlocked) {
-              const curCost = getSoulUnlockCostForRarity(activeTier);
+              const targetId = (ss.targetBrawler && choices.includes(ss.targetBrawler)) ? ss.targetBrawler : (choices[0] || null);
+              const curCost = getSoulUnlockCostForRarity(getBrawlerRarity(targetId));
               const curSouls = playerData.souls || 0;
               const canAfford = curSouls >= curCost;
-              const targetId = (ss.targetBrawler && choices.includes(ss.targetBrawler)) ? ss.targetBrawler : (choices[0] || null);
               if (targetId && ss.targetBrawler !== targetId) {
                   ss.targetBrawler = targetId;
                   saveProgress();
@@ -16881,7 +17147,7 @@ let heistFeverActive = false;
               stepHeader.innerHTML = `
                   <div>
                       <div style="font-size:11px;font-weight:900;letter-spacing:0.08em;color:${activeConstellation.color};text-transform:uppercase;">
-                          ${activeConstellation.icon} CURRENT SOUL ROAD STEP · ${activeTier.toUpperCase()} CHOICE
+                          ${activeConstellation.icon} SOUL SUMMONER · PICK A FIGHTER
                       </div>
                       <div style="font-size:13px;color:#d0e2ff;font-weight:700;margin-top:2px;">
                           Pick 1 of ${choices.length} fighters to channel souls, or summon randomly!
@@ -16954,15 +17220,6 @@ let heistFeverActive = false;
                   }
               };
               leftActions.appendChild(randomBtn);
-              // Reroll Choices Button
-              const rerollBtn = document.createElement('button');
-              rerollBtn.innerHTML = '🔄 <b>REROLL OPTIONS</b>';
-              rerollBtn.style.cssText = 'padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.06);color:#d0e2ff;font-size:12px;font-weight:700;cursor:pointer;';
-              rerollBtn.onclick = () => {
-                  rerollCurrentChoices();
-                  render();
-              };
-              leftActions.appendChild(rerollBtn);
               actionRow.appendChild(leftActions);
               // Summon / Unlock Button
               const rightActions = document.createElement('div');
@@ -17026,14 +17283,13 @@ let heistFeverActive = false;
           // ── Starr Road Constellation Path Overview ──
           const roadCard = document.createElement('div');
           roadCard.style.cssText = 'background:rgba(8,14,28,0.75);border:1px solid rgba(138,92,255,0.25);border-radius:16px;padding:14px;box-sizing:border-box;';
-          roadCard.innerHTML = `<div style="font-size:13px;font-weight:900;color:#caa6ff;margin-bottom:10px;display:flex;align-items:center;gap:6px;">🛤️ SOUL ROAD CHAPTERS & MILESTONES</div>`;
+          roadCard.innerHTML = `<div style="font-size:13px;font-weight:900;color:#caa6ff;margin-bottom:10px;display:flex;align-items:center;gap:6px;">🛤️ SOUL ROAD CHAPTERS</div>`;
           const roadList = document.createElement('div');
           roadList.style.cssText = 'display:flex;flex-direction:column;gap:8px;';
           SOUL_CONSTELLATIONS.forEach((c, idx) => {
               const prog = getConstellationProgress(c.id);
               const isCurrent = activeTier === c.id;
               const isDone = prog.completed;
-              const isClaimed = playerData.soulSummoner.claimedMilestones?.[c.id];
               const row = document.createElement('div');
               row.style.cssText = `display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding:10px 14px;border-radius:12px;background:${isCurrent ? 'rgba(255,209,102,0.08)' : isDone ? 'rgba(93,242,194,0.06)' : 'rgba(255,255,255,0.02)'};border:1px solid ${isCurrent ? '#ffd166' : isDone ? '#5df2c2' : 'rgba(255,255,255,0.06)'};box-sizing:border-box;`;
               const rowLeft = document.createElement('div');
@@ -17051,20 +17307,9 @@ let heistFeverActive = false;
               const rowRight = document.createElement('div');
               rowRight.style.cssText = 'display:flex;align-items:center;gap:6px;';
               if (isDone) {
-                  if (isClaimed) {
-                      rowRight.innerHTML = `<span style="font-size:11px;color:#5df2c2;font-weight:800;">✓ Milestone Claimed</span>`;
-                  } else {
-                      const claimMilestoneBtn = document.createElement('button');
-                      claimMilestoneBtn.textContent = `🎁 Claim (${c.milestoneReward.label})`;
-                      claimMilestoneBtn.style.cssText = 'padding:6px 12px;border-radius:8px;border:none;background:linear-gradient(135deg,#ffd166,#ff9f43);color:#0a1428;font-weight:900;font-size:11px;cursor:pointer;';
-                      claimMilestoneBtn.onclick = () => {
-                          claimConstellationMilestone(c.id);
-                          render();
-                      };
-                      rowRight.appendChild(claimMilestoneBtn);
-                  }
+                  rowRight.innerHTML = `<span style="font-size:11px;color:#5df2c2;font-weight:800;">✓ Chapter complete</span>`;
               } else {
-                  rowRight.innerHTML = `<span style="font-size:11px;color:#8eaad0;">Milestone: ${c.milestoneReward.label}</span>`;
+                  rowRight.innerHTML = `<span style="font-size:11px;color:#8eaad0;">No milestone rewards — chapters track progress only</span>`;
               }
               row.appendChild(rowLeft);
               row.appendChild(rowRight);
@@ -17376,6 +17621,52 @@ let heistFeverActive = false;
       saveProgress();
       return true;
   }
+  // Random Piece rule (Arena Forge rebuild 2026-11-20): 3 Random Pieces
+  // = one piece toward a random signature/mutation/instinct you don't
+  // have fully; if every ability is fully owned, 3 Random Pieces convert
+  // to 50 Core Pieces instead. Pieces bank in playerData.randomPieces
+  // and redeem automatically in full sets of 3 on grant.
+  const RANDOM_PIECES_PER_REDEMPTION = 3;
+  const RANDOM_PIECE_CORE_CONVERSION = 50;
+  function getRandomPieceIncompletePool() {
+      const pool = [];
+      for (const [fighterId, def] of Object.entries(SPECIAL_ABILITY_DEFS)) {
+          if (!def || !def.type) continue;
+          // Electrostien's Family Circuit is EARNED by winning battles —
+          // it never comes from pieces of any kind.
+          if (fighterId === 'electrostien') continue;
+          const state = getSpecialAbilityState(def.type, fighterId);
+          if (!state.unlocked) pool.push(fighterId);
+      }
+      return pool;
+  }
+  function redeemRandomPieces() {
+      // Redeem as many full sets of 3 as the bank allows. Returns the
+      // list of redemptions (piece grants or Core Piece conversions).
+      const out = [];
+      while ((playerData.randomPieces || 0) >= RANDOM_PIECES_PER_REDEMPTION) {
+          playerData.randomPieces -= RANDOM_PIECES_PER_REDEMPTION;
+          const pool = getRandomPieceIncompletePool();
+          if (!pool.length) {
+              addCorePieces(RANDOM_PIECE_CORE_CONVERSION);
+              out.push({ kind: 'corePieces', amount: RANDOM_PIECE_CORE_CONVERSION });
+              continue;
+          }
+          const fighterId = pool[Math.floor(Math.random() * pool.length)];
+          const def = getSpecialAbilityDef(fighterId);
+          addSpecialAbilityPiece(fighterId);
+          out.push({ kind: 'piece', fighterId, type: def.type, pieceName: def.pieceName || def.type });
+      }
+      if (out.length) playerData.lastRandomPieceRedemption = out[out.length - 1];
+      return out;
+  }
+  function grantRandomPiece(n) {
+      const amount = Math.max(0, Math.floor(Number(n) || 0));
+      if (!amount) return false;
+      playerData.randomPieces = (playerData.randomPieces || 0) + amount;
+      redeemRandomPieces();
+      return true;
+  }
   // Tapper skin drops: low-chance jackpot of a random unowned non-seasonal skin.
   function rollTapperSkinDrop(chance) {
       if (Math.random() >= chance) return null;
@@ -17436,7 +17727,7 @@ let heistFeverActive = false;
           const eligible=allBrawlers.filter(id=>!disabledBrawlers.has(id)&&brawlerData[id]&&!isPermanentlyMaxedBrawler(id));
           const fallbackSpecials=eligible.length===0;
           const pool=fallbackSpecials?allBrawlers.filter(id=>!disabledBrawlers.has(id)&&!!getSpecialAbilityDef(id)):eligible;
-          state={schemaVersion:1,weekKey:week.key,fighterIds:pickWeeklyTrialFighters(pool, fallbackSpecials ? 2 : 3,week.key),fallbackSpecials,loadouts:{}};
+          state={schemaVersion:1,weekKey:week.key,fighterIds:pickWeeklyTrialFighters(pool, WEEKLY_TRIAL_FIGHTER_COUNT,week.key),fallbackSpecials,loadouts:{}};
       }
       state.fighterIds=state.fighterIds.filter(id=>allBrawlers.includes(id)&&!disabledBrawlers.has(id));
       state.loadouts=state.loadouts&&typeof state.loadouts==='object'?state.loadouts:{};
@@ -17491,6 +17782,51 @@ let heistFeverActive = false;
   }
   function getSoulBalance(){return (playerData.souls||0)+(playerData.soulSummoner?.soulBank||0);}
   function deductSouls(amount){let left=amount;if((playerData.souls||0)>=left)playerData.souls-=left;else{left-=playerData.souls||0;playerData.souls=0;if(playerData.soulSummoner)playerData.soulSummoner.soulBank=Math.max(0,(playerData.soulSummoner.soulBank||0)-left);}}
+  // Daily deals rework (Arena Forge rebuild 2026-11-20): one rotating
+  // bricks-priced deal per day, picked deterministically from the day key.
+  // The three fixed cards stay; the rotating card is the rework. Bricks
+  // come from the selected fighter's current bricks (0-999 remainder),
+  // so spending them never drops a prestige level.
+  const DAILY_DEAL_ROTATION = [
+      { id: 'deal-soul-cache', title: '🧪 Soul Cache', desc: '60 Souls for your next summon.', priceBricks: 40, reward: { type: 'souls', amount: 60 } },
+      { id: 'deal-random-piece', title: '🧩 Random Piece', desc: '1 Random Piece toward a signature, mutation or instinct.', priceBricks: 60, reward: { type: 'randomPiece', amount: 1 } },
+      { id: 'deal-super-tapper', title: '⚡ Super Tapper', desc: '1 Super Tapper.', priceBricks: 80, reward: { type: 'superTapper', amount: 1 } },
+      { id: 'deal-core-cache', title: '💠 Core Cache', desc: '40 Core Pieces.', priceBricks: 100, reward: { type: 'corePieces', amount: 40 } },
+      { id: 'deal-present', title: '🎁 Present', desc: '1 Present — open it for a surprise.', priceBricks: 50, reward: { type: 'present', amount: 1 } },
+      { id: 'deal-soul-water', title: '💧 Soul Water', desc: '150 Soul Water.', priceBricks: 70, reward: { type: 'soulWater', amount: 150 } },
+      { id: 'deal-gem-chip', title: '💎 Gem Chip', desc: '5 Gems.', priceBricks: 120, reward: { type: 'gems', amount: 5 } }
+  ];
+  function getDailyDealRotation(dayKey) {
+      return DAILY_DEAL_ROTATION[hashShopKey(dayKey || getLocalDayKey()) % DAILY_DEAL_ROTATION.length];
+  }
+  function getSelectedBrawlerBricks() {
+      const p = getOrCreateProgress(selectedBrawler);
+      return Math.max(0, Math.floor(p.bricks || 0));
+  }
+  function spendSelectedBrawlerBricks(amount) {
+      const p = getOrCreateProgress(selectedBrawler);
+      const have = Math.max(0, Math.floor(p.bricks || 0));
+      if (have < amount) return false;
+      p.bricks = have - amount;
+      return true;
+  }
+  // Shop gem items (Arena Forge rebuild 2026-11-20, builder pick):
+  // always-available gem-priced items, granted via grantReward.
+  const SHOP_GEM_ITEMS = [
+      { id: 'gem-random-piece-bundle', name: 'Random Piece Bundle', icon: '🧩', desc: '3 Random Pieces toward a signature, mutation or instinct.', gems: 30, reward: { type: 'randomPiece', amount: 3 } },
+      { id: 'gem-core-cache', name: 'Core Piece Cache', icon: '💠', desc: '50 Core Pieces.', gems: 20, reward: { type: 'corePieces', amount: 50 } },
+      { id: 'gem-soul-water-cache', name: 'Soul Water Cache', icon: '💧', desc: '300 Soul Water.', gems: 25, reward: { type: 'soulWater', amount: 300 } },
+      { id: 'gem-super-tapper-pack', name: 'Super Tapper Pack', icon: '⚡', desc: '2 Super Tappers.', gems: 15, reward: { type: 'superTapper', amount: 2 } },
+      { id: 'gem-present-pack', name: 'Present Pack', icon: '🎁', desc: '3 Presents.', gems: 40, reward: { type: 'present', amount: 3 } }
+  ];
+  function buyShopGemItem(id) {
+      const item = SHOP_GEM_ITEMS.find(i => i.id === id);
+      if (!item) return false;
+      if ((playerData.gems || 0) < item.gems) return false;
+      playerData.gems -= item.gems;
+      grantReward(item.reward);
+      return true;
+  }
   function openGemShop() {
       syncShopState();
       const dailyCycle = getShopCycleBounds(1);
@@ -17827,9 +18163,9 @@ let heistFeverActive = false;
               onBuy: () => {
                   if (dailyFreebieOwned) return;
                   const reward = dailyFreebieChoice.reward;
-                  if (reward.kind === 'gems') playerData.gems += reward.amount;
-                  if (reward.kind === 'coins') playerData.coins += reward.amount;
-                  if (reward.kind === 'drop') playerData.starrDrops = (playerData.starrDrops || 0) + reward.amount;
+                  if (reward.kind === 'gems') grantReward({ type: 'gems', amount: reward.amount });
+                  if (reward.kind === 'coins') grantReward({ type: 'coins', amount: reward.amount });
+                  if (reward.kind === 'drop') grantReward({ type: 'tapper', amount: reward.amount });
                   playerData.shopClaims[dailyFreebieClaimKey] = true;
                   ensureShopButtonRefresh();
                   renderTabContent();
@@ -17845,8 +18181,8 @@ let heistFeverActive = false;
               onBuy: () => {
                   if (playerData.gems < 15) { showAppConfirmSheet({ message: 'Not enough Gems!' }); return; }
                   playerData.gems -= 15;
-                  playerData.starrDrops = (playerData.starrDrops || 0) + 3;
-                  playerData.superTapperCount = (playerData.superTapperCount || 0) + 1;
+                  grantReward({ type: 'tapper', amount: 3 });
+                  grantReward({ type: 'superTapper', amount: 1 });
                   ensureShopButtonRefresh();
                   renderTabContent();
               }
@@ -18217,12 +18553,12 @@ let heistFeverActive = false;
                       const norm = (1.5 * Math.PI - currentAngle) % (Math.PI * 2);
                       const idx = Math.floor((norm < 0 ? norm + Math.PI * 2 : norm) / arc) % segments.length;
                       const reward = segments[idx];
-                      if (reward.value.type === 'coins') playerData.coins += reward.value.amount;
-                      else if (reward.value.type === 'gems') playerData.gems += reward.value.amount;
-                      else if (reward.value.type === 'souls') addSouls(reward.value.amount);
-                      else if (reward.value.type === 'tapper') playerData.starrDrops = (playerData.starrDrops || 0) + 1;
-                      else if (reward.value.type === 'super_tapper') playerData.superTapperCount = (playerData.superTapperCount || 0) + 1;
-                      else if (reward.value.type === 'hyper_tapper') playerData.hyperTapperCount = (playerData.hyperTapperCount || 0) + 1;
+                      if (reward.value.type === 'coins') grantReward({ type: 'coins', amount: reward.value.amount });
+                      else if (reward.value.type === 'gems') grantReward({ type: 'gems', amount: reward.value.amount });
+                      else if (reward.value.type === 'souls') grantReward({ type: 'souls', amount: reward.value.amount });
+                      else if (reward.value.type === 'tapper') grantReward({ type: 'tapper', amount: 1 });
+                      else if (reward.value.type === 'super_tapper') grantReward({ type: 'superTapper', amount: 1 });
+                      else if (reward.value.type === 'hyper_tapper') grantReward({ type: 'hyperTapper', amount: 1 });
                       ensureShopButtonRefresh();
                       const pop = document.createElement('div');
                       pop.style.position = 'fixed'; pop.style.inset = '0';
@@ -18251,22 +18587,42 @@ let heistFeverActive = false;
               titleText: '📦 Daily Forge Supply', accent: '#69f2cd',
               descText: 'A clean daily boost: 180 Coins and 2 Gems.', priceText: 'FREE', buttonText: 'OPEN SUPPLY', buttonColor: '#69f2cd',
               isOwned: !!playerData.shopClaims[supplyKey], footerText: 'One supply per local day.',
-              onBuy: () => { if(playerData.shopClaims[supplyKey])return; playerData.coins=(playerData.coins||0)+180; playerData.gems=(playerData.gems||0)+2; playerData.shopClaims[supplyKey]=true; ensureShopButtonRefresh(); renderTabContent(); }
+              onBuy: () => { if(playerData.shopClaims[supplyKey])return; grantReward({ type: 'coins', amount: 180 }); grantReward({ type: 'gems', amount: 2 }); playerData.shopClaims[supplyKey]=true; ensureShopButtonRefresh(); renderTabContent(); }
           }));
           const coinKey = getShopClaimKey('daily-coin-crate', dailyCycle.cycleKey);
           grid.appendChild(makeShopCard({
               titleText: '🪙 Upgrade Coin Crate', accent: '#ffd166',
               descText: 'A focused bundle for fighter upgrades and loadout purchases.', priceText: '8 GEMS → 600 COINS', buttonText: 'BUY CRATE', buttonColor: '#ffd166',
               isOwned: !!playerData.shopClaims[coinKey], isLocked:(playerData.gems||0)<8, lockedText:'8 GEMS REQUIRED', footerText:'One crate each day.',
-              onBuy:()=>{if(playerData.shopClaims[coinKey]||(playerData.gems||0)<8)return;playerData.gems-=8;playerData.coins=(playerData.coins||0)+600;playerData.shopClaims[coinKey]=true;ensureShopButtonRefresh();renderTabContent();}
+              onBuy:()=>{if(playerData.shopClaims[coinKey]||(playerData.gems||0)<8)return;playerData.gems-=8;grantReward({ type: 'coins', amount: 600 });playerData.shopClaims[coinKey]=true;ensureShopButtonRefresh();renderTabContent();}
           }));
           const corePackKey = getShopClaimKey('daily-core-pack', dailyCycle.cycleKey);
           grid.appendChild(makeShopCard({
               titleText: '💠 Core Piece Pack', accent: '#7dfcd9',
               descText: '25 Core Pieces toward Power 8+ upgrades and ability Pieces.', priceText: '10 GEMS → 25 CORE PIECES', buttonText: 'BUY PACK', buttonColor: '#7dfcd9',
               isOwned: !!playerData.shopClaims[corePackKey], isLocked: (playerData.gems||0)<10, lockedText:'10 GEMS REQUIRED', footerText:'One pack each day.',
-              onBuy: () => { if(playerData.shopClaims[corePackKey]||(playerData.gems||0)<10)return; playerData.gems-=10; addCorePieces(25); playerData.shopClaims[corePackKey]=true; ensureShopButtonRefresh(); renderTabContent(); }
+              onBuy: () => { if(playerData.shopClaims[corePackKey]||(playerData.gems||0)<10)return; playerData.gems-=10; grantReward({ type: 'corePieces', amount: 25 }); playerData.shopClaims[corePackKey]=true; ensureShopButtonRefresh(); renderTabContent(); }
           }));
+          // Rotating daily deal (rebuild 2026-11-20): one bricks-priced
+          // deal per day, seeded by the day key.
+          const deal = getDailyDealRotation(dailyCycle.cycleKey);
+          const dealKey = getShopClaimKey(`daily-deal:${deal.id}`, dailyCycle.cycleKey);
+          const dealBricks = getSelectedBrawlerBricks();
+          grid.appendChild(makeShopCard({
+              titleText: `${deal.title} — ROTATING DEAL`, accent: '#ff9f43',
+              descText: `${deal.desc} Priced in your selected fighter's Bricks.`, priceText: `${deal.priceBricks} BRICKS`, buttonText: 'BUY DEAL', buttonColor: '#ff9f43',
+              isOwned: !!playerData.shopClaims[dealKey], isLocked: dealBricks < deal.priceBricks, lockedText: `${deal.priceBricks} BRICKS REQUIRED`, footerText: 'One rotating deal per day.',
+              onBuy: () => { if (playerData.shopClaims[dealKey] || !spendSelectedBrawlerBricks(deal.priceBricks)) return; grantReward(deal.reward); playerData.shopClaims[dealKey] = true; ensureShopButtonRefresh(); renderTabContent(); }
+          }));
+          addSection(grid, 'Gem Shop — always available');
+          for (const item of SHOP_GEM_ITEMS) {
+              grid.appendChild(makeShopCard({
+                  titleText: `${item.icon} ${item.name}`, accent: '#5df2c2',
+                  descText: item.desc, priceText: `${item.gems} GEMS`, buttonText: 'BUY', buttonColor: '#5df2c2',
+                  isLocked: (playerData.gems || 0) < item.gems, lockedText: `${item.gems} GEMS REQUIRED`,
+                  onBuy: () => { if (!buyShopGemItem(item.id)) return; ensureShopButtonRefresh(); renderTabContent(); }
+              }));
+          }
           addSection(grid, 'Picked for your mains');
           const brickCount = id => (playerData.brawlers && playerData.brawlers[id] && playerData.brawlers[id].bricks) || 0;
           const mainPool = Object.keys(brawlerData).filter(id => (playerData.unlockedBrawlers || {})[id] && !disabledBrawlers.has(id));
@@ -23483,10 +23839,11 @@ let heistFeverActive = false;
         // cones land identically moving or still (see header comment).
         const ox = fromEntity.x, oy = fromEntity.y, spawnR = (fromEntity.radius || 14) + 8;
         const treeFreeze = getActiveSkinForBrawler('freezeon')?.id === 'tree-freeze-freezeon';
+        const holidayLights = ['holiday-lights-freezeon', 'holiday-lights-freezeon-blue-yellow', 'holiday-lights-freezeon-purple-white'].includes(getActiveSkinForBrawler('freezeon')?.id);
         for (let i = 0; i < count; i++) {
             // Left-right-left-right, Lou-style: cone 1 left, cone 2 right...
             const coneAng = ang + (i % 2 === 0 ? -FREEZEON_CONE_SPREAD_RAD : FREEZEON_CONE_SPREAD_RAD);
-            freezeonPendingCones.push({ at: now + i * FREEZEON_CONE_FIRE_DELAY_MS, ownerId: fromEntity.id, ang: coneAng, hyper, dmg: stats.dmg, ox, oy, spawnR, treeFreeze });
+            freezeonPendingCones.push({ at: now + i * FREEZEON_CONE_FIRE_DELAY_MS, ownerId: fromEntity.id, ang: coneAng, hyper, dmg: stats.dmg, ox, oy, spawnR, treeFreeze, holidayLights });
         }
         return true;
     }
@@ -23504,7 +23861,7 @@ let heistFeverActive = false;
         const ox = Number.isFinite(entry.ox) ? entry.ox : owner.x;
         const oy = Number.isFinite(entry.oy) ? entry.oy : owner.y;
         const spawnR = Number.isFinite(entry.spawnR) ? entry.spawnR : (owner.radius + 8);
-        bullets.push({ ownerBrawler: 'freezeon', isFreezeonCone: true, ownerId: owner.id, x: ox + Math.cos(ang) * spawnR, y: oy + Math.sin(ang) * spawnR, vx: Math.cos(ang) * FREEZEON_CONE_SPEED, vy: Math.sin(ang) * FREEZEON_CONE_SPEED, life: 0, maxLife: FREEZEON_CONE_RANGE / FREEZEON_CONE_SPEED, damage: entry.dmg, pierce: false, hitIds: {}, hitboxMod: 1.4, hyperVisual: entry.hyper, treeFreeze: !!entry.treeFreeze });
+        bullets.push({ ownerBrawler: 'freezeon', isFreezeonCone: true, ownerId: owner.id, x: ox + Math.cos(ang) * spawnR, y: oy + Math.sin(ang) * spawnR, vx: Math.cos(ang) * FREEZEON_CONE_SPEED, vy: Math.sin(ang) * FREEZEON_CONE_SPEED, life: 0, maxLife: FREEZEON_CONE_RANGE / FREEZEON_CONE_SPEED, damage: entry.dmg, pierce: false, hitIds: {}, hitboxMod: 1.4, hyperVisual: entry.hyper, treeFreeze: !!entry.treeFreeze, holidayLights: !!entry.holidayLights });
         return true;
     }
     // Super: lob a frozen rink can in an arc to the target point
@@ -23520,7 +23877,8 @@ let heistFeverActive = false;
         // Tree Freeze: the rink carries the skin only when the PLAYER casts
         // it — bots own no skins (getActiveSkinForBrawler reads playerData).
         const treeFreeze = entity.id === player.id && getActiveSkinForBrawler('freezeon')?.id === 'tree-freeze-freezeon';
-        freezeonThrownRinks.push({ startX: entity.x, startY: entity.y, targetX: x, targetY: y, createdAt: now, impactAt: now + flightMs, ownerId: entity.id, hyper: !!hyper, treeFreeze });
+        const holidayLights = entity.id === player.id && ['holiday-lights-freezeon', 'holiday-lights-freezeon-blue-yellow', 'holiday-lights-freezeon-purple-white'].includes(getActiveSkinForBrawler('freezeon')?.id);
+        freezeonThrownRinks.push({ startX: entity.x, startY: entity.y, targetX: x, targetY: y, createdAt: now, impactAt: now + flightMs, ownerId: entity.id, hyper: !!hyper, treeFreeze, holidayLights });
         if (entity.id === player.id) { try { window.BraweFreezeonVoice?.play('super'); } catch (e) {} }
         return true;
     }
@@ -23541,11 +23899,11 @@ let heistFeverActive = false;
                 }
             }
         }
-        freezeonPatches.push({ x, y, radius: FREEZEON_SUPER_RADIUS, until: now + FREEZEON_SUPER_DURATION_MS, nextTickAt: now, nextSnowballAt: 0, ownerId: thrown.ownerId, hyper, treeFreeze: !!thrown.treeFreeze });
+        freezeonPatches.push({ x, y, radius: FREEZEON_SUPER_RADIUS, until: now + FREEZEON_SUPER_DURATION_MS, nextTickAt: now, nextSnowballAt: 0, ownerId: thrown.ownerId, hyper, treeFreeze: !!thrown.treeFreeze, holidayLights: !!thrown.holidayLights });
         const mine = freezeonPatches.filter((p) => p.ownerId === thrown.ownerId);
         if (mine.length > FREEZEON_MAX_PATCHES_PER_OWNER) freezeonPatches.splice(freezeonPatches.indexOf(mine[0]), 1);
-        explosions.push({ x, y, radius: FREEZEON_SUPER_RADIUS, life: 0, maxLife: .4, color: hyper ? 'rgba(192,132,252,.55)' : 'rgba(56,189,248,.55)', legendary: true, fxKind: 'freezeonSuperSpawn', treeFreeze: !!thrown.treeFreeze });
-        spawnFloatingText(x, y - 40, thrown.treeFreeze ? (hyper ? '🎄 DEEP FREEZE!' : '🎄 TREE RINK!') : (hyper ? '❄️ DEEP FREEZE!' : '❄️ ICE RINK!'), hyper ? '#e9d5ff' : '#bae6fd');
+        explosions.push({ x, y, radius: FREEZEON_SUPER_RADIUS, life: 0, maxLife: .4, color: hyper ? 'rgba(192,132,252,.55)' : 'rgba(56,189,248,.55)', legendary: true, fxKind: 'freezeonSuperSpawn', treeFreeze: !!thrown.treeFreeze, holidayLights: !!thrown.holidayLights });
+        spawnFloatingText(x, y - 40, thrown.holidayLights ? (hyper ? '💡 HOLIDAY DEEP FREEZE!' : '💡 LIGHT RINK!') : thrown.treeFreeze ? (hyper ? '🎄 DEEP FREEZE!' : '🎄 TREE RINK!') : (hyper ? '❄️ DEEP FREEZE!' : '❄️ ICE RINK!'), hyper ? '#e9d5ff' : '#bae6fd');
         return true;
     }
     // Hyper main: schedule a brain-freeze shatter 0.6s after a cone hit.
@@ -23807,6 +24165,37 @@ let heistFeverActive = false;
                 ctx.restore();
                 continue;
             }
+            if (p.holidayLights) {
+                // Holiday Lights rink: dark ice with a string of holiday
+                // lights around the rim that CHANGES colors as it goes
+                // (the palette cycles with time), following the equipped
+                // chroma. Same radius/duration as the normal rink.
+                const rinkColors = (typeof getHolidayLightsPalette === 'function') ? getHolidayLightsPalette() : ['#ff3b30', '#34c759', '#0a84ff', '#ffd60a'];
+                const grad = ctx.createRadialGradient(0, 0, p.radius * 0.15, 0, 0, p.radius);
+                grad.addColorStop(0, 'rgba(10,16,38,0.55)');
+                grad.addColorStop(1, 'rgba(56,189,248,0.14)');
+                ctx.fillStyle = grad;
+                ctx.beginPath(); ctx.arc(0, 0, p.radius, 0, Math.PI * 2); ctx.fill();
+                ctx.globalAlpha = 0.9;
+                ctx.strokeStyle = rinkColors[Math.floor(now / 350) % rinkColors.length];
+                ctx.lineWidth = 3;
+                ctx.beginPath(); ctx.arc(0, 0, p.radius, 0, Math.PI * 2); ctx.stroke();
+                for (let i = 0; i < 12; i++) {
+                    const la = (i / 12) * Math.PI * 2;
+                    const tw = 0.55 + 0.45 * Math.sin(now / 300 + i * 1.7);
+                    const cc = rinkColors[(i + Math.floor(now / 350)) % rinkColors.length];
+                    ctx.globalAlpha = tw;
+                    ctx.fillStyle = cc;
+                    ctx.shadowColor = cc;
+                    ctx.shadowBlur = 8;
+                    ctx.beginPath();
+                    ctx.arc(Math.cos(la) * p.radius * 0.97, Math.sin(la) * p.radius * 0.97, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.shadowBlur = 0;
+                ctx.restore();
+                continue;
+            }
             const grad = ctx.createRadialGradient(0, 0, p.radius * 0.15, 0, 0, p.radius);
             grad.addColorStop(0, p.hyper ? 'rgba(192,132,252,0.5)' : 'rgba(186,230,253,0.5)');
             grad.addColorStop(1, p.hyper ? 'rgba(192,132,252,0.12)' : 'rgba(186,230,253,0.12)');
@@ -23830,7 +24219,7 @@ let heistFeverActive = false;
             ctx.save();
             // Landing marker (gold when Tree Freeze).
             ctx.globalAlpha = 0.5;
-            ctx.strokeStyle = r.treeFreeze ? (r.hyper ? '#fde047' : '#fbbf24') : (r.hyper ? '#c084fc' : '#38bdf8');
+            ctx.strokeStyle = r.holidayLights ? '#ffd60a' : r.treeFreeze ? (r.hyper ? '#fde047' : '#fbbf24') : (r.hyper ? '#c084fc' : '#38bdf8');
             ctx.lineWidth = 3;
             ctx.setLineDash([10, 8]);
             ctx.beginPath(); ctx.arc(r.targetX, r.targetY, 40, 0, Math.PI * 2); ctx.stroke();
@@ -23847,6 +24236,15 @@ let heistFeverActive = false;
                     if (s === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
                 }
                 ctx.closePath(); ctx.fill();
+            }
+            if (r.holidayLights) {
+                // 4 colored light dots at the landing point.
+                const markColors = (typeof getHolidayLightsPalette === 'function') ? getHolidayLightsPalette() : ['#ff3b30', '#34c759', '#0a84ff', '#ffd60a'];
+                ctx.globalAlpha = 0.95;
+                for (let d = 0; d < 4; d++) {
+                    ctx.fillStyle = markColors[d % markColors.length];
+                    ctx.beginPath(); ctx.arc(r.targetX + (d - 1.5) * 9, r.targetY, 3.5, 0, Math.PI * 2); ctx.fill();
+                }
             }
             // Ground shadow under the can.
             ctx.globalAlpha = 0.3;
@@ -23870,6 +24268,23 @@ let heistFeverActive = false;
                     if (s === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
                 }
                 ctx.closePath(); ctx.fill(); ctx.stroke();
+                ctx.restore();
+                continue;
+            }
+            if (r.holidayLights) {
+                // Holiday Lights: the flying can is a spinning string of
+                // 4 colored lights.
+                const flyColors = (typeof getHolidayLightsPalette === 'function') ? getHolidayLightsPalette() : ['#ff3b30', '#34c759', '#0a84ff', '#ffd60a'];
+                ctx.translate(gx, gy - arc);
+                ctx.rotate(now / 120);
+                ctx.globalAlpha = 0.95;
+                for (let d = 0; d < 4; d++) {
+                    ctx.shadowColor = flyColors[d % flyColors.length];
+                    ctx.shadowBlur = 12;
+                    ctx.fillStyle = flyColors[d % flyColors.length];
+                    ctx.beginPath(); ctx.arc((d - 1.5) * 10, 0, 4, 0, Math.PI * 2); ctx.fill();
+                }
+                ctx.shadowBlur = 0;
                 ctx.restore();
                 continue;
             }
@@ -23922,6 +24337,36 @@ let heistFeverActive = false;
         ctx.save();
         ctx.translate(b.x, b.y);
         ctx.rotate(a);
+        if (b.holidayLights) {
+            // Holiday Lights: the cone is 4 different colored detailed
+            // light strands (not generic bullets) — a twisted strand of
+            // red, green, blue and gold bulbs trailing behind the shot,
+            // following the equipped chroma. Same size/hitbox as the cone.
+            const strandColors = (typeof getHolidayLightsPalette === 'function') ? getHolidayLightsPalette() : ['#ff3b30', '#34c759', '#0a84ff', '#ffd60a'];
+            ctx.shadowBlur = 12;
+            for (let s = 0; s < 4; s++) {
+                const off = (s - 1.5) * 5;
+                const wave = Math.sin((performance.now() / 90) + s * 1.4) * 2.5;
+                ctx.shadowColor = strandColors[s % strandColors.length];
+                ctx.strokeStyle = strandColors[s % strandColors.length];
+                ctx.lineWidth = 2.5;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(-16, off + wave);
+                ctx.quadraticCurveTo(-6, off - wave, 8, off + wave * 0.5);
+                ctx.stroke();
+                ctx.fillStyle = strandColors[s % strandColors.length];
+                ctx.beginPath();
+                ctx.arc(6, off + wave * 0.5, 3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(-8, off - wave, 2.2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.shadowBlur = 0;
+            ctx.restore();
+            return;
+        }
         if (b.treeFreeze) {
             // Tree Freeze: the cone is a Christmas bauble, not a snow
             // cone — round ornament with a gold cap + hook, red normally,
@@ -46718,19 +47163,16 @@ let heistFeverActive = false;
             { slot: 1, isLeader: false, bansMax: 1, isPlayer: false, title: '⚔️ ENEMY BOT 1', roleText: 'Member • 1 Ban' },
             { slot: 2, isLeader: false, bansMax: 1, isPlayer: false, title: '⚔️ ENEMY BOT 2', roleText: 'Member • 1 Ban' }
         ];
-        // 8 Bans Schedule: Leaders ban 2, Members ban 1
+        // 4 Bans Schedule (rebuild 2026-11-20, shorter draft): Leaders
+        // ban 1, Member 1 bans 1. Member 2 no longer bans.
         const banSchedule = [
-            { step: 0, team: 'blue', slot: 0, banIdx: 0, isPlayer: playerSlot === 0, who: blueRoster[0].title, title: 'Blue Ldr Ban 1/2', numLabel: '1/2' },
-            { step: 1, team: 'red', slot: 0, banIdx: 0, isPlayer: false, who: redRoster[0].title, title: 'Red Ldr Ban 1/2', numLabel: '1/2' },
-            { step: 2, team: 'blue', slot: 0, banIdx: 1, isPlayer: playerSlot === 0, who: blueRoster[0].title, title: 'Blue Ldr Ban 2/2', numLabel: '2/2' },
-            { step: 3, team: 'red', slot: 0, banIdx: 1, isPlayer: false, who: redRoster[0].title, title: 'Red Ldr Ban 2/2', numLabel: '2/2' },
-            { step: 4, team: 'blue', slot: 1, banIdx: 0, isPlayer: playerSlot === 1, who: blueRoster[1].title, title: 'Blue Mem 1 Ban', numLabel: '1/1' },
-            { step: 5, team: 'red', slot: 1, banIdx: 0, isPlayer: false, who: redRoster[1].title, title: 'Red Mem 1 Ban', numLabel: '1/1' },
-            { step: 6, team: 'blue', slot: 2, banIdx: 0, isPlayer: playerSlot === 2, who: blueRoster[2].title, title: 'Blue Mem 2 Ban', numLabel: '1/1' },
-            { step: 7, team: 'red', slot: 2, banIdx: 0, isPlayer: false, who: redRoster[2].title, title: 'Red Mem 2 Ban', numLabel: '1/1' }
+            { step: 0, team: 'blue', slot: 0, banIdx: 0, isPlayer: playerSlot === 0, who: blueRoster[0].title, title: 'Blue Ldr Ban', numLabel: '1/1' },
+            { step: 1, team: 'red', slot: 0, banIdx: 0, isPlayer: false, who: redRoster[0].title, title: 'Red Ldr Ban', numLabel: '1/1' },
+            { step: 2, team: 'blue', slot: 1, banIdx: 0, isPlayer: playerSlot === 1, who: blueRoster[1].title, title: 'Blue Mem 1 Ban', numLabel: '1/1' },
+            { step: 3, team: 'red', slot: 1, banIdx: 0, isPlayer: false, who: redRoster[1].title, title: 'Red Mem 1 Ban', numLabel: '1/1' }
         ];
-        // Blue Bans: [LeaderBan1, LeaderBan2, Member1Ban, Member2Ban]
-        // Red Bans: [LeaderBan1, LeaderBan2, Member1Ban, Member2Ban]
+        // Blue Bans: [LeaderBan, Member1Ban] (slots 0 and 2; slot 1 unused)
+        // Red Bans: [LeaderBan, Member1Ban] (slots 0 and 2; slot 1 unused)
         const blueBans = [null, null, null, null];
         const redBans = [null, null, null, null];
         // 6 Pick Turns Line (Snake draft):
@@ -46808,6 +47250,18 @@ let heistFeverActive = false;
         meta.textContent = `${tierInfo.label} (${tierInfo.points} RP)${nextText} • Division Safety Floor: ${floor} RP`;
         titleBox.appendChild(title);
         titleBox.appendChild(meta);
+        // Prestige League standings (rebuild 2026-11-20): 3-day cycle.
+        // Opening the hub rolls the cycle over and pays last cycle's
+        // top-3 rewards if you finished top 3.
+        const leagueState = ensurePrestigeLeagueState();
+        const leagueStandings = getPrestigeLeagueStandings(leagueState);
+        const leagueRank = getPrestigeLeaguePlayerRank(leagueState);
+        const leagueMeta = document.createElement('div');
+        leagueMeta.className = 'ranked-queue-league';
+        leagueMeta.style.fontSize = '13px';
+        leagueMeta.style.color = '#ffd166';
+        leagueMeta.textContent = `👑 Prestige League PL${getPrestigeLeagueLevel(rankedPoints)} — you are #${leagueRank} • ${leagueStandings.slice(0, 3).map((r, i) => `${i + 1}. ${r.isPlayer ? 'YOU' : r.name} (${r.rp})`).join('  ')}${(leagueState.teammates || []).length ? ` • Teammates: ${leagueState.teammates.join(' & ')}` : ''}`;
+        titleBox.appendChild(leagueMeta);
         top.appendChild(titleBox);
         const topActions = document.createElement('div');
         topActions.className = 'ranked-queue-top-actions';
@@ -47120,7 +47574,7 @@ let heistFeverActive = false;
                 }
             }
         };
-        const scheduleNextTurn = (delay = 450) => {
+        const scheduleNextTurn = (delay = 250) => {
             if (aiTurnTimer) clearTimeout(aiTurnTimer);
             if (draftState === 'ban') {
                 const curStep = banSchedule[currentBanStep];
@@ -47178,17 +47632,17 @@ let heistFeverActive = false;
         const renderDraft = () => {
             // Update Stepper
             stepper.innerHTML = '';
-            // Stepper items: 8 Bans + Protect + 6 Picks + Swap + Veto
+            // Stepper items: 4 Bans + Protect + 6 Picks + Swap + Veto
             const totalSteps = [...banSchedule.map(s => ({ type: 'ban', text: s.title || s.who || 'Ban', isPlayer: s.isPlayer })),
                                 [{ type: 'protect', text: 'Protect', isPlayer: isPlayerLeader }],
                                 ...pickLine.map(p => ({ type: 'pick', text: `Pick ${p.pickNum} (${p.isPlayer ? 'YOU' : p.team[0].toUpperCase()})`, isPlayer: p.isPlayer })),
                                 [{ type: 'swap', text: 'Swap (YOU)', isPlayer: true }],
                                 [{ type: 'veto', text: 'Veto (YOU)', isPlayer: true }]];
             const currentGlobalStep = draftState === 'ban' ? currentBanStep
-                : draftState === 'protect' ? 8
-                : draftState === 'pick' ? (9 + currentPickIndex)
-                : draftState === 'swap' ? 15
-                : draftState === 'veto' ? 16 : 17;
+                : draftState === 'protect' ? 4
+                : draftState === 'pick' ? (5 + currentPickIndex)
+                : draftState === 'swap' ? 11
+                : draftState === 'veto' ? 12 : 13;
             totalSteps.forEach((s, idx) => {
                 const dot = document.createElement('div');
                 dot.style.fontSize = '10px';
@@ -47296,7 +47750,7 @@ let heistFeverActive = false;
             });
             // Render Center Column
             centerCol.innerHTML = '';
-            // Bans Summary Bar (8 Bans: 4 Blue, 4 Red)
+            // Bans Summary Bar (4 Bans: 2 Blue, 2 Red)
             const bansBox = document.createElement('div');
             bansBox.style.background = 'rgba(0,0,0,0.35)';
             bansBox.style.borderRadius = '8px';
@@ -47306,14 +47760,12 @@ let heistFeverActive = false;
             bansBox.style.flexDirection = 'column';
             bansBox.style.gap = '4px';
             const formatBan = (id) => id ? (brawlerData[id]?.name || id) : '—';
-            const blueBansHtml = `<span style="color:#8be9fd;font-weight:800;">Blue Bans (4):</span> ` +
-                `<span style="color:#ffd166;">Ldr: [🚫 ${formatBan(blueBans[0])}, ${formatBan(blueBans[1])}]</span> ` +
-                `<span style="color:#a5d8ff;">M1: [🚫 ${formatBan(blueBans[2])}]</span> ` +
-                `<span style="color:#a5d8ff;">M2: [🚫 ${formatBan(blueBans[3])}]</span>`;
-            const redBansHtml = `<span style="color:#ff79c6;font-weight:800;">Red Bans (4):</span> ` +
-                `<span style="color:#ffd166;">Ldr: [🚫 ${formatBan(redBans[0])}, ${formatBan(redBans[1])}]</span> ` +
-                `<span style="color:#ffb3d9;">M1: [🚫 ${formatBan(redBans[2])}]</span> ` +
-                `<span style="color:#ffb3d9;">M2: [🚫 ${formatBan(redBans[3])}]</span>`;
+            const blueBansHtml = `<span style="color:#8be9fd;font-weight:800;">Blue Bans (2):</span> ` +
+                `<span style="color:#ffd166;">Ldr: [🚫 ${formatBan(blueBans[0])}]</span> ` +
+                `<span style="color:#a5d8ff;">M1: [🚫 ${formatBan(blueBans[2])}]</span>`;
+            const redBansHtml = `<span style="color:#ff79c6;font-weight:800;">Red Bans (2):</span> ` +
+                `<span style="color:#ffd166;">Ldr: [🚫 ${formatBan(redBans[0])}]</span> ` +
+                `<span style="color:#ffb3d9;">M1: [🚫 ${formatBan(redBans[2])}]</span>`;
             bansBox.innerHTML = `<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;"><div>${blueBansHtml}</div><div>${redBansHtml}</div></div>`;
             centerCol.appendChild(bansBox);
             // Search Bar
@@ -47344,6 +47796,10 @@ let heistFeverActive = false;
             gridBox.style.paddingRight = '4px';
             centerCol.appendChild(gridBox);
             const renderGridOnly = () => {
+                // Auto-scroll fix (rebuild 2026-11-20): rebuilding the grid
+                // used to reset scrollTop, yanking the view to the top
+                // whenever someone else picked. Preserve the scroll.
+                const savedScrollTop = gridBox.scrollTop;
                 gridBox.innerHTML = '';
                 const query = draftSearchQuery.trim().toLowerCase();
                 const filtered = query
@@ -47407,6 +47863,7 @@ let heistFeverActive = false;
                     }
                     gridBox.appendChild(card);
                 });
+                gridBox.scrollTop = savedScrollTop;
             };
             // Action Controls Box
             const actionControlsBox = document.createElement('div');
@@ -47449,7 +47906,7 @@ let heistFeverActive = false;
                                 runProtectStep();
                             }
                             renderDraft();
-                            scheduleNextTurn(450);
+                            scheduleNextTurn(250);
                         };
                         actionControlsBox.appendChild(lockBanBtn);
                     } else {
@@ -47482,7 +47939,7 @@ let heistFeverActive = false;
                             draftState = 'pick';
                             currentPickIndex = 0;
                             renderDraft();
-                            scheduleNextTurn(500);
+                            scheduleNextTurn(250);
                         };
                         actionControlsBox.appendChild(lockProtectBtn);
                     } else {
@@ -47516,7 +47973,7 @@ let heistFeverActive = false;
                                 draftState = 'swap';
                             }
                             renderDraft();
-                            scheduleNextTurn(500);
+                            scheduleNextTurn(250);
                         };
                         actionControlsBox.appendChild(lockPickBtn);
                     } else {
@@ -47650,6 +48107,9 @@ let heistFeverActive = false;
             normalizeSelectedBrawler();
             saveProgress();
             rankedTeammatePicks = bluePicks.filter((_, idx) => idx !== playerSlot);
+            // The 2 names shown with you in the Prestige League are your
+            // teammates (rebuild 2026-11-20): draft roster titles.
+            rankedTeammateNames = blueRoster.filter((_, idx) => idx !== playerSlot).map(r => (r.title.includes('ALLY 1') ? 'Ally 1' : r.title.includes('ALLY 2') ? 'Ally 2' : r.title.replace(/^[^\s]+\s*/, '')));
             rankedEnemyPicks = redPicks.slice(0, 3);
             rankedBans = {
                 player: blueBans.filter(Boolean),
@@ -47673,7 +48133,7 @@ let heistFeverActive = false;
         // only starts when PLAY is tapped, so no AI turn is ever
         // scheduled before the player is in. The hub sits above the
         // queue overlay (z 2300 > 2200); closing it closes the queue.
-        openRankedHubOverlay(overlay, () => { renderDraft(); scheduleNextTurn(500); });
+        openRankedHubOverlay(overlay, () => { renderDraft(); scheduleNextTurn(250); });
     }
     // Prop Hunt v2: pre-match role picker. The choice is session-only
     // (propHuntSelectedRole) and is consumed by spawnPropHuntBots /
@@ -48339,6 +48799,7 @@ let heistFeverActive = false;
           showdownMode = friendlyBattleConfig.mode;
           setActiveMutators(friendlyBattleConfig.modifiers[0] || 'classic', friendlyBattleConfig.modifiers[1] || null, friendlyBattleConfig.modifiers[2] || null);
       }
+      resetMatchRpLedger(); // Ranked RP ledger starts clean for this match
       isTournamentMatch = false; // a showdown launch is never a tournament match (tournament launches set it true themselves)
       try { console.log('[GAME] Start showdown', { showdownMode, selectedBrawler }); } catch(e) {}
       if(isRetiredTowerMode(showdownMode)){
@@ -66361,39 +66822,6 @@ function checkHit(target, b, i){
               });
           }
       }
-      if (activeSkinId === 'molten-rock-chaird') {
-          // Molten Rock Chaird: ember-glow ring + lava cracks over the fighter.
-          // RENDER ONLY — no HP, damage, speed or hitbox change (PR #42: skins
-          // never touch tower HP or any combat stat).
-          const moltenPulse = 0.85 + Math.sin(performance.now() / 160) * 0.15;
-          ctx.strokeStyle = 'rgba(255, 107, 45, 0.55)';
-          ctx.lineWidth = 3;
-          ctx.beginPath();
-          ctx.arc(t.x, drawY, t.radius + 6 * moltenPulse, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.strokeStyle = 'rgba(255, 177, 90, 0.9)';
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.moveTo(t.x - t.radius * 0.5, drawY - t.radius * 0.3);
-          ctx.lineTo(t.x - t.radius * 0.1, drawY + t.radius * 0.1);
-          ctx.lineTo(t.x + t.radius * 0.3, drawY - t.radius * 0.2);
-          ctx.moveTo(t.x + t.radius * 0.1, drawY + t.radius * 0.4);
-          ctx.lineTo(t.x + t.radius * 0.5, drawY + t.radius * 0.1);
-          ctx.stroke();
-          if (Math.random() < 0.05) {
-              explosions.push({
-                  x: t.x + (Math.random() - 0.5) * t.radius * 2,
-                  y: drawY - t.radius * 0.5,
-                  vx: (Math.random() - 0.5) * 10,
-                  vy: -25 - Math.random() * 20,
-                  radius: 1.5 + Math.random() * 2,
-                  life: 0,
-                  maxLife: 0.6 + Math.random() * 0.3,
-                  color: Math.random() < 0.5 ? '#ffb15a' : '#ff6b2d',
-                  isParticle: true
-              });
-          }
-      }
       if(t.shield > 0){
         ctx.beginPath(); ctx.fillStyle = 'rgba(123, 224, 255, 0.25)'; ctx.arc(t.x, drawY, t.radius + 6, 0, Math.PI*2); ctx.fill();
         ctx.strokeStyle = 'rgba(123, 224, 255, 0.6)'; ctx.lineWidth = 2; ctx.stroke();
@@ -66920,39 +67348,6 @@ function checkHit(target, b, i){
                   life: 0,
                   maxLife: 0.6 + Math.random() * 0.3,
                   color: treeHyper ? '#fde047' : (Math.random() < 0.5 ? '#fbbf24' : '#dc2626'),
-                  isParticle: true
-              });
-          }
-      }
-      if (activeSkinId === 'molten-rock-chaird') {
-          // Molten Rock Chaird: ember-glow ring + lava cracks over the fighter.
-          // RENDER ONLY — no HP, damage, speed or hitbox change (PR #42: skins
-          // never touch tower HP or any combat stat).
-          const moltenPulse = 0.85 + Math.sin(performance.now() / 160) * 0.15;
-          ctx.strokeStyle = 'rgba(255, 107, 45, 0.55)';
-          ctx.lineWidth = 3;
-          ctx.beginPath();
-          ctx.arc(t.x, drawY, t.radius + 6 * moltenPulse, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.strokeStyle = 'rgba(255, 177, 90, 0.9)';
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.moveTo(t.x - t.radius * 0.5, drawY - t.radius * 0.3);
-          ctx.lineTo(t.x - t.radius * 0.1, drawY + t.radius * 0.1);
-          ctx.lineTo(t.x + t.radius * 0.3, drawY - t.radius * 0.2);
-          ctx.moveTo(t.x + t.radius * 0.1, drawY + t.radius * 0.4);
-          ctx.lineTo(t.x + t.radius * 0.5, drawY + t.radius * 0.1);
-          ctx.stroke();
-          if (Math.random() < 0.05) {
-              explosions.push({
-                  x: t.x + (Math.random() - 0.5) * t.radius * 2,
-                  y: drawY - t.radius * 0.5,
-                  vx: (Math.random() - 0.5) * 10,
-                  vy: -25 - Math.random() * 20,
-                  radius: 1.5 + Math.random() * 2,
-                  life: 0,
-                  maxLife: 0.6 + Math.random() * 0.3,
-                  color: Math.random() < 0.5 ? '#ffb15a' : '#ff6b2d',
                   isParticle: true
               });
           }
@@ -72702,7 +73097,7 @@ function checkHit(target, b, i){
            ctx.stroke();
            continue;
       } else if (b.isChair) {
-          if ((b.skinEffect === 'lavaChair' || b.skinEffect === 'moltenSpin' || b.skinEffect === 'lavaBurst' || activeSkinId === 'molten-rock-chaird') && b.ownerBrawler === 'chaird') {
+          if ((b.skinEffect === 'lavaChair' || b.skinEffect === 'moltenSpin' || b.skinEffect === 'lavaBurst') && b.ownerBrawler === 'chaird') {
               const angle = Math.atan2(b.vy, b.vx);
               const moltenPulse = 0.9 + Math.sin((performance.now() + (b.id || 0) * 20) / 90) * 0.18;
               ctx.save();
@@ -76682,8 +77077,7 @@ function checkHit(target, b, i){
             const numChairs = isHc ? 4 : 2;
             // Molten Rock Chaird: the spinning chairs are molten rock with a
             // lava glow (RENDER ONLY — chair count, damage and pull are untouched).
-            const spinSkinId = getActiveSkinForBrawler(t.brawler || (t === player ? selectedBrawler : ''))?.id;
-            const isMoltenSpin = spinSkinId === 'molten-rock-chaird';
+            const isMoltenSpin = false; // deleted skin — molten branch never runs
             for(let i=0; i<numChairs; i++) {
                 const ang = baseAng + (i / numChairs) * Math.PI * 2;
                 ctx.save();
@@ -77391,6 +77785,30 @@ function checkHit(target, b, i){
             ctx.restore();
             continue;
         }
+        if (ex.fxKind === 'freezeonSuperSpawn' && ex.holidayLights) {
+            // Holiday Lights Super impact: the rink lands as holiday
+            // lighting — a 4-color light burst + expanding ring in the
+            // equipped chroma's colors. Visual only.
+            const hAlpha = Math.max(0, 1 - ex.life / ex.maxLife);
+            const hProgress = clamp(ex.life / ex.maxLife, 0, 1);
+            const hR = (ex.radius || 260) * (0.35 + 0.65 * hProgress);
+            const hColors = (typeof getHolidayLightsPalette === 'function') ? getHolidayLightsPalette() : ['#ff3b30', '#34c759', '#0a84ff', '#ffd60a'];
+            ctx.save();
+            ctx.globalAlpha = hAlpha;
+            ctx.strokeStyle = hColors[Math.floor(ex.life * 8) % hColors.length];
+            ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.arc(ex.x, ex.y, hR, 0, Math.PI * 2); ctx.stroke();
+            for (let s = 0; s < 12; s++) {
+                const a = (s / 12) * Math.PI * 2;
+                ctx.fillStyle = hColors[s % hColors.length];
+                ctx.shadowColor = hColors[s % hColors.length];
+                ctx.shadowBlur = 10;
+                ctx.beginPath(); ctx.arc(ex.x + Math.cos(a) * hR * 0.85, ex.y + Math.sin(a) * hR * 0.85, 4, 0, Math.PI * 2); ctx.fill();
+            }
+            ctx.shadowBlur = 0;
+            ctx.restore();
+            continue;
+        }
         if (ex.fxKind === 'treeFreezeSnowball') {
             // Tree Freeze takedown: a snowball drops from above onto the
             // defeated enemy, then lands with a poof of snow. Phase 1
@@ -77489,6 +77907,66 @@ function checkHit(target, b, i){
                 if (p === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
             }
             ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.restore();
+            continue;
+        }
+        if (ex.fxKind === 'holidayLightsKnot') {
+            // Holiday Lights takedown: lights tie a knot around the enemy
+            // (4 colored strands crossing at the center), then boom — an
+            // expanding ring + 4-color burst. Base colors on every chroma.
+            const kAlpha = Math.max(0, 1 - ex.life / ex.maxLife);
+            const kProgress = clamp(ex.life / ex.maxLife, 0, 1);
+            const kR = (ex.radius || 46) * (0.4 + 0.8 * kProgress);
+            const kColors = ['#ff3b30', '#34c759', '#0a84ff', '#ffd60a'];
+            ctx.save();
+            ctx.globalAlpha = kAlpha;
+            if (kProgress < 0.5) {
+                // Knot phase: strands converge and cross at the center.
+                for (let s = 0; s < 4; s++) {
+                    ctx.strokeStyle = kColors[s];
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(ex.x + Math.cos(s * Math.PI / 2) * kR, ex.y + Math.sin(s * Math.PI / 2) * kR);
+                    ctx.lineTo(ex.x - Math.cos(s * Math.PI / 2) * kR * 0.6, ex.y - Math.sin(s * Math.PI / 2) * kR * 0.6);
+                    ctx.stroke();
+                }
+            } else {
+                // Boom phase: expanding ring + 4-color burst dots.
+                ctx.strokeStyle = '#ffd60a';
+                ctx.lineWidth = 4;
+                ctx.beginPath(); ctx.arc(ex.x, ex.y, kR, 0, Math.PI * 2); ctx.stroke();
+                for (let s = 0; s < 12; s++) {
+                    const a = (s / 12) * Math.PI * 2;
+                    ctx.fillStyle = kColors[s % kColors.length];
+                    ctx.beginPath(); ctx.arc(ex.x + Math.cos(a) * kR * 0.9, ex.y + Math.sin(a) * kR * 0.9, 3.5, 0, Math.PI * 2); ctx.fill();
+                }
+            }
+            ctx.restore();
+            continue;
+        }
+        if (ex.fxKind === 'holidayLightsWrap') {
+            // Holiday Lights spawn: a string of lights wraps around
+            // FreeZeon (expanding 4-color rings), then unwraps (rings
+            // contract and fade). Base colors on every chroma.
+            const wAlpha = Math.max(0, 1 - ex.life / ex.maxLife);
+            const wProgress = clamp(ex.life / ex.maxLife, 0, 1);
+            const wR = (ex.radius || 42) * (0.55 + 0.65 * wProgress);
+            const wColors = ['#ff3b30', '#34c759', '#0a84ff', '#ffd60a'];
+            ctx.save();
+            ctx.globalAlpha = wAlpha;
+            for (let ring = 0; ring < 2; ring++) {
+                ctx.strokeStyle = wColors[ring % wColors.length];
+                ctx.lineWidth = 3;
+                ctx.beginPath(); ctx.arc(ex.x, ex.y, wR * (0.6 + ring * 0.4), 0, Math.PI * 2); ctx.stroke();
+            }
+            for (let s = 0; s < 12; s++) {
+                const a = (s / 12) * Math.PI * 2;
+                ctx.fillStyle = wColors[s % wColors.length];
+                ctx.shadowColor = wColors[s % wColors.length];
+                ctx.shadowBlur = 8;
+                ctx.beginPath(); ctx.arc(ex.x + Math.cos(a) * wR * 0.9, ex.y + Math.sin(a) * wR * 0.9, 3.5, 0, Math.PI * 2); ctx.fill();
+            }
+            ctx.shadowBlur = 0;
             ctx.restore();
             continue;
         }
@@ -79284,7 +79762,7 @@ function checkHit(target, b, i){
     if(gameOver){
         if (!hasHandledGameOver) {
             hasHandledGameOver = true;
-            const fullOnDamageEarned = 0;
+            const fullOnDamageEarned = matchDamageDealt; // per-match ledger (rebuild 2026-11-20)
             const completedMatchFighter = selectedBrawler;
             let won = false;
             let rankText = "";
@@ -79392,10 +79870,22 @@ function checkHit(target, b, i){
             const brickRushMultiplier = 1;
             const normalBrickReward = getBrickDeltaForPlacement(placement);
             const brickRushBonusCapped = normalBrickReward > 0 && (normalBrickReward * brickRushMultiplier - normalBrickReward) > DAILY_BRICK_RUSH_BONUS_CAP;
+            // Brawler Prestige (rebuild 2026-11-20): 50 gems per new
+            // prestige level. Snapshot prestige before the award, then
+            // pay out for every level gained in this match.
+            const prestigeRoster = isDuels ? (Array.isArray(playerTeam) && playerTeam.length ? playerTeam : [selectedBrawler]) : [selectedBrawler];
+            const prestigeBefore = {};
+            prestigeRoster.forEach((bid) => { const p = playerData.brawlers[bid]; prestigeBefore[bid] = p ? (p.prestige || 0) : 0; });
+            let prestigeGemsEarned = 0;
             // Friendly Battles pay no Bricks either — skip the award entirely.
             const brickDelta = isFriendlyBattle ? 0 : (isDuels
                 ? awardBricksAcrossTeam(playerTeam, placement, brickRushMultiplier)
                 : awardBricksForPlacement(endProgress, placement, brickRushMultiplier));
+            prestigeRoster.forEach((bid) => {
+                const after = (playerData.brawlers[bid] || {}).prestige || 0;
+                const gained = after - (prestigeBefore[bid] || 0);
+                for (let i = 0; i < gained; i++) { grantReward({ type: 'gems', amount: 50 }); prestigeGemsEarned += 50; }
+            });
             let soulReward = getSoulsForPlacement(placement);
             // Friendly Battles: no placement coins/souls, no event reward.
             if (isFriendlyBattle) { rewardCoins = 0; soulReward = 0; }
@@ -79403,13 +79893,12 @@ function checkHit(target, b, i){
             if (rotationReward?.type === 'coins') rewardCoins += rotationReward.amount;
             if (rotationReward?.type === 'souls') soulReward += rotationReward.amount;
             let rankedDelta = 0;
+            let rankedRpParts = null;
+            let prestigeLeague = null;
             let rankedDivisionSummary = '';
             let rankedPromotionCoins = 0;
             let rankedPromotionSouls = 0;
             let rankedPromotionGems = 0;
-            let rankedPassXpGained = 0;
-            let rankedNewPassTiers = 0;
-            let rankedStreakBonusRp = 0;
             let isRankedMVP = false;
             if (isRankedMatch) {
                 if (!playerData.ranked || typeof playerData.ranked !== 'object') {
@@ -79418,31 +79907,24 @@ function checkHit(target, b, i){
                 ensureRankedSeasonState();
                 const beforePoints = Math.max(0, Math.floor(playerData.ranked.points || 0));
                 const beforeTier = getRankedTierInfo(beforePoints);
-                // MVP evaluation: top performance / damage / victory
-                isRankedMVP = (won && fullOnDamageEarned >= 3000) || (!won && fullOnDamageEarned >= 6000);
+                // MVP evaluation: top performance / damage / victory, now
+                // from the real per-match damage ledger (the old
+                // fullOnDamageEarned was always 0, so MVP never fired).
+                isRankedMVP = (won && matchDamageDealt >= 3000) || (!won && matchDamageDealt >= 6000);
                 if (won) {
                     playerData.ranked.winStreak = (playerData.ranked.winStreak || 0) + 1;
-                    if (playerData.ranked.winStreak >= 2) {
-                        rankedStreakBonusRp = Math.min(15, 5 + (playerData.ranked.winStreak - 2) * 2);
-                    }
-                    rankedDelta = 35 + rankedStreakBonusRp + (isRankedMVP ? 10 : 0);
                 } else {
                     playerData.ranked.winStreak = 0;
-                    rankedDelta = -15 + (isRankedMVP ? 5 : 0);
                 }
+                // Ranked RP (rebuild 2026-11-20): mode + kills + damage +
+                // objective + win — not just win/loss. Ranked Pass XP is
+                // gone with the Ranked Pass.
+                rankedRpParts = calcRankedRpGain({ mode: showdownMode, kills: matchKills, damage: matchDamageDealt, objectiveDamage: matchObjectiveDamage, won, streak: playerData.ranked.winStreak || 0, mvp: isRankedMVP });
+                rankedDelta = rankedRpParts.total;
                 const safetyFloor = getRankedDivisionFloor(beforePoints);
                 const afterPoints = Math.max(safetyFloor, beforePoints + rankedDelta);
                 playerData.ranked.points = afterPoints;
                 playerData.ranked.highPoints = Math.max(playerData.ranked.highPoints || 0, afterPoints);
-                // Award Seasonal Ranked Pass XP
-                const passXpMultiplier = isArenaForgeMode ? 1.5 : 1.0;
-                const basePassXp = won ? (150 + (isRankedMVP ? 50 : 0)) : (60 + (isRankedMVP ? 50 : 0));
-                const grossPassXpGained = Math.round(basePassXp * passXpMultiplier);
-                rankedPassXpGained = grossPassXpGained;
-                const beforePassTier = Math.floor((playerData.ranked.passXp || 0) / RANKED_PASS_XP_PER_TIER);
-                playerData.ranked.passXp = (playerData.ranked.passXp || 0) + rankedPassXpGained;
-                const afterPassTier = Math.floor(playerData.ranked.passXp / RANKED_PASS_XP_PER_TIER);
-                rankedNewPassTiers = Math.max(0, Math.min(RANKED_PASS_TIERS, afterPassTier) - beforePassTier);
                 const afterTier = getRankedTierInfo(afterPoints);
                 rankedDivisionSummary = `${beforeTier.label} (${beforePoints} RP) → ${afterTier.label} (${afterPoints} RP)`;
                 if (afterTier.index > beforeTier.index) {
@@ -79459,29 +79941,32 @@ function checkHit(target, b, i){
                     }
                     rewardCoins += rankedPromotionCoins;
                 }
+                // Prestige League (rebuild 2026-11-20): this match moves
+                // your league points and your opponents' RP in sync.
+                prestigeLeague = recordPrestigeLeagueMatch(won, rankedDelta);
                 rankText = rankText
-                    ? `${rankText} | Ranked ${rankedDelta >= 0 ? '+' : ''}${rankedDelta} RP • +${rankedPassXpGained} Pass XP`
-                    : `Ranked ${rankedDelta >= 0 ? '+' : ''}${rankedDelta} RP • +${rankedPassXpGained} Pass XP`;
+                    ? `${rankText} | Ranked ${rankedDelta >= 0 ? '+' : ''}${rankedDelta} RP`
+                    : `Ranked ${rankedDelta >= 0 ? '+' : ''}${rankedDelta} RP`;
             }
             let earnedDropCount = 0;
             // Friendly Battles earn no Starr Drops of any kind.
             if (!isFriendlyBattle) {
             if ((playerData.starrDropsToday || 0) < 12) {
                 earnedDropCount += 1;
-                playerData.starrDrops = (playerData.starrDrops || 0) + 1;
+                grantReward({ type: 'tapper', amount: 1 });
                 playerData.starrDropsToday = (playerData.starrDropsToday || 0) + 1;
             }
             if (streakDropBonus > 0) {
                 const streakDropGrant = Math.max(0, Math.min(streakDropBonus, 12 - (playerData.starrDropsToday || 0)));
                 if (streakDropGrant > 0) {
                     earnedDropCount += streakDropGrant;
-                    playerData.starrDrops = (playerData.starrDrops || 0) + streakDropGrant;
+                    grantReward({ type: 'tapper', amount: streakDropGrant });
                     playerData.starrDropsToday = (playerData.starrDropsToday || 0) + streakDropGrant;
                 }
             }
             if (rotationReward?.type === 'tapper') {
                 earnedDropCount += rotationReward.amount;
-                playerData.starrDrops = (playerData.starrDrops || 0) + rotationReward.amount;
+                grantReward({ type: 'tapper', amount: rotationReward.amount });
             }
             }
             const goldEventReward = 0;
@@ -79491,10 +79976,10 @@ function checkHit(target, b, i){
             if (!isFriendlyBattle) awardSeasonPassXp(won ? 25 : 15);
             if (goldEventReward > 0) rewardCoins += goldEventReward;
             if (isTournamentMatch) rewardCoins = 0; // Tournament matches pay no per-match coins — the league champion prize is the payout.
-            playerData.coins += rewardCoins;
-            addSouls(soulReward);
-            if (rankedPromotionSouls > 0) addSouls(rankedPromotionSouls);
-            if (rankedPromotionGems > 0) playerData.gems = (playerData.gems || 0) + rankedPromotionGems;
+            grantReward({ type: 'coins', amount: rewardCoins });
+            grantReward({ type: 'souls', amount: soulReward });
+            if (rankedPromotionSouls > 0) grantReward({ type: 'souls', amount: rankedPromotionSouls });
+            if (rankedPromotionGems > 0) grantReward({ type: 'gems', amount: rankedPromotionGems });
             if (!isFriendlyBattle) {
                 addEventQuestProgress('play_match');
                 progressSeasonPassQuest('play_match');
@@ -79573,6 +80058,7 @@ function checkHit(target, b, i){
                 brickDiv.textContent += ` - BRICK RUSH ${brickRushMultiplier}X`;
             }
             if (brickRushBonusCapped) brickDiv.textContent += ' - BONUS CAP REACHED (+250)';
+            if (prestigeGemsEarned > 0) brickDiv.textContent += ` • 💎 +${prestigeGemsEarned} Prestige Gems`;
             const soulDiv = document.createElement('div');
             soulDiv.textContent = `🪄 +${soulReward} Souls`;
             soulDiv.className = 'match-results-reward reward-souls';
@@ -79585,7 +80071,7 @@ function checkHit(target, b, i){
             rankedDiv.style.color = '#ffd9a0';
             if (isRankedMatch) {
                 let rpBreakdown = `⚔️ Ranked ${rankedDelta >= 0 ? '+' : ''}${rankedDelta} RP`;
-                if (rankedStreakBonusRp > 0) rpBreakdown += ` (+${rankedStreakBonusRp} Streak)`;
+                if (rankedRpParts && rankedRpParts.streakRp > 0) rpBreakdown += ` (+${rankedRpParts.streakRp} Streak)`;
                 if (isRankedMVP) rpBreakdown += ` ⭐ MVP Bonus!`;
                 rankedDiv.textContent = rpBreakdown;
             }
@@ -79605,13 +80091,41 @@ function checkHit(target, b, i){
             }
             if (isRankedMatch) {
                 rewardsBox.appendChild(rankedDiv);
-                const passXpDiv = document.createElement('div');
-                passXpDiv.textContent = `🎖️ +${rankedPassXpGained} Ranked Pass XP${isArenaForgeMode ? ' (1.5x Forge)' : ''}${rankedNewPassTiers > 0 ? ` • 🎉 ${rankedNewPassTiers} Pass Tier(s) Unlocked!` : ''}`;
-                passXpDiv.style.fontSize = '18px';
-                passXpDiv.style.fontWeight = 'bold';
-                passXpDiv.style.color = '#70e000';
-                passXpDiv.style.marginTop = '6px';
-                rewardsBox.appendChild(passXpDiv);
+                // Ranked RP breakdown (rebuild 2026-11-20): the new end
+                // screen shows where every RP point came from.
+                if (rankedRpParts) {
+                    const rpBreakdownDiv = document.createElement('div');
+                    const p = rankedRpParts;
+                    const rpLines = [
+                        `🎮 Mode (${getShowdownModeLabel(showdownMode) || showdownMode}): ${p.modeRp >= 0 ? '+' : ''}${p.modeRp}`,
+                        `${won ? '✅ Win' : '💔 Loss'}: ${p.winRp >= 0 ? '+' : ''}${p.winRp}`,
+                        `⚔️ Takedowns (${matchKills}): ${p.killRp >= 0 ? '+' : ''}${p.killRp}`,
+                        `💥 Damage (${Math.round(matchDamageDealt).toLocaleString()}): ${p.damageRp >= 0 ? '+' : ''}${p.damageRp}`,
+                        `🎯 Objective (${Math.round(matchObjectiveDamage).toLocaleString()}): ${p.objectiveRp >= 0 ? '+' : ''}${p.objectiveRp}`
+                    ];
+                    if (p.streakRp > 0) rpLines.push(`🔥 Win streak: +${p.streakRp}`);
+                    if (p.mvpRp > 0) rpLines.push(`⭐ MVP: +${p.mvpRp}`);
+                    rpBreakdownDiv.innerHTML = rpLines.map(l => `<div>${l}</div>`).join('');
+                    rpBreakdownDiv.style.fontSize = '16px';
+                    rpBreakdownDiv.style.fontWeight = 'bold';
+                    rpBreakdownDiv.style.color = '#cfeef7';
+                    rpBreakdownDiv.style.marginTop = '6px';
+                    rewardsBox.appendChild(rpBreakdownDiv);
+                }
+                // Prestige League standings (rebuild 2026-11-20): the
+                // leaderboard resets every 3 days; the 2 names shown with
+                // you are your teammates.
+                if (prestigeLeague) {
+                    const leagueDiv = document.createElement('div');
+                    const standings = getPrestigeLeagueStandings(prestigeLeague);
+                    const rank = getPrestigeLeaguePlayerRank(prestigeLeague);
+                    const teamNames = (prestigeLeague.teammates || []).join(' & ');
+                    const rows = standings.slice(0, 5).map((r, i) => `<div>${i + 1}. ${r.isPlayer ? 'YOU' : r.name} — ${r.rp} RP${r.isPlayer ? ' ⭐' : ''}</div>`).join('');
+                    leagueDiv.innerHTML = `<div style="font-weight:900;color:#ffd166;">👑 Prestige League — you are #${rank}</div>${rows}${teamNames ? `<div style="color:#a5d8ff;">Teammates: ${teamNames}</div>` : ''}${prestigeLeague.lastCycleReward ? `<div style="color:#9ef6d6;">Last cycle: #${prestigeLeague.lastCycleReward.rank} — +${prestigeLeague.lastCycleReward.gems} gems, +${prestigeLeague.lastCycleReward.tappers} tappers</div>` : ''}`;
+                    leagueDiv.style.fontSize = '16px';
+                    leagueDiv.style.marginTop = '8px';
+                    rewardsBox.appendChild(leagueDiv);
+                }
             }
             if (isRankedMatch && rankedDivisionSummary) {
                 const rankedTierDiv = document.createElement('div');
@@ -79664,14 +80178,12 @@ function checkHit(target, b, i){
             resultCard.appendChild(rewardsBox);
             // Post-match real stats (2026-11-19, app overhaul Tier 2 feel):
             // app mode ONLY — the website's results screen is untouched.
-            // The match damage ledger was deleted with Full-On Damage, so
-            // fullOnDamageEarned is 0 until a new per-match metric lands —
-            // it is shown as MATCH DAMAGE, never as "damage dealt by you".
-            // Takedowns are NOT tracked per match (only the career
-            // cumulative eliminations counter exists) and healing is NOT
-            // tracked per match at all (doHeal records nothing), so those
-            // rows are omitted rather than invented. No per-bot match stats
-            // exist either, so there is no bot leaderboard to show.
+            // The per-match ledger (rebuild 2026-11-20) tracks kills,
+            // damage and objective damage, so fullOnDamageEarned is real
+            // MATCH DAMAGE now, never "damage dealt by you". Healing is
+            // NOT tracked per match at all (doHeal records nothing), so
+            // that row is omitted rather than invented. No per-bot match
+            // stats exist either, so there is no bot leaderboard to show.
             if (isNativeAppMode()) {
                 resultCard.appendChild(buildMatchResultsStats(fullOnDamageEarned));
             }
@@ -80558,7 +81070,7 @@ function checkHit(target, b, i){
           chip.style.background = claimed ? 'rgba(136,136,136,0.06)' : (earned ? 'rgba(93,242,194,0.04)' : 'transparent');
           chip.style.border = '1px solid ' + (claimed ? '#888' : (earned ? '#5df2c2' : '#304876'));
           const txt = document.createElement('div'); txt.innerHTML = `<b>${m}</b> <span style="font-size:11px;color:#93a7da;">Quests</span><div style="font-size:12px;color:#93a7da;margin-top:2px;">${m===10?'500 💰':m===25?'1500 💰':'3500 💰'}</div>`;
-          const btn = document.createElement('button'); btn.textContent = claimed ? '✓' : (earned ? 'Claim' : '🔒'); btn.style.border='none'; btn.style.borderRadius='6px'; btn.style.padding='6px 10px'; btn.style.cursor = earned && !claimed ? 'pointer' : 'default'; btn.style.background = claimed ? '#888' : (earned ? '#5df2c2' : '#304876'); btn.style.color='#08101d'; btn.style.fontWeight='900'; btn.onclick = () => { if (earned && !claimed) { playerData.coins += (m===10?500:(m===25?1500:3500)); playerData.event.milestonesClaimed.push(m); saveProgress(); btn.textContent='✓'; btn.style.background='#888'; progFill.style.width=`${Math.min(100, ((playerData.event?.questsCompleted||0)/Math.max(1, EVENT_QUEST_TOTAL))*100)}%`; } };
+          const btn = document.createElement('button'); btn.textContent = claimed ? '✓' : (earned ? 'Claim' : '🔒'); btn.style.border='none'; btn.style.borderRadius='6px'; btn.style.padding='6px 10px'; btn.style.cursor = earned && !claimed ? 'pointer' : 'default'; btn.style.background = claimed ? '#888' : (earned ? '#5df2c2' : '#304876'); btn.style.color='#08101d'; btn.style.fontWeight='900'; btn.onclick = () => { if (earned && !claimed) { grantReward({ type: 'coins', amount: (m===10?500:(m===25?1500:3500)) }); playerData.event.milestonesClaimed.push(m); saveProgress(); btn.textContent='✓'; btn.style.background='#888'; progFill.style.width=`${Math.min(100, ((playerData.event?.questsCompleted||0)/Math.max(1, EVENT_QUEST_TOTAL))*100)}%`; } };
           chip.appendChild(txt); chip.appendChild(btn); milestonesBox.appendChild(chip);
       });
       rightPanel.appendChild(milestonesBox);
@@ -80573,7 +81085,7 @@ function checkHit(target, b, i){
   }
   function describeCircuitReward(reward) {
       if (!reward) return 'Reward';
-      const names = {coins:'Coins',gems:'Gems',souls:'Souls',tapper:'Tapper',superTapper:'Super Tapper',hyperTapper:'Surge Tapper',towerDrop:'Tower Drop',spookyBox:'Spooky Box',present:'Present',corePieces:'Core Piece'};
+      const names = {coins:'Coins',gems:'Gems',souls:'Souls',tapper:'Tapper',superTapper:'Super Tapper',hyperTapper:'Surge Tapper',towerDrop:'Tower Drop',spookyBox:'Spooky Box',present:'Present',corePieces:'Core Piece',randomPiece:'Random Piece'};
       if (names[reward.type]) return `${(reward.amount || 1).toLocaleString()} ${names[reward.type]}${reward.amount > 1 && !['coins','gems','souls'].includes(reward.type) ? 's' : ''}`;
       if (reward.type === 'skin') return skinsDatabase[reward.id]?.name || 'Exclusive Skin';
       if (reward.type === 'pinPack') return `Pin Pack ×${reward.amount || 3}${reward.bonusGems ? ` + ${reward.bonusGems} Gems` : ''}`;
@@ -80642,7 +81154,7 @@ function checkHit(target, b, i){
                   button.onclick=()=>{confirmCircuitPassAction(`Unlock Premium for ${cost.toLocaleString()} ${label}?`,()=>{if(unlockSeasonPremium(currency))render();});};premium.appendChild(button);
               }
               content.appendChild(premium);
-              const road=document.createElement('div');road.className='circuit-road';road.setAttribute('aria-label','Reward road: 25 tiers');
+              const road=document.createElement('div');road.className='circuit-road';road.setAttribute('aria-label','Reward road: 50 tiers');
               for(const tier of getActiveSeasonPassTiers()){
                   const column=document.createElement('article');column.className='circuit-tier'+(pass.level>=tier.tier?' unlocked':'');
                   const heading=document.createElement('h2');heading.textContent=String(tier.tier).padStart(2,'0');column.appendChild(heading);

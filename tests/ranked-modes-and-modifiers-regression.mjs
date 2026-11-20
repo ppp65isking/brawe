@@ -22,7 +22,7 @@ const checks = [
 
   // 3. Ranked Ban & Draft Overhaul
   ['Player team slot is randomized (player is not always leader)', /const playerSlot = Math\.floor\(Math\.random\(\) \* 3\);[\s\S]*?const isPlayerLeader = \(playerSlot === 0\);/],
-  ['Ban schedule gives leaders 2 bans and members 1 ban (8 bans total)', /banSchedule = \[[\s\S]*?slot: 0, banIdx: 0[\s\S]*?slot: 0, banIdx: 1[\s\S]*?slot: 1, banIdx: 0[\s\S]*?slot: 2, banIdx: 0/],
+  ['Ban schedule gives leaders 1 ban and Member 1 one ban (4 bans total, rebuild stage 6)', /banSchedule = \[[\s\S]*?slot: 0, banIdx: 0[\s\S]*?slot: 1, banIdx: 0/],
   ['Draft pick line supports snake pick order with player position tracking', /pickLine = blueHasFirstPick \?[\s\S]*?pickNum: 1[\s\S]*?pickNum: 6/],
   ['Available brawler choices reduce dynamically as earlier draft picks claim brawlers', /getAvailablePool = \(pickingTeam = 'blue'\) => \{[\s\S]*?const banned = new Set\(getAllBanned\(\)\);[\s\S]*?const picked = new Set\(getAllPicked\(\)\);[\s\S]*?enemyProtected/],
   ['Ranked match launch preserves teammate picks, enemy picks, and multi-bans', /rankedTeammatePicks = bluePicks\.filter[\s\S]*?rankedEnemyPicks = redPicks\.slice[\s\S]*?rankedBans = \{/],

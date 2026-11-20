@@ -122,8 +122,8 @@ check('Escape closes the road and Tab is trapped inside it',
     openSeasonPassSrc.includes("if(event.key === 'Escape')") && openSeasonPassSrc.includes("if(event.key === 'Tab')"));
 
 // --- 3. Premium upsell: real prices, real unlock, app confirm sheet ---
-check('premium prices are the existing constants, unchanged (79 gems / 6500 coins)',
-    game.includes('const SEASON_PREMIUM_UNLOCK_GEMS = 79;') && game.includes('const SEASON_PREMIUM_UNLOCK_COINS = 6500;'));
+check('premium prices are the rebuilt constants (100 gems / 11,999 coins, stage 4)',
+    game.includes('const SEASON_PREMIUM_UNLOCK_GEMS = 100;') && game.includes('const SEASON_PREMIUM_UNLOCK_COINS = 11999;'));
 check('premium upsell shows both currency buttons only while locked + active',
     openSeasonPassSrc.includes("if(!pass.premiumUnlocked && active) for(const [currency,cost,label] of [['gems',SEASON_PREMIUM_UNLOCK_GEMS,'Gems'],['coins',SEASON_PREMIUM_UNLOCK_COINS,'Coins']])"));
 check('premium buttons are disabled when the player cannot afford them',
@@ -221,26 +221,28 @@ const round2Block = newCssBlock.split('Brawl Space season-pass road')[0] || '';
 check('no app rule leaks outside .native-app in the new block',
     round2Block.length > 0 && round2Block.split('\n').filter(l => l.trim().startsWith('.')).every(l => l.trim().startsWith('.native-app')));
 
-// --- 8. Season data: all four seasons define a full 25-tier road ---
-const KNOWN_REWARD_TYPES = new Set(['coins', 'gems', 'souls', 'tapper', 'superTapper', 'hyperTapper', 'towerDrop', 'spookyBox', 'present', 'corePieces', 'skin', 'pinPack', 'packetSignal', 'profileCosmetic', 'eventTapper']);
+// --- 8. Season data: the live seasons define their roads (Xplodemis rebuilt to 50 tiers, stage 4) ---
+const KNOWN_REWARD_TYPES = new Set(['coins', 'gems', 'souls', 'tapper', 'superTapper', 'hyperTapper', 'towerDrop', 'spookyBox', 'present', 'corePieces', 'skin', 'pinPack', 'packetSignal', 'profileCosmetic', 'eventTapper', 'randomPiece']);
+const EXPECTED_TIER_COUNTS = { 'TURKEY_TROUBLE_PASS_TIERS': 25, 'XPLODEMIS_PASS_TIERS': 50, 'EMBER_FORGE_PASS_TIERS': 25 };
 const tierSets = {};
-for (const name of ['ARENAWEEN_PASS_TIERS', 'TURKEY_TROUBLE_PASS_TIERS', 'XPLODEMIS_PASS_TIERS', 'EMBER_FORGE_PASS_TIERS']) {
+for (const name of ['TURKEY_TROUBLE_PASS_TIERS', 'XPLODEMIS_PASS_TIERS', 'EMBER_FORGE_PASS_TIERS']) {
     const arr = vm.runInNewContext(`(${extractConstArray(game, name)})`, {});
     tierSets[name] = arr;
-    check(`${name}: exactly 25 tiers, numbered 1-25 in order`,
-        arr.length === 25 && arr.every((t, i) => t.tier === i + 1));
+    check(`${name}: exactly ${EXPECTED_TIER_COUNTS[name]} tiers, numbered 1-${EXPECTED_TIER_COUNTS[name]} in order`,
+        arr.length === EXPECTED_TIER_COUNTS[name] && arr.every((t, i) => t.tier === i + 1));
     check(`${name}: every tier has a non-empty title and a free + premium reward`,
         arr.every(t => typeof t.title === 'string' && t.title.length > 0 &&
             t.free && typeof t.free.type === 'string' && t.premium && typeof t.premium.type === 'string'));
     check(`${name}: every reward type is one the grant/describe code handles`,
         arr.every(t => KNOWN_REWARD_TYPES.has(t.free.type) && KNOWN_REWARD_TYPES.has(t.premium.type)));
 }
-check('Season 5 is Turkey Trouble (25 tiers) and Season 6 is Xplodemis (25 tiers)',
-    game.includes("key:'turkey', seasonNumber:5") && game.includes("key:'xplodemis', seasonNumber:6"));
-check('no new season/tier data invented: the only tier arrays are the four live seasons + the pre-existing FUTURE placeholder',
-    (game.match(/_PASS_TIERS = \[/g) || []).length === 5 &&
-    game.includes('const FUTURE_SEASON_PASS_TIERS = [') &&
-    game.includes("// planned future season, not Season 4"));
+check('Season 5 is Turkey Trouble (25 tiers) and Season 6 is Xplodemis (50 tiers)',
+    game.includes("key:'turkey', seasonNumber:5") && game.includes("key:'xplodemis', seasonNumber:6") &&
+    tierSets.XPLODEMIS_PASS_TIERS.length === 50);
+check('no new season/tier data invented: the only tier arrays are the three live seasons (Arenaween + FUTURE placeholder deleted, stage 4)',
+    (game.match(/_PASS_TIERS = \[/g) || []).length === 3 &&
+    !game.includes('const FUTURE_SEASON_PASS_TIERS = [') &&
+    !game.includes('const ARENAWEEN_PASS_TIERS = ['));
 
 // --- 9. describeCircuitReward covers every reward type the roads use ---
 {
@@ -268,6 +270,24 @@ check('no new season/tier data invented: the only tier arrays are the four live 
         getActiveSeasonPassTiers: function () { return turkey; },
         saveProgress: function () {}, updateEventBadge: function () {}, updateQuestBadge: function () {},
         addCorePieces: function (n) { sandbox.corePieces += n; },
+        // Central grantReward (rebuild stage 1): grantSeasonReward grants
+        // through it now, so the sandbox must provide it. Applies the same
+        // amounts the pass used to write directly.
+        grantReward: function (r) {
+            const p = sandbox.playerData;
+            if (!r || !r.type) return false;
+            if (r.type === 'coins') p.coins = (p.coins || 0) + (r.amount || 0);
+            else if (r.type === 'gems') p.gems = (p.gems || 0) + (r.amount || 0);
+            else if (r.type === 'souls') p.souls = (p.souls || 0) + (r.amount || 0);
+            else if (r.type === 'tapper') p.starrDrops = (p.starrDrops || 0) + (r.amount || 0);
+            else if (r.type === 'superTapper') p.superTapperCount = (p.superTapperCount || 0) + (r.amount || 0);
+            else if (r.type === 'hyperTapper') p.hyperTapperCount = (p.hyperTapperCount || 0) + (r.amount || 0);
+            else if (r.type === 'corePieces') sandbox.corePieces = (sandbox.corePieces || 0) + (r.amount || 0);
+            else if (r.type === 'present') p.presentCount = (p.presentCount || 0) + (r.amount || 0);
+            else if (r.type === 'randomPiece') p.randomPieces = (p.randomPieces || 0) + (r.amount || 0);
+            else if (r.type === 'skin') { p.ownedSkins = p.ownedSkins || {}; p.ownedSkins[r.id] = true; }
+            return true;
+        },
         ensureSlopSushiState: function () {}, grantPinPack: function () {}, addPacketSignal: function () {},
         PACKET_DEFS: {}, ensureSeason3State: function () { return { season: { cosmetics: [] } }; },
         ensureProfileProgressionState: function () { return { bon: { unlockedBadges: [], unlockedFrames: [], unlockedBackgrounds: [] } }; },
@@ -324,9 +344,10 @@ check('no new season/tier data invented: the only tier arrays are the four live 
         T.purchase(rich, 'coin-cache', grant) === false && rich.tokenPurchases['coin-cache'] === 10);
     check('token purchase: unknown offer id fails without spending',
         T.purchase(rich, 'no-such-offer', grant) === false && rich.tokenWallet === 100000 - 10 * 100);
-    check('token purchase: skin offer exists at 1600 with limit 1',
-        T.offers.filter(o => o.reward.type === 'skin').length === 2 &&
-        T.offers.every(o => o.reward.type !== 'skin' || (o.cost === 1600 && o.limit === 1)));
+    check('token purchase: no skin offers — core cache (800) + random piece (1200) replaced them (stage 4)',
+        T.offers.filter(o => o.reward.type === 'skin').length === 0 &&
+        T.offers.some(o => o.id === 'core-cache' && o.cost === 800 && o.reward.type === 'corePieces' && o.reward.amount === 25) &&
+        T.offers.some(o => o.id === 'random-piece' && o.cost === 1200 && o.reward.type === 'randomPiece' && o.reward.amount === 3));
 }
 
 // --- 13. DOM smoke: the real openSeasonPass render runs end to end ---
@@ -387,7 +408,7 @@ check('no new season/tier data invented: the only tier arrays are the four live 
             addEventListener: () => {}, removeEventListener: () => {}, querySelector: () => null,
         },
         ENABLE_SEASON_PASS: true, ENABLE_SEASON_QUESTS: true,
-        SEASON_PREMIUM_UNLOCK_GEMS: 79, SEASON_PREMIUM_UNLOCK_COINS: 6500, SEASON_PASS_MAX_LEVEL: 25,
+        SEASON_PREMIUM_UNLOCK_GEMS: 100, SEASON_PREMIUM_UNLOCK_COINS: 11999, SEASON_PASS_MAX_LEVEL: 50,
         playerData: {
             coins: 10000, gems: 100, souls: 0, starrDrops: 0, superTapperCount: 0, hyperTapperCount: 0,
             presentCount: 0, ownedSkins: {}, selectedSkins: {},
@@ -406,6 +427,21 @@ check('no new season/tier data invented: the only tier arrays are the four live 
         isNativeAppMode: () => true,
         confirm: () => { throw new Error('native confirm must not be called in app mode'); },
         addCorePieces: () => {}, ensureSlopSushiState: () => {}, grantPinPack: () => {}, addPacketSignal: () => {},
+        // Central grantReward (rebuild stage 1): grantSeasonReward grants through it now.
+        grantReward: (r) => {
+            const p = smoke.playerData;
+            if (!r || !r.type) return false;
+            if (r.type === 'coins') p.coins = (p.coins || 0) + (r.amount || 0);
+            else if (r.type === 'gems') p.gems = (p.gems || 0) + (r.amount || 0);
+            else if (r.type === 'souls') p.souls = (p.souls || 0) + (r.amount || 0);
+            else if (r.type === 'tapper') p.starrDrops = (p.starrDrops || 0) + (r.amount || 0);
+            else if (r.type === 'superTapper') p.superTapperCount = (p.superTapperCount || 0) + (r.amount || 0);
+            else if (r.type === 'hyperTapper') p.hyperTapperCount = (p.hyperTapperCount || 0) + (r.amount || 0);
+            else if (r.type === 'present') p.presentCount = (p.presentCount || 0) + (r.amount || 0);
+            else if (r.type === 'randomPiece') p.randomPieces = (p.randomPieces || 0) + (r.amount || 0);
+            else if (r.type === 'skin') { p.ownedSkins = p.ownedSkins || {}; p.ownedSkins[r.id] = true; }
+            return true;
+        },
         PACKET_DEFS: {}, ensureSeason3State: () => ({ season: { cosmetics: [] } }),
         ensureProfileProgressionState: () => ({ bon: { unlockedBadges: [], unlockedFrames: [], unlockedBackgrounds: [] } }),
     };
@@ -437,13 +473,13 @@ check('no new season/tier data invented: the only tier arrays are the four live 
     check('smoke: tier 6 free shows LEVEL 6 and is disabled',
         smokeCollectButtons(smokeCols[5])[1]?.textContent === 'LEVEL 6' && smokeCollectButtons(smokeCols[5])[1]?.disabled === true);
     const smokePrem = smokeCollectButtons(smokeOverlay.querySelector('.circuit-premium'));
-    check('smoke: premium upsell shows both real prices', smokePrem.length === 2 && smokePrem[0].textContent.includes('79') && smokePrem[1].textContent.includes('6,500'));
+    check('smoke: premium upsell shows both real prices (100 gems / 11,999 coins, rebuild stage 4)', smokePrem.length === 2 && smokePrem[0].textContent.includes('100') && smokePrem[1].textContent.includes('11,999'));
     smokePrem[0].onclick();
     check('smoke: premium gems button opens the app sheet (never native confirm)',
-        smoke._lastSheet && smoke._lastSheet.message.includes('79 Gems') && typeof smoke._lastSheet.onConfirm === 'function');
+        smoke._lastSheet && smoke._lastSheet.message.includes('100 Gems') && typeof smoke._lastSheet.onConfirm === 'function');
     smoke._lastSheet.onConfirm();
-    check('smoke: confirming premium spends 79 gems and unlocks the track',
-        smoke.playerData.gems === 21 && smoke.playerData.seasonPass.premiumUnlocked === true);
+    check('smoke: confirming premium spends 100 gems and unlocks the track',
+        smoke.playerData.gems === 0 && smoke.playerData.seasonPass.premiumUnlocked === true);
     check('smoke: after unlock, tier 2 premium becomes CLAIM',
         smokeCollectButtons(smokeOverlay.querySelector('.circuit-road').children[1])[0]?.textContent === 'CLAIM');
     const smokeTabs = smokeOverlay.querySelectorAll('[data-tab]');

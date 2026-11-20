@@ -75,7 +75,7 @@ sandbox.window = sandbox;
 vm.createContext(sandbox);
 const runSrc = (src) => vm.runInContext(src, sandbox);
 runSrc(`const DAILY_BRICK_RUSH_BONUS_CAP = ${(game.match(/const DAILY_BRICK_RUSH_BONUS_CAP = (\d+);/) || [])[1]};`);
-for (const fn of ['getLifetimeBricks', 'getBrickDeltaForPlacement', 'applyPositiveBrickMultiplier', 'applyBrickDelta', 'awardBricksForPlacement', 'getTotalBrickBonBricks', 'getTrophyCareerStats', 'getBrawlerTrophyWins', 'getTotalTrophyWins', 'getTopBrawlersByBricks', 'recordTrophyMatchResult', 'createBricksSection']) {
+for (const fn of ['getLifetimeBricks', 'getBrickDeltaForPlacement', 'getPrestigeBricksPerMatch', 'applyPositiveBrickMultiplier', 'applyBrickDelta', 'awardBricksForPlacement', 'getTotalBrickBonBricks', 'getTrophyCareerStats', 'getBrawlerTrophyWins', 'getTotalTrophyWins', 'getTopBrawlersByBricks', 'recordTrophyMatchResult', 'createBricksSection']) {
     runSrc(extractFunction(game, fn));
 }
 const T = (expr) => vm.runInContext(expr, sandbox);

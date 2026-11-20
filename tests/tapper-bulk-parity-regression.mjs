@@ -95,6 +95,21 @@ function runWorld(setup) {
             round: Math.round, sqrt: Math.sqrt, abs: Math.abs, PI: Math.PI,
         },
         playerData: freshState(),
+        // Central grantReward (rebuild stage 1): the tapper openers grant
+        // through it now, so the sandbox must provide it. Applies the
+        // same amounts the openers used to write directly.
+        grantReward: (r) => {
+            const p = ctx.playerData;
+            if (!r || !r.type) return false;
+            if (r.type === 'coins') p.coins = (p.coins || 0) + (r.amount || 0);
+            else if (r.type === 'gems') p.gems = (p.gems || 0) + (r.amount || 0);
+            else if (r.type === 'souls') p.souls = (p.souls || 0) + (r.amount || 0);
+            else if (r.type === 'corePieces') p.corePieces = (p.corePieces || 0) + (r.amount || 0);
+            else if (r.type === 'tapper') p.starrDrops = (p.starrDrops || 0) + (r.amount || 0);
+            else if (r.type === 'superTapper') p.superTapperCount = (p.superTapperCount || 0) + (r.amount || 0);
+            else if (r.type === 'hyperTapper') p.hyperTapperCount = (p.hyperTapperCount || 0) + (r.amount || 0);
+            return true;
+        },
         brawlerData: { outlit: { name: 'Outlit' }, rocketeer: { name: 'Rocketeer' } },
         allBrawlers: ['outlit', 'rocketeer'],
         disabledBrawlers: new Set(),
