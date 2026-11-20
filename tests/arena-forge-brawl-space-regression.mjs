@@ -55,8 +55,8 @@ check('fighters: grid is NOT a scroller — old sticky overflow-x strip rule is 
 check('fighters: view is the one scroller (touch-action pan-y, momentum kept)',
     game.includes('#appHomeFightersView{touch-action:pan-y}') &&
     game.includes('#appHomeFightersView{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}'));
-check('fighters: portrait = 2-column grid, landscape = wider cards',
-    game.includes("@media (orientation:portrait) and (max-width:560px){#appFightersStrip{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}}") &&
+check('fighters: portrait = 4-column grid, landscape = wider cards (mobile UI 2026-11-20: was 2 cols; 3/4 cards keep the 34px strip fitting)',
+    game.includes("@media (orientation:portrait) and (max-width:560px){#appFightersStrip{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}}") &&
     game.includes("@media (orientation:landscape){#appFightersStrip{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}}"));
 check('fighters: container carries the grid class',
     game.includes('<div id="appFightersStrip" class="app-fighters-grid"></div>'));

@@ -808,7 +808,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         #appHomeFightersView{touch-action:pan-y}
         #appFightersStrip{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;overflow:visible;position:static;touch-action:pan-y;padding:4px 2px 12px;background:transparent;border-radius:0}
         @media (orientation:landscape){#appFightersStrip{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}}
-        @media (orientation:portrait) and (max-width:560px){#appFightersStrip{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}}
+        @media (orientation:portrait) and (max-width:560px){#appFightersStrip{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}}
         .app-fighter-card{position:relative;width:auto;padding:0;border-radius:12px;overflow:hidden;text-align:left;border:3px solid #0a1428;box-shadow:0 4px 0 rgba(0,0,0,.45);aspect-ratio:16/10;background:var(--card-color,#0b69bd)}
         .app-fighter-card .app-fighter-portrait{position:absolute;inset:0;width:100%;height:100%;margin:0;border:0;border-radius:0;display:grid;place-items:center}
         .app-fighter-card .app-fighter-portrait svg{width:82%;height:82%}
@@ -829,7 +829,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         .app-fighter-kit-icons i.kit-talent.on{background:#eab308}
         .app-fighter-kit-icons i.kit-surge.on{background:#ec4899}
         .app-fighter-upg{margin-top:auto;min-width:22px;height:22px;padding:0 4px;display:grid;place-items:center;border-radius:999px;background:#ff3b30;border:2px solid #fff;color:#fff;font-size:12px;font-weight:1000;box-shadow:0 2px 0 rgba(0,0,0,.5)}
-        @media (orientation:portrait) and (max-width:560px){.app-fighter-card b{font-size:12px;right:40px}.app-fighter-trophies{font-size:11px;padding:1px 6px}.app-fighter-power{width:30px;height:30px;font-size:13px}.app-fighter-kit{top:40px}}
+        @media (orientation:portrait) and (max-width:560px){.app-fighter-card{aspect-ratio:3/4}.app-fighter-card .app-fighter-portrait svg{width:88%;height:88%}.app-fighter-card b{font-size:10px;right:36px;bottom:4px;max-width:calc(100% - 40px)}.app-fighter-trophies{font-size:8px;padding:1px 4px;left:4px;bottom:4px}.app-fighter-power{width:24px;height:24px;font-size:12px;top:4px;right:5px}.app-fighter-kit{top:32px;gap:3px}.app-fighter-kit-icons{gap:3px}.app-fighter-kit-icons i{width:14px;height:14px;border-radius:5px;font-size:9px}.app-fighter-upg{min-width:16px;height:16px;font-size:10px;padding:0 3px}.app-fighter-fav{width:22px;height:22px;font-size:13px;top:4px;left:4px}.app-fighter-card.is-locked small{font-size:9px}.app-fighter-cost{font-size:8px;line-height:1.25}}
         /* FIGHTERS DETAIL SHOWCASE: big stage portrait, stats chips,
            kit slots as a 2-column grid. Portrait stacks, landscape
            puts the portrait left. */
@@ -991,6 +991,78 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         .profile-prestige-shield b{font-size:16px}
         .profile-prestige-shield small{font-size:8px;font-weight:1000;letter-spacing:.05em}
         .profile-show-more{margin-top:10px;padding:8px 18px;border-radius:10px;background:#0a1428;border:2px solid rgba(255,255,255,.3);color:#fff;font-size:12px;font-weight:1000;cursor:pointer}
+        /* ---- Arena Forge mobile UI overhaul (2026-11-20): smaller sizing
+           on phones, 4-fighter portrait roster (grid + cards edited in
+           place above: repeat(4,...) + 3/4 cards so the 34px strip still
+           fits), icon top bar + filter sheet, no boxes on mobile screens.
+           App/touch mode only; the website is untouched — every rule
+           below lives in a portrait-mobile media query (or under
+           .native-app for shared overlays), and the desktop rules above
+           stay byte-identical so their suites keep passing. ---- */
+        /* Fighters icon top bar (portrait phones): search + filter are
+           icon buttons — search opens the field on tap, filter opens the
+           in-app filter sheet. Wide app windows keep the full toolbar
+           row, so the top bar is hidden there and the filter row lays
+           out as if it were not wrapped (display:contents). */
+        .app-fighters-topbar{display:none}
+        .app-fighters-filter-row{display:contents}
+        .app-fighters-icon-btn{flex:none;width:44px;height:44px;display:grid;place-items:center;border-radius:12px;border:2px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:#fff;font-size:20px;line-height:1;cursor:pointer}
+        .app-fighters-icon-btn.is-active{background:#ff9f1c;border-color:#ffd166;color:#231303}
+        /* Filter sheet fields (the sheet itself reuses the kit-sheet
+           overlay + panel, same bottom-sheet language). */
+        .app-filter-field{display:flex;flex-direction:column;gap:4px;margin:10px 0}
+        .app-filter-field small{font-size:11px;font-weight:1000;letter-spacing:.1em;color:#8fdfff}
+        .app-filter-field select{min-height:44px;padding:10px 12px;border-radius:12px;border:2px solid rgba(255,255,255,.2);background:rgba(8,20,42,.7);color:#fff;font-size:16px;font-weight:800;outline:none}
+        @media (orientation:portrait) and (max-width:560px){
+        /* Toolbar: the one-row toolbar squeezed the search field to 54px
+           and let the sort select overlap it (measured 2026-11-20). It is
+           a column now: icon top bar, search only when opened, sort +
+           roles + count in one row. The sticky rule above is untouched. */
+        .app-fighters-toolbar{flex-direction:column;align-items:stretch;gap:6px;padding:2px 2px 8px}
+        .app-fighters-topbar{display:flex;align-items:center;gap:8px;flex:none}
+        #appHomeFightersView:not(.app-fighters-search-open) .app-fighters-search-wrap{display:none}
+        #appHomeFightersView.app-fighters-search-open .app-fighters-search-wrap{display:flex;flex:none;width:100%}
+        .app-fighters-search-wrap .app-fighters-search{font-size:16px}
+        .app-fighters-filter-row{display:flex;align-items:center;gap:8px;flex:none}
+        .app-fighters-filter-row .app-fighters-roles{flex:1 1 auto;min-width:0}
+        .app-fighters-filter-row .app-fighters-sort{padding:8px 6px;font-size:12px}
+        .app-fighters-role{padding:6px 10px;font-size:11px}
+        /* Smaller sizing: home top bar, hero, quick row, event chip. */
+        #appHome{padding-left:max(8px,env(safe-area-inset-left));padding-right:max(8px,env(safe-area-inset-right))}
+        #appHomeTop{gap:8px;min-height:40px}
+        #appHomePlayer{font-size:13px;padding:5px 10px}
+        #appHomeSeasonChip{font-size:11px;padding:5px 10px}
+        #appHomeSaveBtn{font-size:13px;padding:5px 8px}
+        #appHomeHero{padding:12px 10px;gap:6px}
+        #appHomeHero .app-hero-portrait{width:min(36vh,240px)}
+        .app-hero-info strong{font-size:clamp(24px,5vh,36px)}
+        .app-hero-stats span{padding:5px 8px;font-size:12px}
+        .app-hero-sub{font-size:12px}
+        .app-hero-fighters{padding:8px 14px;font-size:13px}
+        .app-quick-btn{padding:8px 10px;font-size:12px}
+        #appHomeEventChip{padding:8px 12px}
+        #appHomeEventChip b{font-size:13px}
+        #appHomeEventChip small{font-size:10px}
+        /* Events: tighter cards, flatter chrome (borders thinned, no
+           heavy box). Title, tabs and structure are untouched. */
+        .app-events-grid{gap:8px}
+        .app-event-slot{min-height:96px;padding:12px;border:1px solid rgba(255,255,255,.10);background:rgba(8,20,42,.55)}
+        .app-event-slot b{font-size:15px}
+        .app-event-slot small{font-size:11px}
+        .app-events-section{font-size:12px;padding:6px 12px 5px}
+        /* Fighters detail: no box on mobile — the panel goes flat
+           (border + background removed), kit slots + stat pills lose
+           their heavy borders. Content and tap targets are unchanged. */
+        #appFightersDetail{border:0;border-radius:0;background:transparent;box-shadow:none;padding:12px 4px}
+        .app-fighters-detail-info h3{font-size:clamp(22px,4.5vh,30px)}
+        .app-fighters-detail-stats span{padding:4px 8px;font-size:11px;border-color:transparent;background:rgba(255,255,255,.06)}
+        .app-fighters-detail-desc{font-size:11px}
+        .app-fighters-detail-actions button{padding:9px 14px;font-size:13px}
+        .app-kit-slot{border-color:transparent;background:rgba(255,255,255,.05)}
+        /* Profile: the ranked boxes lose their heavy borders on mobile;
+           the diagonal split, hex favorites and prestige shield stay. */
+        .native-app .profile-ranked-boxes>div{border-color:transparent;background:rgba(10,16,32,.4)}
+        }
         `;
         document.head.appendChild(styleSheet);
     function getScaledStats(brawlerId, levelOverride) {
@@ -6507,7 +6579,7 @@ const bolznstienPendingStrikes = [];
     // getScaledStats, getBrawlerPortraitMarkup and the web picker's
     // selection flow. Tapping a card focuses it; PLAY selects it as hero.
     let appFightersBuilt = false;
-    const appFightersState = { search: '', role: 'all', focused: null, sort: 'favorites' };
+    const appFightersState = { search: '', role: 'all', focused: null, sort: 'favorites', rarity: 'all', minPower: 0, owned: 'all' };
     // Round 2: the sort pref persists in localStorage (a UI pref, not
     // save data). A bad or stale value falls back to the default.
     const APP_FIGHTERS_SORT_KEY = 'brawl_arena_fighters_sort';
@@ -6516,6 +6588,24 @@ const bolznstienPendingStrikes = [];
         const storedSort = localStorage.getItem(APP_FIGHTERS_SORT_KEY);
         if (APP_FIGHTERS_SORTS.includes(storedSort)) appFightersState.sort = storedSort;
     } catch (_) {}
+    // Mobile UI (2026-11-20): the filter-sheet prefs persist like the
+    // sort pref (UI prefs, not save data). A bad or stale value falls
+    // back to the default, so a corrupt entry can never empty the list.
+    const APP_FIGHTERS_FILTERS_KEY = 'brawl_arena_fighters_filters';
+    const APP_FIGHTER_RARITIES = ['Starter', 'Rare', 'Epic', 'Mythic', 'Exotic', 'Unique', 'Anomaly'];
+    const APP_FIGHTER_POWER_BANDS = [0, 5, 9, 11, 12];
+    const APP_FIGHTER_OWNED_STATES = ['all', 'owned', 'locked'];
+    try {
+        const storedFilters = safeJsonParse(localStorage.getItem(APP_FIGHTERS_FILTERS_KEY), null);
+        if (storedFilters && typeof storedFilters === 'object') {
+            if (APP_FIGHTER_RARITIES.includes(storedFilters.rarity)) appFightersState.rarity = storedFilters.rarity;
+            if (APP_FIGHTER_POWER_BANDS.includes(Number(storedFilters.minPower))) appFightersState.minPower = Number(storedFilters.minPower);
+            if (APP_FIGHTER_OWNED_STATES.includes(storedFilters.owned)) appFightersState.owned = storedFilters.owned;
+        }
+    } catch (_) {}
+    function saveAppFightersFilters() {
+        try { localStorage.setItem(APP_FIGHTERS_FILTERS_KEY, JSON.stringify({ rarity: appFightersState.rarity || 'all', minPower: Number(appFightersState.minPower) || 0, owned: appFightersState.owned || 'all' })); } catch (_) {}
+    }
     const APP_FIGHTER_RARITY_COLORS = { Starter: '#ff9f1c', Rare: '#8cf05a', Epic: '#b388ff', Mythic: '#ff8ad8', Exotic: '#ffcd2f', Unique: '#ff6b6b', Anomaly: '#f3d5ff' };
     function appFightersRoles() {
         const roles = [];
@@ -6532,6 +6622,28 @@ const bolznstienPendingStrikes = [];
             const data = brawlerData[id] || {};
             if (role !== 'all' && (data.role || 'Fighter') !== role) return false;
             if (q && !(String(data.name || id).toLowerCase().includes(q) || String(id).toLowerCase().includes(q))) return false;
+            // Mobile UI (2026-11-20): filter-sheet filters — rarity, min
+            // power, owned state. Each one short-circuits on its default
+            // so the unfiltered list is exactly what it was before.
+            const rarityFilter = appFightersState.rarity || 'all';
+            if (rarityFilter !== 'all') {
+                let r = 'Starter';
+                try { r = getBrawlerRarity(id) || 'Starter'; } catch (_) { r = (typeof brawlerRarities !== 'undefined' && brawlerRarities[id]) || 'Starter'; }
+                if (r !== rarityFilter) return false;
+            }
+            const minPower = Number(appFightersState.minPower) || 0;
+            if (minPower > 0) {
+                let lv = 1;
+                try { lv = getEffectiveBrawlerProgress(id).level || 1; } catch (_) { lv = (playerData && playerData.brawlers && playerData.brawlers[id] && playerData.brawlers[id].level) || 1; }
+                if (lv < minPower) return false;
+            }
+            const ownedFilter = appFightersState.owned || 'all';
+            if (ownedFilter !== 'all') {
+                let owned = false;
+                try { owned = isBrawlerUnlocked(id) || isWeeklyTrialBrawler(id); } catch (_) { owned = false; }
+                if (ownedFilter === 'owned' && !owned) return false;
+                if (ownedFilter === 'locked' && owned) return false;
+            }
             return true;
         });
         // Round 2: favorites always sort first, then the chosen sort.
@@ -6582,10 +6694,15 @@ const bolznstienPendingStrikes = [];
             if (!appFightersState.focused) appFightersState.focused = selectedBrawler;
             view.innerHTML = `
               <div class="app-fighters-toolbar">
+                <div class="app-fighters-topbar">
+                  <button type="button" id="appFightersSearchToggle" class="app-fighters-icon-btn" aria-label="Search fighters" aria-expanded="false">🔍</button>
+                  <button type="button" id="appFightersFilterBtn" class="app-fighters-icon-btn" aria-label="Filter fighters" aria-pressed="false">⚙</button>
+                </div>
                 <div class="app-fighters-search-wrap">
                   <input id="appFightersSearch" class="app-fighters-search" type="search" placeholder="🔎 Search fighters…" autocomplete="off" enterkeyhint="search">
                   <button type="button" id="appFightersClearSearch" class="app-fighters-clear-search" aria-label="Clear search" hidden>✕</button>
                 </div>
+                <div class="app-fighters-filter-row">
                 <select id="appFightersSort" class="app-fighters-sort" aria-label="Sort fighters">
                   <option value="favorites">★ FAVORITES</option>
                   <option value="name">NAME A–Z</option>
@@ -6595,6 +6712,7 @@ const bolznstienPendingStrikes = [];
                 </select>
                 <div id="appFightersRoles" class="app-fighters-roles"></div>
                 <span id="appFightersCount" class="app-fighters-count"></span>
+                </div>
               </div>
               <div id="appFightersStrip" class="app-fighters-grid"></div>
               <div id="appFightersDetail"></div>`;
@@ -6632,6 +6750,22 @@ const bolznstienPendingStrikes = [];
                     renderAppFightersStrip();
                 });
             }
+            // Mobile UI (2026-11-20): icon top bar. The search icon opens
+            // the search field (portrait phones hide it until tapped) and
+            // the filter icon opens the filter sheet; both are no-ops on
+            // wide windows where the full toolbar is already visible.
+            view.querySelector('#appFightersSearchToggle')?.addEventListener('click', () => {
+                appBuzz(10);
+                const open = view.classList.toggle('app-fighters-search-open');
+                const toggleBtn = view.querySelector('#appFightersSearchToggle');
+                if (toggleBtn) toggleBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+                if (open) view.querySelector('#appFightersSearch')?.focus();
+                else view.querySelector('#appFightersSearch')?.blur();
+            });
+            view.querySelector('#appFightersFilterBtn')?.addEventListener('click', () => {
+                appBuzz(10);
+                openAppFightersFilterSheet();
+            });
             view.querySelector('#appFightersRoles')?.addEventListener('click', (event) => {
                 const chip = event.target.closest('[data-app-role]');
                 if (!chip) return;
@@ -6686,12 +6820,24 @@ const bolznstienPendingStrikes = [];
         renderAppFightersRoles();
         renderAppFightersStrip();
         renderAppFightersDetail();
+        syncAppFightersFilterBtn();
     }
     function renderAppFightersRoles() {
         const host = document.getElementById('appFightersRoles');
         if (!host) return;
         const chips = ['all', ...appFightersRoles()].map((role) => `<button type="button" class="app-fighters-role${appFightersState.role === role ? ' is-active' : ''}" data-app-role="${role}">${role === 'all' ? 'ALL' : role.toUpperCase()}</button>`).join('');
         host.innerHTML = chips;
+    }
+    // Mobile UI (2026-11-20): the filter icon lights up while any
+    // filter-sheet filter is set, so a filtered roster never looks
+    // unfiltered. Called from build + the sheet, never from the strip
+    // render (the vm harnesses do not stub it).
+    function syncAppFightersFilterBtn() {
+        const btn = document.getElementById('appFightersFilterBtn');
+        if (!btn) return;
+        const active = (appFightersState.rarity && appFightersState.rarity !== 'all') || (Number(appFightersState.minPower) || 0) > 0 || (appFightersState.owned && appFightersState.owned !== 'all');
+        btn.classList.toggle('is-active', !!active);
+        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
     }
     function renderAppFightersStrip() {
         const strip = document.getElementById('appFightersStrip');
@@ -7012,6 +7158,57 @@ const bolznstienPendingStrikes = [];
     }
     function closeAppKitSheet() {
         document.getElementById('appKitSheetOverlay')?.remove();
+    }
+    // Mobile UI (2026-11-20): Fighters filter sheet — the "native box"
+    // the filter icon opens (in-app bottom sheet, same language as the
+    // kit sheet; NOT the Android UI box). Rarity, min power and owned
+    // state; every change applies live to the strip and persists as a
+    // UI pref. No mechanics, no numbers, no pass/quest/ranked changes.
+    function openAppFightersFilterSheet() {
+        closeAppFightersFilterSheet();
+        try { document.getElementById('appFightersSearch')?.blur(); } catch (_) {}
+        const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        const rarity = appFightersState.rarity || 'all';
+        const minPower = Number(appFightersState.minPower) || 0;
+        const owned = appFightersState.owned || 'all';
+        const opt = (v, label, cur) => `<option value="${v}"${String(cur) === String(v) ? ' selected' : ''}>${esc(label)}</option>`;
+        const overlay = document.createElement('div');
+        overlay.className = 'app-kit-sheet-overlay';
+        overlay.id = 'appFightersFilterOverlay';
+        overlay.innerHTML = `
+          <div class="app-kit-sheet" role="dialog" aria-label="Filter fighters">
+            <div class="app-kit-sheet-label">FIGHTERS · FILTER</div>
+            <h3>Filter fighters</h3>
+            <label class="app-filter-field"><small>RARITY</small><select id="appFilterRarity">${['all', ...APP_FIGHTER_RARITIES].map((r) => opt(r, r === 'all' ? 'All rarities' : r, rarity)).join('')}</select></label>
+            <label class="app-filter-field"><small>POWER</small><select id="appFilterPower">${APP_FIGHTER_POWER_BANDS.map((p) => opt(p, p === 0 ? 'All powers' : p === 12 ? 'Power 12 (max)' : `Power ${p}+`, minPower)).join('')}</select></label>
+            <label class="app-filter-field"><small>OWNED</small><select id="appFilterOwned">${[['all', 'All fighters'], ['owned', 'Owned'], ['locked', 'Locked']].map(([v, l]) => opt(v, l, owned)).join('')}</select></label>
+            <div class="app-kit-sheet-actions">
+              <button type="button" class="app-kit-sheet-close" data-app-filter-clear="1">CLEAR ALL</button>
+              <button type="button" class="app-kit-sheet-select" data-app-filter-done="1">✓ DONE</button>
+            </div>
+          </div>`;
+        overlay.addEventListener('click', (event) => {
+            if (event.target === overlay || event.target.closest('[data-app-filter-done]')) { closeAppFightersFilterSheet(); return; }
+            if (event.target.closest('[data-app-filter-clear]')) {
+                appFightersState.rarity = 'all'; appFightersState.minPower = 0; appFightersState.owned = 'all';
+                saveAppFightersFilters(); renderAppFightersStrip(); syncAppFightersFilterBtn(); closeAppFightersFilterSheet(); return;
+            }
+        });
+        overlay.addEventListener('change', (event) => {
+            const t = event.target;
+            if (!t || !t.id) return;
+            if (t.id === 'appFilterRarity' && APP_FIGHTER_RARITIES.includes(t.value)) { appFightersState.rarity = t.value; }
+            else if (t.id === 'appFilterPower') { const n = Number(t.value) || 0; if (APP_FIGHTER_POWER_BANDS.includes(n)) appFightersState.minPower = n; }
+            else if (t.id === 'appFilterOwned' && APP_FIGHTER_OWNED_STATES.includes(t.value)) { appFightersState.owned = t.value; }
+            else return;
+            appBuzz(10);
+            saveAppFightersFilters(); renderAppFightersStrip(); syncAppFightersFilterBtn();
+        });
+        document.body.appendChild(overlay);
+        appBuzz(10);
+    }
+    function closeAppFightersFilterSheet() {
+        try { document.getElementById('appFightersFilterOverlay')?.remove(); } catch (_) {}
     }
     function appFightersPlay(id) {
         if (!brawlerData[id]) return;
