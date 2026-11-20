@@ -6226,6 +6226,14 @@ const bolznstienPendingStrikes = [];
             else if (action === 'tappers') { if (typeof openAppTapperSheet === 'function') openAppTapperSheet(); }
             else if (action === 'more') { if (typeof openAppMoreSheet === 'function') openAppMoreSheet(); }
         });
+        // Fixes round 3 (2026-11-20): the SEASON PASS button also gets a
+        // direct listener on the button itself, not only the row's
+        // delegation above — if the row is ever re-rendered, the direct
+        // listener keeps the button alive, and if the button is ever
+        // replaced, the delegation keeps it alive. openSeasonPass removes
+        // any existing overlay first, so both listeners firing on one tap
+        // still opens the pass exactly once.
+        document.querySelector('[data-app-quick="pass"]')?.addEventListener('click', () => { appBuzz(10); if (typeof openSeasonPass === 'function') openSeasonPass(); setAppDeepLink('pass'); });
         document.getElementById('appHomeSaveBtn')?.addEventListener('click', () => { appBuzz(10); openSaveCodeModal(); });
         appHomeEl.querySelectorAll('[data-app-tab]').forEach((button) => {
             button.addEventListener('click', () => { appBuzz(10); setAppHomeTab(button.dataset.appTab); });
@@ -13225,6 +13233,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
       return wins > 0 ? `👑 ${league.name} Champion x${wins} • 32-player bracket` : '32-player bracket • Bronze → Diamond leagues';
   }
   function launchTournamentMatch() {
+      if (typeof closeSeasonPassOverlay === 'function') closeSeasonPassOverlay(); // Fixes round 3: pass UI must never render during a match.
       const state = getTournamentState();
       const active = state.active;
       if (!active || active.status !== 'active') return false;
@@ -48465,6 +48474,7 @@ let heistFeverActive = false;
   }
   updateShowdownModeUI();
   function launchShowdownMatch() {
+      if (typeof closeSeasonPassOverlay === 'function') closeSeasonPassOverlay(); // Fixes round 3: pass UI must never render during a match.
       // Hypercharge leak fix: a previous always_hyper / Hyper Forge match
       // leaves isHypercharged + a ~11.5-day hyperchargeUntil behind, and the
       // update() expiry can never reach it — clear it before anything else,
@@ -48673,6 +48683,7 @@ let heistFeverActive = false;
   // wire start button and keyboard controls
   if(startBtn){
       startBtn.addEventListener('click', () => {
+          if (typeof closeSeasonPassOverlay === 'function') closeSeasonPassOverlay(); // Fixes round 3: pass UI must never render during a match.
           clearRankedSessionState();
           if (showdownMode === 'custom_clash') {
               openCustomMutatorPickerUI();
@@ -48745,6 +48756,7 @@ let heistFeverActive = false;
       function updateLaunchBtn() { launchBtn.disabled = drafted.length < 1; }
       launchBtn.onclick = () => {
           if (drafted.length < 1) return;
+          if (typeof closeSeasonPassOverlay === 'function') closeSeasonPassOverlay(); // Fixes round 3: pass UI must never render during a match.
           playerTeam = drafted;
           const duelsPool = getBotBrawlerPool();
           botTeam = Array.from({length: drafted.length}, () => duelsPool[Math.floor(Math.random()*duelsPool.length)]);
@@ -49705,6 +49717,7 @@ isBrawlerLabMode = false;
       // inherit hyper from a previous match. (The trainingInfiniteCharges
       // assignments later in this function still apply.)
       resetPlayerHyperchargeState();
+      if (typeof closeSeasonPassOverlay === 'function') closeSeasonPassOverlay(); // Fixes round 3: pass UI must never render during a match.
       trainingMode = ['free', 'dps', 'duel', 'healing'].includes(mode) ? mode : 'free';
       selectedBrawler = allBrawlers.includes(targetBrawler) ? targetBrawler : 'outlit';
       if (brawlerSelect) brawlerSelect.value = selectedBrawler;
@@ -49829,6 +49842,7 @@ isBrawlerLabMode = false;
       // Hypercharge leak fix: the tutorial is its own launch boundary — never
       // inherit hyper from a previous match.
       resetPlayerHyperchargeState();
+      if (typeof closeSeasonPassOverlay === 'function') closeSeasonPassOverlay(); // Fixes round 3: pass UI must never render during a match.
       clearShowdownModifier();
       isTraining = true;
       isTutorialMode = true;
@@ -52121,7 +52135,7 @@ isBrawlerLabMode = false;
   });
   // expose small debug API
   window.__pureHTMLGame = window.__pureHTMLGame || {};
-  window.__pureHTMLGame.play = ()=>{ if(homeScreen) homeScreen.style.display='none'; playing = true; };
+  window.__pureHTMLGame.play = ()=>{ if (typeof closeSeasonPassOverlay === 'function') closeSeasonPassOverlay(); if(homeScreen) homeScreen.style.display='none'; playing = true; };
   window.__pureHTMLGame.pause = ()=>{ playing = false; };
     window.__pureHTMLGame.setMap = (n) => {
         console.log('Forcing map override to', n);
@@ -64868,6 +64882,7 @@ function checkHit(target, b, i){
   //     (The ranked/friendly branches above run first, so a ranked or
   //     friendly match never falls through to this casual PLAY click.)
   function playAgainFromResults(resultsOverlay) {
+      if (typeof closeSeasonPassOverlay === 'function') closeSeasonPassOverlay(); // Fixes round 3: pass UI must never render during a match.
       if (isTournamentMatch) return false;
       if (resultsOverlay && resultsOverlay.remove) resultsOverlay.remove();
       if (typeof isRankedMatch !== 'undefined' && isRankedMatch && typeof openRankedQueueUI === 'function') {
@@ -80773,6 +80788,33 @@ function checkHit(target, b, i){
       }
       if (typeof confirm === 'function' && confirm(message)) onConfirm();
   }
+  // Fixes round 3 (2026-11-20): the Season Pass overlay must NEVER
+  // survive into a match. openSeasonPass appends #circuitPassOverlay to
+  // the body and only its own close() removes it — but no match-start
+  // path ever called close(), so an overlay left open (e.g. the tap
+  // that looked dead in landscape, see tactical-ui.css) stayed mounted
+  // through the whole match and its buttons bled through the HUD.
+  // Every match launcher below calls closeSeasonPassOverlay() first.
+  // It removes the node AND its Escape keydown listener (a bare
+  // .remove() would leak the listener), and clears the #pass deep link
+  // so a later deep-link apply cannot re-open the pass over a match.
+  // It deliberately does NOT run close()'s refreshHomeUI / focus
+  // restore — a match is starting, the home must not be touched.
+  // Call sites guard with typeof (repo idiom): several suites extract
+  // a launcher alone into a vm context where this helper does not exist,
+  // and an unguarded call would throw there. In the real game the helper
+  // is a hoisted declaration in this same scope, so the guard is free.
+  let seasonPassOverlayEl = null;
+  let seasonPassOverlayKeyboard = null;
+  function closeSeasonPassOverlay() {
+      let removed = false;
+      try { if (seasonPassOverlayKeyboard) document.removeEventListener('keydown', seasonPassOverlayKeyboard); } catch (_) {}
+      try { if (seasonPassOverlayEl) { seasonPassOverlayEl.remove(); removed = true; } } catch (_) {}
+      try { const stale = document.getElementById('circuitPassOverlay'); if (stale) { stale.remove(); removed = true; } } catch (_) {}
+      seasonPassOverlayEl = null;
+      seasonPassOverlayKeyboard = null;
+      if (removed) { try { if (typeof setAppDeepLink === 'function') setAppDeepLink('home'); } catch (_) {} }
+  }
   function openSeasonPass() {
       // Arena Forge app overhaul round 2: the Circuit Pass tier road is live
       // again (it was dead code behind an early return to the Quest Board).
@@ -80787,14 +80829,17 @@ function checkHit(target, b, i){
       if (!ENABLE_SEASON_PASS) { openQuestBoard(); return; }
       ensureSeasonPassState();
       const previousFocus = document.activeElement;
-      document.getElementById('circuitPassOverlay')?.remove();
+      // Fixes round 3: reuse the match-start closer here too, so a stale
+      // overlay (and its Escape listener) can never stack up behind a
+      // fresh open.
+      if (typeof closeSeasonPassOverlay === 'function') closeSeasonPassOverlay();
       const overlay = document.createElement('div');
       overlay.id = 'circuitPassOverlay';
       overlay.className = 'circuit-overlay';
       overlay.setAttribute('role','dialog');
       overlay.setAttribute('aria-modal','true');
       overlay.setAttribute('aria-label','Season Pass');
-      const close = () => { overlay.remove(); document.removeEventListener('keydown',keyboard); previousFocus?.focus?.(); refreshHomeUI(); };
+      const close = () => { overlay.remove(); document.removeEventListener('keydown',keyboard); if (seasonPassOverlayEl === overlay) seasonPassOverlayEl = null; if (seasonPassOverlayKeyboard === keyboard) seasonPassOverlayKeyboard = null; previousFocus?.focus?.(); refreshHomeUI(); };
       const keyboard = event => {
           if(event.key === 'Escape') { event.stopPropagation(); close(); }
           if(event.key === 'Tab') {
@@ -80805,6 +80850,8 @@ function checkHit(target, b, i){
           }
       };
       document.addEventListener('keydown',keyboard);
+      seasonPassOverlayEl = overlay;
+      seasonPassOverlayKeyboard = keyboard;
       let tab = 'road', scrollLeft = 0;
       const render = () => {
           ensureSeasonPassState();
@@ -80884,7 +80931,12 @@ function checkHit(target, b, i){
               }content.appendChild(grid);
           }
       };
-      document.body.appendChild(overlay);render();overlay.querySelector('button')?.focus();
+      document.body.appendChild(overlay);render();
+      // Fixes round 3: focus must never scroll the page behind the
+      // overlay (on a phone, a scroll here can shift the whole document
+      // under the fixed canvas/home). Focus is cosmetic — a throw must
+      // never break the open.
+      try { overlay.querySelector('button')?.focus({ preventScroll: true }); } catch (_) {}
   }
   function tagBoomArangEnemy(target, owner, doubleExplode, instantStun) {
       const now = performance.now();
