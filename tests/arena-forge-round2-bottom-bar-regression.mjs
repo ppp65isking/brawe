@@ -92,11 +92,15 @@ check('toast still clears the taller bar (84px + safe-area)',
     game.includes('.app-toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));'));
 
 // --- Scope: same four destinations, same entry points, nothing else moves ---
+// Landscape home UI (sketch, 2026-11-20): the tab bar is hidden in
+// landscape on home/fighters, so the stylesheet now has [data-app-tab]
+// selectors too — the count below scopes to the actual tab BUTTONS, so
+// the four-destinations + order pin still means what it says.
 check('exactly the same four destinations, in the same order',
-    (game.match(/data-app-tab="/g) || []).length === 4 &&
-    game.indexOf('data-app-tab="home"') < game.indexOf('data-app-tab="fighters"') &&
-    game.indexOf('data-app-tab="fighters"') < game.indexOf('data-app-tab="events"') &&
-    game.indexOf('data-app-tab="events"') < game.indexOf('data-app-tab="shop"'));
+    (game.match(/<button[^>]*data-app-tab="/g) || []).length === 4 &&
+    game.indexOf('<button type="button" data-app-tab="home"') < game.indexOf('<button type="button" data-app-tab="fighters"') &&
+    game.indexOf('<button type="button" data-app-tab="fighters"') < game.indexOf('<button type="button" data-app-tab="events"') &&
+    game.indexOf('<button type="button" data-app-tab="events"') < game.indexOf('<button type="button" data-app-tab="shop"'));
 check('tab taps still route through setAppHomeTab with the tab name',
     game.includes("button.addEventListener('click', () => { appBuzz(10); setAppHomeTab(button.dataset.appTab); });") &&
     game.includes('function setAppHomeTab(tab) {'));

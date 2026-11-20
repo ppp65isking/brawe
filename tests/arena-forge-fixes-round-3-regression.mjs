@@ -257,10 +257,10 @@ check('pass is still 50 tiers, premium 100 gems / 11,999 coins, tier-50 Holiday 
     game.includes("{tier:50,title:'HOLIDAY LIGHTS',free:{type:'coins',amount:5000},premium:{type:'skin',id:'holiday-lights-freezeon'}}"));
 check('Pass XP unchanged: daily +25, weekly +100',
     game.includes('rewards: weekly ? { coins:500+index*150, souls:35+index*10, questXP:35, passXP:100 } : { coins:150+index*40, questXP:20, passXP:25 }'));
-check('Pass XP unchanged: season quests are +100 only (no other xpReward value)',
+check('Pass XP: season quests retuned (2026-11-20 tuning round) — Xplodemis pays 100/175/275/430 by stage band, past/future seasons still 100',
     (() => {
         const vals = [...game.matchAll(/xpReward:([0-9]+)/g)].map((m) => m[1]);
-        return vals.length > 0 && vals.every((v) => v === '100');
+        return vals.length > 0 && vals.every((v) => ['100', '175', '275', '430'].includes(v));
     })());
 check('weekly quests stay 4/week',
     (game.match(/buildRandomContractBucket\(WEEKLY_CONTRACT_POOL, 4,/g) || []).length >= 3);

@@ -93,7 +93,7 @@ check('fix2: claiming a locked season quest is refused',
     extractFunction(game, 'claimSeasonPassQuestReward').includes('isSeasonQuestStageUnlocked'));
 check('untouched: daily/weekly quest schema still v5, weekly still 4/week',
     game.includes('DAILY_WEEKLY_QUEST_SCHEMA_VERSION = 5') && game.includes("buildRandomContractBucket(WEEKLY_CONTRACT_POOL, 4,"));
-check('untouched: season quest XP rewards unchanged (100 each, 20 quests)',
+check('untouched: past/future season quest tables still pay 100 XP each (turkey + ember, 20 quests each — only the live Xplodemis set retuned in the 2026-11-20 tuning round)',
     (game.match(/xpReward:100/g) || []).length >= 20);
 check('untouched: season tab still named "Season Quests"',
     game.includes("makeTab('season', '⚡ Season Quests')"));
@@ -196,7 +196,8 @@ const smoke = {
 for (const name of ['TURKEY_TROUBLE_SEASON_ID', 'TURKEY_TROUBLE_START_UTC', 'TURKEY_TROUBLE_END_UTC',
     'XPLODEMIS_SEASON_ID', 'XPLODEMIS_START_UTC', 'XPLODEMIS_END_UTC',
     'EMBER_FORGE_SEASON_ID', 'EMBER_FORGE_START_UTC', 'EMBER_FORGE_END_UTC',
-    'SEASON_PASS_SCHEMA_VERSION', 'SEASON_PASS_MAX_LEVEL', 'SEASON_QUEST_STAGE_COUNT']) {
+    'SEASON_PASS_SCHEMA_VERSION', 'SEASON_PASS_MAX_LEVEL', 'SEASON_QUEST_STAGE_COUNT',
+    'SEASON_QUEST_UNLOCK_STEP_MS']) {
     smoke[name] = evalLiteral(extractConst(game, name));
 }
 for (const name of ['TURKEY_TROUBLE_PASS_TIERS', 'XPLODEMIS_PASS_TIERS', 'EMBER_FORGE_PASS_TIERS',
@@ -208,7 +209,12 @@ for (const fn of ['ensureBrawePassTokens', 'getActiveSeasonProfile', 'getActiveS
     'buildSeasonPassQuests', 'resetSeasonPassForAll', 'ensureSeasonPassState',
     'isSeason3PassActive', 'getClaimableSeasonQuestCount', 'questRewardText',
     'normalizeQuestKey', 'progressSeasonPassQuest', 'claimSeasonPassQuestReward',
-    'isQuestStageUnlocked', 'getQuestProgressCount', 'openQuestBoard']) {
+    'isQuestStageUnlocked', 'getQuestProgressCount', 'openQuestBoard',
+    // Season quests tuning (2026-11-20): the time gate + sanitize helpers
+    // the season functions now call — they must load too, or the vm
+    // harness throws the moment a season function runs.
+    'seasonQuestStageUnlockMs', 'seasonQuestStageStartUtc', 'isSeasonQuestStageTimeUnlocked',
+    'formatSeasonQuestUnlockCountdown', 'sanitizeSeasonQuestProgress']) {
     try { vm.runInContext(extractFunction(game, fn), smoke); }
     catch (e) { check(`smoke setup: extract+load ${fn}`, false); }
 }
@@ -221,8 +227,13 @@ check('smoke setup: isSeasonQuestStageUnlocked loads in the harness', helperLoad
 
 // Freeze "now" inside the Xplodemis window (Nov 20 2026 – Dec 31 2026) so the
 // active profile is the rebuilt 50-tier Xplodemis season.
+// NOTE: overriding the HOST Date.now does NOT reach inside the vm context
+// (the context has its own Date intrinsic), so freeze the vm's Date too —
+// otherwise the season time gate reads the real wall clock and stage 2
+// stays time-locked until Nov 22 even after stage 1 completes.
 const realNow = Date.now;
 Date.now = () => Date.UTC(2026, 11, 5, 12, 0, 0);
+vm.runInContext('Date.now = () => Date.UTC(2026, 11, 5, 12, 0, 0);', smoke);
 let board = null, boardText = '', cards = [];
 try {
     vm.runInContext('openQuestBoard(\'season\')', smoke);
@@ -270,9 +281,10 @@ check('smoke: progress does NOT flow into a locked later-stage quest',
     })());
 check('smoke: progress DOES flow into the available stage-1 quest and completes it',
     (() => {
-        vm.runInContext("progressSeasonPassQuest('play_match', 3)", smoke);
+        // Season quests tuning (2026-11-20): stage 1 target is 5 battles now, not 3.
+        vm.runInContext("progressSeasonPassQuest('play_match', 5)", smoke);
         const q = smoke.playerData.seasonPass.quests.xplodemis_01;
-        return q.progress === 3 && q.completed === true;
+        return q.progress === 5 && q.completed === true;
     })());
 check('smoke: finishing stage 1 unlocks stage 2 (no longer Coming Soon) while stage 3+ stay Coming Soon',
     (() => {

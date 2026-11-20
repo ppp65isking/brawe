@@ -194,7 +194,9 @@ for (const name of ['RANKED_POINTS_PER_DIVISION', 'RANKED_GOLD_MIN_DIVISION_INDE
     'RANKED_SEASON_RESET_PRESTIGE_LEVELS_DROPPED', 'RANKED_SEASON_RESET_DROP_RP',
     'RANKED_SEASON_RESET_PRESTIGE_FLOOR_RP', 'RANKED_SEASON_RESET_WIN_CREDIT_RP',
     'RANKED_SEASON_RESET_WIN_CREDIT_CAP_RP', 'RANKED_SEASON_RESET_WINRATE_CREDIT_RP',
-    'RANKED_ELO_BOOST_MULTIPLIER']) {
+    'RANKED_ELO_BOOST_MULTIPLIER',
+    // Ranked Solo (2026-11-20): the hub renders the solo ladder too.
+    'RANKED_SOLO_PLACEMENT_FLOOR_RP', 'RANKED_SOLO_PLACEMENT_CAP_RP', 'RANKED_SOLO_LEAGUE_OPPONENT_SALT']) {
     smoke[name] = evalLiteral(extractConst(game, name));
 }
 vm.createContext(smoke);
@@ -204,7 +206,10 @@ for (const fn of ['getRankedPrestige', 'getRankedDisplayLabel', 'getRankedTierIn
     'ensurePrestigeLeagueState', 'getPrestigeLeagueStandings', 'getPrestigeLeaguePlayerRank',
     'recordPrestigeLeagueMatch', 'computeRankedSeasonReset', 'applyRankedSeasonReset',
     'isRankedEloBoostActive', 'getRankedEloBoostMultiplier', 'ensureRankedSeasonState',
-    'calcRankedRpGain', 'openRankedHubOverlay']) {
+    'calcRankedRpGain', 'openRankedHubOverlay',
+    // Ranked Solo (2026-11-20): the hub renders the solo ladder too.
+    'computeRankedSoloPlacement', 'ensureRankedSoloSeasonState', 'isRankedSoloEloBoostActive',
+    'hasCompletedRankedSolo']) {
     try { vm.runInContext(extractFunction(game, fn), smoke); }
     catch (e) { check(`smoke setup: extract+load ${fn}`, false); }
 }
@@ -212,6 +217,9 @@ for (const fn of ['getRankedPrestige', 'getRankedDisplayLabel', 'getRankedTierIn
 function resetSmoke(points, seasonId, seasonStats) {
     smoke.playerData.ranked = { points, rewardsClaimed: [], highPoints: points, winStreak: 0, seasonId, seasonStats: seasonStats || { wins: 0, matches: 0, kills: 0, damage: 0 } };
     smoke.playerData.prestigeLeague = {};
+    // Ranked Solo (2026-11-20): the hub renders the solo ladder too — reset it per case.
+    smoke.playerData.rankedSolo = { points: 0, rewardsClaimed: [], placed: false, highPoints: 0, winStreak: 0, seasonId, seasonStats: { wins: 0, matches: 0, kills: 0, damage: 0 } };
+    smoke.playerData.prestigeLeagueSolo = {};
     smokeBody.children = [];
 }
 // vm.runInContext has no locals — pass the overlay through the context.

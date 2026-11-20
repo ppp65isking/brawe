@@ -39,14 +39,21 @@ function sliceBetween(startMarker, endMarker) {
 }
 
 // --- Paging grid, fixes round (2026-11-20): 4 small cards per column,
-// columns left-to-right, swipe to page — same in portrait AND landscape.
+// columns left-to-right, swipe to page — portrait keeps this; landscape
+// is a 3-column grid now (landscape home UI sketch, 2026-11-20).
 check('grid: strip is a horizontal paging scroller with 4-per-column pages',
     game.includes('#appFightersStrip{display:flex;flex-direction:row;gap:10px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x proximity') &&
     game.includes('#appFightersStrip .app-fighters-page{flex:1 0 118px;max-width:260px;display:grid;grid-template-rows:repeat(4,minmax(0,1fr));gap:8px;scroll-snap-align:start}') &&
     game.includes("@media (orientation:landscape){#appFightersStrip .app-fighters-page{flex-basis:96px;max-width:220px}}"));
-check('grid: old 280px/300px grid and 16/10 + 3/4 cards are gone',
-    !game.includes('#appFightersStrip{display:grid') && !game.includes('repeat(auto-fill,minmax(280px,1fr))') &&
-    !game.includes('aspect-ratio:16/10') && !game.includes('aspect-ratio:3/4'));
+// Landscape home UI (sketch, 2026-11-20): the strip DOES become a grid
+// in landscape now — 3 columns per Anthony's sketch. The old auto-fill
+// grids and 16/10 + 3/4 cards stay gone; the only grid rule is the
+// .native-app landscape one.
+check('grid: old 280px/300px grid and 16/10 + 3/4 cards are gone (landscape 3-col grid excepted)',
+    !game.includes('repeat(auto-fill,minmax(280px,1fr))') &&
+    !game.includes('aspect-ratio:16/10') && !game.includes('aspect-ratio:3/4') &&
+    [...game.matchAll(/#appFightersStrip\{display:grid/g)].length === 1 &&
+    game.includes('.native-app #appFightersStrip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));'));
 check('grid: strip renders pages of 4 small cards',
     game.includes('for (let i = 0; i < list.length; i += 4) pages.push(list.slice(i, i + 4));'));
 check('cards: small cards keep the power badge + upgrade count, thin the rarity edge, hide the kit strip',

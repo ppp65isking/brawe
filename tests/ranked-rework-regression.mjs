@@ -75,7 +75,7 @@ check('breakdown shows takedowns line', game.includes('Takedowns (${matchKills})
 check('breakdown shows damage line', game.includes('Damage (${Math.round(matchDamageDealt)'));
 check('breakdown shows objective line', game.includes('Objective (${Math.round(matchObjectiveDamage)'));
 check('MATCH DAMAGE is real now (ledger, not 0)', game.includes('const fullOnDamageEarned = matchDamageDealt;'));
-check('match-end uses calcRankedRpGain', game.includes('rankedRpParts = calcRankedRpGain({ mode: showdownMode, kills: matchKills, damage: matchDamageDealt, objectiveDamage: matchObjectiveDamage, won, streak: playerData.ranked.winStreak || 0, mvp: isRankedMVP });'));
+check('match-end uses calcRankedRpGain', game.includes('rankedRpParts = calcRankedRpGain({ mode: showdownMode, kills: matchKills, damage: matchDamageDealt, objectiveDamage: matchObjectiveDamage, won, streak: rankedBucket.winStreak || 0, mvp: isRankedMVP });')); // Ranked Solo (2026-11-20): the streak now comes from the settling bucket (Teams or Solo), same formula
 check('ledger resets when a match launches', game.includes('resetMatchRpLedger(); // Ranked RP ledger starts clean for this match'));
 check('ledger counts player damage', game.includes('matchDamageDealt += dealtDamage;'));
 check('ledger counts objective damage', game.includes('if (target && (target.isVault || target.isArenaForgeStructure)) matchObjectiveDamage += dealtDamage;'));
