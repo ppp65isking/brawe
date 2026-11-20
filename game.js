@@ -877,7 +877,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         .brick-bon-v2.profile-view>main{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:14px;align-items:start}
         .brick-bon-v2.profile-view>main>.profile-hero{grid-column:1/-1}
         @media (max-width:760px){.brick-bon-v2.profile-view>main{grid-template-columns:minmax(0,1fr)}}
-        /* TROPHY ROAD (web + app): the top-5 list becomes a horizontal
+        /* BRICK ROAD (web + app): the top-5 list becomes a horizontal
            milestone road — node cards on one scrollable track. */
         .profile-trophies .profile-trophy-list{display:flex;gap:10px;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;padding:4px 2px 10px;scrollbar-width:none}
         .profile-trophies .profile-trophy-list::-webkit-scrollbar{display:none}
@@ -2226,31 +2226,29 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     function getBrickChallengeProgress(challenge){const values=Object.values(playerData.brawlers||{});if(challenge.kind==='depth')return values.filter(p=>getLifetimeBricks(p)>=challenge.threshold).length;if(challenge.kind==='prestiged')return values.filter(p=>(p?.prestige||0)>=challenge.threshold).length;if(challenge.kind==='maxPrestige')return values.reduce((m,p)=>Math.max(m,p?.prestige||0),0);return 0;}
     function getTopProfileBrawlers() {return allBrawlers.map(id=>({id,name:brawlerData[id]?.name||id,bricks:getLifetimeBricks(playerData.brawlers[id]),prestige:Math.max(0,playerData.brawlers[id]?.prestige||0)})).sort((a,b)=>b.bricks-a.bricks||a.name.localeCompare(b.name)).slice(0,10);}
 
-    // ---- Trophies (2026-11-19, app overhaul round 2) ----
-    // Honest, simple rule: 10 trophies per win with a brawler, 0 per loss.
-    // Trophies are DERIVED from tracked wins only — nothing is invented.
+    // ---- Bricks profile section (merged from Trophies, 2026-11-19 big changes) ----
+    // The single progression number is bricks: lifetime bricks per fighter
+    // (progress.bricks + prestige * 1000), earned every match by placement
+    // (1st = 30, 8th = 2, lower places lose a few). Trophies (10 per win,
+    // derived from tracked wins) are retired as a display — the wins ledger
+    // below is kept because the profile still shows per-brawler wins.
     // Per-brawler wins/matches live in profile.careerStats (inside the
     // existing brawlGameProgress / brawl_arena_save payloads), so no new
     // storage key and no backup-whitelist change. Friendly Battles,
-    // Training and Tutorial matches earn no trophies (Friendly Battles
+    // Training and Tutorial matches earn no bricks (Friendly Battles
     // promise "no rewards, no quests, no rank" on the results screen).
-    // Wins before this update have no per-brawler record, so they earn
-    // no trophies retroactively — the profile says so in plain text.
-    const TROPHY_PER_WIN = 10;
     function getTrophyCareerStats() { return ensureProfileProgressionState().profile.careerStats; }
     function getBrawlerTrophyWins(brawlerId) { const c = getTrophyCareerStats(); return Math.max(0, Math.floor((c.brawlerWins || {})[brawlerId] || 0)); }
-    function getBrawlerTrophies(brawlerId) { return TROPHY_PER_WIN * getBrawlerTrophyWins(brawlerId); }
-    function getTotalTrophies() { const c = getTrophyCareerStats(); return Object.values(c.brawlerWins || {}).reduce((sum, n) => sum + TROPHY_PER_WIN * Math.max(0, Math.floor(Number(n) || 0)), 0); }
     function getTotalTrophyWins() { const c = getTrophyCareerStats(); return Object.values(c.brawlerWins || {}).reduce((sum, n) => sum + Math.max(0, Math.floor(Number(n) || 0)), 0); }
-    function getTopBrawlersByTrophies(limit = 5) {
-        return allBrawlers.map(id => ({ id, name: brawlerData[id]?.name || id, wins: getBrawlerTrophyWins(id), matches: Math.max(0, Math.floor((getTrophyCareerStats().brawlerMatches || {})[id] || 0)), trophies: getBrawlerTrophies(id) }))
-            .filter(b => b.wins > 0)
-            .sort((a, b) => b.trophies - a.trophies || b.wins - a.wins || a.name.localeCompare(b.name))
+    function getTopBrawlersByBricks(limit = 5) {
+        return allBrawlers.map(id => ({ id, name: brawlerData[id]?.name || id, wins: getBrawlerTrophyWins(id), matches: Math.max(0, Math.floor((getTrophyCareerStats().brawlerMatches || {})[id] || 0)), bricks: getLifetimeBricks(playerData.brawlers?.[id]) }))
+            .filter(b => b.bricks > 0 || b.wins > 0)
+            .sort((a, b) => b.bricks - a.bricks || b.wins - a.wins || a.name.localeCompare(b.name))
             .slice(0, Math.max(0, Math.floor(limit || 0)));
     }
     // Single match-end hook (called from the one career-stats settlement
     // site in the game-over handler). Returns false when nothing was
-    // recorded (unknown brawler, or a no-trophy match type).
+    // recorded (unknown brawler, or a no-reward match type).
     function recordTrophyMatchResult(fighterId, won, opts = {}) {
         if (!allBrawlers.includes(fighterId)) return false;
         if (opts.isTraining || opts.isTutorialMode || opts.isFriendlyBattle) return false;
@@ -2270,7 +2268,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         let cur = null, high = null;
         try { cur = getRankedTierInfo((playerData.ranked && playerData.ranked.points) || 0); } catch (_) {}
         try { high = getRankedTierInfo((playerData.ranked && playerData.ranked.highPoints) || 0); } catch (_) {}
-        section.innerHTML = `<h3>🏆 RANKED</h3><div class="profile-ranked-boxes"><div><small>CURRENT</small><b>${cur ? cur.label : '—'}</b><span>${((playerData.ranked && playerData.ranked.points) || 0).toLocaleString()} RP</span></div><div><small>HIGHEST</small><b>${high ? high.label : '—'}</b><span>${((playerData.ranked && playerData.ranked.highPoints) || 0).toLocaleString()} RP</span></div></div>`;
+        section.innerHTML = `<h3>⚔️ RANKED</h3><div class="profile-ranked-boxes"><div><small>CURRENT</small><b>${cur ? cur.label : '—'}</b><span>${((playerData.ranked && playerData.ranked.points) || 0).toLocaleString()} RP</span></div><div><small>HIGHEST</small><b>${high ? high.label : '—'}</b><span>${((playerData.ranked && playerData.ranked.highPoints) || 0).toLocaleString()} RP</span></div></div>`;
         return section;
     }
     // Brawl Space v2: SHOW MORE closes the profile and opens the
@@ -2281,17 +2279,17 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         if (typeof isNativeAppMode === 'function' && isNativeAppMode()) { if (typeof setAppHomeTab === 'function') setAppHomeTab('fighters'); }
         else { document.getElementById('brawlerBtn')?.click(); }
     }
-    function createTrophySection() {
-        const total = getTotalTrophies(), trophyWins = getTotalTrophyWins(), top = getTopBrawlersByTrophies(5);
+    function createBricksSection() {
+        const total = getTotalBrickBonBricks(), totalWins = getTotalTrophyWins(), top = getTopBrawlersByBricks(5);
         const section = document.createElement('section');
         section.className = 'profile-section profile-trophies';
-        let html = `<h3>🏆 TROPHIES</h3><div class="profile-trophy-total"><b>🏆 ${total.toLocaleString()}</b><span>${trophyWins} trophy win${trophyWins === 1 ? '' : 's'} · 10 trophies per win</span></div>`;
-        html += `<p class="profile-trophy-note">How trophies work: every win with a brawler earns that brawler 10 trophies — losses earn 0. Friendly Battles, Training and Tutorial matches earn no trophies. Trophies are tracked since the Trophy Update, so wins before this update don't count.</p>`;
+        let html = `<h3>🧱 BRICKS</h3><div class="profile-trophy-total"><b>🧱 ${total.toLocaleString()}</b><span>${totalWins} win${totalWins === 1 ? '' : 's'} · bricks earned every match by placement</span></div>`;
+        html += `<p class="profile-trophy-note">How bricks work: every match earns bricks by placement — 1st place earns 30, 8th earns 2, lower places lose a few. Friendly Battles, Training and Tutorial matches earn no bricks. Bricks are tracked per fighter and add up to your lifetime total.</p>`;
         if (!top.length) {
-            html += '<p>No trophies yet — win a match to earn your first 10.</p>';
+            html += '<p>No bricks yet — finish a match to earn your first bricks.</p>';
         } else {
             html += '<div class="profile-trophy-list">';
-            top.forEach((b, i) => { html += `<div class="${i < 3 ? `podium-${i + 1}` : ''}"><b>#${i + 1}</b><span><i class="fighter-inline-portrait">${getBrawlerPortraitMarkup(b.id)}</i>${b.name}</span><small>🏆 ${b.trophies.toLocaleString()} · ${b.wins} win${b.wins === 1 ? '' : 's'}</small></div>`; });
+            top.forEach((b, i) => { html += `<div class="${i < 3 ? `podium-${i + 1}` : ''}"><b>#${i + 1}</b><span><i class="fighter-inline-portrait">${getBrawlerPortraitMarkup(b.id)}</i>${b.name}</span><small>🧱 ${b.bricks.toLocaleString()} · ${b.wins} win${b.wins === 1 ? '' : 's'}</small></div>`; });
             html += '</div>';
         }
         section.innerHTML = html;
@@ -2316,7 +2314,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         const {profile}=ensureProfileProgressionState(),s=getProfileProgressSummary(),title=PROFILE_TITLE_DEFS[profile.equippedTitle]?.name||'NO TITLE';container.innerHTML='';
         const hero=document.createElement('section');hero.className=`profile-hero ${profile.equippedProfileFrame||''} ${profile.equippedProfileBackground||''}`;hero.innerHTML=`<div><small>PLAYER PROFILE</small><h2>${profile.playerName}</h2><strong>${title}</strong></div><div class="profile-summary"><span><b>${s.totalBricks}</b>LIFETIME BRICKS</span><span><b>${s.prestiged}</b>PRESTIGED BRAWLERS</span><span><b>P${s.highestPrestige}</b>HIGHEST PRESTIGE</span></div>`;
         const edit=document.createElement('button');edit.textContent='EDIT PROFILE';edit.onclick=()=>openProfileEditor(()=>renderProfileCareer(container));hero.appendChild(edit);container.appendChild(hero);
-        container.appendChild(createTrophySection());
+        container.appendChild(createBricksSection());
         container.appendChild(createRankedProfileSection());
         const favorites=document.createElement('section');favorites.className='profile-section profile-favorites-section';favorites.innerHTML='<h3>FAVORITE FIGHTERS</h3>';const favrow=document.createElement('div');favrow.className='profile-favorites';profile.favorites.forEach((id,i)=>favrow.appendChild(createProfileBrawlerCard(id,i===0)));if(!profile.favorites.length)favrow.innerHTML='<p>No favorites selected yet.</p>';favorites.appendChild(favrow);
         const shieldC=document.createElement('div');shieldC.className='profile-prestige-shield';shieldC.innerHTML=`<b>${s.prestiged}</b><small>TOTAL PRESTIGE</small>`;favorites.appendChild(shieldC);
@@ -2368,7 +2366,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         edit.onclick = () => openProfileEditor(() => { close(); openPlayerProfile(); });
         hero.appendChild(edit);
         main.appendChild(hero);
-        main.appendChild(createTrophySection());
+        main.appendChild(createBricksSection());
         const fightersUnlocked = (() => {
             const pool = allBrawlers.filter((bid) => playerData.unlockedBrawlers && playerData.unlockedBrawlers[bid] && !disabledBrawlers.has(bid) && !brawlerData?.[bid]?.disabled);
             return pool.length > 0 ? pool.length : 1;
@@ -2465,7 +2463,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         const rankedStreak = (playerData.ranked && playerData.ranked.winStreak) || 0;
         const ranked = document.createElement('section');
         ranked.className = 'profile-section profile-ranked';
-        ranked.innerHTML = `<h3>🏆 RANKED</h3><div><b style="color:${rankedInfo.color};">${rankedInfo.label}</b><span> · ${rankedPoints} RP</span></div><div>Highest: ${rankedHighInfo.label} · ${rankedHighPoints} RP</div><div>${rankedInfo.nextLabel ? `Next: ${rankedInfo.nextLabel} at ${rankedInfo.nextThreshold} RP` : 'Top division reached.'}</div><div>Ranked Win Streak: ${rankedStreak}</div>`;
+        ranked.innerHTML = `<h3>⚔️ RANKED</h3><div><b style="color:${rankedInfo.color};">${rankedInfo.label}</b><span> · ${rankedPoints} RP</span></div><div>Highest: ${rankedHighInfo.label} · ${rankedHighPoints} RP</div><div>${rankedInfo.nextLabel ? `Next: ${rankedInfo.nextLabel} at ${rankedInfo.nextThreshold} RP` : 'Top division reached.'}</div><div>Ranked Win Streak: ${rankedStreak}</div>`;
         const rankedBtn2 = document.createElement('button');
         rankedBtn2.textContent = 'PLAY RANKED';
         rankedBtn2.onclick = () => { close(); if (typeof openRankedQueueUI === 'function') openRankedQueueUI(); };
@@ -7028,8 +7026,8 @@ const bolznstienPendingStrikes = [];
           <div id="appHomeTop">
             <div id="appHomePlayer"><span aria-hidden="true">👤</span><span id="appHomePlayerName">BRAWLER</span></div>
             <div id="appHomeSeasonChip">SEASON</div>
-            <div id="appHomeTrophyChip" class="app-home-chip">🏆 0</div>
-            <div id="appHomeRankedChip" class="app-home-chip">🏆 RANKED</div>
+            <div id="appHomeTrophyChip" class="app-home-chip">🧱 0</div>
+            <div id="appHomeRankedChip" class="app-home-chip">⚔️ RANKED</div>
             <div id="appHomeCurrencies"></div>
             <button id="appHomeSaveBtn" type="button" aria-label="Save code">💾</button>
             <button id="appHomeMenuBtn" type="button" aria-label="More options">☰</button>
@@ -7050,7 +7048,7 @@ const bolznstienPendingStrikes = [];
                 <button type="button" class="app-quick-btn" data-app-quick="settings">⚙️ SETTINGS<small>SAVE · GUIDE</small></button>
               </div>
               <div id="appHomeSideRight">
-                <button type="button" class="app-side-btn" data-app-side="ranked">🏆<small>RANKED</small></button>
+                <button type="button" class="app-side-btn" data-app-side="ranked">⚔️<small>RANKED</small></button>
                 <button type="button" class="app-side-btn" data-app-side="news">📰<small>NEWS</small></button>
               </div>
             </div>
@@ -7226,7 +7224,7 @@ const bolznstienPendingStrikes = [];
         let rankedSub = 'Queue up · draft your brawlers';
         try {
             const info = getRankedTierInfo(playerData?.ranked?.points || 0);
-            rankedLabel = `🏆 RANKED · ${info.label.toUpperCase()}`;
+            rankedLabel = `⚔️ RANKED · ${info.label.toUpperCase()}`;
             rankedSub = `${info.points} RP${info.nextLabel ? ` · next: ${info.nextLabel}` : ' · max division'} — queue up`;
         } catch (_) {}
         let seasonLabel = '🎃 SEASON HUB';
@@ -7243,10 +7241,10 @@ const bolznstienPendingStrikes = [];
             <div class="app-more-card">
                 <h2>☰ MORE</h2>
                 <p class="app-more-sub">Everything else from the website home — same screens, same rewards.</p>
-                <button type="button" class="app-more-btn" data-app-more="ranked"><span aria-hidden="true">🏆</span><b>${rankedLabel}<small>${rankedSub}</small></b><span aria-hidden="true">›</span></button>
+                <button type="button" class="app-more-btn" data-app-more="ranked"><span aria-hidden="true">⚔️</span><b>${rankedLabel}<small>${rankedSub}</small></b><span aria-hidden="true">›</span></button>
                 <button type="button" class="app-more-btn" data-app-more="season-hub"><span aria-hidden="true">🎃</span><b>${seasonLabel}<small>${seasonSub}</small></b><span aria-hidden="true">›</span></button>
                 <button type="button" class="app-more-btn" data-app-more="brick-bon"><span aria-hidden="true">🧱</span><b>BRICK BON<small>Road + challenges · claim bricks</small></b><span aria-hidden="true">›</span></button>
-                <button type="button" class="app-more-btn" data-app-more="brick-road"><span aria-hidden="true">🏆</span><b>BRICK ROAD<small>Milestone rewards</small></b><span aria-hidden="true">›</span></button>
+                <button type="button" class="app-more-btn" data-app-more="brick-road"><span aria-hidden="true">🧱</span><b>BRICK ROAD<small>Milestone rewards</small></b><span aria-hidden="true">›</span></button>
                 <button type="button" class="app-more-btn" data-app-more="pins"><span aria-hidden="true">📌</span><b>EMOTE PINS<small>Equip your pins</small></b><span aria-hidden="true">›</span></button>
                 <button type="button" class="app-more-btn" data-app-more="souls"><span aria-hidden="true">🧪</span><b>SOUL SUMMONER<small>Summon + reroll brawlers</small></b><span aria-hidden="true">›</span></button>
                 <button type="button" class="app-more-btn" data-app-more="blog"><span aria-hidden="true">📊</span><b>BALANCE BLOG<small>What's changed</small></b><span aria-hidden="true">›</span></button>
@@ -7311,19 +7309,19 @@ const bolznstienPendingStrikes = [];
               <span class="app-hero-side-tag">CHANGE</span>
             </button>
             <button type="button" class="app-hero-side-card" data-hero-side="tournament">
-              <span class="app-hero-side-emoji" aria-hidden="true">🏆</span>
+              <span class="app-hero-side-emoji" aria-hidden="true">👑</span>
               <span style="min-width:0"><b>TOURNAMENT</b><small>${tourneySub}</small></span>
               <span class="app-hero-side-tag">OPEN</span>
             </button>
           </div>`;
-        // Brawl Space v2: the trophy chip floats above the hero's head,
-        // like the reference home screen — this fighter's trophies plus
-        // the power badge. Guarded: trophies default to 0, never blank.
-        let heroTrophies = 0;
-        try { heroTrophies = (typeof getBrawlerTrophies === 'function') ? getBrawlerTrophies(selectedBrawler) : 0; } catch (_) { heroTrophies = 0; }
-        const heroTrophyHtml = `<div class="app-hero-trophy" aria-hidden="true">🏆 ${heroTrophies.toLocaleString()}<span>${level}</span></div>`;
+        // Brawl Space v2: the bricks chip floats above the hero's head,
+        // like the reference home screen — this fighter's lifetime bricks
+        // plus the power badge. Guarded: bricks default to 0, never blank.
+        let heroBricks = 0;
+        try { heroBricks = (typeof getLifetimeBricks === 'function') ? getLifetimeBricks(playerData.brawlers?.[selectedBrawler]) : 0; } catch (_) { heroBricks = 0; }
+        const heroBricksHtml = `<div class="app-hero-trophy" aria-hidden="true">🧱 ${heroBricks.toLocaleString()}<span>${level}</span></div>`;
         hero.innerHTML = `
-          ${heroTrophyHtml}
+          ${heroBricksHtml}
           ${portraitHtml}
           <div class="app-hero-info">
             <small>READY TO BRAWL</small>
@@ -7347,17 +7345,17 @@ const bolznstienPendingStrikes = [];
         const seasonEl = document.getElementById('appHomeSeasonChip');
         if (seasonEl) { const s = getActiveSeasonProfile(); seasonEl.textContent = `Season ${s.seasonNumber} · ${s.name}`; }
         // Brawl Space v2: the top bar carries the same chips as the
-        // reference home screen — total trophies, current ranked tier,
+        // reference home screen — total bricks, current ranked tier,
         // and the season-pass XP chip in the play row. All guarded:
         // a missing helper must never blank the top bar.
         try {
             const trophyEl = document.getElementById('appHomeTrophyChip');
-            if (trophyEl && typeof getTotalTrophies === 'function') trophyEl.textContent = `🏆 ${getTotalTrophies().toLocaleString()}`;
+            if (trophyEl && typeof getTotalBrickBonBricks === 'function') trophyEl.textContent = `🧱 ${getTotalBrickBonBricks().toLocaleString()}`;
             const rankedEl = document.getElementById('appHomeRankedChip');
             if (rankedEl && typeof getRankedTierInfo === 'function') {
                 const rp = playerData?.ranked?.points || 0;
                 const ti = getRankedTierInfo(rp);
-                rankedEl.textContent = `🏆 ${ti.label} · ${rp.toLocaleString()} RP`;
+                rankedEl.textContent = `⚔️ ${ti.label} · ${rp.toLocaleString()} RP`;
                 rankedEl.style.setProperty('--ranked-color', ti.color || '#00f5d4');
             }
             const xpEl = document.getElementById('appHomeXpChip');
@@ -7738,11 +7736,11 @@ const bolznstienPendingStrikes = [];
             const soulCost = locked ? getSoulUnlockCostForRarity(getBrawlerRarity(id)) : 0;
             const rarity = (typeof brawlerRarities !== 'undefined' && brawlerRarities[id]) || 'Starter';
             const rarityColor = APP_FIGHTER_RARITY_COLORS[rarity] || '#fff';
-            // Trophies (10/win) — guarded: the vm harnesses in the
-            // fighters suites do not stub getBrawlerTrophies, so a bare
+            // Bricks (lifetime) — guarded: the vm harnesses in the
+            // fighters suites do not stub getLifetimeBricks, so a bare
             // call would throw there; 0 simply hides the chip.
-            let trophies = 0;
-            try { trophies = (typeof getBrawlerTrophies === 'function') ? getBrawlerTrophies(id) : 0; } catch (_) { trophies = 0; }
+            let bricks = 0;
+            try { bricks = (typeof getLifetimeBricks === 'function') ? getLifetimeBricks(pData) : 0; } catch (_) { bricks = 0; }
             let portrait = `<span style="font-size:26px">${data.emoji || '🙂'}</span>`;
             try { portrait = getBrawlerPortraitMarkup(id); } catch (_) {}
             // Brawl Space v2: the right strip shows the real kit state —
@@ -7758,8 +7756,8 @@ const bolznstienPendingStrikes = [];
               <span class="app-fighter-fav${isFavoriteBrawler(id) ? ' is-fav' : ''}" data-app-favorite="${id}" role="button" aria-label="Favorite ${data.name || id}">${isFavoriteBrawler(id) ? '★' : '☆'}</span>
               <b>${data.name || id}</b>
               <small>${locked ? '🔒 LOCKED' : `POWER ${pData.level || 1}`}</small>${soulCost > 0 ? `
-              <span class="app-fighter-cost">${soulCost} SOULS TO UNLOCK</span>` : ''}${trophies > 0 ? `
-              <span class="app-fighter-trophies">🏆 ${trophies.toLocaleString()}</span>` : ''}
+              <span class="app-fighter-cost">${soulCost} SOULS TO UNLOCK</span>` : ''}${bricks > 0 ? `
+              <span class="app-fighter-trophies">🧱 ${bricks.toLocaleString()}</span>` : ''}
             </button>`;
         }).join('');
     }
@@ -8226,7 +8224,7 @@ const bolznstienPendingStrikes = [];
             <button type="button" class="app-event-slot is-featured" data-app-featured="tournament">
               <span class="home-mode-map-preview theme-tournament" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
               <span class="app-event-tag">${tActive ? 'RESUME RUN' : 'LIVE'}</span>
-              <b>🏆 TOURNAMENT · ${tLeague.name.toUpperCase()} LEAGUE</b>
+              <b>👑 TOURNAMENT · ${tLeague.name.toUpperCase()} LEAGUE</b>
               <small>${tSub}</small>
             </button>
           </div>
@@ -9550,7 +9548,7 @@ const bolznstienPendingStrikes = [];
                 actionRow.appendChild(continueBtn);
                 box.appendChild(actionRow);
             } else {
-                box.innerHTML += `<div style="font-size:16px;color:#5df2c2;font-weight:900;">🏆 All fighters unlocked!</div><div style="font-size:12px;color:#9dc0ea;">Souls now route to the Soul Bank & Soul Water Fountain.</div>`;
+                box.innerHTML += `<div style="font-size:16px;color:#5df2c2;font-weight:900;">🎉 All fighters unlocked!</div><div style="font-size:12px;color:#9dc0ea;">Souls now route to the Soul Bank & Soul Water Fountain.</div>`;
                 const doneBtn = document.createElement('button');
                 doneBtn.textContent = 'Amazing!';
                 doneBtn.style.cssText = 'margin-top:10px;padding:10px 24px;border-radius:10px;border:2px solid #5df2c2;background:transparent;color:#5df2c2;font-weight:800;cursor:pointer;';
@@ -14534,7 +14532,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
       victory_dance:     { id: 'victory_dance',     name: 'Victory Dance',     glyph: '🕺', desc: 'The win is mine, and so is this dance floor.' },
       facepalm:          { id: 'facepalm',          name: 'Facepalm',          glyph: '🤦', desc: 'That did not go the way I planned.' },
       heart_pop:         { id: 'heart_pop',         name: 'Heart Pop',         glyph: '💗', desc: 'Sending a little love across the arena.' },
-      arena_legend:      { id: 'arena_legend',      name: 'Arena Legend',      glyph: '🏆', desc: 'Not just a win — a legend in the making.' }
+      arena_legend:      { id: 'arena_legend',      name: 'Arena Legend',      glyph: '👑', desc: 'Not just a win — a legend in the making.' }
     });
     function ensurePinsState() {
       if (!playerData.pins || typeof playerData.pins !== 'object') {
@@ -15930,7 +15928,7 @@ const TOWER_DUELS_ACTIVE_TOWER_POWERS = 8;
           playerData.coins = (playerData.coins || 0) + league.rewardCoins;
           addSouls(league.rewardSouls);
           setTournamentState(state);
-          return { outcome: 'champion', matchText: `🏆 ${league.name.toUpperCase()} TOURNAMENT CHAMPION!`, rankText: `+${league.rewardCoins} Coins • +${league.rewardSouls} Souls${nextLeague ? ` • ${nextLeague.emoji} ${nextLeague.name} League UNLOCKED!` : ' • You conquered every league!'}` , league: league.id };
+          return { outcome: 'champion', matchText: `👑 ${league.name.toUpperCase()} TOURNAMENT CHAMPION!`, rankText: `+${league.rewardCoins} Coins • +${league.rewardSouls} Souls${nextLeague ? ` • ${nextLeague.emoji} ${nextLeague.name} League UNLOCKED!` : ' • You conquered every league!'}` , league: league.id };
       }
       advanceTournamentAfterWin(active);
       setTournamentState(state);
@@ -15956,7 +15954,7 @@ const TOWER_DUELS_ACTIVE_TOWER_POWERS = 8;
       const topId = [...state.unlocked].reverse()[0] || 'bronze';
       const league = getTournamentLeague(topId);
       const wins = state.wins[league.id] || 0;
-      return wins > 0 ? `🏆 ${league.name} Champion x${wins} • 32-player bracket` : '32-player bracket • Bronze → Diamond leagues';
+      return wins > 0 ? `👑 ${league.name} Champion x${wins} • 32-player bracket` : '32-player bracket • Bronze → Diamond leagues';
   }
   function launchTournamentMatch() {
       const state = getTournamentState();
@@ -16035,7 +16033,7 @@ const TOWER_DUELS_ACTIVE_TOWER_POWERS = 8;
       overlay.style.fontFamily = 'sans-serif'; overlay.style.overflowY = 'auto';
       const title = document.createElement('h1');
       overlay.classList.add('app-tournament-overlay');
-      title.textContent = '🏆 Tournament';
+      title.textContent = '👑 Tournament';
       overlay.appendChild(title);
       const hint = document.createElement('div');
       hint.textContent = '32 players. One brawler, locked for the whole run. Win the league to unlock the next.';
@@ -16084,7 +16082,7 @@ const TOWER_DUELS_ACTIVE_TOWER_POWERS = 8;
           card.style.width = '200px'; card.style.textAlign = 'center';
           card.style.cursor = (unlocked && !blockedByRun) ? 'pointer' : 'not-allowed';
           if (!unlocked || blockedByRun) card.style.opacity = '.55';
-          card.innerHTML = `<div style="font-size:40px">${league.emoji}</div><h3 style="margin:8px 0 4px">${league.name} League</h3><div style="font-size:13px;color:#a8c8ef">Champion prize: +${league.rewardCoins.toLocaleString()} Coins • +${league.rewardSouls} Souls</div><div style="font-size:12px;color:#89b5d9;margin-top:4px">Bots: ${league.tierMix.rookie} Rookie • ${league.tierMix.contender} Contender • ${league.tierMix.champion} Champion</div>${wins > 0 ? `<div style="font-size:12px;color:#5df2c2;font-weight:900;margin-top:6px">🏆 Won ${wins}x</div>` : ''}${isActiveLeague ? `<div style="font-size:12px;color:#ffd44f;font-weight:900;margin-top:6px">▶ IN PROGRESS — tap to resume</div>` : ''}${blockedByRun ? `<div style="font-size:12px;color:#ff9ba5;font-weight:900;margin-top:6px">Finish or leave your current run first</div>` : ''}${unlocked ? '' : `<div style="font-size:12px;color:#ff9ba5;font-weight:900;margin-top:6px">🔒 Win ${prev ? prev.name : ''} League to unlock</div>`}`;
+          card.innerHTML = `<div style="font-size:40px">${league.emoji}</div><h3 style="margin:8px 0 4px">${league.name} League</h3><div style="font-size:13px;color:#a8c8ef">Champion prize: +${league.rewardCoins.toLocaleString()} Coins • +${league.rewardSouls} Souls</div><div style="font-size:12px;color:#89b5d9;margin-top:4px">Bots: ${league.tierMix.rookie} Rookie • ${league.tierMix.contender} Contender • ${league.tierMix.champion} Champion</div>${wins > 0 ? `<div style="font-size:12px;color:#5df2c2;font-weight:900;margin-top:6px">👑 Won ${wins}x</div>` : ''}${isActiveLeague ? `<div style="font-size:12px;color:#ffd44f;font-weight:900;margin-top:6px">▶ IN PROGRESS — tap to resume</div>` : ''}${blockedByRun ? `<div style="font-size:12px;color:#ff9ba5;font-weight:900;margin-top:6px">Finish or leave your current run first</div>` : ''}${unlocked ? '' : `<div style="font-size:12px;color:#ff9ba5;font-weight:900;margin-top:6px">🔒 Win ${prev ? prev.name : ''} League to unlock</div>`}`;
           if (unlocked && !blockedByRun) card.onclick = () => { document.body.removeChild(overlay); if (isActiveLeague) openTournamentBracket(); else openTournamentBrawlerPicker(league.id); };
           grid.appendChild(card);
       });
@@ -16338,7 +16336,7 @@ const TOWER_DUELS_ACTIVE_TOWER_POWERS = 8;
   // ---- Tournament arena: Champion's Ring (tournament polish) ----
   // A handmade Duels-format map used ONLY by tournament matches (regular
   // Duels keeps its plain arena). 1000x1000, diagonal spawns, a square
-  // trophy ring around the center with diagonal corner gaps, flank bars,
+  // ring around the center with diagonal corner gaps, flank bars,
   // two water ponds and bush patches near each spawn + inside the ring.
   // All walls are destructible arena walls (addArenaWallStrip); bushes
   // and water use the canonical bushZones / waterZones stores. Called
@@ -16352,7 +16350,7 @@ const TOWER_DUELS_ACTIVE_TOWER_POWERS = 8;
   function buildTournamentArenaMap() {
       bushZones.length = 0;
       waterZones.length = 0;
-      // Trophy ring around the center (500,500): four bars, open only at
+      // Ring around the center (500,500): four bars, open only at
       // the diagonal corners — the middle is entered through the corners.
       addArenaWallStrip(380, 380, 240, 40); // ring top
       addArenaWallStrip(380, 580, 240, 40); // ring bottom
@@ -19680,7 +19678,7 @@ let heistFeverActive = false;
       {name:'Glass Tempest',icon:'⚡',desc:'Fast Super charging inside a brutal storm.',modifier:'heavy_storm',startSuper:true,reward:350},
       {name:'Royal Rumble',icon:'👑',desc:'Empowered enemies arrive carrying five bonus Power Cubes.',modifier:null,botCubeBonus:5,reward:425},
       {name:'Reality Break',icon:'🌀',desc:'Hypercharge ready, stronger fusion, and a heavy storm.',modifier:'heavy_storm',startHyper:true,fusionBonus:.40,botCubeBonus:4,reward:500},
-      {name:'Chaos Crown',icon:'🏆',desc:'Super and Hyper ready against the strongest possible lobby.',modifier:'power_surge',startSuper:true,startHyper:true,fusionBonus:.55,botCubeBonus:7,boxMult:1.35,reward:750}
+      {name:'Chaos Crown',icon:'👑',desc:'Super and Hyper ready against the strongest possible lobby.',modifier:'power_surge',startSuper:true,startHyper:true,fusionBonus:.55,botCubeBonus:7,boxMult:1.35,reward:750}
   ]);
   function getChaosCrownRule(floor){return CHAOS_CROWN_RULES[Math.max(0,Math.min(CHAOS_CROWN_FLOORS-1,Math.floor(floor||1)-1))];}
   const TOWER_GAUNTLET_MODES = Object.freeze([
@@ -21396,7 +21394,7 @@ let heistFeverActive = false;
       ensureSlopSushiState();const tower=playerData.slopSushi,deckCount=allBrawlers.filter(id=>hasSlopSushiDeck(id)).length,stats=tower.eventStats;
       const quests=[
           {id:'matches5',icon:'⚔️',title:'Climb the Tower',desc:'Play 5 Transformation matches.',value:stats.matches,target:5,reward:'1 Tower Drop',tappers:1},
-          {id:'wins3',icon:'🏆',title:'Floor Sweeper',desc:'Win 3 Transformation matches.',value:stats.wins,target:3,reward:'2 Tower Drops',tappers:2},
+          {id:'wins3',icon:'🧹',title:'Floor Sweeper',desc:'Win 3 Transformation matches.',value:stats.wins,target:3,reward:'2 Tower Drops',tappers:2},
           {id:'decks10',icon:'🏰',title:'Deck Architect',desc:'Own 10 complete brawler Transformation decks.',value:deckCount,target:10,reward:'500 Coins',coins:500},
           {id:'powers20',icon:'✨',title:'Fusion Engineer',desc:'Choose 20 Tower Transformations.',value:stats.powersPicked,target:20,reward:'1 Tower Drop + 5 Gems',tappers:1,gems:5}
       ];
@@ -23027,7 +23025,7 @@ let heistFeverActive = false;
               const fountainCard = document.createElement('div');
               fountainCard.style.cssText = 'background:linear-gradient(135deg, rgba(30,20,60,0.8), rgba(10,30,50,0.8));border:2px solid #5df2c2;border-radius:18px;padding:20px;box-shadow:0 0 30px rgba(93,242,194,0.3);text-align:center;box-sizing:border-box;';
               fountainCard.innerHTML = `
-                  <div style="font-size:32px;">🏆 🌌</div>
+                  <div style="font-size:32px;">🌌</div>
                   <div style="font-size:20px;font-weight:900;color:#5df2c2;margin:6px 0;">ALL FIGHTERS SUMMONED!</div>
                   <div style="font-size:12px;color:#9dc0ea;max-width:560px;margin:0 auto 14px auto;">
                       You have mastered every constellation in the galaxy. Souls you earn now divide into the <b>Soul Bank</b> (25% for upcoming fighters) and <b>Soul Water</b> (75% for celestial reward drops).
@@ -23161,28 +23159,28 @@ let heistFeverActive = false;
       { bricks: 200, reward: { souls: 50 }, label: '50 Souls', icon: '🪄' },
       { bricks: 300, reward: { coins: 150 }, label: '150 Coins', icon: '💰' },
       { bricks: 400, reward: { coins: 200, gems: 15 }, label: '200 Coins + 15 Gems', icon: '✨' },
-      { bricks: 500, league: 'Bronze', reward: { coins: 300, gems: 30, souls: 50 }, label: '🏆 Bronze League Reward', icon: '🥉' },
+      { bricks: 500, league: 'Bronze', reward: { coins: 300, gems: 30, souls: 50 }, label: '🧱 Bronze League Reward', icon: '🥉' },
       { bricks: 750, reward: { souls: 100 }, label: '100 Souls', icon: '🪄' },
       { bricks: 1000, reward: { gems: 50 }, label: '50 Gems', icon: '💎' },
       { bricks: 1250, reward: { coins: 400 }, label: '400 Coins', icon: '💰' },
-      { bricks: 1500, league: 'Silver', reward: { coins: 500, gems: 50, souls: 100 }, label: '🏆 Silver League Reward', icon: '🥈' },
+      { bricks: 1500, league: 'Silver', reward: { coins: 500, gems: 50, souls: 100 }, label: '🧱 Silver League Reward', icon: '🥈' },
       { bricks: 2000, reward: { souls: 150 }, label: '150 Souls', icon: '🪄' },
       { bricks: 2500, reward: { gems: 75 }, label: '75 Gems', icon: '💎' },
       { bricks: 3000, reward: { coins: 600 }, label: '600 Coins', icon: '💰' },
       { bricks: 3500, reward: { souls: 200 }, label: '200 Souls', icon: '🪄' },
-      { bricks: 4000, league: 'Gold', reward: { coins: 800, gems: 80, souls: 200 }, label: '🏆 Gold League Reward', icon: '🥇' },
+      { bricks: 4000, league: 'Gold', reward: { coins: 800, gems: 80, souls: 200 }, label: '🧱 Gold League Reward', icon: '🥇' },
       { bricks: 5000, reward: { souls: 250 }, label: '250 Souls', icon: '🪄' },
       { bricks: 6000, reward: { gems: 100 }, label: '100 Gems', icon: '💎' },
       { bricks: 7500, reward: { coins: 1000 }, label: '1,000 Coins', icon: '💰' },
       { bricks: 9000, reward: { souls: 300 }, label: '300 Souls', icon: '🪄' },
-      { bricks: 10000, league: 'Diamond', reward: { coins: 1500, gems: 150, souls: 350 }, label: '🏆 Diamond League Reward', icon: '💎' },
+      { bricks: 10000, league: 'Diamond', reward: { coins: 1500, gems: 150, souls: 350 }, label: '🧱 Diamond League Reward', icon: '💎' },
       { bricks: 12500, reward: { coins: 1200 }, label: '1,200 Coins', icon: '💰' },
       { bricks: 15000, reward: { souls: 400 }, label: '400 Souls', icon: '🪄' },
       { bricks: 17500, reward: { gems: 150 }, label: '150 Gems', icon: '💎' },
-      { bricks: 20000, league: 'Mythic', reward: { coins: 2500, gems: 200, souls: 500 }, label: '🏆 Mythic League Reward', icon: '🔮' },
+      { bricks: 20000, league: 'Mythic', reward: { coins: 2500, gems: 200, souls: 500 }, label: '🧱 Mythic League Reward', icon: '🔮' },
       { bricks: 25000, reward: { souls: 600 }, label: '600 Souls', icon: '🪄' },
       { bricks: 30000, reward: { gems: 250 }, label: '250 Gems', icon: '💎' },
-      { bricks: 35000, league: 'Master', reward: { coins: 4000, gems: 300, souls: 800 }, label: '🏆 Master League Reward', icon: '👑' },
+      { bricks: 35000, league: 'Master', reward: { coins: 4000, gems: 300, souls: 800 }, label: '🧱 Master League Reward', icon: '👑' },
       { bricks: 40000, reward: { souls: 1000 }, label: '1,000 Souls', icon: '🪄' },
       { bricks: 45000, reward: { gems: 400 }, label: '400 Gems', icon: '💎' },
       { bricks: 50000, league: 'Grand Champion', reward: { coins: 8000, gems: 500, souls: 1500 }, label: '🌌 Grand Champion Apex Reward', icon: '🌌' }
@@ -23269,7 +23267,7 @@ let heistFeverActive = false;
           const titleBox = document.createElement('div');
           titleBox.innerHTML = `
               <div style="font-size:clamp(16px, 2.4vw, 20px);font-weight:900;letter-spacing:0.04em;background:linear-gradient(90deg,#ffd166,#ff9f43);-webkit-background-clip:text;-webkit-text-fill-color:transparent;display:flex;align-items:center;gap:6px;">
-                  🏆 BRICK ROAD · BRICK LEAGUES
+                  🧱 BRICK ROAD · BRICK LEAGUES
               </div>
               <div style="font-size:11px;color:#8eaad0;margin-top:1px;">${league.name.toUpperCase()} · Earn Bricks with any fighter to unlock epic milestone rewards</div>
           `;
@@ -23399,7 +23397,7 @@ let heistFeverActive = false;
           roadStage.appendChild(stageChar);
           const nextBig = document.createElement('div');
           nextBig.style.cssText = 'background:linear-gradient(135deg,#ffd166,#ffb400);border:2px solid #0a1428;border-radius:12px;padding:12px 16px;color:#231303;box-shadow:0 4px 0 rgba(0,0,0,.45);';
-          nextBig.innerHTML = `<div style="font-size:10px;font-weight:1000;letter-spacing:.08em;">NEXT BIG REWARD</div><div style="font-size:18px;font-weight:1000;">🏆 ${nextMilestone.bricks.toLocaleString()} BRICKS</div><div style="font-size:13px;font-weight:800;">${nextMilestone.label}</div>`;
+          nextBig.innerHTML = `<div style="font-size:10px;font-weight:1000;letter-spacing:.08em;">NEXT BIG REWARD</div><div style="font-size:18px;font-weight:1000;">🧱 ${nextMilestone.bricks.toLocaleString()} BRICKS</div><div style="font-size:13px;font-weight:800;">${nextMilestone.label}</div>`;
           roadStage.appendChild(nextBig);
           body.appendChild(roadStage);
           const tierRow = document.createElement('div');
@@ -36399,7 +36397,7 @@ let heistFeverActive = false;
       bushZones.push({ x: WORLD_W - 720, y: y - 75, w: 220, h: 175 });
     }
 
-    // Arena Forge 2.0: three readable lane pockets around a dangerous open crucible.
+    // Arena Forge: three readable lane pockets around a dangerous open crucible.
     bushZones.push({ x: WORLD_W * 0.5 - 95, y: WORLD_H * 0.5 - 145, w: 190, h: 290 });
     bushZones.push({ x: 160, y: WORLD_H * 0.5 - 90, w: 180, h: 180 });
     bushZones.push({ x: WORLD_W - 340, y: WORLD_H * 0.5 - 90, w: 180, h: 180 });
@@ -52391,7 +52389,7 @@ let heistFeverActive = false;
       ['super_showdown', '💯', 'Super Showdown', '100-player last-one-standing mega brawl • faster Super and Core Surge charges'],
       ['duo', '👥', 'Duo Showdown', '10 teams of 2'],
       ['trio', '4️⃣', 'Quad Showdown', '5 teams of 4'],
-      ['objective', '🏆', 'Control Clash', 'Control the zone'],
+      ['objective', '🎯', 'Control Clash', 'Control the zone'],
       ['construction', '🧱', 'Brick Run 3v3', 'Build race'],
       ['knock_donate', '🎯', 'Knock n Donate (Friendly Fire)', 'Ring-out 3v3 battles with friendly fire'],
       ['orbo_boss', '🪐', 'Boss Battle: 1 vs Orbo', 'Defeat the mega boss'],
@@ -52403,11 +52401,11 @@ let heistFeverActive = false;
       ['knockout_3v3', '🥊', 'Knockout 3v3', 'Best of 3 Rounds'],
       ['duels', '⚔️', 'Duels (First to 9)', 'Draft 1 to 4 brawlers'],
     ['tower_duels', '🗼', 'Tower Duels', 'Draft 1 to 4 brawlers • ALL 8 Tower Powers'],
-      ['tournament', '🏆', 'Tournament', '32-player bracket • Bronze → Diamond leagues'],
+      ['tournament', '👑', 'Tournament', '32-player bracket • Bronze → Diamond leagues'],
       ['fused', '🧬', 'Fused Duels', 'Two random brawlers fused — both attacks, both Supers'],
       ['brick_vault', '🔒', 'Vault Siege 3v3', 'Break the enemy core vault'],
       ['marked_mayhem', 'TR', 'Target Rush', 'Hunt marked targets for bonus points'],
-      ['arena_forge', 'AF2', 'Arena Forge 2.0', '3v3 • three weapon towers • new map • expanded Blueprint deck'],
+      ['arena_forge', 'AF', 'Arena Forge', '3v3 • three weapon towers • new map • expanded Blueprint deck'],
       ['arena_forge_overclocked', 'AFO', 'Arena Forge: Overclocked', '3v3 • all four engines from spawn • four-direction bonus volleys'],
       ['arena_forge_minion_surge', '👾', 'Arena Forge: Minion Surge', '3v3 • fighter KOs rally armored reinforcements • protect your lanes'],
       ['arena_forge_hyper', '⚡', 'Hyper Forge', '3v3 • everyone always Hypercharged • 3x reload speed'],
@@ -55966,7 +55964,7 @@ let heistFeverActive = false;
           <div style="position:absolute;left:0;top:0;width:3px;height:100%;background:#ffd166;"></div>
           <div class="home-mode-card-content" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
               <div style="display:flex;align-items:center;gap:9px;min-width:0;">
-                  <div style="width:30px;height:30px;border-radius:8px;background:rgba(255,209,102,0.15);border:1px solid rgba(255,209,102,0.4);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">🏆</div>
+                  <div style="width:30px;height:30px;border-radius:8px;background:rgba(255,209,102,0.15);border:1px solid rgba(255,209,102,0.4);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">👑</div>
                   <div style="min-width:0;">
                       <div style="font-size:13px;font-weight:800;color:#e8f4ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">TOURNAMENT · ${featuredTournamentLeague.name.toUpperCase()} LEAGUE</div>
                       <div class="home-mode-subtitle" style="font-size:10px;color:#89b5d9;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${getTournamentCardSubtitle()}</div>
@@ -56175,13 +56173,13 @@ let heistFeverActive = false;
 
         const titleBox = document.createElement('div');
         const title = document.createElement('h2');
-        title.innerHTML = '🏆 SEASONAL RANKED PASS <span style="font-size:14px;color:#00f5d4;font-weight:700;">• 3-MONTH SEASON 1</span>';
+        title.innerHTML = '⚔️ SEASONAL RANKED PASS <span style="font-size:14px;color:#00f5d4;font-weight:700;">• 3-MONTH SEASON 1</span>';
         title.style.margin = '0 0 4px 0';
         title.style.color = '#ffd166';
         const sub = document.createElement('div');
         sub.style.fontSize = '13px';
         sub.style.color = '#a8c8ef';
-        sub.textContent = `Progress: ${progress.xp} Total Ranked XP • Tier ${progress.unlockedTiers} / ${RANKED_PASS_TIERS} Unlocked (${progress.currentTierXp}/${progress.xpPerTier} XP to next) • Weekly: ${(playerData.ranked.weeklyPassXp || 0)}/2000 XP${playerData.ranked.weeklyMaxed ? ' • 🏆 WEEKLY MAXED' : ''}`;
+        sub.textContent = `Progress: ${progress.xp} Total Ranked XP • Tier ${progress.unlockedTiers} / ${RANKED_PASS_TIERS} Unlocked (${progress.currentTierXp}/${progress.xpPerTier} XP to next) • Weekly: ${(playerData.ranked.weeklyPassXp || 0)}/2000 XP${playerData.ranked.weeklyMaxed ? ' • WEEKLY MAXED' : ''}`;
         titleBox.appendChild(title);
         titleBox.appendChild(sub);
         top.appendChild(titleBox);
@@ -56377,7 +56375,7 @@ let heistFeverActive = false;
               <div class="ranked-hub-main">
                 <div class="ranked-hub-season"><span>SEASON 1</span><span>3-MONTH SEASON</span></div>
                 <div class="ranked-hub-emblem">
-                  <span class="ranked-hub-glyph" aria-hidden="true">🏆</span>
+                  <span class="ranked-hub-glyph" aria-hidden="true">⚔️</span>
                   <b>${tierInfo.label}</b>
                   <span>${tierInfo.points} RP · DIVISION ${tierInfo.index + 1} OF ${RANKED_DIVISIONS.length}</span>
                 </div>
@@ -56386,7 +56384,7 @@ let heistFeverActive = false;
                   <div class="ranked-hub-bar" role="progressbar" aria-valuenow="${divisionPct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${divisionPct}%"></i></div>
                   <div class="ranked-hub-ticks"><span>${floor} RP</span><span>${tierInfo.points} RP</span><span>${tierInfo.nextThreshold ? tierInfo.nextThreshold + ' RP' : 'MAX'}</span></div>
                 </div>
-                <div class="ranked-hub-meta">${tierInfo.nextLabel ? `${Math.max(0, tierInfo.nextThreshold - tierInfo.points)} RP to ${tierInfo.nextLabel} · ` : ''}Division safety floor: ${floor} RP · Weekly Pass XP: ${(playerData.ranked.weeklyPassXp || 0)}/2000${playerData.ranked.weeklyMaxed ? ' · 🏆 WEEKLY MAXED' : ''}</div>
+                <div class="ranked-hub-meta">${tierInfo.nextLabel ? `${Math.max(0, tierInfo.nextThreshold - tierInfo.points)} RP to ${tierInfo.nextLabel} · ` : ''}Division safety floor: ${floor} RP · Weekly Pass XP: ${(playerData.ranked.weeklyPassXp || 0)}/2000${playerData.ranked.weeklyMaxed ? ' · WEEKLY MAXED' : ''}</div>
               </div>
             </div>
             <div class="ranked-hub-foot">
@@ -56572,7 +56570,7 @@ let heistFeverActive = false;
         const nextText = tierInfo.nextLabel
             ? ` • Next: ${tierInfo.nextLabel} at ${tierInfo.nextThreshold} RP`
             : ` • ${getRankedDisplayLabel(rankedPoints)} — MAX`;
-        meta.textContent = `${tierInfo.label} (${tierInfo.points} RP)${nextText} • Division Safety Floor: ${floor} RP • Weekly Pass XP: ${(playerData.ranked.weeklyPassXp || 0)}/2000${playerData.ranked.weeklyMaxed ? ' • 🏆 WEEKLY MAXED' : ''}`;
+        meta.textContent = `${tierInfo.label} (${tierInfo.points} RP)${nextText} • Division Safety Floor: ${floor} RP • Weekly Pass XP: ${(playerData.ranked.weeklyPassXp || 0)}/2000${playerData.ranked.weeklyMaxed ? ' • WEEKLY MAXED' : ''}`;
         titleBox.appendChild(title);
         titleBox.appendChild(meta);
         top.appendChild(titleBox);
@@ -57716,7 +57714,7 @@ let heistFeverActive = false;
         const modes = [
             { id: 'brawe_ball', name: '⚽ Brawe Ball 3v3' },
             { id: 'knockout_3v3', name: '🥊 Knockout 3v3' },
-            { id: 'objective', name: '🏆 Control Clash' },
+            { id: 'objective', name: '🎯 Control Clash' },
             { id: 'construction', name: '🧱 Brick Run 3v3' },
             { id: 'brick_vault', name: '🔒 Vault Siege 3v3' },
             { id: 'knock_donate', name: '🎯 Knock n Donate' },
@@ -58583,7 +58581,7 @@ let heistFeverActive = false;
           else if (isPowerGodsMode) baseTitle = 'Arena Forge - Power of the Gods';
           else if (isKnockDonateMode) baseTitle = 'Arena Forge - Knock n Donate 3v3';
           else if (isBrickVaultMode) baseTitle = isTowerPowerVaultWeekendMatch ? 'Arena Forge - Tower Power Vault Siege' : 'Arena Forge - Vault Siege 3v3';
-          else if (isArenaForgeMode) baseTitle = 'Arena Forge 2.0 - Triple Tower War';
+          else if (isArenaForgeMode) baseTitle = 'Arena Forge - Triple Tower War';
           else if (isMarkedMayhemMode) baseTitle = 'Arena Forge - Target Rush 3v3';
           else if (isTugZoneMode) baseTitle = 'Arena Forge - Tug Zone 3v3';
           else if (isTrioShowdownMode) baseTitle = 'Arena Forge - Quad Showdown';
@@ -60491,10 +60489,10 @@ isBrawlerLabMode = false;
 
     const visibleHomeShortcuts = document.getElementById('homeQuickActions');
 
-    // Brick Road Trophy Progress Button in Dock
+    // Brick Road Progress Button in Dock
     const brickRoadBtn = document.createElement('button');
     brickRoadBtn.id = 'brickRoadBtn';
-    brickRoadBtn.textContent = '🏆 Brick Road';
+    brickRoadBtn.textContent = '🧱 Brick Road';
     brickRoadBtn.type = 'button';
     brickRoadBtn.setAttribute('aria-label', 'Open Brick Road milestones');
     styleHomeButton(brickRoadBtn, 'amber', true);
@@ -62190,9 +62188,9 @@ isBrawlerLabMode = false;
                 card.appendChild(rankLabel);
                 const trophyLine = document.createElement('div');
                 trophyLine.className = 'brawler-card__trophies';
-                let cardTrophies = 0;
-                try { cardTrophies = (typeof getBrawlerTrophies === 'function') ? getBrawlerTrophies(id) : 0; } catch (_) { cardTrophies = 0; }
-                trophyLine.textContent = `🏆 ${cardTrophies.toLocaleString()} TROPHIES`;
+                let cardBricks = 0;
+                try { cardBricks = (typeof getLifetimeBricks === 'function') ? getLifetimeBricks(playerData.brawlers?.[id]) : 0; } catch (_) { cardBricks = 0; }
+                trophyLine.textContent = `🧱 ${cardBricks.toLocaleString()} BRICKS`;
                 card.appendChild(trophyLine);
                 rankBar.setAttribute('aria-hidden', 'true');
                 if (selectedBrawler === id) {
@@ -92096,7 +92094,7 @@ function checkHit(target, b, i){
     ctx.fillStyle = '#cfeef7'; ctx.font = 'bold 20px sans-serif'; 
     if (isDuels) {
         const duelsLine = isTournamentMatch && tournamentMatchContext
-            ? `🏆 ${tournamentMatchContext.leagueName} • ${tournamentMatchContext.roundName} vs ${tournamentMatchContext.opponentName} | You: ${playerScore}  Bot: ${botScore}`
+            ? `👑 ${tournamentMatchContext.leagueName} • ${tournamentMatchContext.roundName} vs ${tournamentMatchContext.opponentName} | You: ${playerScore}  Bot: ${botScore}`
             : `Duels | You: ${playerScore}  Bot: ${botScore}`;
         queueTopCenterLine(ctx, topCenterStackQueue, duelsLine, innerWidth/2 - 100, 48);
     } else if (isKnockDonateMode) {
@@ -92117,7 +92115,7 @@ function checkHit(target, b, i){
         ctx.save();
         ctx.textAlign = 'center';
         if (prepLeft > 0) {
-            queueTopCenterLine(ctx, topCenterStackQueue, `Arena Forge 2.0 | PREPARE ${prepLeft}s`, innerWidth / 2, 48);
+            queueTopCenterLine(ctx, topCenterStackQueue, `Arena Forge | PREPARE ${prepLeft}s`, innerWidth / 2, 48);
             const panelW = Math.min(560, innerWidth - 32);
             const panelH = 168;
             const panelX = (innerWidth - panelW) / 2;
@@ -92132,7 +92130,7 @@ function checkHit(target, b, i){
             ctx.fillText('2. BREAK BOTH GUARD TOWERS', innerWidth / 2, panelY + 108);
             ctx.fillText('3. DESTROY THE EXPOSED CORE', innerWidth / 2, panelY + 138);
         } else {
-            const title = arenaForgeOvertime ? 'OVERTIME' : 'Arena Forge 2.0 • TRIPLE TOWER WAR';
+            const title = arenaForgeOvertime ? 'OVERTIME' : 'Arena Forge • TRIPLE TOWER WAR';
             const timer = `${Math.floor(phaseLeft / 60)}:${String(Math.ceil(phaseLeft % 60)).padStart(2, '0')}`;
             const extras = arenaForgeOvertime ? 'MEGA SURGE' : `Wave ${arenaForgeWaveNumber + 1} ${waveLeft}s | Breach ${breachLeft}s | Boon ${boonLeft}s`;
             queueTopCenterLine(ctx, topCenterStackQueue, `${title} | ${timer} | Energy ${arenaForgeSoulBank.player || 0}-${arenaForgeSoulBank.enemy || 0} | ${extras}`, innerWidth / 2, 48);
@@ -93262,7 +93260,7 @@ function checkHit(target, b, i){
                 won = cleared >= 1 || !!s?.won || !!s?.bossDefeated || ((s?.bossCurrentHp || 1) <= 0);
                 rankNum = won ? 1 : 2;
                 if (won) {
-                    matchText = s?.won ? '📶 6G MESH DISMANTLED! 📶' : '🏆 YOU SURVIVED MEGA WEEFEE! 🏆';
+                    matchText = s?.won ? '📶 6G MESH DISMANTLED! 📶' : '👑 YOU SURVIVED MEGA WEEFEE! 👑';
                     rankText = `Stages Cleared: ${Math.min(3, Math.max(1, cleared))} / 3`;
                 } else {
                     matchText = 'DISCONNECTED FROM THE GRID!';
@@ -93274,7 +93272,7 @@ function checkHit(target, b, i){
                 won = cleared >= 1 || !!s?.won || !!s?.bossDefeated || ((s?.bossCurrentHp || 1) <= 0);
                 rankNum = won ? 1 : 2;
                 if (won) {
-                    matchText = s?.won ? '😈 DEMON OVERLORD SHATTERED! 😈' : '🏆 YOU SURVIVED THE POSSESSED VILLAINS! 🏆';
+                    matchText = s?.won ? '😈 DEMON OVERLORD SHATTERED! 😈' : '👑 YOU SURVIVED THE POSSESSED VILLAINS! 👑';
                     rankText = `Acts Cleared: ${Math.min(4, Math.max(1, cleared))} / 4 • Chapter 2 Coming Soon!`;
                 } else {
                     matchText = 'PUPPETEERED BY THE DEMON!';
@@ -93286,7 +93284,7 @@ function checkHit(target, b, i){
                 won = cleared >= 1 || !!s?.won || !!s?.bossDefeated || ((s?.bossCurrentHp || 1) <= 0);
                 rankNum = won ? 1 : 2;
                 if (won) {
-                    matchText = s?.won ? '🥊 JUGGERNAUT OVERDRIVE CRUSHED! 🥊' : '🏆 YOU SURVIVED RAMAGE\'S OVERDRIVE! 🏆';
+                    matchText = s?.won ? '🥊 JUGGERNAUT OVERDRIVE CRUSHED! 🥊' : '👑 YOU SURVIVED RAMAGE\'S OVERDRIVE! 👑';
                     rankText = `Stages Cleared: ${Math.min(5, Math.max(1, cleared))} / 5`;
                 } else {
                     matchText = 'PULVERIZED BY BATTERING FISTS!';
@@ -93298,7 +93296,7 @@ function checkHit(target, b, i){
                 won = cleared >= 1 || !!s?.won || !!s?.bossDefeated || ((s?.bossCurrentHp || 1) <= 0);
                 rankNum = won ? 1 : 2;
                 if (won) {
-                    matchText = s?.won ? '🪐 COSMIC OVERLORD DEFEATED! 🪐' : '🏆 YOU SURVIVED ORBO\'S COSMIC HORIZON! 🏆';
+                    matchText = s?.won ? '🪐 COSMIC OVERLORD DEFEATED! 🪐' : '👑 YOU SURVIVED ORBO\'S COSMIC HORIZON! 👑';
                     rankText = `Stages Cleared: ${Math.min(3, Math.max(1, cleared))} / 3`;
                 } else {
                     matchText = 'CONSUMED BY THE GRAVITY WELL!';
@@ -93311,11 +93309,11 @@ function checkHit(target, b, i){
                 rankNum = won ? 1 : 2;
                 if (won) {
                     if (cleared >= 3 || s?.won) {
-                        matchText = '🏆 YOU WIN! ALL 3 STAGES CONQUERED!';
+                        matchText = '👑 YOU WIN! ALL 3 STAGES CONQUERED!';
                     } else if (cleared >= 1) {
-                        matchText = '🏆 YOU WIN! STAGE ' + cleared + ' VICTORY (⚡ POWER PLAY)!';
+                        matchText = '👑 YOU WIN! STAGE ' + cleared + ' VICTORY (⚡ POWER PLAY)!';
                     } else {
-                        matchText = '🏆 YOU WIN! 1 VS THE EYES VICTORY!';
+                        matchText = '👑 YOU WIN! 1 VS THE EYES VICTORY!';
                     }
                 } else {
                     matchText = '👁️ THE EYES OVERWHELMED YOU — TRY AGAIN!';
@@ -93794,7 +93792,7 @@ function checkHit(target, b, i){
             rankedDiv.style.fontWeight = 'bold';
             rankedDiv.style.color = '#ffd9a0';
             if (isRankedMatch) {
-                let rpBreakdown = `🏆 Ranked ${rankedDelta >= 0 ? '+' : ''}${rankedDelta} RP`;
+                let rpBreakdown = `⚔️ Ranked ${rankedDelta >= 0 ? '+' : ''}${rankedDelta} RP`;
                 if (rankedStreakBonusRp > 0) rpBreakdown += ` (+${rankedStreakBonusRp} Streak)`;
                 if (isRankedMVP) rpBreakdown += ` ⭐ MVP Bonus!`;
                 rankedDiv.textContent = rpBreakdown;
@@ -93818,7 +93816,7 @@ function checkHit(target, b, i){
                 rewardsBox.appendChild(rankedDiv);
                 
                 const passXpDiv = document.createElement('div');
-                passXpDiv.textContent = `🎖️ +${rankedPassXpGained} Ranked Pass XP${isArenaForgeMode ? ' (1.5x Forge)' : ''}${rankedNewPassTiers > 0 ? ` • 🎉 ${rankedNewPassTiers} Pass Tier(s) Unlocked!` : ''}${weeklyOverflowCoins > 0 ? ` • Weekly cap reached: +${weeklyOverflowCoins} Coins instead of XP` : ''}${weeklyMaxBonusThisMatch ? ` • 🏆 WEEKLY MAXED! +300 Coins + Pin Pack!` : ''}`;
+                passXpDiv.textContent = `🎖️ +${rankedPassXpGained} Ranked Pass XP${isArenaForgeMode ? ' (1.5x Forge)' : ''}${rankedNewPassTiers > 0 ? ` • 🎉 ${rankedNewPassTiers} Pass Tier(s) Unlocked!` : ''}${weeklyOverflowCoins > 0 ? ` • Weekly cap reached: +${weeklyOverflowCoins} Coins instead of XP` : ''}${weeklyMaxBonusThisMatch ? ` • WEEKLY MAXED! +300 Coins + Pin Pack!` : ''}`;
                 passXpDiv.style.fontSize = '18px';
                 passXpDiv.style.fontWeight = 'bold';
                 passXpDiv.style.color = '#70e000';
@@ -93939,13 +93937,13 @@ function checkHit(target, b, i){
                         overlay.remove();
                         if (!launchTournamentMatch()) openTournamentBracket();
                     });
-                    mkTournamentBtn('🏆 VIEW BRACKET', false, () => { overlay.remove(); openTournamentBracket(); });
+                    mkTournamentBtn('👑 VIEW BRACKET', false, () => { overlay.remove(); openTournamentBracket(); });
                 } else if (tRes.outcome === 'champion') {
-                    mkTournamentBtn('🏆 VIEW LEAGUES', true, () => { overlay.remove(); openTournamentHub(); });
+                    mkTournamentBtn('👑 VIEW LEAGUES', true, () => { overlay.remove(); openTournamentHub(); });
                 } else if (tRes.outcome === 'eliminated') {
                     const lg = getTournamentLeague(tRes.league || 'bronze');
                     mkTournamentBtn(`🔁 RE-ENTER ${lg.name.toUpperCase()} LEAGUE`, true, () => { overlay.remove(); openTournamentBrawlerPicker(lg.id); });
-                    mkTournamentBtn('🏆 VIEW LEAGUES', false, () => { overlay.remove(); openTournamentHub(); });
+                    mkTournamentBtn('👑 VIEW LEAGUES', false, () => { overlay.remove(); openTournamentHub(); });
                 }
                 resultCard.appendChild(tBtnRow);
             }
@@ -94867,7 +94865,7 @@ function checkHit(target, b, i){
 
       // Milestones
       const milestonesBox = document.createElement('div'); milestonesBox.style.padding='12px'; milestonesBox.style.border='1px solid #304876'; milestonesBox.style.borderRadius='12px'; milestonesBox.style.background='#061226';
-      const milTitle = document.createElement('div'); milTitle.textContent = '🏆 Milestones'; milTitle.style.fontWeight='900'; milTitle.style.color='#ffd700'; milTitle.style.marginBottom='8px';
+      const milTitle = document.createElement('div'); milTitle.textContent = '⭐ Milestones'; milTitle.style.fontWeight='900'; milTitle.style.color='#ffd700'; milTitle.style.marginBottom='8px';
       const progBar = document.createElement('div'); progBar.style.height='8px'; progBar.style.background='#07172a'; progBar.style.borderRadius='999px'; progBar.style.overflow='hidden'; progBar.style.marginBottom='8px';
       const progFill = document.createElement('div'); progFill.style.height='100%'; progFill.style.background='linear-gradient(90deg,#5df2c2,#00aaff)'; progFill.style.width=`${Math.min(100, ((playerData.event?.questsCompleted||0)/Math.max(1, EVENT_QUEST_TOTAL))*100)}%`; progFill.style.transition='width 0.3s';
       progBar.appendChild(progFill);
@@ -95276,7 +95274,7 @@ function updateBlinkEyeDodge(dt, now) {
         s.stagesCleared = Math.max(s.stagesCleared || 0, currentStage);
         const nextStage = currentStage + 1;
 
-        spawnFloatingText(player.x, player.y - 85, '🏆 YOU WIN! STAGE ' + currentStage + ' CLEARED! 🏆', '#ffd34f');
+        spawnFloatingText(player.x, player.y - 85, '👑 YOU WIN! STAGE ' + currentStage + ' CLEARED! 👑', '#ffd34f');
         setTimeout(() => {
             spawnFloatingText(player.x, player.y - 55, '⚡ POWER PLAY MODIFIER ACTIVATED! ⚡', '#d946ef');
         }, 350);
@@ -95285,7 +95283,7 @@ function updateBlinkEyeDodge(dt, now) {
             s.won = true;
             s.bossDefeated = true;
             setTimeout(() => {
-                spawnFloatingText(player.x, player.y - 25, '🏆 1 VS THE EYES ULTIMATE VICTORY! 🏆', '#2ed573');
+                spawnFloatingText(player.x, player.y - 25, '👑 1 VS THE EYES ULTIMATE VICTORY! 👑', '#2ed573');
             }, 750);
             setTimeout(() => {
                 gameOver = true;
@@ -98044,7 +98042,7 @@ function updateOrboBoss(dt, now) {
         s.stagesCleared = Math.max(s.stagesCleared || 0, currentStage);
         const nextStage = currentStage + 1;
 
-        spawnFloatingText(player.x, player.y - 85, '🏆 YOU WIN! STAGE ' + currentStage + ' CLEARED! 🏆', '#e1b869');
+        spawnFloatingText(player.x, player.y - 85, '👑 YOU WIN! STAGE ' + currentStage + ' CLEARED! 👑', '#e1b869');
         setTimeout(() => {
             spawnFloatingText(player.x, player.y - 55, '⚡ POWER PLAY MODIFIER ACTIVATED! ⚡', '#8c75df');
         }, 350);
@@ -100876,7 +100874,7 @@ function updateDemonVillainsBoss(dt, now) {
             s.floatingTexts.push({
                 x: cx,
                 y: cy - 80,
-                text: '🏆 ACT ' + s.act + ' PURIFIED! 🏆',
+                text: '👑 ACT ' + s.act + ' PURIFIED! 👑',
                 color: '#ffd700',
                 life: 2.5,
                 maxLife: 2.5,

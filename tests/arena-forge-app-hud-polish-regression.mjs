@@ -98,7 +98,7 @@ if (topCenterFactory) {
     // below the minimap instead of painting over it.
     {
         const W = 412, H = 915;
-        const line = '🏆 Bronze • Round 1 vs SomeBotName | You: 0  Bot: 0';
+        const line = '👑 Bronze • Round 1 vs SomeBotName | You: 0  Bot: 0';
         const { calls } = runPillCase({ W, H, opts: { touch: true }, text: line, x: W / 2 - 100, y: 48 });
         const panel = calls.panels[0];
         check('HU1 portrait Duels line: panel clamped inside the viewport', panel.x >= 8 && panel.x + panel.w <= W - 8);
@@ -110,7 +110,7 @@ if (topCenterFactory) {
     // HU1 portrait touch: very long Arena Forge line wraps instead of overflowing.
     {
         const W = 412, H = 915;
-        const line = 'Arena Forge 2.0 • TRIPLE TOWER WAR | 2:30 | Energy 5-3 | Wave 2 10s | Breach 5s | Boon 8s';
+        const line = 'Arena Forge • TRIPLE TOWER WAR | 2:30 | Energy 5-3 | Wave 2 10s | Breach 5s | Boon 8s';
         const { calls } = runPillCase({ W, H, opts: { touch: true }, text: line, x: W / 2, y: 48, align: 'center' });
         const panel = calls.panels[0];
         check('HU1 portrait Arena Forge line: wraps to more than one drawn line', calls.texts.length > 1);

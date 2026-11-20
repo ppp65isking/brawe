@@ -24,12 +24,14 @@ assert.match(game, /starrDropsToday: playerData\.starrDropsToday/, 'daily Tapper
 assert.match(game, /playerData\.starrDropsToday = data\.persistent\.starrDropsToday/, 'daily Tapper count is restored');
 assert.match(game, /ownedSkins: playerData\.ownedSkins/, 'owned skins are serialized in the canonical save');
 assert.match(game, /selectedSkins: playerData\.selectedSkins/, 'selected skins are serialized in the canonical save');
-// Trophies (round 2, 2026-11-19): Anthony ordered a trophy display in the
-// profile. Trophies are display-only, derived from tracked wins — Bricks
-// remain the progression currency, so no trophy spend/reward path exists.
-assert.match(game, /TROPHY_PER_WIN = 10/, 'trophies award 10 per win');
-assert.match(game, /recordTrophyMatchResult\(completedMatchFighter, won/, 'trophies are recorded at the match-end settlement');
+// Bricks (foundation, 2026-11-19 big changes): trophies are retired as a
+// display — the single progression number is lifetime bricks
+// (progress.bricks + prestige * 1000), earned every match by placement
+// (1st = 30, 8th = 2, lower places lose a few). No trophy currency path.
+assert.match(game, /const awards = \[30, 26, 22, 18, 14, 10, 6, 2, -1, -3, -5, -7, -9, -11, -13\]/, 'bricks award 30 for 1st down to -13 for 15th');
+assert.match(game, /recordTrophyMatchResult\(completedMatchFighter, won/, 'wins are still recorded at the match-end settlement (wins ledger kept)');
 assert.doesNotMatch(game, /trophyDelta/, 'no trophy delta/reward currency path exists');
+assert.doesNotMatch(game, /TROPHY_PER_WIN|getBrawlerTrophies|getTotalTrophies|createTrophySection/, 'trophy display helpers are gone');
 assert.match(game, /profile\.favorites=.*slice\(0,3\)/, 'Profile favorites are capped at three');
 assert.match(game, /showcaseBadges=.*slice\(0,3\)/, 'showcase badges are capped at three');
 assert.match(game, /endCareer\.matchesPlayed \+= 1/, 'new matches update Career stats');

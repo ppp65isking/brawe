@@ -81,7 +81,7 @@ assert.match(game, /leagues unlocked • \$\{totalWins\} tournament win/, 'hub s
 assert.match(game, /Bots: \$\{league\.tierMix\.rookie\} Rookie • \$\{league\.tierMix\.contender\} Contender • \$\{league\.tierMix\.champion\} Champion/, 'hub cards preview the bot mix');
 
 // Home screen entry.
-assert.match(game, /\['tournament', '🏆', 'Tournament', '32-player bracket • Bronze → Diamond leagues'\]/, 'Tournament mode card exists');
+assert.match(game, /\['tournament', '👑', 'Tournament', '32-player bracket • Bronze → Diamond leagues'\]/, 'Tournament mode card exists');
 assert.match(game, /const HOME_PERMANENT_MODE_IDS = \['tournament', 'blink_eye_dodge'/, 'Tournament is first in the permanent mode list');
 assert.match(game, /'custom_clash', 'tournament'\]/, 'Tournament is in the popular mode list');
 assert.match(game, /tournament: '#ffd166',/, 'Tournament mode color exists');

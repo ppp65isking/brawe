@@ -154,8 +154,8 @@ check('app shell entry points untouched',
     game.includes('function openAppTapperSheet()'));
 check('seasonal accent vars still paint the home (tier2-feel re-skin)',
     game.includes('.native-app #appHome{background:linear-gradient(160deg,var(--app-season-bg1,#06101f)'));
-check('no mechanics/numbers changes (trophies still 10/win)',
-    game.includes('const TROPHY_PER_WIN = 10;'));
+check('no mechanics/numbers changes (bricks 30 for 1st down to -13 for 15th)',
+    game.includes('const awards = [30, 26, 22, 18, 14, 10, 6, 2, -1, -3, -5, -7, -9, -11, -13];'));
 check('no bare word anywhere in game.js', !/\bcluster\b/i.test(game));
 check('no bare word in this test file', !/\bcluster\b/i.test(fs.readFileSync(new URL(import.meta.url), 'utf8')));
 
