@@ -258,6 +258,15 @@ button,select,input{font:inherit}
 }
 @media(max-width:760px){
   #homeLobbyView.is-active{min-height:0!important}
+}
+/* Fixes round 3 (2026-11-20): the closing brace above was missing, so
+   every rule after this block — and, in the APK's single bundled
+   stylesheet, every later file (pins, master-update, circuit-pass,
+   fighter-gallery, kit-redesign, home-brawl-style) — was nested inside
+   @media(max-width:760px). On a phone in landscape (>760 CSS px) the
+   whole Season Pass overlay lost its styling: the overlay opened as an
+   unstyled static div under the fixed canvas/home, so the Season Pass
+   button looked dead. The website was unaffected (separate files). */
 .upgrade-all-options{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin:10px 0}
 .upgrade-all-options label{display:flex;align-items:center;gap:6px;min-height:48px;padding:7px;border:1px solid #304b6b;border-radius:8px;background:#0a1729;cursor:pointer}
 .upgrade-all-options label:has(input:checked){border-color:#69e8ff;background:#102c49;box-shadow:inset 0 0 0 1px #69e8ff55}
