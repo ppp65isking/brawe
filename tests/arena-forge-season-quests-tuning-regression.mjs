@@ -3,7 +3,10 @@
 // accrue ZERO progress, (3) harder than daily/weekly, (4) time-unlock
 // schedule with live countdowns. Ranked Solo: ranked Showdown with bots,
 // own RP bucket + Prestige League ladder, placement from Teams rank +
-// match stats floored at Brick Fume III (1200 RP). Landscape home UI:
+// match stats with the match delta capped at +300 RP (corrected
+// 2026-11-20 — the old 1200 RP placement floor is gone; 1200 RP is now
+// only the solo LADDER start at Brick Fume III, and solo soft resets
+// never drop below it). Landscape home UI:
 // Anthony's sketch — rounded buttons, 3-column fighters grid, icon-only
 // bottom nav as a left rail, profile goes home from Fighters, season-pass
 // bar with tier progress, quick tools/talents from the hero power level.
@@ -159,8 +162,11 @@ check('no bare word-boundary forbidden brawler token in game.js or this suite',
 // --- static: Ranked Solo --------------------------------------------------------
 check('solo: mode base table pays solo Showdown +5 (BUILDER PICK, same as Arena Forge)',
     (() => { const t = evalLiteral(extractConst(game, 'RANKED_RP_MODE_BASE')); return t.solo === 5 && t.arena_forge === 5 && t.knock_donate === 0 && t.brick_vault === 0; })());
-check('solo: placement helper exists and floors at Brick Fume III (1200 RP, Anthony 2026-11-20 — solo only; Teams keeps 1300)',
-    game.includes('function computeRankedSoloPlacement(') && game.includes('const RANKED_SOLO_PLACEMENT_FLOOR_RP = 1200;')
+check('solo: placement helper exists and caps the match delta at +300 RP (corrected 2026-11-20 — no placement floor; 1200 RP is the solo ladder start, Teams keeps 1300)',
+    game.includes('function computeRankedSoloPlacement(') && game.includes('const RANKED_SOLO_PLACEMENT_DELTA_CAP_RP = 300;')
+    && game.includes('const RANKED_TEAMS_PLACEMENT_DELTA_CAP_RP = 500;')
+    && game.includes('const RANKED_SOLO_LADDER_FLOOR_RP = 1200;')
+    && !game.includes('RANKED_SOLO_PLACEMENT_FLOOR_RP')
     && game.includes('return points >= 1300; // Brick Master I (idx 13) and above')
     && game.includes('const RANKED_SOLO_PLACEMENT_CAP_RP = 2400;'));
 check('solo: match-end settles into the solo bucket and runs the placement on the first solo match',
@@ -315,7 +321,9 @@ for (const name of ['TURKEY_TROUBLE_SEASON_ID', 'TURKEY_TROUBLE_START_UTC', 'TUR
     'RANKED_SEASON_RESET_PRESTIGE_FLOOR_RP', 'RANKED_SEASON_RESET_WIN_CREDIT_RP',
     'RANKED_SEASON_RESET_WIN_CREDIT_CAP_RP', 'RANKED_SEASON_RESET_WINRATE_CREDIT_RP',
     'RANKED_ELO_BOOST_MULTIPLIER',
-    'RANKED_SOLO_PLACEMENT_FLOOR_RP', 'RANKED_SOLO_PLACEMENT_CAP_RP', 'RANKED_SOLO_LEAGUE_OPPONENT_SALT']) {
+    'RANKED_SOLO_LADDER_FLOOR_RP', 'RANKED_SOLO_LADDER_START_INDEX',
+    'RANKED_TEAMS_PLACEMENT_DELTA_CAP_RP', 'RANKED_SOLO_PLACEMENT_DELTA_CAP_RP',
+    'RANKED_SOLO_PLACEMENT_CAP_RP', 'RANKED_SOLO_LEAGUE_OPPONENT_SALT']) {
     smoke[name] = evalLiteral(extractConst(game, name));
 }
 vm.createContext(smoke);
@@ -335,7 +343,8 @@ for (const fn of ['ensureBrawePassTokens', 'getActiveSeasonProfile', 'getActiveS
     'computeRankedSeasonReset', 'applyRankedSeasonReset',
     'isRankedEloBoostActive', 'getRankedEloBoostMultiplier',
     'ensureRankedSeasonState', 'ensureRankedSoloSeasonState', 'isRankedSoloEloBoostActive',
-    'computeRankedSoloPlacement', 'calcRankedRpGain', 'openRankedHubOverlay',
+    'computeRankedSoloPlacement', 'getRankedSoloTierInfo', 'getRankedSoloDivisionFloor',
+    'calcRankedRpGain', 'openRankedHubOverlay',
     'getLandscapePassBarInfo', 'renderAppHomeLandscapeBar', 'openAppQuickLoadout']) {
     try { vm.runInContext(extractFunction(game, fn), smoke); }
     catch (e) { check(`smoke setup: extract+load ${fn}`, false); }
@@ -458,9 +467,15 @@ check('solo: placement uses Teams rank + match stats (Teams 2000 + win delta 50 
         const p = run('computeRankedSoloPlacement(2000, { total: 50 })');
         return p.points === 2050 && p.basePoints === 2000 && p.matchDelta === 50;
     })());
-check('solo: placement never lands below the Brick Fume III floor (Teams 0 + loss -> 1200)',
-    run('computeRankedSoloPlacement(0, { total: -10 })').points === 1200
-    && run('computeRankedSoloPlacement(100, { total: 40 })').points === 1240);
+check('solo: placement caps the match delta at +300 RP (Teams 2000 + 500-delta match -> +300, 2300 RP)',
+    (() => {
+        const p = run('computeRankedSoloPlacement(2000, { total: 500 })');
+        return p.points === 2300 && p.matchDelta === 300 && p.deltaCapPoints === 300;
+    })());
+check('solo: placement has no floor any more (Teams 0 + loss -> 0, Teams 100 + 40 -> 140)',
+    run('computeRankedSoloPlacement(0, { total: -10 })').points === 0
+    && run('computeRankedSoloPlacement(0, { total: -10 })').matchDelta === -10
+    && run('computeRankedSoloPlacement(100, { total: 40 })').points === 140);
 check('solo: placement caps at PL1 entry (Teams 2600 + win -> 2400, higher solo prestige must be earned)',
     run('computeRankedSoloPlacement(2600, { total: 60 })').points === 2400
     && run('computeRankedSoloPlacement(2300, { total: 50 })').points === 2350);
@@ -493,7 +508,9 @@ check('solo: hub shows the placement call-to-action before the first solo match'
         const html = hub ? hub.innerHTML : '';
         return html.includes('RANKED SOLO') && html.includes('PLAY 1 RANKED SOLO MATCH TO GET PLACED')
             && html.includes('data-ranked-hub="play-solo"') && html.includes('▶ PLAY RANKED SOLO')
-            && html.includes('Solo leagues start at Brick Fume III (1200 RP)');
+            && html.includes('Solo leagues start at Brick Fume III (1200 RP)')
+            && html.includes('A placement match can add up to +300 RP')
+            && !html.includes('no solo placement below that floor');
     })());
 check('solo: hub shows the solo progress bar once placed (1350 RP = Brick Master I, halfway 1350)',
     (() => {
