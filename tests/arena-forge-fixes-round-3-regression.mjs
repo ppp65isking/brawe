@@ -125,9 +125,9 @@ check('concatenated bundle: .circuit-panel/.circuit-premium/.circuit-road are to
     JSON.stringify(mediaStackAt(bundleText, '.circuit-panel{')) === '[]' &&
     JSON.stringify(mediaStackAt(bundleText, '.circuit-premium{')) === '[]' &&
     JSON.stringify(mediaStackAt(bundleText, '.circuit-road{')) === '[]');
-check('concatenated bundle: .circuit-overlay keeps fixed positioning + z-index 1200 + dark backdrop',
+check('concatenated bundle: .circuit-overlay keeps fixed positioning + z-index 1200 + opaque full-screen backdrop (round 4: solid bg, no dim pop-up)',
     circuitCss.includes('.circuit-overlay{position:fixed;inset:0;z-index:1200;') &&
-    circuitCss.includes('background:#030917ed'));
+    circuitCss.includes('background:#070d18'));
 // If a built dist/ bundle is present (local build), prove the same property
 // on the real artifact; otherwise this is a documented skip, not a failure.
 let distChecked = false, distOk = false;

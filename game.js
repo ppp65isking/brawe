@@ -51078,9 +51078,10 @@ isBrawlerLabMode = false;
                 card.style.contentVisibility = 'auto';
                 card.style.containIntrinsicSize = '230px 410px';
                 card.style.contain = 'layout paint style';
-                card.style.opacity = isDisabled ? '0.68' : (isLocked && !sushiDeckReady ? '0.68' : '1');
+                // Sushi/Tower deck ownership was deleted in #168; locked cards stay dimmed.
+                card.style.opacity = (isDisabled || isLocked) ? '0.68' : '1';
                 card.style.cursor = isDisabled ? 'not-allowed' : 'pointer';
-                card.style.boxShadow = sushiDeckReady ? '0 0 0 2px #4ee6c1,0 0 24px #4ee6c166' : (prestige ? `0 0 0 1px rgba(255,255,255,0.08),0 0 18px ${rankAccent}55` : `0 10px 26px rgba(0,0,0,0.34)`);
+                card.style.boxShadow = prestige ? `0 0 0 1px rgba(255,255,255,0.08),0 0 18px ${rankAccent}55` : `0 10px 26px rgba(0,0,0,0.34)`;
                 card.onmouseover = () => card.style.transform = 'scale(1.05)';
                 card.onmouseout = () => card.style.transform = 'scale(1)';
                 const cardSpecialDef = getSpecialAbilityDef(id);
@@ -51185,7 +51186,7 @@ isBrawlerLabMode = false;
                 name.style.fontWeight = '900';
                 const role = document.createElement('div');
                 role.className = 'brawler-card__role';
-                role.textContent = isDisabled ? 'DISABLED' : (isLocked ? (sushiDeckReady ? 'TOWER DECK OWNED • FIGHTER LOCKED' : 'FIGHTER LOCKED') : data.role.toUpperCase()); role.style.fontSize = '12px'; role.style.fontWeight = '900';
+                role.textContent = isDisabled ? 'DISABLED' : (isLocked ? 'FIGHTER LOCKED' : data.role.toUpperCase()); role.style.fontSize = '12px'; role.style.fontWeight = '900';
                 role.style.letterSpacing = '0.08em';
                 role.style.color = isDisabled ? '#ff8b8b' : (isLocked ? '#a9bdd8' : rankAccent); role.style.marginBottom = '12px';
                 const traits = getBrawlerTraits(id);
@@ -51219,15 +51220,15 @@ isBrawlerLabMode = false;
                     const lockedPill = document.createElement('div');
                     lockedPill.className = 'brawler-card__status brawler-card__status--locked';
                     const rarity = getBrawlerRarity(id);
-                    lockedPill.textContent = sushiDeckReady ? `🗼 DECK OWNED • FIGHTER: ${getSoulUnlockCostForRarity(rarity)} SOULS` : `FIGHTER LOCKED • ${getSoulUnlockCostForRarity(rarity)} SOULS`;
+                    lockedPill.textContent = `FIGHTER LOCKED • ${getSoulUnlockCostForRarity(rarity)} SOULS`;
                     lockedPill.style.position = 'absolute';
                     lockedPill.style.left = '50%';
                     lockedPill.style.top = '172px';
                     lockedPill.style.transform = 'translateX(-50%)';
                     lockedPill.style.padding = '4px 10px';
                     lockedPill.style.borderRadius = '999px';
-                    lockedPill.style.background = sushiDeckReady ? '#11483f' : '#172942';
-                    lockedPill.style.border = `1px solid ${sushiDeckReady ? '#4ee6c1' : '#6f91b8'}`;
+                    lockedPill.style.background = '#172942';
+                    lockedPill.style.border = '1px solid #6f91b8';
                     lockedPill.style.color = '#f0e7ff';
                     lockedPill.style.fontSize = '10px';
                     lockedPill.style.fontWeight = '900';
@@ -80825,6 +80826,11 @@ function checkHit(target, b, i){
       // Fixes round: make sure the pass-token module exists before any
       // BrawePassTokens dereference below, or a failed module load kills
       // the button silently.
+      // Fixes round 4 (2026-11-20): the pass is a FULL-SCREEN view now,
+      // not a pop-up — same #circuitPassOverlay id and closer, compact
+      // header, road in a row at a glance, tabs (Reward Road / Vault /
+      // Missions) pinned to the bottom. Vault is the token shop,
+      // renamed per Anthony; no tiers, prices, or XP changed.
       ensureBrawePassTokens();
       if (!ENABLE_SEASON_PASS) { openQuestBoard(); return; }
       ensureSeasonPassState();
@@ -80858,13 +80864,13 @@ function checkHit(target, b, i){
           const pass=playerData.seasonPass, active=isSeason3PassActive(), seasonProfile=getActiveSeasonProfile();
           const progress=Math.min(100,pass.xp % 100), next=Math.max(0,100-progress);
           overlay.innerHTML = `<section class="circuit-panel">
-              <header class="circuit-header"><div><small>SEASON 0${seasonProfile.seasonNumber} / ${seasonProfile.upperName}</small><h1>${seasonProfile.upperName} <span>PASS</span></h1></div><button data-action="close" aria-label="Close pass">✕</button></header>
+              <header class="circuit-header"><button data-action="close" class="circuit-back" aria-label="Back to home">←</button><div><small>SEASON 0${seasonProfile.seasonNumber} / ${seasonProfile.upperName}</small><h1>${seasonProfile.upperName} <span>PASS</span></h1></div><button data-action="close" aria-label="Close pass">✕</button></header>
               <div class="circuit-summary"><div class="circuit-level"><b>${pass.level}</b><span>LEVEL / ${SEASON_PASS_MAX_LEVEL}</span></div><div class="circuit-progress"><strong>${pass.level >= SEASON_PASS_MAX_LEVEL ? 'REWARD ROAD COMPLETE' : next+' TOKENS TO NEXT LEVEL'}</strong><progress max="100" value="${pass.level>=SEASON_PASS_MAX_LEVEL?100:progress}"></progress><small>${active?'15 tokens per completed match · 25 on a win · missions earn more':'Season ended'} · spending never removes progress</small></div><div class="circuit-wallet"><small>PASS TOKENS</small><b>◈ ${pass.tokenWallet.toLocaleString()}</b><span>${pass.tokensEarned.toLocaleString()} earned this season</span></div></div>
-              <nav class="circuit-tabs"><button data-tab="road" aria-pressed="${tab==='road'}">REWARD ROAD</button><button data-tab="shop" aria-pressed="${tab==='shop'}">TOKEN EXCHANGE</button><button data-action="quests">MISSIONS ↗</button></nav>
+              <nav class="circuit-tabs"><button data-tab="road" aria-pressed="${tab==='road'}">REWARD ROAD</button><button data-tab="vault" aria-pressed="${tab==='vault'}">VAULT</button><button data-action="quests">MISSIONS ↗</button></nav>
               <main class="circuit-content"></main>
               <footer>Free and Premium rewards share progress. Your existing claims and Premium purchase are preserved.</footer>
           </section>`;
-          overlay.querySelector('[data-action="close"]').onclick=close;
+          overlay.querySelectorAll('[data-action="close"]').forEach(button=>{button.onclick=close;});
           overlay.querySelector('[data-action="quests"]').onclick=()=>{close();openQuestBoard('season');};
           overlay.querySelectorAll('[data-tab]').forEach(button=>button.onclick=()=>{scrollLeft=overlay.querySelector('.circuit-road')?.scrollLeft||scrollLeft;tab=button.dataset.tab;render();});
           const content=overlay.querySelector('main');
@@ -80907,7 +80913,8 @@ function checkHit(target, b, i){
               const nextClaim=(()=>{for(const t of getActiveSeasonPassTiers()){for(const tr of ['free','premium']){const cl=pass[tr==='free'?'claimedFreeRewards':'claimedPremiumRewards'].includes(t.tier);const rd=active&&pass.level>=t.tier&&(tr==='free'||pass.premiumUnlocked);if(!cl&&rd)return{tier:t.tier,track:tr};}}return null;})();
               heroAside.innerHTML=`<div class="circuit-hero-portrait">${heroPortrait||'🎁'}</div><button type="button" class="circuit-hero-get"${nextClaim?'':' disabled'}>GET</button><small>${nextClaim?`TIER ${String(nextClaim.tier).padStart(2,'0')} READY`:'NEXT LEVEL'}</small>`;
               heroAside.querySelector('.circuit-hero-get')?.addEventListener('click',()=>{if(!nextClaim)return;const tierObj=getActiveSeasonPassTiers().find(t=>t.tier===nextClaim.tier);if(claimSeasonPassTrackReward(nextClaim.tier,nextClaim.track)){if(typeof showToast==='function')showToast('Claimed '+(tierObj?describeCircuitReward(tierObj[nextClaim.track]):'reward'));render();}});
-              heroWrap.appendChild(heroAside);heroWrap.appendChild(road);content.appendChild(heroWrap);road.scrollLeft=scrollLeft;
+              heroWrap.appendChild(heroAside);heroWrap.appendChild(road);content.appendChild(heroWrap);
+              try { road.scrollLeft = scrollLeft || (() => { const cols = road.querySelectorAll('.circuit-tier.unlocked'); const cur = cols[cols.length - 1]; if (!cur || typeof cur.getBoundingClientRect !== 'function' || typeof road.getBoundingClientRect !== 'function') return 0; const r = road.getBoundingClientRect(); const c = cur.getBoundingClientRect(); return Math.max(0, c.left - r.left + road.scrollLeft - 140); })(); } catch (_) { road.scrollLeft = scrollLeft; }
           } else {
               const note=document.createElement('p');note.className='circuit-shop-note';note.textContent='Choose your rewards. Tokens are earned, not purchased. Offers have seasonal limits; skins are permanent.';content.appendChild(note);
               const grid=document.createElement('div');grid.className='circuit-shop';

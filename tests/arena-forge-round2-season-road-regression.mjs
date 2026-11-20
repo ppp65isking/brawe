@@ -115,9 +115,10 @@ check('successful tier claim toasts the granted reward',
     openSeasonPassSrc.includes("showToast('Claimed '+describeCircuitReward(tier[track]))"));
 check('road keeps the MISSIONS link back to the Quest Board',
     openSeasonPassSrc.includes("overlay.querySelector('[data-action=\"quests\"]').onclick=()=>{close();openQuestBoard('season');};"));
-check('road has both tabs: REWARD ROAD + TOKEN EXCHANGE',
-    openSeasonPassSrc.includes('data-tab="road"') && openSeasonPassSrc.includes('data-tab="shop"') &&
-    openSeasonPassSrc.includes('REWARD ROAD') && openSeasonPassSrc.includes('TOKEN EXCHANGE'));
+check('road has both tabs: REWARD ROAD + VAULT (round 4: the token shop is the Vault now)',
+    openSeasonPassSrc.includes('data-tab="road"') && openSeasonPassSrc.includes('data-tab="vault"') &&
+    openSeasonPassSrc.includes('REWARD ROAD') && openSeasonPassSrc.includes('>VAULT<') &&
+    !openSeasonPassSrc.includes('TOKEN EXCHANGE'));
 check('Escape closes the road and Tab is trapped inside it',
     openSeasonPassSrc.includes("if(event.key === 'Escape')") && openSeasonPassSrc.includes("if(event.key === 'Tab')"));
 
@@ -141,7 +142,7 @@ check('premium + token confirms both route through the helper',
     openSeasonPassSrc.includes('confirmCircuitPassAction(`Unlock Premium for') &&
     openSeasonPassSrc.includes('confirmCircuitPassAction(`Spend ${offer.cost} Pass Tokens on'));
 
-// --- 4. Token exchange: real offers, guarded skin lookups, honest states ---
+// --- 4. Vault (token shop): real offers, guarded skin lookups, honest states ---
 check('token exchange iterates the real token offers (via the ensureBrawePassTokens fallback guard — fixes round item 1)',
     openSeasonPassSrc.includes('for(const offer of ensureBrawePassTokens().offers)'));
 check('skin offer lookups are guarded (a missing skin id cannot kill the tab)',
@@ -482,10 +483,10 @@ check('no new season/tier data invented: the only tier arrays are the three live
     check('smoke: after unlock, tier 2 premium becomes CLAIM',
         smokeCollectButtons(smokeOverlay.querySelector('.circuit-road').children[1])[0]?.textContent === 'CLAIM');
     const smokeTabs = smokeOverlay.querySelectorAll('[data-tab]');
-    check('smoke: two tabs exist (road + shop)', smokeTabs.length === 2);
+    check('smoke: two tabs exist (road + vault)', smokeTabs.length === 2);
     smokeTabs[1].onclick();
     const smokeShop = smokeOverlay.querySelector('.circuit-shop');
-    check('smoke: token exchange renders all 5 real offers', smokeShop?.children.length === 5);
+    check('smoke: vault renders all 5 real offers', smokeShop?.children.length === 5);
     const smokeOffers = smokeCollectButtons(smokeShop);
     check('smoke: Coin Cache (100 tokens) is buyable with a 250 wallet',
         smokeOffers[0]?.textContent.includes('100') && smokeOffers[0]?.disabled === false);
