@@ -142,8 +142,8 @@ check('premium + token confirms both route through the helper',
     openSeasonPassSrc.includes('confirmCircuitPassAction(`Spend ${offer.cost} Pass Tokens on'));
 
 // --- 4. Token exchange: real offers, guarded skin lookups, honest states ---
-check('token exchange iterates the real BrawePassTokens.offers',
-    openSeasonPassSrc.includes('for(const offer of BrawePassTokens.offers)'));
+check('token exchange iterates the real token offers (via the ensureBrawePassTokens fallback guard — fixes round item 1)',
+    openSeasonPassSrc.includes('for(const offer of ensureBrawePassTokens().offers)'));
 check('skin offer lookups are guarded (a missing skin id cannot kill the tab)',
     openSeasonPassSrc.includes("const skin=offer.reward.type==='skin'?skinsDatabase[offer.reward.id]:null;") &&
     openSeasonPassSrc.includes('const owned=!!skin &&') &&
@@ -170,9 +170,8 @@ check('home SEASON PASS button (with level badge) opens the road',
     game.includes("spBtn.onclick = () => openSeasonPass();"));
 check('featured season slot opens the road',
     game.includes('const openSeasonSlot = () => openSeasonPass();'));
-check('Quest Board season tab keeps its own tier ladder (the second view)',
-    game.includes('`${seasonProfileForQuests.name} Pass — Tier Track`') &&
-    game.includes("seasonTrackRewardText(tier.free)") && game.includes("seasonTrackRewardText(tier.premium)"));
+check('Quest Board season tab has NO tier ladder anymore (fixes round item 2: pass lives only in its own overlay)',
+    !game.includes('Pass — Tier Track') && !game.includes('ladderBox') && !game.includes('function seasonTrackRewardText'));
 check('pass badge still counts claimable tier + quest rewards',
     game.includes('getClaimableSeasonRewardCount()') &&
     game.includes("const freeReady = getActiveSeasonPassTiers().filter(t => t.tier <= level && !freeClaimed.has(t.tier)).length;"));
@@ -447,7 +446,7 @@ check('no new season/tier data invented: the only tier arrays are the three live
     };
     vm.createContext(smoke);
     vm.runInContext(passTokensSrc, smoke);
-    for (const fn of ['describeCircuitReward', 'grantSeasonReward', 'claimSeasonPassTrackReward', 'unlockSeasonPremium', 'confirmCircuitPassAction', 'openSeasonPass']) {
+    for (const fn of ['ensureBrawePassTokens', 'describeCircuitReward', 'grantSeasonReward', 'claimSeasonPassTrackReward', 'unlockSeasonPremium', 'confirmCircuitPassAction', 'openSeasonPass']) {
         vm.runInContext(extractFunction(game, fn), smoke);
     }
     vm.runInContext('openSeasonPass()', smoke);

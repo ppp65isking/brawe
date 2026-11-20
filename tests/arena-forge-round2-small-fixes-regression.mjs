@@ -189,8 +189,8 @@ const mapSrc = extractFunction(game, 'appEventMapName');
 }
 
 // --- 4. SEASON TAB RENAME ---
-check('season tab is named Season Pass', game.includes("makeTab('season', '⚡ Season Pass')"));
-check('board subtitle climbs the Season Pass', game.includes("boardSubtitle.textContent = 'Complete quests, claim rewards, and climb the Season Pass.';"));
+check('season tab is named Season Quests (fixes round: pass is out of quests)', game.includes("makeTab('season', '⚡ Season Quests')"));
+check('board subtitle no longer climbs the Season Pass', game.includes("boardSubtitle.textContent = 'Complete quests and claim rewards.';"));
 check('dead-code pass overlay keeps its internal id (not user-facing)', game.includes("overlay.id = 'circuitPassOverlay'"));
 
 // --- 5. PLAY AGAIN SAME-MODE ---

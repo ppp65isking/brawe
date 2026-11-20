@@ -47,44 +47,48 @@ function sliceBetween(startMarker, endMarker) {
 }
 
 // --- (1) Fighters grid + one scroller ---
-check('fighters: strip is a grid (auto-fill portrait cards, not a flex strip)',
-    game.includes("#appFightersStrip{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;overflow:visible;position:static;touch-action:pan-y;padding:4px 2px 12px;background:transparent;border-radius:0}"));
-check('fighters: grid is NOT a scroller — old sticky overflow-x strip rule is gone',
-    game.includes('overflow:visible;position:static;touch-action:pan-y') &&
-    !game.includes('#appFightersStrip{flex:none;overflow-x:auto;'));
+check('fighters: strip is a horizontal paging scroller (fixes round: 4 small per column, swipe left/right)',
+    game.includes("#appFightersStrip{display:flex;flex-direction:row;gap:10px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;padding:4px 2px 12px;background:transparent;border-radius:0;flex:1 1 auto;min-height:0;max-height:520px}"));
+check('fighters: strip pages are one column of 4 (118px portrait, 96px landscape)',
+    game.includes('#appFightersStrip .app-fighters-page{flex:0 0 auto;width:118px;display:grid;grid-template-rows:repeat(4,minmax(0,1fr));gap:8px;scroll-snap-align:start}') &&
+    game.includes("@media (orientation:landscape){#appFightersStrip .app-fighters-page{width:96px}}"));
 check('fighters: view is the one scroller (touch-action pan-y, momentum kept)',
     game.includes('#appHomeFightersView{touch-action:pan-y}') &&
     game.includes('#appHomeFightersView{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}'));
-check('fighters: portrait = 4-column grid, landscape = wider cards (mobile UI 2026-11-20: was 2 cols; 3/4 cards keep the 34px strip fitting)',
-    game.includes("@media (orientation:portrait) and (max-width:560px){#appFightersStrip{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}}") &&
-    game.includes("@media (orientation:landscape){#appFightersStrip{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}}"));
+check('fighters: old 280px/300px grid is gone (same paging layout in both orientations)',
+    !game.includes('#appFightersStrip{display:grid') && !game.includes('repeat(auto-fill,minmax(280px,1fr))') &&
+    !game.includes('repeat(auto-fill,minmax(300px,1fr))'));
 check('fighters: container carries the grid class',
     game.includes('<div id="appFightersStrip" class="app-fighters-grid"></div>'));
 check('fighters: card has power badge, bricks chip, rarity strip in markup',
     game.includes('<span class="app-fighter-power">${pData.level || 1}</span>') &&
     game.includes('<span class="app-fighter-rarity" style="--rarity-color:${rarityColor}" aria-hidden="true"></span>') &&
     game.includes('<span class="app-fighter-trophies">🧱 ${bricks.toLocaleString()}</span>'));
-check('fighters: power badge top-left, rarity strip right edge (CSS)',
-    game.includes('.app-fighter-power{position:absolute;top:5px;right:3px;') &&
-    game.includes('.app-fighter-rarity{position:absolute;top:0;right:0;bottom:0;width:34px;'));
-check('fighters: card is a big portrait card (full-width portrait, not 92px)',
-    game.includes('.app-fighter-card{position:relative;width:auto;padding:0;border-radius:12px;overflow:hidden;text-align:left;border:3px solid #0a1428;box-shadow:0 4px 0 rgba(0,0,0,.45);aspect-ratio:16/10;') &&
+check('fighters: small cards keep the power badge, thin the rarity edge to 6px (kit strip hidden)',
+    game.includes('.app-fighter-power{position:absolute;top:4px;right:3px;z-index:3;width:24px;height:24px;') &&
+    game.includes('.app-fighter-rarity{position:absolute;top:0;right:0;bottom:0;width:6px;') &&
+    game.includes('.app-fighter-kit{display:none}'));
+check('fighters: card is a small card filling its page row (no aspect-ratio)',
+    game.includes('.app-fighter-card{position:relative;width:auto;padding:0;border-radius:10px;overflow:hidden;text-align:left;border:2px solid #0a1428;box-shadow:0 3px 0 rgba(0,0,0,.45);background:var(--card-color,#0b69bd)}') &&
+    !game.includes('aspect-ratio:16/10') &&
     game.includes('.app-fighter-card .app-fighter-portrait{position:absolute;inset:0;width:100%;height:100%;margin:0;border:0;border-radius:0;display:grid;place-items:center}'));
-check('fighters: search + sort + role chips + owned count still present',
-    game.includes('id="appFightersSearch"') && game.includes('id="appFightersSort"') &&
-    game.includes('id="appFightersRoles"') && game.includes('id="appFightersCount"') &&
+check('fighters: search + icon buttons + owned count present; sort lives in the filter sheet now',
+    game.includes('id="appFightersSearch"') && game.includes('id="appFightersFavToggle"') &&
+    game.includes('id="appFightersCount"') && game.includes('id="appFilterSort"') &&
+    !game.includes('id="appFightersRoles"') && !game.includes('<select id="appFightersSort"') &&
     game.includes("const APP_FIGHTERS_SORTS = ['favorites', 'name', 'power', 'rarity', 'owned'];"));
-check('fighters: tap scroll is grid-safe (no horizontal inline centering)',
+check('fighters: tap opens the fighter full screen (fixes round: no inline detail)',
     (() => {
         const at = game.indexOf("view.querySelector('#appFightersStrip')?.addEventListener('click'");
         if (at === -1) return false;
         const h = game.slice(at, at + 2200);
-        return h.includes("scrollIntoView({ block: 'nearest' })") && !h.includes("inline: 'center'");
+        return h.includes('openAppFighterPage(appFightersState.focused);') && !h.includes('renderAppFightersDetail();');
     })());
-check('fighters: detail is a showcase (centered stage, 2-col kit grid)',
-    game.includes('#appFightersDetail{flex-direction:column;align-items:center;text-align:center;padding:16px 14px}') &&
+check('fighters: detail is a showcase on its own full screen (centered stage, 2-col kit grid)',
+    game.includes('#appFighterDetail{flex-direction:column;align-items:center;text-align:center;padding:16px 14px}') &&
     game.includes('.app-kit-slots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%}') &&
-    game.includes('@media (orientation:landscape){#appFightersDetail{flex-direction:row;align-items:flex-start;text-align:left}'));
+    game.includes('@media (orientation:landscape){#appFighterDetail{flex-direction:row;align-items:flex-start;text-align:left}') &&
+    game.includes('function buildAppFighterView() {'));
 check('fighters: detail controls kept (play / upgrade / favorite / skins / kit sheet)',
     game.includes('data-app-action="play"') && game.includes('data-app-action="upgrade"') &&
     game.includes('data-app-action="favorite"') && game.includes('data-app-skin=') &&
@@ -180,7 +184,7 @@ check('web roster: wider grid on desktop, bricks line on cards',
     galleryCss.includes('.fighter-gallery .brawler-card__trophies{'));
 check('web: save code, MORE links, deep links and mode cards untouched',
     game.includes('function openSaveCodeModal() {') && game.includes('function openAppMoreSheet() {') &&
-    game.includes("const APP_DEEP_LINK_ROUTES = ['home', 'fighters', 'events', 'shop', 'pass', 'tournament', 'profile', 'settings'];") &&
+    game.includes("const APP_DEEP_LINK_ROUTES = ['home', 'fighters', 'fighter', 'events', 'shop', 'pass', 'tournament', 'profile', 'settings'];") &&
     game.includes('homeModeCardMap'));
 
 // --- (8) Safe areas + hard limits ---
@@ -256,6 +260,7 @@ try {
     run(sliceBetween('        function getBrawlerRarity(brawlerId) {', '        function getDisplayRarityName'));
     run(sliceBetween('        function getSoulUnlockCostForRarity(rarity) {', '        function getSoulsForPlacement'));
     run(sliceBetween('        function getBrawlerRarityRank(brawlerId) {', '        function ensurePlayerDataDefaults() {'));
+    run(sliceBetween('    function playableBrawlerIds() {', '    // Emergency balance hold:'));
     run(sliceBetween('    function appFightersVisibleList() {', '    function buildAppFightersView() {'));
     run(sliceBetween('    function renderAppFightersStrip() {', '    // Kit name/description split'));
     check('runtime: Fighters functions extracted and evaluated', true);

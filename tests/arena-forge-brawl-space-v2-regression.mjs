@@ -38,19 +38,20 @@ function sliceBetween(startMarker, endMarker) {
 
 // --- Fighters: wide landscape cards, kit strip, upgrade badge ---
 check('v2 fighters: grid is wide landscape cards (280px, 300px landscape)',
-    game.includes("#appFightersStrip{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;") &&
-    game.includes("@media (orientation:landscape){#appFightersStrip{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}}"));
-check('v2 fighters: card is a 16/10 wide card with a dark border + hard shadow',
-    game.includes('aspect-ratio:16/10;background:var(--card-color,#0b69bd)') &&
-    game.includes('border:3px solid #0a1428;box-shadow:0 4px 0 rgba(0,0,0,.45);'));
-check('v2 fighters: portrait fills the card, name bottom-right, bricks chip bottom-left',
+    game.includes("#appFightersStrip{display:flex;flex-direction:row;gap:10px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x proximity") &&
+    game.includes("#appFightersStrip .app-fighters-page{flex:0 0 auto;width:118px;display:grid;grid-template-rows:repeat(4,minmax(0,1fr));gap:8px;scroll-snap-align:start}") &&
+    game.includes("@media (orientation:landscape){#appFightersStrip .app-fighters-page{width:96px}}"));
+check('v2 fighters: card is a small card with a dark border + hard shadow (fixes round)',
+    !game.includes('aspect-ratio:16/10') && game.includes('background:var(--card-color,#0b69bd)') &&
+    game.includes('border:2px solid #0a1428;box-shadow:0 3px 0 rgba(0,0,0,.45);'));
+check('v2 fighters: portrait fills the card, name bottom-left, bricks chip hidden on small cards',
     game.includes('.app-fighter-card .app-fighter-portrait{position:absolute;inset:0;width:100%;height:100%;') &&
-    game.includes('.app-fighter-card b{position:absolute;right:42px;bottom:6px;') &&
-    game.includes('.app-fighter-trophies{position:absolute;left:6px;bottom:6px;'));
-check('v2 fighters: right strip is 34px with the power badge on top of it',
-    game.includes('.app-fighter-rarity{position:absolute;top:0;right:0;bottom:0;width:34px;') &&
-    game.includes('.app-fighter-power{position:absolute;top:5px;right:3px;') &&
-    game.includes('.app-fighter-kit{position:absolute;top:44px;right:0;bottom:8px;width:34px;'));
+    game.includes('.app-fighter-card b{position:absolute;left:6px;bottom:4px;') &&
+    game.includes('.app-fighter-trophies{display:none}'));
+check('v2 fighters: thin 6px rarity edge with the power badge on top, kit strip hidden (fixes round)',
+    game.includes('.app-fighter-rarity{position:absolute;top:0;right:0;bottom:0;width:6px;') &&
+    game.includes('.app-fighter-power{position:absolute;top:4px;right:3px;z-index:3;width:24px;height:24px;') &&
+    game.includes('.app-fighter-kit{display:none}'));
 check('v2 fighters: kit strip shows tool / talent / surge state + upgrade-count badge',
     game.includes('<span class="app-fighter-kit" aria-hidden="true">') &&
     game.includes('class="kit-tool${kitTool ? \' on\' : \'\'}"') &&
@@ -59,7 +60,7 @@ check('v2 fighters: kit strip shows tool / talent / surge state + upgrade-count 
     game.includes('<span class="app-fighter-upg">${kitUpg}</span>'));
 check('v2 fighters: locked cards are greyed with a centered LOCKED overlay + souls cost',
     game.includes('.app-fighter-card.is-locked .app-fighter-portrait{filter:grayscale(.75) brightness(.55)}') &&
-    game.includes('.app-fighter-card.is-locked small{display:flex;position:absolute;left:0;right:36px;top:50%;'));
+    game.includes('.app-fighter-card.is-locked small{display:flex;position:absolute;left:0;right:6px;top:50%;'));
 
 // --- Home: top bar chips, side column, giant PLAY ---
 check('v2 home: top bar has bricks + ranked chips and a menu button',
@@ -223,6 +224,7 @@ try {
     run(sliceBetween('        function getBrawlerRarity(brawlerId) {', '        function getDisplayRarityName'));
     run(sliceBetween('        function getSoulUnlockCostForRarity(rarity) {', '        function getSoulsForPlacement'));
     run(sliceBetween('        function getBrawlerRarityRank(brawlerId) {', '        function ensurePlayerDataDefaults() {'));
+    run(sliceBetween('    function playableBrawlerIds() {', '    // Emergency balance hold:'));
     run(sliceBetween('    function appFightersVisibleList() {', '    function buildAppFightersView() {'));
     run(sliceBetween('    function renderAppFightersStrip() {', '    // Kit name/description split'));
     check('v2 runtime: Fighters functions extracted and evaluated', true);

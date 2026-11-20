@@ -302,9 +302,9 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         #appHomeSaveBtn{flex:none;font-weight:1000;font-size:15px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:6px 10px;color:#fff;cursor:pointer}
         #appHomeTop #homeCurrencyBar{display:flex;gap:8px;margin-left:auto}
         #appHomeBody{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
-        #appHomeHeroView,#appHomeFightersView,#appHomeEventsView{flex:1 1 auto;min-height:0;display:none;flex-direction:column}
-        #appHomeHeroView.is-active,#appHomeFightersView.is-active,#appHomeEventsView.is-active{display:flex}
-        #appHomeFightersView,#appHomeEventsView{overflow-y:auto}
+        #appHomeHeroView,#appHomeFightersView,#appHomeFighterView,#appHomeEventsView{flex:1 1 auto;min-height:0;display:none;flex-direction:column}
+        #appHomeHeroView.is-active,#appHomeFightersView.is-active,#appHomeFighterView.is-active,#appHomeEventsView.is-active{display:flex}
+        #appHomeFightersView,#appHomeFighterView,#appHomeEventsView{overflow-y:auto}
         /* Hero side column (app home optimize, 2026-11-18): the landscape
            hero had a wide dead blue area on the right (Anthony's
            screenshot). In landscape the hero becomes a 2-column grid and
@@ -336,7 +336,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         .app-fighter-card.is-selected{border-color:#ffd166;background:rgba(255,159,28,.22);box-shadow:0 0 0 2px rgba(255,209,102,.5)}
         .app-fighter-card.is-locked{opacity:.55}
         .app-fighters-empty{padding:18px;text-align:center;color:#9fc6e8;font-weight:800}
-        #appFightersDetail{flex:1 1 auto;min-height:0;overflow-y:auto;display:flex;gap:14px;padding:10px 12px;border-radius:18px;border:2px solid rgba(255,255,255,.2);background:rgba(8,20,42,.55)}
+        #appFighterDetail{flex:1 1 auto;min-height:0;overflow-y:auto;display:flex;gap:14px;padding:12px 4px;border:0;border-radius:0;background:transparent;box-shadow:none}
         .app-fighters-detail-portrait{flex:none;width:min(26vh,150px);height:min(26vh,150px);aspect-ratio:1;align-self:center;border-radius:50%;display:grid;place-items:center;overflow:hidden;font-size:64px;font-weight:1000;border:5px solid #fff;background:linear-gradient(145deg,var(--detail-color,#0b69bd),#072755)}
         .app-fighters-detail-portrait svg{width:92%;height:92%;display:block}
         .app-fighters-detail-info{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:6px}
@@ -425,7 +425,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         /* Content clearance: the flex layout already keeps every view above
            the bar (no overlap), but the last row sat flush on it — give the
            scroll views breathing room so nothing ends hard against the bar. */
-        #appHomeHeroView,#appHomeFightersView,#appHomeEventsView,#appHomeSettingsView{padding-bottom:12px}        /* App quick row (phase 2, 2026-11-19): home shortcuts that were
+        #appHomeHeroView,#appHomeFightersView,#appHomeFighterView,#appHomeEventsView,#appHomeSettingsView{padding-bottom:12px}        /* App quick row (phase 2, 2026-11-19): home shortcuts that were
            trapped inside the hidden web home — quests, season pass,
            Brick Rush, settings. Same chunky card language as the hero. */
         #appHomePlayer,#appHomeSeasonChip{cursor:pointer}
@@ -471,7 +471,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         /* Polish (phase 2): the top strip can overflow on narrow phones,
            and the Fighters detail row is cramped in narrow portrait. */
         @media (max-width:430px){#appHomeTop{flex-wrap:wrap;row-gap:6px}#appHomePlayer{font-size:13px;padding:5px 9px}#appHomeSeasonChip{font-size:11px;padding:5px 9px}#appHomeSaveBtn{padding:5px 8px;font-size:13px}#appHomeTop #homeCurrencyBar{gap:6px}}
-        @media (orientation:portrait) and (max-width:560px){#appFightersDetail{flex-direction:column;align-items:center;gap:10px}.app-fighters-detail-portrait{width:min(34vw,120px);height:min(34vw,120px)}.app-fighters-detail-info{width:100%}}
+        @media (orientation:portrait) and (max-width:560px){#appFighterDetail{flex-direction:column;align-items:center;gap:10px}.app-fighters-detail-portrait{width:min(34vw,120px);height:min(34vw,120px)}.app-fighters-detail-info{width:100%}}
         @media (orientation:portrait){#appHomeHero{flex-direction:column;justify-content:center;text-align:center}.app-hero-info{align-items:center}.app-hero-fighters{align-self:center}#appHomeEventChip{max-width:52vw}}
         #mobileLandscapeHint{top:max(10px,env(safe-area-inset-top));padding:7px 12px;border-color:rgba(255,196,93,.5);background:rgba(17,20,31,.85);color:#ffe0a3}
         @media (orientation:portrait) and (max-width:760px){.mobile-stick{width:112px;height:112px}#mobileMoveStick,#mobileAimStick{bottom:max(26px,calc(env(safe-area-inset-bottom) + 10px))}#mobileActionButtons{right:max(14px,env(safe-area-inset-right));bottom:calc(max(26px,env(safe-area-inset-bottom)) + 118px);grid-template-columns:repeat(2,52px);gap:8px}.mobile-action-btn{width:52px;height:52px;font-size:19px}}
@@ -501,7 +501,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
            switcher stays reachable while browsing the detail. */
         #appHomeFightersView{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
         #appFightersStrip{position:sticky;top:0;z-index:2;background:linear-gradient(160deg,#06101f,#0a2140);border-radius:0 0 12px 12px}
-        #appFightersDetail{flex:none;overflow-y:visible}
+        #appFighterDetail{flex:none;overflow-y:visible}
         /* Kit slots: descriptions now render under the name (phase 3). */
         .app-kit-slot b{white-space:normal}
         .app-kit-desc{display:block;font-size:10px;line-height:1.35;color:#bcd9f2;margin-top:2px}
@@ -677,7 +677,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         @media (prefers-reduced-motion:reduce){.app-toast{transition:none}.app-confirm-sheet{animation:none}}
         /* View transitions: switching app tabs fades the new view in
            instead of hard-cutting. Pure CSS, .16s. */
-        #appHomeHeroView.is-active,#appHomeFightersView.is-active,#appHomeEventsView.is-active,#appHomeSettingsView.is-active{animation:appViewIn .16s ease-out}
+        #appHomeHeroView.is-active,#appHomeFightersView.is-active,#appHomeFighterView.is-active,#appHomeEventsView.is-active,#appHomeSettingsView.is-active{animation:appViewIn .16s ease-out}
         @keyframes appViewIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
         /* ---- Arena Forge app polish pass (2026-11-19): one font, press
            feedback, safe areas, shop single-column, quest tab row scroll.
@@ -799,41 +799,40 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
            all names, art and copy stay Arena Forge. Layered on top of
            the phase 3/4 + fighters-fixes rules (later rules win), so the
            older suites' pinned strings stay in the file. */
-        /* FIGHTERS GRID: the horizontal strip is a full grid now.
-           ONE scroller: the view. The grid is not a scroller at all
-           (overflow:visible + position:static override the old sticky
-           strip), the toolbar stays sticky on top, and touch-action
-           pan-y means a vertical drag can never be stolen by a
-           horizontal strip — that was the "hard to move" bug. */
+        /* FIGHTERS GRID (fixes round 2026-11-20): horizontal paging —
+           4 small cards in a column, columns laid out left-to-right,
+           swipe to page through them. Same layout in portrait AND
+           landscape (the old portrait-only 4-col rule is what the
+           landscape playtest never saw). The strip is the horizontal
+           scroller; each .app-fighters-page is one column of 4. The
+           kit icon strip does not fit the small cards, so it is hidden
+           here — power badge + upgrade-count badge stay, and the full
+           kit state lives on the fighter page. */
         #appHomeFightersView{touch-action:pan-y}
-        #appFightersStrip{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;overflow:visible;position:static;touch-action:pan-y;padding:4px 2px 12px;background:transparent;border-radius:0}
-        @media (orientation:landscape){#appFightersStrip{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}}
-        @media (orientation:portrait) and (max-width:560px){#appFightersStrip{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}}
-        .app-fighter-card{position:relative;width:auto;padding:0;border-radius:12px;overflow:hidden;text-align:left;border:3px solid #0a1428;box-shadow:0 4px 0 rgba(0,0,0,.45);aspect-ratio:16/10;background:var(--card-color,#0b69bd)}
+        #appHomeFightersView{touch-action:pan-y}
+        #appFightersStrip{display:flex;flex-direction:row;gap:10px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;padding:4px 2px 12px;background:transparent;border-radius:0;flex:1 1 auto;min-height:0;max-height:520px}
+        #appFightersStrip .app-fighters-page{flex:0 0 auto;width:118px;display:grid;grid-template-rows:repeat(4,minmax(0,1fr));gap:8px;scroll-snap-align:start}
+        @media (orientation:landscape){#appFightersStrip .app-fighters-page{width:96px}}
+        .app-fighter-card{position:relative;width:auto;padding:0;border-radius:10px;overflow:hidden;text-align:left;border:2px solid #0a1428;box-shadow:0 3px 0 rgba(0,0,0,.45);background:var(--card-color,#0b69bd)}
         .app-fighter-card .app-fighter-portrait{position:absolute;inset:0;width:100%;height:100%;margin:0;border:0;border-radius:0;display:grid;place-items:center}
         .app-fighter-card .app-fighter-portrait svg{width:82%;height:82%}
-        .app-fighter-card b{position:absolute;right:42px;bottom:6px;z-index:2;max-width:calc(100% - 120px);font-size:15px;color:#fff;text-shadow:0 2px 0 #000,2px 0 0 #000,-2px 0 0 #000,0 -1px 0 #000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right}
+        .app-fighter-card b{position:absolute;left:6px;bottom:4px;z-index:2;max-width:calc(100% - 12px);font-size:11px;color:#fff;text-shadow:0 2px 0 #000,2px 0 0 #000,-2px 0 0 #000,0 -1px 0 #000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
         .app-fighter-card small{display:none}
-        .app-fighter-card.is-locked small{display:flex;position:absolute;left:0;right:36px;top:50%;transform:translateY(-130%);z-index:3;justify-content:center;font-size:13px;font-weight:1000;color:#fff;text-shadow:0 2px 0 #000,2px 0 0 #000,-2px 0 0 #000}
+        .app-fighter-card.is-locked small{display:flex;position:absolute;left:0;right:6px;top:50%;transform:translateY(-130%);z-index:3;justify-content:center;font-size:10px;font-weight:1000;color:#fff;text-shadow:0 2px 0 #000,2px 0 0 #000,-2px 0 0 #000}
         .app-fighter-card.is-locked .app-fighter-portrait{filter:grayscale(.75) brightness(.55)}
-        .app-fighter-card .app-fighter-fav{top:6px;left:8px;right:auto}
-        .app-fighter-power{position:absolute;top:5px;right:3px;z-index:3;width:34px;height:34px;padding:0;display:grid;place-items:center;border-radius:999px;background:radial-gradient(circle at 35% 30%,#e9a7ff,#a855f7 60%,#7c3aed);border:2px solid #fff;color:#fff;font-size:15px;font-weight:1000;box-shadow:0 0 12px rgba(168,85,247,.9),0 2px 0 rgba(0,0,0,.5)}
-        .app-fighter-trophies{position:absolute;left:6px;bottom:6px;z-index:2;display:block;padding:2px 8px;border-radius:999px;background:rgba(10,16,32,.88);border:2px solid #ff9f1c;font-size:12px;font-weight:1000;color:#ffd166}
-        .app-fighter-rarity{position:absolute;top:0;right:0;bottom:0;width:34px;background:var(--rarity-color,#9fb4c7);box-shadow:inset 2px 0 0 rgba(0,0,0,.35);opacity:1}
-        .app-fighter-cost{position:absolute;left:0;right:36px;top:50%;transform:translateY(10%);z-index:3;display:block;text-align:center;font-size:11px;font-weight:1000;color:#ffd166;text-shadow:0 2px 0 #000,1px 0 0 #000,-1px 0 0 #000}
-        .app-fighter-kit{position:absolute;top:44px;right:0;bottom:8px;width:34px;z-index:2;display:flex;flex-direction:column;align-items:center;gap:5px}
-        .app-fighter-kit-icons{display:flex;flex-direction:column;align-items:center;gap:5px}
-        .app-fighter-kit-icons i{display:grid;place-items:center;width:24px;height:24px;border-radius:7px;background:rgba(10,16,32,.55);border:2px solid rgba(255,255,255,.35);font-size:12px;font-style:normal;filter:grayscale(1);opacity:.55}
-        .app-fighter-kit-icons i.on{filter:none;opacity:1;border-color:#fff;box-shadow:0 0 8px rgba(255,255,255,.5)}
-        .app-fighter-kit-icons i.kit-tool.on{background:#22c55e}
-        .app-fighter-kit-icons i.kit-talent.on{background:#eab308}
-        .app-fighter-kit-icons i.kit-surge.on{background:#ec4899}
-        .app-fighter-upg{margin-top:auto;min-width:22px;height:22px;padding:0 4px;display:grid;place-items:center;border-radius:999px;background:#ff3b30;border:2px solid #fff;color:#fff;font-size:12px;font-weight:1000;box-shadow:0 2px 0 rgba(0,0,0,.5)}
-        @media (orientation:portrait) and (max-width:560px){.app-fighter-card{aspect-ratio:3/4}.app-fighter-card .app-fighter-portrait svg{width:88%;height:88%}.app-fighter-card b{font-size:10px;right:36px;bottom:4px;max-width:calc(100% - 40px)}.app-fighter-trophies{font-size:8px;padding:1px 4px;left:4px;bottom:4px}.app-fighter-power{width:24px;height:24px;font-size:12px;top:4px;right:5px}.app-fighter-kit{top:32px;gap:3px}.app-fighter-kit-icons{gap:3px}.app-fighter-kit-icons i{width:14px;height:14px;border-radius:5px;font-size:9px}.app-fighter-upg{min-width:16px;height:16px;font-size:10px;padding:0 3px}.app-fighter-fav{width:22px;height:22px;font-size:13px;top:4px;left:4px}.app-fighter-card.is-locked small{font-size:9px}.app-fighter-cost{font-size:8px;line-height:1.25}}
+        .app-fighter-card .app-fighter-fav{top:4px;left:4px;right:auto;width:22px;height:22px;font-size:13px}
+        .app-fighter-power{position:absolute;top:4px;right:3px;z-index:3;width:24px;height:24px;padding:0;display:grid;place-items:center;border-radius:999px;background:radial-gradient(circle at 35% 30%,#e9a7ff,#a855f7 60%,#7c3aed);border:2px solid #fff;color:#fff;font-size:12px;font-weight:1000;box-shadow:0 0 12px rgba(168,85,247,.9),0 2px 0 rgba(0,0,0,.5)}
+        .app-fighter-trophies{display:none}
+        .app-fighter-rarity{position:absolute;top:0;right:0;bottom:0;width:6px;background:var(--rarity-color,#9fb4c7);box-shadow:inset 2px 0 0 rgba(0,0,0,.35);opacity:1}
+        .app-fighter-cost{position:absolute;left:0;right:6px;top:50%;transform:translateY(10%);z-index:3;display:block;text-align:center;font-size:9px;font-weight:1000;color:#ffd166;text-shadow:0 2px 0 #000,1px 0 0 #000,-1px 0 0 #000;line-height:1.25}
+        .app-fighter-kit{display:none}
+        .app-fighter-upg{position:absolute;top:32px;right:3px;z-index:3;min-width:20px;height:20px;padding:0 4px;display:grid;place-items:center;border-radius:999px;background:#ff3b30;border:2px solid #fff;color:#fff;font-size:11px;font-weight:1000;box-shadow:0 2px 0 rgba(0,0,0,.5)}
+        .app-fighter-page-bar{display:flex;align-items:center;gap:10px;flex:none;padding:4px 2px 8px}
+        .app-fighter-wallet{margin-left:auto;font-size:13px;font-weight:1000;color:#fff;background:rgba(8,20,42,.55);border:2px solid rgba(255,255,255,.2);border-radius:999px;padding:6px 12px}
         /* FIGHTERS DETAIL SHOWCASE: big stage portrait, stats chips,
            kit slots as a 2-column grid. Portrait stacks, landscape
            puts the portrait left. */
-        #appFightersDetail{flex-direction:column;align-items:center;text-align:center;padding:16px 14px}
+        #appFighterDetail{flex-direction:column;align-items:center;text-align:center;padding:16px 14px}
         .app-fighters-detail-portrait{width:min(38vh,210px);height:min(38vh,210px)}
         .app-fighters-detail-info{align-items:center}
         .app-fighters-detail-info h3{font-size:clamp(24px,5vh,34px)}
@@ -842,7 +841,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         .app-kit-slots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%}
         .app-kit-slot{min-width:0}
         .app-fighters-detail-actions{justify-content:center}
-        @media (orientation:landscape){#appFightersDetail{flex-direction:row;align-items:flex-start;text-align:left}#appFightersDetail .app-fighters-detail-info{align-items:flex-start}#appFightersDetail .app-fighters-detail-stats{justify-content:flex-start}#appFightersDetail .app-fighters-detail-actions{justify-content:flex-start}}
+        @media (orientation:landscape){#appFighterDetail{flex-direction:row;align-items:flex-start;text-align:left}#appFighterDetail .app-fighters-detail-info{align-items:flex-start}#appFighterDetail .app-fighters-detail-stats{justify-content:flex-start}#appFighterDetail .app-fighters-detail-actions{justify-content:flex-start}}
         @media (orientation:portrait) and (max-width:560px){.app-fighters-detail-portrait{width:min(38vw,150px);height:min(38vw,150px)}}
         /* HOME HERO: full-bleed stage. The portrait is the showcase —
            bigger, on a glow tinted by the fighter color; the info sits
@@ -1008,6 +1007,12 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         .app-fighters-filter-row{display:contents}
         .app-fighters-icon-btn{flex:none;width:44px;height:44px;display:grid;place-items:center;border-radius:12px;border:2px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:#fff;font-size:20px;line-height:1;cursor:pointer}
         .app-fighters-icon-btn.is-active{background:#ff9f1c;border-color:#ffd166;color:#231303}
+        /* Quests full screen (fixes round 2026-11-20): the Quest Board
+           is a full-screen page in app mode, not a centered pop-up —
+           same pattern as the profile editor overlay. The overlay is
+           already fixed inset 0; the panel goes full-bleed. */
+        .native-app #questBoardOverlay{padding:0 !important}
+        .native-app #questBoardOverlay>div{width:100vw !important;height:100dvh !important;max-height:none !important;border-radius:0 !important;border:0 !important}
         /* Filter sheet fields (the sheet itself reuses the kit-sheet
            overlay + panel, same bottom-sheet language). */
         .app-filter-field{display:flex;flex-direction:column;gap:4px;margin:10px 0}
@@ -1024,9 +1029,6 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         #appHomeFightersView.app-fighters-search-open .app-fighters-search-wrap{display:flex;flex:none;width:100%}
         .app-fighters-search-wrap .app-fighters-search{font-size:16px}
         .app-fighters-filter-row{display:flex;align-items:center;gap:8px;flex:none}
-        .app-fighters-filter-row .app-fighters-roles{flex:1 1 auto;min-width:0}
-        .app-fighters-filter-row .app-fighters-sort{padding:8px 6px;font-size:12px}
-        .app-fighters-role{padding:6px 10px;font-size:11px}
         /* Smaller sizing: home top bar, hero, quick row, event chip. */
         #appHome{padding-left:max(8px,env(safe-area-inset-left));padding-right:max(8px,env(safe-area-inset-right))}
         #appHomeTop{gap:8px;min-height:40px}
@@ -1053,7 +1055,6 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         /* Fighters detail: no box on mobile — the panel goes flat
            (border + background removed), kit slots + stat pills lose
            their heavy borders. Content and tap targets are unchanged. */
-        #appFightersDetail{border:0;border-radius:0;background:transparent;box-shadow:none;padding:12px 4px}
         .app-fighters-detail-info h3{font-size:clamp(22px,4.5vh,30px)}
         .app-fighters-detail-stats span{padding:4px 8px;font-size:11px;border-color:transparent;background:rgba(255,255,255,.06)}
         .app-fighters-detail-desc{font-size:11px}
@@ -1062,6 +1063,17 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         /* Profile: the ranked boxes lose their heavy borders on mobile;
            the diagonal split, hex favorites and prestige shield stay. */
         .native-app .profile-ranked-boxes>div{border-color:transparent;background:rgba(10,16,32,.4)}
+        }
+        /* Fixes round (2026-11-20): the icon top bar must exist in
+           landscape too — the portrait-only query above is exactly
+           what the landscape playtest never saw. Same column toolbar,
+           search hidden until the icon opens it. */
+        @media (orientation:landscape) and (max-width:900px){
+        .app-fighters-toolbar{flex-direction:column;align-items:stretch;gap:6px;padding:2px 2px 8px}
+        .app-fighters-topbar{display:flex;align-items:center;gap:8px;flex:none}
+        #appHomeFightersView:not(.app-fighters-search-open) .app-fighters-search-wrap{display:none}
+        #appHomeFightersView.app-fighters-search-open .app-fighters-search-wrap{display:flex;flex:none;width:100%}
+        .app-fighters-filter-row{display:flex;align-items:center;gap:8px;flex:none}
         }
         `;
         document.head.appendChild(styleSheet);
@@ -6129,6 +6141,7 @@ const bolznstienPendingStrikes = [];
               </div>
             </div>
             <div id="appHomeFightersView"></div>
+            <div id="appHomeFighterView"></div>
             <div id="appHomeEventsView"></div>
             <div id="appHomeSettingsView"></div>
           </div>
@@ -6468,11 +6481,16 @@ const bolznstienPendingStrikes = [];
         // the native events view is what the Events tab shows. setHomeTab
         // still calls this (web tab restore at boot), but it never flips
         // the app tab.
-        const activeView = appHomeTab === 'fighters' ? 'fighters' : appHomeTab === 'events' ? 'events' : 'home';
+        const activeView = appHomeTab === 'fighters' ? 'fighters' : appHomeTab === 'events' ? 'events' : appHomeTab === 'fighter' ? 'fighter' : 'home';
         document.getElementById('appHomeHeroView')?.classList.toggle('is-active', activeView === 'home' && appHomeTab !== 'settings');
         document.getElementById('appHomeFightersView')?.classList.toggle('is-active', activeView === 'fighters');
+        document.getElementById('appHomeFighterView')?.classList.toggle('is-active', activeView === 'fighter');
         document.getElementById('appHomeEventsView')?.classList.toggle('is-active', activeView === 'events');
         document.getElementById('appHomeSettingsView')?.classList.toggle('is-active', appHomeTab === 'settings');
+        // Fixes round (2026-11-20): the top bar (player / season /
+        // currencies / save) is home-only. Every other screen hides it;
+        // the fighter page shows its own coins + core pieces wallet.
+        document.getElementById('appHomeTop')?.style.setProperty('display', appHomeTab === 'home' ? '' : 'none');
         appHomeEl.querySelectorAll('[data-app-tab]').forEach((button) => {
             const isCurrentTab = button.dataset.appTab === appHomeTab;
             button.classList.toggle('is-active', isCurrentTab);
@@ -6513,6 +6531,7 @@ const bolznstienPendingStrikes = [];
         // overlay over the still-active view, so it keeps ticking.
         if (tab !== 'events') stopAppEventsCountdown();
         if (tab === 'settings') { appHomeTab = tab; buildAppSettingsView(); syncAppHome(); setAppDeepLink('settings'); return; }
+        if (tab === 'fighter') { appHomeTab = tab; buildAppFighterView(); syncAppHome(); setAppDeepLink('fighter'); return; }
         if (tab === 'fighters' || tab === 'events' || tab === 'home') {
             appHomeTab = tab;
             if (tab === 'fighters') buildAppFightersView();
@@ -6532,7 +6551,7 @@ const bolznstienPendingStrikes = [];
     // part is flagged, not claimed. Navigation keeps the URL in sync
     // with replaceState (no history entries, and replaceState never
     // fires hashchange, so routing cannot loop back into itself).
-    const APP_DEEP_LINK_ROUTES = ['home', 'fighters', 'events', 'shop', 'pass', 'tournament', 'profile', 'settings'];
+    const APP_DEEP_LINK_ROUTES = ['home', 'fighters', 'fighter', 'events', 'shop', 'pass', 'tournament', 'profile', 'settings'];
     function readAppDeepLinkRoute() {
         try {
             const hash = String(window.location.hash || '').replace(/^#/, '').split(/[/?&]/)[0].trim().toLowerCase();
@@ -6558,9 +6577,8 @@ const bolznstienPendingStrikes = [];
             // Overlay screens reuse the same openers the app chrome
             // already uses (season chip / player chip / hero card); the
             // tab screens go through setAppHomeTab, which also syncs
-            // the URL. 'pass' is the quest-board season tab, exactly
-            // like the SEASON PASS quick button — the Circuit Pass
-            // tier-road overlay stays behind its own decision.
+            // the URL. 'pass' opens the Circuit Pass tier-road overlay,
+            // exactly like the SEASON PASS quick button.
             if (route === 'pass') { if (typeof openSeasonPass === 'function') openSeasonPass(); setAppDeepLink('pass'); return true; }
             if (route === 'tournament') { if (typeof openTournamentHub === 'function') openTournamentHub(); setAppDeepLink('tournament'); return true; }
             if (route === 'profile') { if (typeof openPlayerProfile === 'function') openPlayerProfile(); setAppDeepLink('profile'); return true; }
@@ -6573,13 +6591,16 @@ const bolznstienPendingStrikes = [];
         if (route) navigateAppDeepLink(route);
     }
     // ---- App Fighters view (Brawl Stars Nov 2026 collection inspo) ----
-    // Horizontal-scrolling roster of smaller cards + search + class filter,
-    // with a detail panel (portrait, stats, main/Super text, kit slots,
-    // upgrade path). App mode only; everything reuses brawlerData,
-    // getScaledStats, getBrawlerPortraitMarkup and the web picker's
-    // selection flow. Tapping a card focuses it; PLAY selects it as hero.
+    // Horizontal paging: 4 small cards per column, columns left to
+    // right, swipe to page (fixes round 2026-11-20 — same in portrait
+    // and landscape). Icon-only toolbar (search / filter / favorites);
+    // sort lives in the filter sheet. Tapping a card opens that
+    // fighter's own full screen (portrait, stats, main/Super text, kit
+    // slots, upgrade path). App mode only; everything reuses
+    // brawlerData, getScaledStats, getBrawlerPortraitMarkup and the web
+    // picker's selection flow. PLAY selects the fighter as hero.
     let appFightersBuilt = false;
-    const appFightersState = { search: '', role: 'all', focused: null, sort: 'favorites', rarity: 'all', minPower: 0, owned: 'all' };
+    const appFightersState = { search: '', role: 'all', focused: null, sort: 'favorites', rarity: 'all', minPower: 0, owned: 'all', favoritesOnly: false };
     // Round 2: the sort pref persists in localStorage (a UI pref, not
     // save data). A bad or stale value falls back to the default.
     const APP_FIGHTERS_SORT_KEY = 'brawl_arena_fighters_sort';
@@ -6601,25 +6622,19 @@ const bolznstienPendingStrikes = [];
             if (APP_FIGHTER_RARITIES.includes(storedFilters.rarity)) appFightersState.rarity = storedFilters.rarity;
             if (APP_FIGHTER_POWER_BANDS.includes(Number(storedFilters.minPower))) appFightersState.minPower = Number(storedFilters.minPower);
             if (APP_FIGHTER_OWNED_STATES.includes(storedFilters.owned)) appFightersState.owned = storedFilters.owned;
+            if (typeof storedFilters.favoritesOnly === 'boolean') appFightersState.favoritesOnly = storedFilters.favoritesOnly;
         }
     } catch (_) {}
     function saveAppFightersFilters() {
-        try { localStorage.setItem(APP_FIGHTERS_FILTERS_KEY, JSON.stringify({ rarity: appFightersState.rarity || 'all', minPower: Number(appFightersState.minPower) || 0, owned: appFightersState.owned || 'all' })); } catch (_) {}
+        try { localStorage.setItem(APP_FIGHTERS_FILTERS_KEY, JSON.stringify({ rarity: appFightersState.rarity || 'all', minPower: Number(appFightersState.minPower) || 0, owned: appFightersState.owned || 'all', favoritesOnly: !!appFightersState.favoritesOnly })); } catch (_) {}
     }
     const APP_FIGHTER_RARITY_COLORS = { Starter: '#ff9f1c', Rare: '#8cf05a', Epic: '#b388ff', Mythic: '#ff8ad8', Exotic: '#ffcd2f', Unique: '#ff6b6b', Anomaly: '#f3d5ff' };
-    function appFightersRoles() {
-        const roles = [];
-        for (const id of allBrawlers) {
-            const role = brawlerData[id]?.role || 'Fighter';
-            if (!roles.includes(role)) roles.push(role);
-        }
-        return roles.sort();
-    }
     function appFightersVisibleList() {
         const q = appFightersState.search.trim().toLowerCase();
         const role = appFightersState.role;
-        const list = allBrawlers.filter((id) => {
+        const list = playableBrawlerIds().filter((id) => {
             const data = brawlerData[id] || {};
+            if (appFightersState.favoritesOnly && !isFavoriteBrawler(id)) return false;
             if (role !== 'all' && (data.role || 'Fighter') !== role) return false;
             if (q && !(String(data.name || id).toLowerCase().includes(q) || String(id).toLowerCase().includes(q))) return false;
             // Mobile UI (2026-11-20): filter-sheet filters — rarity, min
@@ -6697,25 +6712,17 @@ const bolznstienPendingStrikes = [];
                 <div class="app-fighters-topbar">
                   <button type="button" id="appFightersSearchToggle" class="app-fighters-icon-btn" aria-label="Search fighters" aria-expanded="false">🔍</button>
                   <button type="button" id="appFightersFilterBtn" class="app-fighters-icon-btn" aria-label="Filter fighters" aria-pressed="false">⚙</button>
+                  <button type="button" id="appFightersFavToggle" class="app-fighters-icon-btn" aria-label="Favorites only" aria-pressed="false">★</button>
                 </div>
                 <div class="app-fighters-search-wrap">
                   <input id="appFightersSearch" class="app-fighters-search" type="search" placeholder="🔎 Search fighters…" autocomplete="off" enterkeyhint="search">
                   <button type="button" id="appFightersClearSearch" class="app-fighters-clear-search" aria-label="Clear search" hidden>✕</button>
                 </div>
                 <div class="app-fighters-filter-row">
-                <select id="appFightersSort" class="app-fighters-sort" aria-label="Sort fighters">
-                  <option value="favorites">★ FAVORITES</option>
-                  <option value="name">NAME A–Z</option>
-                  <option value="power">POWER ↓</option>
-                  <option value="rarity">RARITY ↓</option>
-                  <option value="owned">OWNED FIRST</option>
-                </select>
-                <div id="appFightersRoles" class="app-fighters-roles"></div>
                 <span id="appFightersCount" class="app-fighters-count"></span>
                 </div>
               </div>
-              <div id="appFightersStrip" class="app-fighters-grid"></div>
-              <div id="appFightersDetail"></div>`;
+              <div id="appFightersStrip" class="app-fighters-grid"></div>`;
             view.querySelector('#appFightersSearch')?.addEventListener('input', (event) => {
                 appFightersState.search = event.target.value || '';
                 // F5: the clear button only shows while there is a query.
@@ -6736,20 +6743,6 @@ const bolznstienPendingStrikes = [];
                 if (clearBtn) clearBtn.hidden = true;
                 renderAppFightersStrip();
             });
-            // Round 2: sort control — favorites first is the default;
-            // the pick persists as a UI pref (localStorage, not save data).
-            const sortSelect = view.querySelector('#appFightersSort');
-            if (sortSelect) {
-                sortSelect.value = appFightersState.sort || 'favorites';
-                sortSelect.addEventListener('change', (event) => {
-                    const next = event.target.value;
-                    if (!APP_FIGHTERS_SORTS.includes(next)) return;
-                    appBuzz(10);
-                    appFightersState.sort = next;
-                    try { localStorage.setItem(APP_FIGHTERS_SORT_KEY, next); } catch (_) {}
-                    renderAppFightersStrip();
-                });
-            }
             // Mobile UI (2026-11-20): icon top bar. The search icon opens
             // the search field (portrait phones hide it until tapped) and
             // the filter icon opens the filter sheet; both are no-ops on
@@ -6766,15 +6759,15 @@ const bolznstienPendingStrikes = [];
                 appBuzz(10);
                 openAppFightersFilterSheet();
             });
-            view.querySelector('#appFightersRoles')?.addEventListener('click', (event) => {
-                const chip = event.target.closest('[data-app-role]');
-                if (!chip) return;
+            // Fixes round (2026-11-20): favorites is an icon-only toggle
+            // now (the FAVORITES word pill is gone) — filters the strip
+            // to favorites, persists like the other filter prefs.
+            view.querySelector('#appFightersFavToggle')?.addEventListener('click', () => {
                 appBuzz(10);
-                // Dismiss the phone keyboard: the filter is applied, the
-                // search field no longer needs focus.
-                view.querySelector('#appFightersSearch')?.blur();
-                appFightersState.role = chip.dataset.appRole;
-                renderAppFightersRoles();
+                appFightersState.favoritesOnly = !appFightersState.favoritesOnly;
+                saveAppFightersFilters();
+                syncAppFightersFavBtn();
+                syncAppFightersFilterBtn();
                 renderAppFightersStrip();
             });
             view.querySelector('#appFightersStrip')?.addEventListener('click', (event) => {
@@ -6787,46 +6780,15 @@ const bolznstienPendingStrikes = [];
                 appBuzz(10);
                 view.querySelector('#appFightersSearch')?.blur();
                 appFightersState.focused = card.dataset.appFighter;
-                // Round 2 (screenshot item a): render the detail FIRST —
-                // if the detail cannot render, the strip must not already
-                // show the new selection while the panel still shows the
-                // old brawler. The detail never leaves stale content now
-                // (it renders an error state on failure, see below).
-                renderAppFightersDetail();
+                // Fixes round (2026-11-20): a tap opens the fighter's
+                // own full screen (item 9) — no more inline detail.
                 renderAppFightersStrip();
-                // Phase 3: the detail is one page with the view now, so a
-                // new fighter starts at the top instead of mid-scroll, and
-                // the picked card stays visible in the strip.
-                const fightersView = document.getElementById('appHomeFightersView');
-                if (fightersView) fightersView.scrollTop = 0;
-                view.querySelector(`[data-app-fighter="${appFightersState.focused}"]`)?.scrollIntoView({ block: 'nearest' });
-            });
-            view.querySelector('#appFightersDetail')?.addEventListener('click', (event) => {
-                // Round 2: a skin chip equips that skin; the FAVORITE
-                // button toggles the favorite. Both are checked before
-                // the kit-slot tap below.
-                const skinBtn = event.target.closest('[data-app-skin]');
-                if (skinBtn) { appBuzz(10); appFightersSkinPick(appFightersState.focused, skinBtn.dataset.appSkin); return; }
-                if (event.target.closest('[data-app-action="favorite"]')) { appBuzz(10); toggleAppFighterFavorite(appFightersState.focused); return; }
-                const kitBtn = event.target.closest('[data-app-kit]');
-                // Phase 4: a kit tap opens the detail sheet (name + full
-                // description + real data); the sheet's SELECT button is
-                // what performs the pick, via appFightersKitPick.
-                if (kitBtn) { openAppKitSheet(appFightersState.focused, kitBtn.dataset.appKit); return; }
-                if (event.target.closest('[data-app-action="play"]')) { appBuzz(10); appFightersPlay(appFightersState.focused); return; }
-                if (event.target.closest('[data-app-action="upgrade"]')) { appBuzz(10); appFightersUpgrade(appFightersState.focused); return; }
+                openAppFighterPage(appFightersState.focused);
             });
         }
-        renderAppFightersRoles();
         renderAppFightersStrip();
-        renderAppFightersDetail();
         syncAppFightersFilterBtn();
-    }
-    function renderAppFightersRoles() {
-        const host = document.getElementById('appFightersRoles');
-        if (!host) return;
-        const chips = ['all', ...appFightersRoles()].map((role) => `<button type="button" class="app-fighters-role${appFightersState.role === role ? ' is-active' : ''}" data-app-role="${role}">${role === 'all' ? 'ALL' : role.toUpperCase()}</button>`).join('');
-        host.innerHTML = chips;
+        syncAppFightersFavBtn();
     }
     // Mobile UI (2026-11-20): the filter icon lights up while any
     // filter-sheet filter is set, so a filtered roster never looks
@@ -6835,9 +6797,17 @@ const bolznstienPendingStrikes = [];
     function syncAppFightersFilterBtn() {
         const btn = document.getElementById('appFightersFilterBtn');
         if (!btn) return;
-        const active = (appFightersState.rarity && appFightersState.rarity !== 'all') || (Number(appFightersState.minPower) || 0) > 0 || (appFightersState.owned && appFightersState.owned !== 'all');
+        const active = (appFightersState.rarity && appFightersState.rarity !== 'all') || (Number(appFightersState.minPower) || 0) > 0 || (appFightersState.owned && appFightersState.owned !== 'all') || !!appFightersState.favoritesOnly;
         btn.classList.toggle('is-active', !!active);
         btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    }
+    // Fixes round (2026-11-20): the ★ favorites toggle lights up
+    // while the favorites-only filter is on.
+    function syncAppFightersFavBtn() {
+        const btn = document.getElementById('appFightersFavToggle');
+        if (!btn) return;
+        btn.classList.toggle('is-active', !!appFightersState.favoritesOnly);
+        btn.setAttribute('aria-pressed', appFightersState.favoritesOnly ? 'true' : 'false');
     }
     function renderAppFightersStrip() {
         const strip = document.getElementById('appFightersStrip');
@@ -6845,12 +6815,15 @@ const bolznstienPendingStrikes = [];
         // F9: owned/total counter (overall roster, not the filtered list).
         const countEl = document.getElementById('appFightersCount');
         if (countEl) {
-            const owned = allBrawlers.filter((b) => isBrawlerUnlocked(b)).length;
-            countEl.textContent = `${owned}/${allBrawlers.length} OWNED`;
+            const playable = playableBrawlerIds();
+            const owned = playable.filter((b) => isBrawlerUnlocked(b)).length;
+            countEl.textContent = `${owned}/${playable.length} OWNED`;
         }
         const list = appFightersVisibleList();
         if (!list.length) { strip.innerHTML = '<div class="app-fighters-empty">No fighters match that search.</div>'; return; }
-        strip.innerHTML = list.map((id) => {
+        // Fixes round (2026-11-20): horizontal paging — 4 small cards
+        // per column, columns laid out left-to-right, swipe to page.
+        const cardHtml = (id) => {
             const data = brawlerData[id] || {};
             const pData = playerData?.brawlers?.[id] || { level: 1 };
             const locked = !isBrawlerUnlocked(id) && !isWeeklyTrialBrawler(id);
@@ -6875,14 +6848,17 @@ const bolznstienPendingStrikes = [];
               <span class="app-fighter-portrait">${portrait}</span>
               <span class="app-fighter-power">${pData.level || 1}</span>
               <span class="app-fighter-rarity" style="--rarity-color:${rarityColor}" aria-hidden="true"></span>
-              <span class="app-fighter-kit" aria-hidden="true"><span class="app-fighter-kit-icons"><i class="kit-tool${kitTool ? ' on' : ''}">🔧</i><i class="kit-talent${kitTalent ? ' on' : ''}">⭐</i><i class="kit-surge${kitSurge ? ' on' : ''}">⚡</i></span>${kitUpg > 0 ? `<span class="app-fighter-upg">${kitUpg}</span>` : ''}</span>
+              <span class="app-fighter-kit" aria-hidden="true"><span class="app-fighter-kit-icons"><i class="kit-tool${kitTool ? ' on' : ''}">🔧</i><i class="kit-talent${kitTalent ? ' on' : ''}">⭐</i><i class="kit-surge${kitSurge ? ' on' : ''}">⚡</i></span></span>${kitUpg > 0 ? `<span class="app-fighter-upg">${kitUpg}</span>` : ''}
               <span class="app-fighter-fav${isFavoriteBrawler(id) ? ' is-fav' : ''}" data-app-favorite="${id}" role="button" aria-label="Favorite ${data.name || id}">${isFavoriteBrawler(id) ? '★' : '☆'}</span>
               <b>${data.name || id}</b>
               <small>${locked ? '🔒 LOCKED' : `POWER ${pData.level || 1}`}</small>${soulCost > 0 ? `
               <span class="app-fighter-cost">${soulCost} SOULS TO UNLOCK</span>` : ''}${bricks > 0 ? `
               <span class="app-fighter-trophies">🧱 ${bricks.toLocaleString()}</span>` : ''}
             </button>`;
-        }).join('');
+        };
+        const pages = [];
+        for (let i = 0; i < list.length; i += 4) pages.push(list.slice(i, i + 4));
+        strip.innerHTML = pages.map((page) => `<div class="app-fighters-page">${page.map(cardHtml).join('')}</div>`).join('');
     }
     // Kit name/description split (phase 3): the data carries descriptions
     // two ways — "Name (description)" and "Name: description" — and
@@ -6957,21 +6933,21 @@ const bolznstienPendingStrikes = [];
     // render, the panel says so instead of still showing the previous
     // brawler while the strip already highlights the new one.
     function renderAppFightersDetail() {
-        const detail = document.getElementById('appFightersDetail');
+        const detail = document.getElementById('appFighterDetail');
         if (!detail) return;
         const id = appFightersState.focused || selectedBrawler;
         try {
             renderAppFightersDetailFor(id);
         } catch (_) {
-            detail.innerHTML = '<div class="app-fighters-empty">Could not show this fighter — pick another one above.</div>';
+            detail.innerHTML = '<div class="app-fighters-empty">Could not show this fighter — go back and pick another fighter.</div>';
             if (detail.dataset) detail.dataset.renderedFor = '';
         }
     }
     function renderAppFightersDetailFor(id) {
-        const detail = document.getElementById('appFightersDetail');
+        const detail = document.getElementById('appFighterDetail');
         if (!detail) return;
         const data = brawlerData[id];
-        if (!data) { detail.innerHTML = '<div class="app-fighters-empty">Pick a fighter above.</div>'; if (detail.dataset) detail.dataset.renderedFor = ''; return; }
+        if (!data) { detail.innerHTML = '<div class="app-fighters-empty">Pick a fighter from the roster.</div>'; if (detail.dataset) detail.dataset.renderedFor = ''; return; }
         const pData = getEffectiveBrawlerProgress(id);
         const level = pData.level || 1;
         const stats = getScaledStats(id, level);
@@ -7089,6 +7065,58 @@ const bolznstienPendingStrikes = [];
         updateGadgetInfo();
         updateGadgetButton();
     }
+    // Fixes round (2026-11-20): the fighter page is a NEW FULL SCREEN
+    // (item 9) — tapping a fighter opens it to upgrade / change
+    // abilities. No more inline detail pop-up on the Fighters screen.
+    // It also carries its own coins + core pieces wallet (item 7),
+    // since the global top bar is home-only now.
+    let appFighterBuilt = false;
+    function buildAppFighterView() {
+        const view = document.getElementById('appHomeFighterView');
+        if (!view) return;
+        if (!appFighterBuilt) {
+            appFighterBuilt = true;
+            view.innerHTML = `
+              <div class="app-fighter-page-bar">
+                <button type="button" id="appFighterBack" class="app-fighters-icon-btn" aria-label="Back to fighters">←</button>
+                <span id="appFighterWallet" class="app-fighter-wallet"></span>
+              </div>
+              <div id="appFighterDetail"></div>`;
+            view.querySelector('#appFighterBack')?.addEventListener('click', () => {
+                appBuzz(10);
+                setAppHomeTab('fighters');
+            });
+            view.querySelector('#appFighterDetail')?.addEventListener('click', (event) => {
+                // Moved here from the Fighters view (fixes round): a skin
+                // chip equips that skin; the FAVORITE button toggles the
+                // favorite. Both are checked before the kit-slot tap below.
+                const skinBtn = event.target.closest('[data-app-skin]');
+                if (skinBtn) { appBuzz(10); appFightersSkinPick(appFightersState.focused, skinBtn.dataset.appSkin); return; }
+                if (event.target.closest('[data-app-action="favorite"]')) { appBuzz(10); toggleAppFighterFavorite(appFightersState.focused); return; }
+                const kitBtn = event.target.closest('[data-app-kit]');
+                // Phase 4: a kit tap opens the detail sheet (name + full
+                // description + real data); the sheet's SELECT button is
+                // what performs the pick, via appFightersKitPick.
+                if (kitBtn) { openAppKitSheet(appFightersState.focused, kitBtn.dataset.appKit); return; }
+                if (event.target.closest('[data-app-action="play"]')) { appBuzz(10); appFightersPlay(appFightersState.focused); return; }
+                if (event.target.closest('[data-app-action="upgrade"]')) { appBuzz(10); appFightersUpgrade(appFightersState.focused); return; }
+            });
+        }
+        renderAppFightersDetail();
+        renderAppFighterWallet();
+    }
+    function openAppFighterPage(id) {
+        if (!brawlerData[id]) return;
+        appFightersState.focused = id;
+        setAppHomeTab('fighter');
+    }
+    function renderAppFighterWallet() {
+        const el = document.getElementById('appFighterWallet');
+        if (!el) return;
+        let corePieces = 0;
+        try { corePieces = getCorePieces(); } catch (_) { corePieces = (playerData && playerData.corePieces) || 0; }
+        el.textContent = `🪙 ${(playerData.coins || 0).toLocaleString()} · 💎 ${Number(corePieces || 0).toLocaleString()}`;
+    }
     // ---- Kit detail sheet (phase 4) ----
     // Tapping a kit slot opens a bottom sheet with EVERYTHING the code
     // actually has about it: name + full description (kitSplit desc,
@@ -7171,6 +7199,7 @@ const bolznstienPendingStrikes = [];
         const rarity = appFightersState.rarity || 'all';
         const minPower = Number(appFightersState.minPower) || 0;
         const owned = appFightersState.owned || 'all';
+        const sort = appFightersState.sort || 'favorites';
         const opt = (v, label, cur) => `<option value="${v}"${String(cur) === String(v) ? ' selected' : ''}>${esc(label)}</option>`;
         const overlay = document.createElement('div');
         overlay.className = 'app-kit-sheet-overlay';
@@ -7182,6 +7211,7 @@ const bolznstienPendingStrikes = [];
             <label class="app-filter-field"><small>RARITY</small><select id="appFilterRarity">${['all', ...APP_FIGHTER_RARITIES].map((r) => opt(r, r === 'all' ? 'All rarities' : r, rarity)).join('')}</select></label>
             <label class="app-filter-field"><small>POWER</small><select id="appFilterPower">${APP_FIGHTER_POWER_BANDS.map((p) => opt(p, p === 0 ? 'All powers' : p === 12 ? 'Power 12 (max)' : `Power ${p}+`, minPower)).join('')}</select></label>
             <label class="app-filter-field"><small>OWNED</small><select id="appFilterOwned">${[['all', 'All fighters'], ['owned', 'Owned'], ['locked', 'Locked']].map(([v, l]) => opt(v, l, owned)).join('')}</select></label>
+            <label class="app-filter-field"><small>SORT</small><select id="appFilterSort">${APP_FIGHTERS_SORTS.map((s) => opt(s, { favorites: 'Favorites first', name: 'Name A–Z', power: 'Power (high first)', rarity: 'Rarity (high first)', owned: 'Owned first' }[s] || s, sort)).join('')}</select></label>
             <div class="app-kit-sheet-actions">
               <button type="button" class="app-kit-sheet-close" data-app-filter-clear="1">CLEAR ALL</button>
               <button type="button" class="app-kit-sheet-select" data-app-filter-done="1">✓ DONE</button>
@@ -7190,8 +7220,9 @@ const bolznstienPendingStrikes = [];
         overlay.addEventListener('click', (event) => {
             if (event.target === overlay || event.target.closest('[data-app-filter-done]')) { closeAppFightersFilterSheet(); return; }
             if (event.target.closest('[data-app-filter-clear]')) {
-                appFightersState.rarity = 'all'; appFightersState.minPower = 0; appFightersState.owned = 'all';
-                saveAppFightersFilters(); renderAppFightersStrip(); syncAppFightersFilterBtn(); closeAppFightersFilterSheet(); return;
+                appFightersState.rarity = 'all'; appFightersState.minPower = 0; appFightersState.owned = 'all'; appFightersState.sort = 'favorites'; appFightersState.favoritesOnly = false;
+                try { localStorage.setItem(APP_FIGHTERS_SORT_KEY, 'favorites'); } catch (_) {}
+                saveAppFightersFilters(); renderAppFightersStrip(); syncAppFightersFilterBtn(); syncAppFightersFavBtn(); closeAppFightersFilterSheet(); return;
             }
         });
         overlay.addEventListener('change', (event) => {
@@ -7200,6 +7231,7 @@ const bolznstienPendingStrikes = [];
             if (t.id === 'appFilterRarity' && APP_FIGHTER_RARITIES.includes(t.value)) { appFightersState.rarity = t.value; }
             else if (t.id === 'appFilterPower') { const n = Number(t.value) || 0; if (APP_FIGHTER_POWER_BANDS.includes(n)) appFightersState.minPower = n; }
             else if (t.id === 'appFilterOwned' && APP_FIGHTER_OWNED_STATES.includes(t.value)) { appFightersState.owned = t.value; }
+            else if (t.id === 'appFilterSort' && APP_FIGHTERS_SORTS.includes(t.value)) { appFightersState.sort = t.value; try { localStorage.setItem(APP_FIGHTERS_SORT_KEY, t.value); } catch (_) {} }
             else return;
             appBuzz(10);
             saveAppFightersFilters(); renderAppFightersStrip(); syncAppFightersFilterBtn();
@@ -7246,6 +7278,7 @@ const bolznstienPendingStrikes = [];
         saveProgress();
         renderAppFightersStrip();
         renderAppFightersDetail();
+        renderAppFighterWallet();
         syncAppHome();
     }
     // ---- App Events view (Brawl Stars events inspo) ----
@@ -8045,6 +8078,16 @@ const bolznstienPendingStrikes = [];
     const registeredBrawlerModules = window.ArenaForgeModules?.brawlers || Object.create(null);
     for (const moduleId of Object.keys(registeredBrawlerModules)) {
         if (!allBrawlers.includes(moduleId)) allBrawlers.push(moduleId);
+    }
+    // Fixes round (2026-11-20): the Fighters screen must count only
+    // PLAYABLE fighters. allBrawlers also absorbs ids registered by
+    // runtime brawler modules (duck, the_deleter, dr0ne, unhitabble)
+    // that have no brawlerData row and can never render or be picked —
+    // they made the roster read 108 instead of 104. allBrawlers itself
+    // is left alone (bot rolls + Soul Summoner pools read it); the
+    // Fighters screen filters to playable ids here.
+    function playableBrawlerIds() {
+        return allBrawlers.filter((id) => !!brawlerData[id]);
     }
     // Emergency balance hold: preserve Jetpack's implementation and ownership,
     // but prevent selection, matchmaking, bot rolls, and reward rolls.
@@ -10134,7 +10177,66 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
               };
           }
       }
-      function ensureSeasonPassState() {
+          // Fixes round (2026-11-20): the Season Pass button must never die
+      // silently. ensureSeasonPassState dereferences the BrawePassTokens
+      // module (loaded by bootstrap.js before game.js); if that load ever
+      // fails in the app, the old code threw before any overlay existed,
+      // so the tap did nothing at all. Install the same fallback
+      // bootstrap.js uses, so the pass always opens.
+      function ensureBrawePassTokens() {
+          try {
+              if (typeof BrawePassTokens !== 'undefined' && BrawePassTokens) return BrawePassTokens;
+          } catch (_) {}
+          const integer = value => Number.isFinite(Number(value)) ? Math.max(0, Math.floor(Number(value))) : 0;
+          const offers = Object.freeze([
+              { id: 'coin-cache', name: 'Coin Cache', icon: '🪙', cost: 100, limit: 10, reward: { type: 'coins', amount: 200 } },
+              { id: 'soul-cache', name: 'Soul Cache', icon: '✦', cost: 200, limit: 5, reward: { type: 'souls', amount: 30 } },
+              { id: 'super-tapper', name: 'Super Tapper', icon: '🎁', cost: 400, limit: 3, reward: { type: 'superTapper', amount: 1 } },
+              { id: 'core-cache', name: 'Core Piece Cache', icon: '💠', cost: 800, limit: 3, reward: { type: 'corePieces', amount: 25 } },
+              { id: 'random-piece', name: 'Random Piece Bundle', icon: '🧩', cost: 1200, limit: 2, reward: { type: 'randomPiece', amount: 3 } }
+          ]);
+          function normalize(pass, maxLevel = 50) {
+              pass.xp = integer(pass.xp);
+              pass.level = Math.min(maxLevel, Math.max(1, integer(pass.level), Math.floor(pass.xp / 100) + 1));
+              if (pass.tokenSchema !== 1) {
+                  pass.tokensEarned = pass.xp;
+                  pass.tokenWallet = pass.xp;
+                  pass.tokenPurchases = {};
+                  pass.tokenSchema = 1;
+              }
+              pass.tokensEarned = integer(pass.tokensEarned);
+              pass.tokenWallet = Math.min(pass.tokensEarned, integer(pass.tokenWallet));
+              if (!pass.tokenPurchases || typeof pass.tokenPurchases !== 'object') pass.tokenPurchases = {};
+              return pass;
+          }
+          function earn(pass, amount, maxLevel = 50) {
+              normalize(pass, maxLevel);
+              amount = integer(amount);
+              if (!amount) return false;
+              pass.xp += amount;
+              pass.tokensEarned += amount;
+              pass.tokenWallet += amount;
+              normalize(pass, maxLevel);
+              return true;
+          }
+          function purchase(pass, id, grant) {
+              normalize(pass);
+              const offer = offers.find(entry => entry.id === id);
+              if (!offer || pass.tokenWallet < offer.cost || integer(pass.tokenPurchases[id]) >= offer.limit) return false;
+              if (grant(offer.reward) === false) return false;
+              pass.tokenWallet -= offer.cost;
+              pass.tokenPurchases[id] = integer(pass.tokenPurchases[id]) + 1;
+              return true;
+          }
+          const fallback = Object.freeze({ normalize, earn, purchase, offers });
+          try { if (typeof globalThis !== 'undefined') globalThis.BrawePassTokens = fallback; } catch (_) {}
+          try { if (typeof window !== 'undefined') window.BrawePassTokens = fallback; } catch (_) {}
+          return fallback;
+      }
+  function ensureSeasonPassState() {
+          // Fixes round (2026-11-20): the pass module must exist before any
+          // BrawePassTokens dereference, or the Season Pass button dies silently.
+          ensureBrawePassTokens();
           if (!ENABLE_SEASON_QUESTS) return;
           if (!playerData.seasonPass || playerData.seasonPass.seasonId !== getActiveSeasonPassId()) {
               if(playerData.seasonPass?.seasonId){
@@ -10428,14 +10530,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           };
           return questAliases[questKey] || questKey;
       }
-      const DAILY_WEEKLY_QUEST_SCHEMA_VERSION = 4;
-      const WEEKLY_STAGE_COUNT = 10;
-      const DAILY_QUESTS = [
-          { id: 'daily_play_1', kind: 'play_match', title: 'Play 2 Matches', desc: 'Finish 2 matches in any mode.', target: 2, rewards: { coins: 140 } },
-          { id: 'daily_damage_1', kind: 'deal_damage', title: 'Deal 15000 Damage', desc: 'Deal a total of 15k damage.', target: 15000, rewards: { coins: 180 } },
-          { id: 'daily_super_1', kind: 'perform_supers', title: 'Use 6 Power Moves', desc: 'Charge and fire your Power Move 6 times.', target: 6, rewards: { coins: 120, gems: 1 } },
-          { id: 'daily_gadget_1', kind: 'use_gadget', title: 'Use 4 Tools', desc: 'Activate your Tool 4 times.', target: 4, rewards: { coins: 110 } }
-      ];
+      const DAILY_WEEKLY_QUEST_SCHEMA_VERSION = 5; // Fixes round (2026-11-20): old quest buckets deleted; stale save buckets are dropped on migrate.
       const DAILY_CONTRACT_POOL = [
           { kind:'play_match', title:'Clock In', desc:'Finish matches.', targets:[2,3,4] },
           { kind:'deal_damage', title:'Damage Shift', desc:'Deal damage.', targets:[18000,25000,35000] },
@@ -10467,60 +10562,6 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           });
           return buildQuestBucket(defs);
       }
-      const WEEKLY_QUESTS = [
-          { id: 'weekly_stage_1', stage: 1, kind: 'play_match', title: 'Summer Warmup', desc: 'Play 5 matches.', target: 5, rewards: { coins: 250, souls: 10 } },
-          { id: 'weekly_stage_2', stage: 2, kind: 'collect_soda', title: 'Summer Sipper', desc: 'Collect 20 Soda Cups in Summer Sips mode.', target: 20, rewards: { coins: 300, souls: 15 } },
-          { id: 'weekly_stage_3', stage: 3, kind: 'deal_damage', title: 'Forge Heat', desc: 'Deal 50,000 damage.', target: 50000, rewards: { coins: 350, souls: 20 } },
-          { id: 'weekly_stage_4', stage: 4, kind: 'defeat_enemies', title: 'Takedown Artist', desc: 'Defeat 25 enemies.', target: 25, rewards: { coins: 400, souls: 25 } },
-          { id: 'weekly_stage_5', stage: 5, kind: 'collect_cubes', title: 'Cube Collector', desc: 'Collect 35 power cubes.', target: 35, rewards: { coins: 450, souls: 30 } },
-          { id: 'weekly_stage_6', stage: 6, kind: 'perform_supers', title: 'Power Dynamo', desc: 'Use 15 Power Moves.', target: 15, rewards: { coins: 500, souls: 35 } },
-          { id: 'weekly_stage_7', stage: 7, kind: 'use_gadget', title: 'Tool Specialist', desc: 'Use 12 Tools.', target: 12, rewards: { coins: 550, souls: 40 } },
-          { id: 'weekly_stage_8', stage: 8, kind: 'survive_seconds', title: 'Survival Expert', desc: 'Survive for 180 seconds total in matches.', target: 180, rewards: { coins: 600, souls: 50 } },
-          { id: 'weekly_stage_9', stage: 9, kind: 'win_match', title: 'Champion Spirit', desc: 'Win 6 matches.', target: 6, rewards: { coins: 750, souls: 70 } },
-          { id: 'weekly_stage_10', stage: 10, kind: 'win_match', title: 'Weekly Apex', desc: 'Win 8 matches in any mode.', target: 8, rewards: { coins: 1000, gems: 5, souls: 100 } }
-      ];
-      const SOUL_STARTER_QUESTS = [
-          { id: 'starter_play_1', kind: 'play_match', title: 'Soul Warmup', desc: 'Play 3 matches in any mode.', target: 3, rewards: { souls: 40 } },
-          { id: 'starter_win_1', kind: 'win_match', title: 'Soul Victor', desc: 'Win 2 matches.', target: 2, rewards: { souls: 50 } },
-          { id: 'starter_damage_1', kind: 'deal_damage', title: 'Soul Grinder', desc: 'Deal 30,000 total damage.', target: 30000, rewards: { souls: 60 } },
-          { id: 'starter_super_1', kind: 'perform_supers', title: 'Soul Burst', desc: 'Use 8 Power Moves.', target: 8, rewards: { souls: 50 } }
-      ];
-      const LIMITED_QUEST_EVENT_ID = 'charged-up-2026-08';
-      const LIMITED_QUEST_DURATION_MS = 14 * 24 * 60 * 60 * 1000;
-      const LIMITED_QUESTS = [
-          { id:'super_charge_05', pack:'super', kind:'perform_supers', title:'POWER CHARGED I', desc:'Activate 5 Power Moves.', target:5, rewards:{coins:250} },
-          { id:'super_charge_10', pack:'super', kind:'perform_supers', title:'POWER CHARGED II', desc:'Activate 10 Power Moves.', target:10, rewards:{coins:500} },
-          { id:'super_charge_20', pack:'super', kind:'perform_supers', title:'POWER CHARGED III', desc:'Activate 20 Power Moves.', target:20, rewards:{coins:1000} },
-          { id:'super_charge_35', pack:'super', kind:'perform_supers', title:'POWER CHARGED IV', desc:'Activate 35 Power Moves.', target:35, rewards:{coins:1900} },
-          { id:'super_charge_50', pack:'super', kind:'perform_supers', title:'POWER CHARGED V', desc:'Activate 50 Power Moves.', target:50, rewards:{coins:3000} },
-          { id:'super_charge_75', pack:'super', kind:'perform_supers', title:'POWER CHARGED VI', desc:'Activate 75 Power Moves.', target:75, rewards:{coins:5000} },
-          { id:'super_charge_100', pack:'super', kind:'perform_supers', title:'POWER CHARGED MAX', desc:'Activate 100 Power Moves. Enough total event Coins to max two Fighters.', target:100, rewards:{coins:7000} },
-          { id:'hyper_charge_05', pack:'hyper', kind:'activate_hypers', title:'CORE SURGED I', desc:'Activate 5 Core Surges.', target:5, rewards:{souls:15} },
-          { id:'hyper_charge_10', pack:'hyper', kind:'activate_hypers', title:'CORE SURGED II', desc:'Activate 10 Core Surges.', target:10, rewards:{souls:25} },
-          { id:'hyper_charge_20', pack:'hyper', kind:'activate_hypers', title:'CORE SURGED III', desc:'Activate 20 Core Surges.', target:20, rewards:{souls:40} },
-          { id:'hyper_charge_35', pack:'hyper', kind:'activate_hypers', title:'CORE SURGED IV', desc:'Activate 35 Core Surges.', target:35, rewards:{souls:60} },
-          { id:'hyper_charge_50', pack:'hyper', kind:'activate_hypers', title:'CORE SURGED V', desc:'Activate 50 Core Surges.', target:50, rewards:{souls:80} },
-          { id:'hyper_charge_75', pack:'hyper', kind:'activate_hypers', title:'CORE SURGED VI', desc:'Activate 75 Core Surges.', target:75, rewards:{souls:120} },
-          { id:'hyper_charge_100', pack:'hyper', kind:'activate_hypers', title:'CORE SURGED MAX', desc:'Activate 100 Core Surges.', target:100, rewards:{souls:160} },
-          { id:'charged_damage', pack:'challenge', kind:'deal_damage', title:'Voltage Overflow', desc:'Deal 2,000,000 damage.', target:2000000, rewards:{coins:900,gems:12} },
-          { id:'charged_kos', pack:'challenge', kind:'defeat_enemies', title:'Circuit Breaker', desc:'Defeat 150 enemies.', target:150, rewards:{coins:750,superTappers:1} },
-          { id:'charged_wins', pack:'challenge', kind:'win_match', title:'Unstoppable Current', desc:'Win 25 matches.', target:25, rewards:{coins:1000,gems:15} },
-          { id:'charged_gadgets', pack:'challenge', kind:'use_gadget', title:'Button Masher', desc:'Activate 75 Tools.', target:75, rewards:{gems:10,tappers:2} },
-          { id:'charged_ranked', pack:'challenge', kind:'win_ranked', title:'Live Wire', desc:'Win 12 Ranked matches.', target:12, rewards:{coins:1000,hyperTappers:1} }
-      ];
-      // Retired in Quest Board 3.0. Old save data is preserved but this bucket
-      // no longer rotates, progresses, contributes badges, or appears in UI.
-      const MEGA_QUESTS = [];
-      const AWAKENATOR_JOURNEY_QUESTS = [
-          { id:'awake_01', stage:1, kind:'play_match', title:'A Strange Dream', desc:'Finish 3 matches.', target:3, rewards:{coins:250} },
-          { id:'awake_02', stage:2, kind:'deal_damage', title:'Dream Pressure', desc:'Deal 35,000 damage.', target:35000, rewards:{coins:350} },
-          { id:'awake_03', stage:3, kind:'perform_supers', title:'Do Not Wake Them', desc:'Use 10 Power Moves.', target:10, rewards:{coins:400} },
-          { id:'awake_04', stage:4, kind:'use_gadget', title:'Sleep Tools', desc:'Use 8 Tools.', target:8, rewards:{coins:450} },
-          { id:'awake_05', stage:5, kind:'defeat_enemies', title:'Night Terror', desc:'Defeat 25 enemies.', target:25, rewards:{coins:550} },
-          { id:'awake_06', stage:6, kind:'win_match', title:'Lucid Victory', desc:'Win 6 matches.', target:6, rewards:{coins:700,gems:5} },
-          { id:'awake_07', stage:7, kind:'deal_damage', title:'Awake Awakenator', desc:'Deal 200,000 damage to awaken him for free.', target:200000, rewards:{coins:800,gems:10,brawlerUnlock:'awakenator'} }
-      ];
-      const COIN_ASCENT_QUESTS = []; // RETIRED 2026-10-21 per Bob — coin quest chain removed; save data preserved, bucket no longer rotates/progresses/appears.
       function getLocalDayKey(ts = Date.now()) {
           return new Date(ts).toDateString();
       }
@@ -10532,12 +10573,6 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           if(rewards.superTappers)playerData.superTapperCount=(playerData.superTapperCount||0)+rewards.superTappers;
           if(rewards.hyperTappers)playerData.hyperTapperCount=(playerData.hyperTapperCount||0)+rewards.hyperTappers;
       }
-      const GOLD_EVENT_ID = 'gold-event-2026-08';
-      const GOLD_EVENT_RETIRED = true; // RETIRED (Core Surge Overdrive build) — state, view and commit code preserved; conversion and Quest HQ presence hidden.
-      const GOLD_EVENT_DURATION_MS=7*24*60*60*1000;
-      const GOLD_EVENT_MATCH_COIN_CAP=25000;
-      const GOLD_EVENT_DAMAGE_PER_COIN=100;
-      let goldEventMatchDamage = 0;
       // (Core Surge Overdrive event deleted; setEntityHypercharged kept as generic hypercharge setter.)
       // Community event: Core Surge (Hypercharge) activations feed the main
       // bar; attacks landed while Core Surged feed the daily bar. Worker C
@@ -10603,48 +10638,6 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           }
           return bucket;
       }
-      function mergeQuestBucket(existing, defs) {
-          const bucket = existing && typeof existing === 'object' ? existing : {};
-          for (const def of defs) {
-              const prior=bucket[def.id] || {};
-              const progress=Math.max(0,Number(prior.progress)||0);
-              bucket[def.id]={
-                  ...createQuestState(def),
-                  progress:Math.min(def.target,progress),
-                  completed:!!prior.completed||progress>=def.target,
-                  claimed:!!prior.claimed
-              };
-          }
-          return bucket;
-      }
-      function createLimitedQuestMeta(startAt = Date.now()) {
-          return {
-              eventId: LIMITED_QUEST_EVENT_ID,
-              startAt,
-              endAt: startAt + LIMITED_QUEST_DURATION_MS
-          };
-      }
-      function isLimitedQuestActive() {
-          const meta = playerData.questBoard && playerData.questBoard.limitedMeta;
-          if (!meta || !meta.endAt) return false;
-          return Date.now() < meta.endAt;
-      }
-      function getLimitedQuestTimeLeftMs() {
-          const meta = playerData.questBoard && playerData.questBoard.limitedMeta;
-          if (!meta || !meta.endAt) return 0;
-          return Math.max(0, meta.endAt - Date.now());
-      }
-      function formatLimitedQuestTimeLeft() {
-          const left = getLimitedQuestTimeLeftMs();
-          if (left <= 0) return 'Expired';
-          const totalMinutes = Math.ceil(left / 60000);
-          const days = Math.floor(totalMinutes / (24 * 60));
-          const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
-          const mins = totalMinutes % 60;
-          if (days > 0) return `${days}d ${hours}h left`;
-          if (hours > 0) return `${hours}h ${mins}m left`;
-          return `${mins}m left`;
-      }
       function ensureDailyWeeklyQuestData() {
           if (!ENABLE_DAILY_WEEKLY_QUESTS) return;
           if (!playerData.questBoard || typeof playerData.questBoard !== 'object') {
@@ -10654,33 +10647,27 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
                   weeklyKey: getLocalWeekKey(),
                   daily: buildRandomContractBucket(DAILY_CONTRACT_POOL, getDailyQuestCountForDay(getLocalDayKey()), getLocalDayKey(), 'daily'),
                   weekly: buildRandomContractBucket(WEEKLY_CONTRACT_POOL, 4, getLocalWeekKey(), 'weekly', true),
-                  starter: buildQuestBucket(SOUL_STARTER_QUESTS),
-                  limited: buildQuestBucket(LIMITED_QUESTS),
-                  mega: {},
-                  awakenatorJourney: buildQuestBucket(AWAKENATOR_JOURNEY_QUESTS),
-                  coinAscent: buildQuestBucket(COIN_ASCENT_QUESTS),
-                  megaKey: getLocalWeekKey(),
                   questXP: 0,
-                  questLevel: 0,
-                  limitedMeta: createLimitedQuestMeta()
+                  questLevel: 0
               };
               return;
           }
           playerData.questBoard.schemaVersion = DAILY_WEEKLY_QUEST_SCHEMA_VERSION;
-          if (!playerData.questBoard.daily) playerData.questBoard.daily = buildQuestBucket(DAILY_QUESTS);
-          if (!playerData.questBoard.weekly) playerData.questBoard.weekly = buildQuestBucket(WEEKLY_QUESTS);
-          if (!playerData.questBoard.starter) playerData.questBoard.starter = buildQuestBucket(SOUL_STARTER_QUESTS);
-          if (!playerData.questBoard.limited) playerData.questBoard.limited = buildQuestBucket(LIMITED_QUESTS);
-          if (!playerData.questBoard.mega) playerData.questBoard.mega = {};
-          playerData.questBoard.awakenatorJourney = mergeQuestBucket(playerData.questBoard.awakenatorJourney, AWAKENATOR_JOURNEY_QUESTS);
-          playerData.questBoard.coinAscent = mergeQuestBucket(playerData.questBoard.coinAscent, COIN_ASCENT_QUESTS);
-          if (!playerData.questBoard.megaKey) playerData.questBoard.megaKey = getLocalWeekKey();
+          // Fixes round (2026-11-20): old quest buckets are deleted, not
+          // migrated — stale starter / limited / mega / journey buckets in
+          // existing saves are dropped here so they can never resurrect or
+          // feed the badge. Only daily + weekly random contracts remain.
+          delete playerData.questBoard.starter;
+          delete playerData.questBoard.limited;
+          delete playerData.questBoard.mega;
+          delete playerData.questBoard.megaKey;
+          delete playerData.questBoard.awakenatorJourney;
+          delete playerData.questBoard.coinAscent;
+          delete playerData.questBoard.limitedMeta;
+          if (!playerData.questBoard.daily) playerData.questBoard.daily = buildRandomContractBucket(DAILY_CONTRACT_POOL, getDailyQuestCountForDay(getLocalDayKey()), getLocalDayKey(), 'daily');
+          if (!playerData.questBoard.weekly) playerData.questBoard.weekly = buildRandomContractBucket(WEEKLY_CONTRACT_POOL, 4, getLocalWeekKey(), 'weekly', true);
           if (!Number.isFinite(playerData.questBoard.questXP)) playerData.questBoard.questXP = 0;
           if (!Number.isFinite(playerData.questBoard.questLevel)) playerData.questBoard.questLevel = 0;
-          if (!playerData.questBoard.limitedMeta || playerData.questBoard.limitedMeta.eventId !== LIMITED_QUEST_EVENT_ID) {
-              playerData.questBoard.limitedMeta = createLimitedQuestMeta();
-              playerData.questBoard.limited = buildQuestBucket(LIMITED_QUESTS);
-          }
       }
       function getDailyQuestCountForDay(dayKey) {
           // Daily quests: 2 or 3 per day, seeded by the day key so the
@@ -10700,11 +10687,6 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
               playerData.questBoard.weeklyKey = nowWeek;
               playerData.questBoard.weekly = buildRandomContractBucket(WEEKLY_CONTRACT_POOL, 4, nowWeek, 'weekly', true);
           }
-          if (playerData.questBoard.megaKey !== nowWeek) {
-              playerData.questBoard.megaKey = nowWeek;
-          }
-          // A limited event expires once. It never silently restarts and resets
-          // player progress; a future pack begins only with a new event ID.
       }
       function getQuestProgressCount(bucket) {
           if (!bucket) return 0;
@@ -10717,16 +10699,6 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           const previousStageQuest = Object.values(bucket || {}).find(q => q.stage === quest.stage - 1);
           return !previousStageQuest || !!previousStageQuest.completed;
       }
-      function getActiveWeeklyStage() {
-          const weeklyBucket = playerData.questBoard && playerData.questBoard.weekly;
-          if (!weeklyBucket) return 1;
-          const staged = Object.values(weeklyBucket)
-              .filter(q => typeof q.stage === 'number')
-              .sort((a, b) => a.stage - b.stage);
-          if (staged.length === 0) return 1;
-          const active = staged.find(q => !q.completed);
-          return active ? active.stage : WEEKLY_STAGE_COUNT;
-      }
       function getClaimableSeasonRewardCount() {
           if (!ENABLE_SEASON_QUESTS || !playerData.seasonPass) return 0;
           const pass = playerData.seasonPass;
@@ -10738,40 +10710,57 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           const questReady = Object.values(pass.quests || {}).filter(q => q.completed && !q.rewardClaimed).length;
           return freeReady + premiumReady + questReady;
       }
+      // Fixes round (2026-11-20): season QUESTS only — the pass tier
+      // claims stay in getClaimableSeasonRewardCount (pass badge).
+      function getClaimableSeasonQuestCount() {
+          if (!ENABLE_SEASON_QUESTS || !playerData.seasonPass) return 0;
+          return Object.values(playerData.seasonPass.quests || {}).filter(q => q.completed && !q.rewardClaimed).length;
+      }
+      // Fixes round (2026-11-20): the quest board's season-quest claim
+      // button used to be a dead `if (false)` — season quest rewards could
+      // never be claimed. Pass XP is already granted on completion
+      // (progressSeasonPassQuest); this grants the material reward bundle
+      // and marks the quest claimed.
+      function claimSeasonPassQuestReward(questId) {
+          if (!ENABLE_SEASON_QUESTS) return false;
+          if (!isSeason3PassActive()) return false;
+          ensureSeasonPassState();
+          const pass = playerData.seasonPass;
+          const state = pass.quests && pass.quests[questId];
+          if (!state || !state.completed || state.rewardClaimed) return false;
+          const def = buildSeasonPassQuests().find(q => q.id === questId);
+          const rewards = (def && def.rewards) || state.rewards || {};
+          if (rewards.coins) grantReward({ type: 'coins', amount: rewards.coins });
+          if (rewards.gems) grantReward({ type: 'gems', amount: rewards.gems });
+          if (rewards.souls) grantReward({ type: 'souls', amount: rewards.souls });
+          if (rewards.tappers) grantReward({ type: 'tapper', amount: rewards.tappers });
+          if (rewards.superTappers) grantReward({ type: 'superTapper', amount: rewards.superTappers });
+          if (rewards.hyperTappers) grantReward({ type: 'hyperTapper', amount: rewards.hyperTappers });
+          if (rewards.presents) grantReward({ type: 'present', amount: rewards.presents });
+          if (rewards.corePieces) grantReward({ type: 'corePieces', amount: rewards.corePieces });
+          if (rewards.questXP) grantReward({ type: 'questXP', amount: rewards.questXP });
+          if (rewards.randomPieces) grantReward({ type: 'randomPiece', amount: rewards.randomPieces });
+          state.rewardClaimed = true;
+          saveProgress();
+          updateEventBadge();
+          updateQuestBadge();
+          return true;
+      }
       function updateQuestBadge() {
           try {
               const el = document.getElementById('dailyWeeklyQuestCount');
               if (el && playerData.questBoard) {
                   const dailyReady = getQuestProgressCount(playerData.questBoard.daily);
                   const weeklyReady = getQuestProgressCount(playerData.questBoard.weekly);
-                  const starterReady = getQuestProgressCount(playerData.questBoard.starter);
-                  const limitedReady = isLimitedQuestActive() ? getQuestProgressCount(playerData.questBoard.limited) : 0;
-                  const awakenatorReady = getQuestProgressCount(playerData.questBoard.awakenatorJourney);
-                  const coinAscentReady = getQuestProgressCount(playerData.questBoard.coinAscent);
                   const fullDamageReady = 0;
-                  const seasonReady = getClaimableSeasonRewardCount();
+                  // Fixes round (2026-11-20): badge counts claimable
+                  // season QUESTS only — pass tier claims have their own
+                  // badge on the pass button.
+                  const seasonReady = getClaimableSeasonQuestCount();
                   const specialReady = 0;
-                  el.textContent = String(dailyReady + weeklyReady + starterReady + limitedReady + awakenatorReady + coinAscentReady + fullDamageReady + seasonReady + specialReady);
+                  el.textContent = String(dailyReady + weeklyReady + fullDamageReady + seasonReady + specialReady);
               }
           } catch (e) {}
-      }
-      function progressSoulStarterQuests(questKey, amount = 1) {
-          if (!ENABLE_DAILY_WEEKLY_QUESTS) return false;
-          refreshDailyWeeklyQuests();
-          const normalizedQuestKey = normalizeQuestKey(questKey);
-          const bucket = playerData.questBoard.starter;
-          if (!bucket) return false;
-          const candidates = Object.values(bucket).filter(q => !q.completed && q.kind === normalizedQuestKey);
-          if (candidates.length === 0) return false;
-          const quest = candidates[0];
-          quest.progress = (quest.progress || 0) + amount;
-          if (quest.progress >= quest.target) {
-              quest.progress = quest.target;
-              quest.completed = true;
-          }
-          saveProgress();
-          updateQuestBadge();
-          return true;
       }
       function addDailyWeeklyQuestProgress(questKey, amount = 1) {
           if (!ENABLE_DAILY_WEEKLY_QUESTS) return false;
@@ -10796,48 +10785,6 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
               saveProgress();
               updateQuestBadge();
           }
-          if (progressSoulStarterQuests(normalizedQuestKey, amount)) changed = true;
-          return changed;
-      }
-      function addLimitedQuestProgress(questKey, amount = 1) {
-          if (!ENABLE_DAILY_WEEKLY_QUESTS) return false;
-          refreshDailyWeeklyQuests();
-          if (!isLimitedQuestActive()) return false;
-          const normalizedQuestKey = normalizeQuestKey(questKey);
-          const bucket = playerData.questBoard.limited;
-          if (!bucket) return false;
-          let changed = false;
-          for (const quest of Object.values(bucket)) {
-              if (!quest || quest.completed || quest.kind !== normalizedQuestKey) continue;
-              quest.progress = (quest.progress || 0) + amount;
-              if (quest.progress >= quest.target) {
-                  quest.progress = quest.target;
-                  quest.completed = true;
-              }
-              changed = true;
-          }
-          if (changed) {
-              saveProgress();
-              updateQuestBadge();
-          }
-          return changed;
-      }
-      function addJourneyQuestProgress(questKey, amount = 1) {
-          if (!ENABLE_DAILY_WEEKLY_QUESTS) return false;
-          refreshDailyWeeklyQuests();
-          const kind = normalizeQuestKey(questKey);
-          let changed = false;
-          for (const bucketName of ['awakenatorJourney','coinAscent']) {
-              const journeyBucket=playerData.questBoard[bucketName] || {};
-              for (const quest of Object.values(journeyBucket)) {
-                  if (!quest.completed && quest.kind === kind && isQuestStageUnlocked(bucketName, journeyBucket, quest)) {
-                      quest.progress = Math.min(quest.target, (quest.progress || 0) + amount);
-                      quest.completed = quest.progress >= quest.target;
-                      changed = true;
-                  }
-              }
-          }
-          if (changed) { saveProgress(); updateQuestBadge(); }
           return changed;
       }
       function claimQuestReward(bucketName, questId) {
@@ -10879,9 +10826,6 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           if (rewards?.brawlerUnlock) parts.push(`Unlock ${brawlerData[rewards.brawlerUnlock]?.name || 'Fighter'}`);
           if (rewards?.skin) parts.push(`Unlock ${skinsDatabase[rewards.skin]?.name || 'Exclusive Skin'}`);
           return parts.join(' · ') || 'No additional reward';
-      }
-      function seasonTrackRewardText(reward) {
-          return describeCircuitReward(reward);
       }
       function openQuestBoard(initialTab = 'core') {
           if (!ENABLE_DAILY_WEEKLY_QUESTS) return;
@@ -11042,8 +10986,9 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
               const pass = playerData.seasonPass || {};
               const wrapper = document.createElement('div');
               wrapper.style.display = 'grid';
-              wrapper.style.gridTemplateColumns = '0.95fr 1.25fr';
-              if (window.matchMedia('(max-width: 700px)').matches) wrapper.style.gridTemplateColumns = '1fr';
+              // Fixes round (2026-11-20): single column now — the pass
+              // tier ladder was removed from quests (item 2).
+              wrapper.style.gridTemplateColumns = '1fr';
               wrapper.style.gap = '12px';
               wrapper.style.height = '100%';
               wrapper.style.minHeight = '0';
@@ -11064,7 +11009,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
               questTitle.style.background = '#0b1628';
               questTitle.style.zIndex = '1';
               const questHint = document.createElement('div');
-              questHint.textContent = `${isSeason3PassActive() ? `Season ends ${seasonProfileForQuests.endLabel}.` : 'Season ended — progression and claims are closed.'} Complete and claim quests to push the ladder.`;
+              questHint.textContent = `${isSeason3PassActive() ? `Season ends ${seasonProfileForQuests.endLabel}.` : 'Season ended — progression and claims are closed.'} Complete quests to earn pass XP, then claim their rewards.`;
               questHint.style.fontSize = '11px';
               questHint.style.color = '#aac7e5';
               questHint.style.marginBottom = '10px';
@@ -11124,7 +11069,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
                   claimBtn.style.color = '#07111d';
                   claimBtn.onclick = () => {
                       if (!done || rewardClaimed) return;
-                      if (false) {
+                      if (claimSeasonPassQuestReward(quest.id)) {
                           setActiveTab('season');
                           refreshHomeUI();
                       }
@@ -11132,161 +11077,6 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
                   questCard.appendChild(claimBtn);
                   questBox.appendChild(questCard);
               }
-              const ladderBox = document.createElement('div');
-              ladderBox.style.padding = '12px';
-              ladderBox.style.border = '1px solid #ff9b42';
-              ladderBox.style.borderRadius = '12px';
-              ladderBox.style.background = 'linear-gradient(180deg, #211109, #091120)';
-              ladderBox.style.overflowY = 'auto';
-              const ladderTitle = document.createElement('div');
-              ladderTitle.textContent = `${seasonProfileForQuests.name} Pass — Tier Track`;
-              ladderTitle.style.fontWeight = '900';
-              ladderTitle.style.color = '#ffd39a';
-              ladderTitle.style.fontSize = '16px';
-              ladderTitle.style.position = 'sticky';
-              ladderTitle.style.top = '0';
-              ladderTitle.style.background = '#211109';
-              ladderTitle.style.zIndex = '1';
-              const ladderSub = document.createElement('div');
-              ladderSub.style.fontSize = '12px';
-              ladderSub.style.color = '#ffd9c0';
-              ladderSub.style.margin = '4px 0 10px 0';
-              ladderSub.textContent = `Milestones unlocked: ${pass.level || 1}/${SEASON_PASS_MAX_LEVEL}`;
-              ladderBox.appendChild(ladderTitle);
-              ladderBox.appendChild(ladderSub);
-              const unlockPanel = document.createElement('div');
-              unlockPanel.style.border = '1px solid #3d2b18';
-              unlockPanel.style.borderRadius = '10px';
-              unlockPanel.style.padding = '10px';
-              unlockPanel.style.marginBottom = '10px';
-              unlockPanel.style.background = pass.premiumUnlocked ? 'rgba(88,228,182,0.08)' : 'rgba(33,17,9,0.55)';
-              if (pass.premiumUnlocked) {
-                  unlockPanel.innerHTML = `<div style="font-weight:900;color:#58e4b6;">Premium Track Unlocked</div><div style="font-size:11px;color:#c1d8ee;margin-top:4px;">Unlocked with ${pass.premiumUnlockedWith || 'premium currency'}.</div>`;
-              } else {
-                  const titleEl = document.createElement('div');
-                  titleEl.textContent = 'Unlock Premium Track';
-                  titleEl.style.fontWeight = '900';
-                  titleEl.style.color = '#ffd39a';
-                  titleEl.style.marginBottom = '6px';
-                  const actions = document.createElement('div');
-                  actions.style.display = 'flex';
-                  actions.style.gap = '8px';
-                  const gemBtn = document.createElement('button');
-                  gemBtn.textContent = `${SEASON_PREMIUM_UNLOCK_GEMS} Gems`;
-                  gemBtn.style.flex = '1';
-                  gemBtn.style.padding = '7px 8px';
-                  gemBtn.style.border = 'none';
-                  gemBtn.style.borderRadius = '8px';
-                  gemBtn.style.fontWeight = '900';
-                  gemBtn.style.cursor = (playerData.gems || 0) >= SEASON_PREMIUM_UNLOCK_GEMS ? 'pointer' : 'not-allowed';
-                  gemBtn.style.background = (playerData.gems || 0) >= SEASON_PREMIUM_UNLOCK_GEMS ? '#ffb15a' : '#596b7f';
-                  gemBtn.onclick = () => {
-                      if (unlockSeasonPremium('gems')) {
-                          setActiveTab('season');
-                          refreshHomeUI();
-                      }
-                  };
-                  const coinBtn = document.createElement('button');
-                  coinBtn.textContent = `${SEASON_PREMIUM_UNLOCK_COINS} Coins`;
-                  coinBtn.style.flex = '1';
-                  coinBtn.style.padding = '7px 8px';
-                  coinBtn.style.border = 'none';
-                  coinBtn.style.borderRadius = '8px';
-                  coinBtn.style.fontWeight = '900';
-                  coinBtn.style.cursor = (playerData.coins || 0) >= SEASON_PREMIUM_UNLOCK_COINS ? 'pointer' : 'not-allowed';
-                  coinBtn.style.background = (playerData.coins || 0) >= SEASON_PREMIUM_UNLOCK_COINS ? '#58e4b6' : '#596b7f';
-                  coinBtn.onclick = () => {
-                      if (unlockSeasonPremium('coins')) {
-                          setActiveTab('season');
-                          refreshHomeUI();
-                      }
-                  };
-                  actions.appendChild(gemBtn);
-                  actions.appendChild(coinBtn);
-                  unlockPanel.appendChild(titleEl);
-                  unlockPanel.appendChild(actions);
-              }
-              ladderBox.appendChild(unlockPanel);
-              const freeClaimed = new Set(pass.claimedFreeRewards || []);
-              const premiumClaimed = new Set(pass.claimedPremiumRewards || []);
-              const ladderList = document.createElement('div');
-              for (const tier of getActiveSeasonPassTiers()) {
-                  const tierUnlocked = (pass.level || 1) >= tier.tier;
-                  const freeDone = freeClaimed.has(tier.tier);
-                  const premiumDone = premiumClaimed.has(tier.tier);
-                  const row = document.createElement('div');
-                  row.style.display = 'grid';
-                  row.style.gridTemplateColumns = '1fr auto 1fr';
-                  row.style.gap = '8px';
-                  row.style.alignItems = 'center';
-                  row.style.marginBottom = '10px';
-                  const freeCard = document.createElement('div');
-                  freeCard.style.border = freeDone ? '1px solid #58e4b6' : '1px solid #3a5b7e';
-                  freeCard.style.borderRadius = '8px';
-                  freeCard.style.padding = '8px';
-                  freeCard.style.background = freeDone ? 'rgba(88,228,182,0.08)' : 'rgba(15,28,44,0.75)';
-                  freeCard.innerHTML = `<div style="font-size:10px;font-weight:900;color:#8fd8ff;">FREE</div><div style="font-size:11px;color:#d7ecff;">${seasonTrackRewardText(tier.free)}</div>`;
-                  const freeBtn = document.createElement('button');
-                  freeBtn.textContent = freeDone ? 'Claimed' : (tierUnlocked ? 'Claim' : 'Locked');
-                  freeBtn.style.width = '100%';
-                  freeBtn.style.marginTop = '6px';
-                  freeBtn.style.padding = '5px 7px';
-                  freeBtn.style.border = 'none';
-                  freeBtn.style.borderRadius = '6px';
-                  freeBtn.style.fontWeight = '800';
-                  freeBtn.style.cursor = tierUnlocked && !freeDone ? 'pointer' : 'default';
-                  freeBtn.style.background = freeDone ? '#5f6f82' : (tierUnlocked ? '#5ec4ff' : '#2d425a');
-                  freeBtn.style.color = '#061120';
-                  freeBtn.onclick = () => {
-                      if (!tierUnlocked || freeDone) return;
-                      if (claimSeasonPassTrackReward(tier.tier, 'free')) {
-                          setActiveTab('season');
-                          refreshHomeUI();
-                      }
-                  };
-                  freeCard.appendChild(freeBtn);
-                  const center = document.createElement('div');
-                  center.style.display = 'flex';
-                  center.style.flexDirection = 'column';
-                  center.style.alignItems = 'center';
-                  center.style.justifyContent = 'center';
-                  center.innerHTML = `
-                      <div style="width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;border:2px solid ${tierUnlocked ? '#ffb15a' : '#415a73'};color:${tierUnlocked ? '#ffcf99' : '#7f97b2'};background:${tierUnlocked ? 'rgba(255,177,90,0.15)' : 'rgba(26,39,56,0.6)'};">${tier.tier}</div>
-                      <div style="font-size:10px;color:#95b8d4;margin-top:3px;max-width:72px;text-align:center;">${tier.title}</div>
-                  `;
-                  const premiumCard = document.createElement('div');
-                  premiumCard.style.border = premiumDone ? '1px solid #58e4b6' : '1px solid #8e6b2e';
-                  premiumCard.style.borderRadius = '8px';
-                  premiumCard.style.padding = '8px';
-                  premiumCard.style.background = premiumDone ? 'rgba(88,228,182,0.08)' : 'rgba(39,23,12,0.72)';
-                  premiumCard.innerHTML = `<div style="font-size:10px;font-weight:900;color:#ffd39a;">PREMIUM</div><div style="font-size:11px;color:#ffe7c9;">${seasonTrackRewardText(tier.premium)}</div>`;
-                  const premiumBtn = document.createElement('button');
-                  premiumBtn.textContent = premiumDone ? 'Claimed' : (!pass.premiumUnlocked ? 'Unlock Track' : (tierUnlocked ? 'Claim' : 'Locked'));
-                  premiumBtn.style.width = '100%';
-                  premiumBtn.style.marginTop = '6px';
-                  premiumBtn.style.padding = '5px 7px';
-                  premiumBtn.style.border = 'none';
-                  premiumBtn.style.borderRadius = '6px';
-                  premiumBtn.style.fontWeight = '800';
-                  premiumBtn.style.cursor = (pass.premiumUnlocked && tierUnlocked && !premiumDone) ? 'pointer' : 'default';
-                  premiumBtn.style.background = premiumDone ? '#5f6f82' : ((pass.premiumUnlocked && tierUnlocked) ? '#ffb15a' : '#5a4a33');
-                  premiumBtn.style.color = '#061120';
-                  premiumBtn.onclick = () => {
-                      if (!pass.premiumUnlocked || !tierUnlocked || premiumDone) return;
-                      if (claimSeasonPassTrackReward(tier.tier, 'premium')) {
-                          setActiveTab('season');
-                          refreshHomeUI();
-                      }
-                  };
-                  premiumCard.appendChild(premiumBtn);
-                  row.appendChild(freeCard);
-                  row.appendChild(center);
-                  row.appendChild(premiumCard);
-                  ladderList.appendChild(row);
-              }
-              ladderBox.appendChild(ladderList);
-              wrapper.appendChild(questBox);
-              wrapper.appendChild(ladderBox);
               return wrapper;
           }
           function createSpecialBreakthroughView() {
@@ -11355,9 +11145,6 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
               grid.style.padding = '4px';
               grid.appendChild(createColumn('Daily Contracts', 'Refreshes every 24h', 'daily'));
               grid.appendChild(createColumn('Weekly Contracts', 'Refreshes every Thursday', 'weekly'));
-              grid.appendChild(createColumn('Starter Journey', 'One-time onboarding — start here', 'starter'));
-              grid.appendChild(createColumn('Awake Awakenator', 'Unlock Awakenator for free', 'awakenatorJourney'));
-              grid.appendChild(createColumn('Coin Ascent', '20-stage coin ladder (10,000 Coins)', 'coinAscent'));
               return grid;
           }
           const views = {
@@ -11368,7 +11155,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           let activeQuestTab = initialTab;
           function countClaimableCoreQuests() {
               let n = 0;
-              for (const b of ['daily', 'weekly', 'awakenatorJourney', 'coinAscent', 'starter']) {
+              for (const b of ['daily', 'weekly']) {
                   const bucket = playerData.questBoard[b] || {};
                   for (const q of Object.values(bucket)) if (q && q.completed && !q.claimed) n++;
               }
@@ -11389,7 +11176,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
               const btn = document.createElement('button');
               btn.dataset.tab = id;
               if (id === 'core') { const n = countClaimableCoreQuests(); if (n > 0) label += ` (${n})`; }
-              if (id === 'season') { const n = getClaimableSeasonRewardCount(); if (n > 0) label += ` (${n})`; }
+              if (id === 'season') { const n = getClaimableSeasonQuestCount(); if (n > 0) label += ` (${n})`; }
               btn.textContent = label;
               btn.style.padding = '8px 12px';
               btn.style.borderRadius = '8px';
@@ -11400,14 +11187,13 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
               tabRow.appendChild(btn);
           }
           makeTab('core', '📋 Contracts');
-          if (!GOLD_EVENT_RETIRED) makeTab('gold', '🪙 Gold Event');
           makeTab('special', '💠 Core Pieces');
-          if (ENABLE_SEASON_QUESTS) makeTab('season', '⚡ Season Pass');
+          if (ENABLE_SEASON_QUESTS) makeTab('season', '⚡ Season Quests');
           setActiveTab(views[initialTab] ? initialTab : 'core');
           panel.appendChild(top);
           const boardSubtitle = document.createElement('div');
           boardSubtitle.className = 'app-quest-subtitle';
-          boardSubtitle.textContent = 'Complete quests, claim rewards, and climb the Season Pass.';
+          boardSubtitle.textContent = 'Complete quests and claim rewards.';
           boardSubtitle.style.fontSize = '12px';
           boardSubtitle.style.color = '#95b8d4';
           panel.appendChild(boardSubtitle);
@@ -15452,6 +15238,16 @@ let blinkEyeDodgeState = null;
     function getPrestigeLeagueLevel(pointsRaw) {
         return Math.min(PRESTIGE_LEAGUE_MAX, getRankedPrestige(pointsRaw));
     }
+    // Prestige League unlock (fixes round 2026-11-20, item 11): the
+    // leaderboard only exists once you have completed all of Ranked —
+    // reached the top division, Brick Legend III (2400 RP, where PL1 also
+    // begins). Before that the league is locked: no opponents, no
+    // standings, no payouts. Ranked points can never drop below 2400 once
+    // reached (division safety floor), so current points are a stable gate.
+    function hasCompletedRanked() {
+        const points = Math.max(0, Math.floor((playerData.ranked && playerData.ranked.points) || 0));
+        return getRankedTierInfo(points).index >= RANKED_DIVISIONS.length - 1;
+    }
     function buildPrestigeLeagueOpponents(cycleKey) {
         const names = TOURNAMENT_BOT_NAMES;
         const out = [];
@@ -15481,6 +15277,19 @@ let blinkEyeDodgeState = null;
     function ensurePrestigeLeagueState(now = Date.now()) {
         if (!playerData.prestigeLeague || typeof playerData.prestigeLeague !== 'object') playerData.prestigeLeague = {};
         const league = playerData.prestigeLeague;
+        if (!hasCompletedRanked()) {
+            // Locked: no leaderboard yet — no opponents, no teammates,
+            // no cycle, no payouts. Unlocks the moment Ranked is
+            // completed; the cycle starts then (cycleKey stays unset here
+            // so the first unlocked call builds the first cycle fresh).
+            league.locked = true;
+            league.opponents = [];
+            league.teammates = [];
+            if (league.points == null) league.points = 0;
+            if (league.matchesPlayed == null) league.matchesPlayed = 0;
+            return league;
+        }
+        league.locked = false;
         const key = getPrestigeLeagueCycleKey(now);
         if (league.cycleKey !== key) {
             // New 3-day cycle: pay out last cycle's top-3 rewards, then reset.
@@ -15509,6 +15318,7 @@ let blinkEyeDodgeState = null;
     }
     function recordPrestigeLeagueMatch(won, rankedDelta) {
         const league = ensurePrestigeLeagueState();
+        if (league.locked) return league;
         league.points = Math.max(0, (league.points || 0) + rankedDelta);
         league.matchesPlayed = (league.matchesPlayed || 0) + 1;
         // Opponents' RP moves up/down every match, synced to your result:
@@ -18078,9 +17888,6 @@ let heistFeverActive = false;
       shopBody.appendChild(shopContent);
       panel.appendChild(shopBody);
       let activeTab = 'daily';
-      let shopSkinQuery = '';
-      let shopSkinOwnership = 'all';
-      let shopSkinSort = 'featured';
       const ensureShopButtonRefresh = () => {
           saveProgress();
           if (typeof refreshBrawlerList === 'function') refreshBrawlerList();
@@ -18120,8 +17927,6 @@ let heistFeverActive = false;
       };
       sidebar.appendChild(createSidebarButton('☀ DAILY DEALS', 'daily'));
       sidebar.appendChild(createSidebarButton('👤 FIGHTER DEAL', 'fighter'));
-      sidebar.appendChild(createSidebarButton('🎁 OFFER ARCHIVE', 'featured'));
-      sidebar.appendChild(createSidebarButton('🎭 SKIN CATALOGUE', 'skins'));
       sidebar.appendChild(createSidebarButton('🎡 LUCKY WHEEL', 'wheel'));
       // [BUILDER PICK — Worker C] Shop tab label for Overdrive milestones.
       const makeShopCard = ({ titleText, accent, descText, priceText, buttonText, buttonColor, onBuy, isOwned, isLocked, lockedText = 'LOCKED', footerText }) => {
@@ -18186,11 +17991,11 @@ let heistFeverActive = false;
           card.appendChild(cardFooter);
           return card;
       };
-      // Round 2 Tier 2 (shop empty states): the only shop tab whose grid
-      // can ever be empty is SKINS (ownership filter / search — see
-      // renderSkinsTab); every other tab renders fixed cards or fixed
-      // milestone tiers. One shared empty-state builder: icon + one-line
-      // explanation + one action. No shop items are invented here.
+      // Round 2 Tier 2 (shop empty states): one shared empty-state
+      // builder: icon + one-line explanation + one action. No shop items
+      // are invented here. Fixes round (2026-11-20): the skins tab that
+      // used to be the only emptyable tab is deleted — every remaining
+      // tab renders fixed cards or fixed tiers, so no tab can be empty.
       const makeShopEmptyState = ({ icon, titleText, bodyText, actionLabel, onAction }) => {
           const empty = document.createElement('div');
           empty.className = 'brawe-shop-empty';
@@ -18256,389 +18061,6 @@ let heistFeverActive = false;
           head.style.marginTop = '16px';
           head.style.marginBottom = '4px';
           grid.appendChild(head);
-      };
-      const renderFeaturedTab = () => {
-          const grid = cardGrid();
-          addSection(grid, "The Splitter's Special Gift");
-          const splitterInstinctFreeKey = 'splitterInstinctFreeShardsV1';
-          const splitterInstinctClaimed = !!(playerData.shopClaims && playerData.shopClaims[splitterInstinctFreeKey]);
-          grid.appendChild(makeShopCard({
-              titleText: '⚡ 3 Free Splitter Instinct Shards',
-              accent: '#62ef88',
-              descText: "Claim 3 Shards of The Splitter's Instinct for FREE! Instantly unlocks Fractal Reflex.",
-              priceText: 'FREE',
-              buttonText: splitterInstinctClaimed ? 'CLAIMED' : 'CLAIM 3 SHARDS',
-              buttonColor: '#62ef88',
-              isOwned: splitterInstinctClaimed,
-              footerText: 'Free gift in the shop for all players.',
-              onBuy: () => {
-                  if (playerData.shopClaims && playerData.shopClaims[splitterInstinctFreeKey]) return;
-                  playerData.shopClaims = playerData.shopClaims || {};
-                  addSpecialAbilityPiece('splitter');
-                  addSpecialAbilityPiece('splitter');
-                  addSpecialAbilityPiece('splitter');
-                  playerData.shopClaims[splitterInstinctFreeKey] = true;
-                  saveProgress();
-                  ensureShopButtonRefresh();
-                  renderTabContent();
-                  spawnFloatingText(innerWidth / 2, innerHeight / 2, '+3 SPLITTER SHARDS · INSTINCT UNLOCKED!', '#62ef88');
-              }
-          }));
-          addSection(grid, 'Relay Early Access');
-          const relayProgress = getOrCreateProgress('relay');
-          const relayOwned = !!playerData.unlockedBrawlers.relay;
-          const relayMaxed = relayOwned && relayProgress.level >= 11 && relayProgress.gadgetUnlocked && relayProgress.starPowerUnlocked && relayProgress.hyperchargeUnlocked;
-          grid.appendChild(makeShopCard({
-              titleText: 'RELAY - Early Access',
-              accent: '#67e8ff',
-              descText: 'Unlock Relay immediately at Power 1. Her upgrades, Tool, Talent, and Core Surge are purchased normally.',
-              priceText: '79 GEMS',
-              buttonText: 'UNLOCK RELAY',
-              buttonColor: '#67e8ff',
-              isOwned: relayOwned,
-              isLocked: !relayOwned && (playerData.gems || 0) < 79,
-              lockedText: '79 GEMS REQUIRED',
-              footerText: 'Fighter-only early access offer.',
-              onBuy: () => {
-                  if (playerData.unlockedBrawlers.relay) return;
-                  if ((playerData.gems || 0) < 79) { showAppConfirmSheet({ message: 'Not enough Gems!' }); return; }
-                  playerData.gems -= 79;
-                  unlockBrawler('relay');
-                  playerData.shopClaims.relayEarlyAccess = true;
-                  ensureShopButtonRefresh();
-                  renderTabContent();
-              }
-          }));
-          const relayBundlePrice = relayOwned ? 149 : 199;
-          grid.appendChild(makeShopCard({
-              titleText: 'RELAY - Max Signal Bundle',
-              accent: '#df75ff',
-              descText: 'Unlock Relay, instantly reach Power 11, and receive her Tool, Talent, and Core Surge.',
-              priceText: `${relayBundlePrice} GEMS`,
-              buttonText: relayOwned ? 'MAX RELAY' : 'GET FULL BUNDLE',
-              buttonColor: '#df75ff',
-              isOwned: relayMaxed,
-              isLocked: !relayMaxed && (playerData.gems || 0) < relayBundlePrice,
-              lockedText: `${relayBundlePrice} GEMS REQUIRED`,
-              footerText: relayOwned ? 'Owned-brawler upgrade price applied.' : 'Complete early access bundle.',
-              onBuy: () => {
-                  const progress = getOrCreateProgress('relay');
-                  const alreadyOwned = !!playerData.unlockedBrawlers.relay;
-                  const price = alreadyOwned ? 149 : 199;
-                  if ((playerData.gems || 0) < price) { showAppConfirmSheet({ message: 'Not enough Gems!' }); return; }
-                  playerData.gems -= price;
-                  if (!alreadyOwned) unlockBrawler('relay');
-                  applyLevelUnlocks(progress, 11);
-                  progress.gadgetUnlocked = true;
-                  progress.starPowerUnlocked = true;
-                  progress.hyperchargeUnlocked = true;
-                  progress.selectedGadget = progress.selectedGadget || 'g1';
-                  progress.selectedStar = progress.selectedStar || 'slow';
-                  playerData.shopClaims.relayMaxSignalBundle = true;
-                  ensureShopButtonRefresh();
-                  renderTabContent();
-              }
-          }));
-          addSection(grid, 'Featured Rewards');
-          const dailyFreebieOptions = [
-              { accent: '#5df2c2', reward: { kind: 'gems', amount: 2 }, label: 'Claim 2 Free Gems' },
-              { accent: '#ffd166', reward: { kind: 'coins', amount: 350 }, label: 'Claim 350 Free Coins' },
-              { accent: '#caa6ff', reward: { kind: 'drop', amount: 1 }, label: 'Claim Free Tapper' }
-          ];
-          const dailyFreebieChoice = pickTimedEntry(dailyFreebieOptions, `daily-freebie:${dailyCycle.cycleKey}`);
-          const dailyFreebieClaimKey = getShopClaimKey('daily-freebie', dailyCycle.cycleKey);
-          const dailyFreebieOwned = !!playerData.shopClaims[dailyFreebieClaimKey];
-          grid.appendChild(makeShopCard({
-              titleText: '🎁 Daily Freebie',
-              accent: dailyFreebieChoice.accent,
-              descText: dailyFreebieChoice.label,
-              priceText: 'FREE',
-              buttonText: 'CLAIM',
-              buttonColor: dailyFreebieChoice.accent,
-              isOwned: dailyFreebieOwned,
-              footerText: 'Resets daily.',
-              onBuy: () => {
-                  if (dailyFreebieOwned) return;
-                  const reward = dailyFreebieChoice.reward;
-                  if (reward.kind === 'gems') grantReward({ type: 'gems', amount: reward.amount });
-                  if (reward.kind === 'coins') grantReward({ type: 'coins', amount: reward.amount });
-                  if (reward.kind === 'drop') grantReward({ type: 'tapper', amount: reward.amount });
-                  playerData.shopClaims[dailyFreebieClaimKey] = true;
-                  ensureShopButtonRefresh();
-                  renderTabContent();
-              }
-          }));
-          grid.appendChild(makeShopCard({
-              titleText: 'Tapper Mega Bundle',
-              accent: '#ffd166',
-              descText: 'Get 3 Tappers + 1 Super Tapper in one bundle at a discount.',
-              priceText: '15 GEMS',
-              buttonText: 'BUY',
-              buttonColor: '#ffd166',
-              onBuy: () => {
-                  if (playerData.gems < 15) { showAppConfirmSheet({ message: 'Not enough Gems!' }); return; }
-                  playerData.gems -= 15;
-                  grantReward({ type: 'tapper', amount: 3 });
-                  grantReward({ type: 'superTapper', amount: 1 });
-                  ensureShopButtonRefresh();
-                  renderTabContent();
-              }
-          }));
-          const outlitProg = getOrCreateProgress('outlit');
-          const outlitMaxed = outlitProg.level >= 11 && outlitProg.gadgetUnlocked && outlitProg.starPowerUnlocked && outlitProg.hyperchargeUnlocked;
-          if (!outlitMaxed) {
-              grid.appendChild(makeShopCard({
-                  titleText: '🆓 Free Outlit Full Unlock',
-                  accent: '#ff4bd1',
-                  descText: 'Unlock Outlit\'s complete kit for free — Power 11, gadget, star power, and hypercharge.',
-                  priceText: 'FREE',
-                  buttonText: 'CLAIM',
-                  buttonColor: '#ff88ff',
-                  isOwned: !!playerData.shopClaims.outlitPower11,
-                  footerText: 'Permanent one-time freebie.',
-                  onBuy: () => {
-                      const progress = getOrCreateProgress('outlit');
-                      applyLevelUnlocks(progress, 11);
-                      progress.hyperchargeUnlocked = true;
-                      progress.gadgetUnlocked = true;
-                      progress.starPowerUnlocked = true;
-                      if (!progress.selectedGadget) progress.selectedGadget = 'g1';
-                      if (!progress.selectedStar) progress.selectedStar = 'slow';
-                      playerData.shopClaims.outlitPower11 = true;
-                      playerData.shopClaims.outlitHypercharge = true;
-                      playerData.shopClaims.outlitGadget = true;
-                      ensureShopButtonRefresh();
-                      renderTabContent();
-                  }
-              }));
-          }
-          return grid;
-      };
-      const renderSkinsTab = () => {
-          const wrap = document.createElement('div');
-          wrap.style.display = 'flex';
-          wrap.style.flexDirection = 'column';
-          wrap.style.gap = '12px';
-          const toolbar = document.createElement('div');
-          toolbar.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:rgba(8,16,32,0.85);border:1px solid rgba(120,176,240,0.18);border-radius:12px;padding:10px;position:sticky;top:0;z-index:5;';
-          const search = document.createElement('input');
-          search.type = 'search';
-          search.placeholder = '🔍 Search skins or fighters…';
-          search.value = shopSkinQuery;
-          search.style.cssText = 'flex:1;min-width:170px;padding:9px 11px;border-radius:9px;border:1px solid rgba(130,190,255,.25);background:#0a1428;color:#fff;font-weight:700;';
-          search.oninput = () => {
-              shopSkinQuery = search.value;
-              const q = shopSkinQuery.trim().toLowerCase();
-              let visible = 0;
-              wrap.querySelectorAll('[data-skin-card]').forEach(card => {
-                  const show = !q || (card.getAttribute('data-search') || '').includes(q);
-                  card.style.display = show ? '' : 'none';
-                  if (show) visible++;
-              });
-              const count = wrap.querySelector('[data-skin-count]');
-              if (count) count.textContent = `${visible} skins`;
-              // Round 2 Tier 2: a search that matches nothing gets the
-              // same empty-state treatment as an empty filter, not a blank
-              // grid. (No [data-skin-card] at all means the filter itself
-              // is empty — that state is already showing, so stay hidden.)
-              const totalCards = wrap.querySelectorAll('[data-skin-card]').length;
-              const noMatch = wrap.querySelector('[data-shop-search-empty]');
-              if (noMatch) noMatch.style.display = (q && visible === 0 && totalCards > 0) ? '' : 'none';
-          };
-          const ownershipSel = document.createElement('select');
-          ownershipSel.style.cssText = 'padding:9px;border-radius:9px;background:#0a1428;color:#fff;border:1px solid rgba(130,190,255,.25);font-weight:800;';
-          ownershipSel.innerHTML = '<option value="all">All skins</option><option value="owned">Owned</option><option value="buyable">Buyable</option><option value="locked">Fighter locked</option>';
-          ownershipSel.value = shopSkinOwnership;
-          ownershipSel.onchange = () => { shopSkinOwnership = ownershipSel.value; renderTabContent(); };
-          const sortSel = document.createElement('select');
-          sortSel.style.cssText = ownershipSel.style.cssText;
-          sortSel.innerHTML = '<option value="featured">Featured</option><option value="price-asc">Price ↑</option><option value="price-desc">Price ↓</option><option value="rarity">Rarity</option><option value="name">A–Z</option>';
-          sortSel.value = shopSkinSort;
-          sortSel.onchange = () => { shopSkinSort = sortSel.value; renderTabContent(); };
-          const countEl = document.createElement('span');
-          countEl.setAttribute('data-skin-count', '1');
-          countEl.style.cssText = 'font-size:11px;font-weight:900;color:#9dc0e4;';
-          toolbar.append(search, ownershipSel, sortSel, countEl);
-          wrap.appendChild(toolbar);
-          const grid = cardGrid();
-          wrap.appendChild(grid);
-          const rarityRank = { legendary: 5, mythic: 4, epic: 3, 'super-rare': 2, rare: 1 };
-          const skinList = Object.values(skinsDatabase).filter(skin => {
-              const owned = !!(playerData.ownedSkins[skin.brawler] && playerData.ownedSkins[skin.brawler].includes(skin.id));
-              const locked = !playerData.unlockedBrawlers[skin.brawler];
-              if (shopSkinOwnership === 'owned') return owned;
-              if (shopSkinOwnership === 'buyable') return !owned && !locked;
-              if (shopSkinOwnership === 'locked') return locked;
-              return true;
-          }).sort((a, b) => {
-              if (shopSkinSort === 'price-asc') return (a.price || 0) - (b.price || 0);
-              if (shopSkinSort === 'price-desc') return (b.price || 0) - (a.price || 0);
-              if (shopSkinSort === 'rarity') return (rarityRank[b.rarity] || 0) - (rarityRank[a.rarity] || 0);
-              if (shopSkinSort === 'name') return String(a.name).localeCompare(String(b.name));
-              return 0;
-          });
-          countEl.textContent = `${skinList.length} skins`;
-          skinList.forEach(skin => {
-              const isOwned = !!(playerData.ownedSkins[skin.brawler] && playerData.ownedSkins[skin.brawler].includes(skin.id));
-              const isLocked = !playerData.unlockedBrawlers[skin.brawler];
-              const rarityColors = {
-                  'rare': '#5df2c2',
-                  'super-rare': '#3498db',
-                  'epic': '#b983ff',
-                  'mythic': '#ff6b6b',
-                  'legendary': '#ffd700'
-              };
-              const color = rarityColors[skin.rarity] || '#fff';
-              const card = document.createElement('div');
-              card.style.background = 'linear-gradient(145deg, rgba(16,28,54,0.45), rgba(8,16,32,0.55))';
-              card.style.border = `1px solid ${color}44`;
-              card.style.borderRadius = '16px';
-              card.style.padding = '16px';
-              card.style.display = 'flex';
-              card.style.flexDirection = 'column';
-              card.style.justifyContent = 'space-between';
-              card.style.gap = '8px';
-              card.setAttribute('data-skin-card', '1');
-              card.setAttribute('data-search', `${skin.name} ${skin.id} ${brawlerData[skin.brawler]?.name || skin.brawler} ${skin.set || ''} ${skin.rarity || ''}`.toLowerCase());
-              const body = document.createElement('div');
-              body.innerHTML = `
-                  <div style="display:flex;justify-content:space-between;align-items:center;">
-                      <div style="font-weight:900;color:#fff;font-size:15px;">${skin.name}</div>
-                      <span style="font-size:9px;font-weight:900;background:${color}15;color:${color};border:1px solid ${color}33;padding:1px 5px;border-radius:4px;text-transform:uppercase;">${skin.rarity}</span>
-                  </div>
-                  <div style="font-size:11px;color:#89b5d9;margin-top:6px;line-height:1.35;">${skin.description}</div>
-                  <div style="font-size:10px;color:${color};margin-top:4px;font-weight:700;">Fighter: ${brawlerData[skin.brawler]?.name || skin.brawler} • Set: ${skin.set || 'Global'}${isLocked ? ' • 🔒 Fighter locked — trial available' : ''}</div>
-              `;
-              const actions = document.createElement('div');
-              actions.style.display = 'flex';
-              actions.style.flexDirection = 'column';
-              actions.style.gap = '6px';
-              actions.style.marginTop = '8px';
-              if (isOwned) {
-                  const equipBtn = document.createElement('button');
-                  const isEquipped = playerData.selectedSkins[skin.brawler] === skin.id;
-                  equipBtn.textContent = isEquipped ? 'EQUIPPED' : 'EQUIP SKIN';
-                  equipBtn.disabled = isEquipped;
-                  equipBtn.style.width = '100%';
-                  equipBtn.style.padding = '8px';
-                  equipBtn.style.borderRadius = '8px';
-                  equipBtn.style.border = 'none';
-                  equipBtn.style.fontWeight = 'bold';
-                  equipBtn.style.fontSize = '12px';
-                  equipBtn.style.background = isEquipped ? 'rgba(255,255,255,0.05)' : '#5df2c2';
-                  equipBtn.style.color = isEquipped ? '#555' : '#08101d';
-                  equipBtn.style.cursor = isEquipped ? 'not-allowed' : 'pointer';
-                  equipBtn.onclick = () => {
-                      playerData.selectedSkins[skin.brawler] = skin.id;
-                      ensureShopButtonRefresh();
-                      renderTabContent();
-                  };
-                  actions.appendChild(equipBtn);
-                  const ownedTryBtn = document.createElement('button');
-                  ownedTryBtn.textContent = 'TRY IN TRAINING';
-                  ownedTryBtn.style.cssText = 'width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:#fff;font-weight:bold;font-size:12px;cursor:pointer;';
-                  ownedTryBtn.onclick = () => { trySkinInTraining(skin.id); };
-                  actions.appendChild(ownedTryBtn);
-              } else if (isLocked) {
-                  const lockedNote = document.createElement('div');
-                  lockedNote.textContent = `💎 ${skin.price} • Unlock ${brawlerData[skin.brawler]?.name || skin.brawler} to buy — or try it free:`;
-                  lockedNote.style.cssText = 'font-size:11px;color:#89b5d9;font-weight:700;line-height:1.35;';
-                  actions.appendChild(lockedNote);
-                  const lockedTryBtn = document.createElement('button');
-                  lockedTryBtn.textContent = 'TRY IN TRAINING';
-                  lockedTryBtn.style.cssText = 'width:100%;padding:8px;border-radius:8px;border:1px solid rgba(93,242,194,0.5);background:rgba(93,242,194,0.12);color:#5df2c2;font-weight:900;font-size:12px;cursor:pointer;';
-                  lockedTryBtn.onclick = () => { trySkinInTraining(skin.id); };
-                  actions.appendChild(lockedTryBtn);
-              } else {
-                  const row = document.createElement('div');
-                  row.style.display = 'flex';
-                  row.style.gap = '6px';
-                  const buyBtn = document.createElement('button');
-                  buyBtn.textContent = `💎 ${skin.price}`;
-                  buyBtn.style.flex = '1';
-                  buyBtn.style.padding = '8px';
-                  buyBtn.style.borderRadius = '8px';
-                  buyBtn.style.border = 'none';
-                  buyBtn.style.fontWeight = '900';
-                  buyBtn.style.background = '#ffd166';
-                  buyBtn.style.color = '#08101d';
-                  buyBtn.style.cursor = 'pointer';
-                  buyBtn.onclick = () => {
-                      if (playerData.gems < skin.price) { showAppConfirmSheet({ message: 'Not enough Gems!' }); return; }
-                      playerData.gems -= skin.price;
-                      playerData.ownedSkins[skin.brawler] = playerData.ownedSkins[skin.brawler] || [];
-                      playerData.ownedSkins[skin.brawler].push(skin.id);
-                      playerData.selectedSkins[skin.brawler] = skin.id;
-                      ensureShopButtonRefresh();
-                      renderTabContent();
-                  };
-                  const tryBtn = document.createElement('button');
-                  tryBtn.textContent = 'TRY';
-                  tryBtn.style.padding = '8px 12px';
-                  tryBtn.style.borderRadius = '8px';
-                  tryBtn.style.border = '1px solid rgba(255,255,255,0.15)';
-                  tryBtn.style.background = 'rgba(255,255,255,0.05)';
-                  tryBtn.style.color = '#fff';
-                  tryBtn.style.fontWeight = 'bold';
-                  tryBtn.style.cursor = 'pointer';
-                  tryBtn.onclick = () => {
-                      trySkinInTraining(skin.id);
-                  };
-                  row.appendChild(buyBtn);
-                  row.appendChild(tryBtn);
-                  actions.appendChild(row);
-              }
-              card.appendChild(body);
-              card.appendChild(actions);
-              grid.appendChild(card);
-          });
-          // Round 2 Tier 2: the catalogue grid can be empty — the Owned
-          // filter with no skins owned, the Fighter-locked filter when
-          // every fighter is unlocked, the Buyable filter when nothing is
-          // left to buy. Show a real empty state instead of a blank grid.
-          if (!skinList.length) {
-              const emptyCopy = {
-                  owned: { titleText: 'No skins owned yet', bodyText: 'You have not bought any skins yet — browse the full catalogue to find your first.' },
-                  locked: { titleText: 'No locked fighters', bodyText: 'Every fighter with a skin is already unlocked, so nothing is hiding behind a locked fighter.' },
-                  buyable: { titleText: 'Nothing left to buy', bodyText: 'You already own every skin for the fighters you have unlocked.' },
-                  all: { titleText: 'No skins in the catalogue', bodyText: 'The skin catalogue is empty right now — check the Daily Deals instead.' }
-              }[shopSkinOwnership] || { titleText: 'No skins here', bodyText: 'Nothing matches this view right now.' };
-              grid.appendChild(makeShopEmptyState({
-                  icon: '🎭',
-                  titleText: emptyCopy.titleText,
-                  bodyText: emptyCopy.bodyText,
-                  actionLabel: shopSkinOwnership === 'all' ? 'BACK TO DAILY DEALS' : 'BROWSE ALL SKINS',
-                  onAction: () => {
-                      if (shopSkinOwnership === 'all') {
-                          const dailyBtn = sidebar.querySelector('[data-tab-id="daily"]');
-                          if (dailyBtn) { dailyBtn.click(); return; }
-                          activeTab = 'daily';
-                      }
-                      shopSkinOwnership = 'all';
-                      shopSkinQuery = '';
-                      renderTabContent();
-                  }
-              }));
-          }
-          // Search no-match state (hidden until a search matches nothing).
-          const searchEmpty = makeShopEmptyState({
-              icon: '🔍',
-              titleText: 'No skins match that search',
-              bodyText: 'Try a different skin or fighter name.',
-              actionLabel: 'CLEAR SEARCH',
-              onAction: () => {
-                  shopSkinQuery = '';
-                  search.value = '';
-                  wrap.querySelectorAll('[data-skin-card]').forEach(card => { card.style.display = ''; });
-                  const count = wrap.querySelector('[data-skin-count]');
-                  if (count) count.textContent = `${skinList.length} skins`;
-                  searchEmpty.style.display = 'none';
-              }
-          });
-          searchEmpty.setAttribute('data-shop-search-empty', '1');
-          searchEmpty.style.display = 'none';
-          grid.appendChild(searchEmpty);
-          return wrap;
       };
       const renderWheelTab = () => {
           const wrap = document.createElement('div');
@@ -18918,19 +18340,6 @@ let heistFeverActive = false;
                   onBuy: () => { if(playerData.shopClaims[key])return; if(!spendCorePieces(30)){ showAppConfirmSheet({ message: 'Not enough Core Pieces!' }); return; } addSpecialAbilityPiece(fid); playerData.shopClaims[key]=true; ensureShopButtonRefresh(); renderTabContent(); }
               }));
           }
-          const skinPool = Object.values(skinsDatabase || {}).filter(s => s && !s.visualOnly && (s.price||0) > 0 && (playerData.unlockedBrawlers||{})[s.brawler] && !(((playerData.ownedSkins||{})[s.brawler])||[]).includes(s.id));
-          if (skinPool.length) {
-              addSection(grid, 'Skin of the day');
-              const skin = pickTimedEntry(skinPool, `shop-skin:${dailyCycle.cycleKey}`);
-              const dealPrice = Math.max(1, Math.floor((skin.price||0) * 0.75));
-              grid.appendChild(makeShopCard({
-                  titleText: `🎭 ${skin.name}`, accent: '#ff9de2',
-                  descText: `${skin.description || 'A fresh look.'} For ${(brawlerData[skin.brawler]||{}).name || skin.brawler} — 25% off today only.`,
-                  priceText: `${dealPrice} GEMS (was ${skin.price})`, buttonText: 'BUY SKIN', buttonColor: '#ff9de2',
-                  isLocked: (playerData.gems||0)<dealPrice, lockedText: `${dealPrice} GEMS REQUIRED`, footerText: 'Personalized pick · only for fighters you own · rotates daily.',
-                  onBuy: () => { if((playerData.gems||0)<dealPrice){ showAppConfirmSheet({ message: 'Not enough Gems!' }); return; } playerData.gems-=dealPrice; playerData.ownedSkins = playerData.ownedSkins || {}; playerData.ownedSkins[skin.brawler] = playerData.ownedSkins[skin.brawler] || []; if(!playerData.ownedSkins[skin.brawler].includes(skin.id)) playerData.ownedSkins[skin.brawler].push(skin.id); playerData.selectedSkins = playerData.selectedSkins || {}; playerData.selectedSkins[skin.brawler] = skin.id; ensureShopButtonRefresh(); renderTabContent(); }
-              }));
-          }
           return grid;
       };
       const renderFighterDealTab = () => {
@@ -18989,14 +18398,10 @@ let heistFeverActive = false;
       // locked with the remaining amount. No placeholder text anywhere.
       const renderTabContent = () => {
           shopContent.innerHTML = '';
-          if (activeTab === 'featured') {
-              shopContent.appendChild(renderFeaturedTab());
-          } else if (activeTab === 'daily') {
+          if (activeTab === 'daily') {
               shopContent.appendChild(renderDailyDealsTab());
           } else if (activeTab === 'fighter') {
               shopContent.appendChild(renderFighterDealTab());
-          } else if (activeTab === 'skins') {
-              shopContent.appendChild(renderSkinsTab());
           } else if (activeTab === 'wheel') {
               shopContent.appendChild(renderWheelTab());
           }
@@ -47447,18 +46852,33 @@ let heistFeverActive = false;
         meta.textContent = `${tierInfo.label} (${tierInfo.points} RP)${nextText} • Division Safety Floor: ${floor} RP`;
         titleBox.appendChild(title);
         titleBox.appendChild(meta);
-        // Prestige League standings (rebuild 2026-11-20): 3-day cycle.
+        // Prestige League leaderboard (fixes round 2026-11-20, item 11):
+        // a real leaderboard with bot names, unlocked after completing all
+        // of Ranked. Before that the hub shows a locked line with progress.
         // Opening the hub rolls the cycle over and pays last cycle's
         // top-3 rewards if you finished top 3.
         const leagueState = ensurePrestigeLeagueState();
-        const leagueStandings = getPrestigeLeagueStandings(leagueState);
-        const leagueRank = getPrestigeLeaguePlayerRank(leagueState);
         const leagueMeta = document.createElement('div');
         leagueMeta.className = 'ranked-queue-league';
         leagueMeta.style.fontSize = '13px';
         leagueMeta.style.color = '#ffd166';
-        leagueMeta.textContent = `👑 Prestige League PL${getPrestigeLeagueLevel(rankedPoints)} — you are #${leagueRank} • ${leagueStandings.slice(0, 3).map((r, i) => `${i + 1}. ${r.isPlayer ? 'YOU' : r.name} (${r.rp})`).join('  ')}${(leagueState.teammates || []).length ? ` • Teammates: ${leagueState.teammates.join(' & ')}` : ''}`;
-        titleBox.appendChild(leagueMeta);
+        if (leagueState.locked) {
+            const topInfo = getRankedTierInfo(rankedPoints);
+            const rpToGo = Math.max(0, (RANKED_DIVISIONS.length - 1) * RANKED_POINTS_PER_DIVISION - rankedPoints);
+            leagueMeta.textContent = `🔒 Prestige League — complete Ranked to unlock • ${topInfo.label} (${rankedPoints} RP) • ${rpToGo} RP to Brick Legend III`;
+            titleBox.appendChild(leagueMeta);
+        } else {
+            const leagueStandings = getPrestigeLeagueStandings(leagueState);
+            const leagueRank = getPrestigeLeaguePlayerRank(leagueState);
+            leagueMeta.textContent = `👑 Prestige League PL${getPrestigeLeagueLevel(rankedPoints)} — you are #${leagueRank} • ${leagueStandings.slice(0, 3).map((r, i) => `${i + 1}. ${r.isPlayer ? 'YOU' : r.name} (${r.rp})`).join('  ')}${(leagueState.teammates || []).length ? ` • Teammates: ${leagueState.teammates.join(' & ')}` : ''}`;
+            titleBox.appendChild(leagueMeta);
+            const leagueBoard = document.createElement('div');
+            leagueBoard.className = 'ranked-queue-league-board';
+            leagueBoard.style.marginTop = '8px';
+            leagueBoard.style.fontSize = '13px';
+            leagueBoard.innerHTML = `<div style="font-weight:900;color:#ffd166;">👑 PRESTIGE LEAGUE LEADERBOARD</div>` + leagueStandings.map((r, i) => `<div style="${r.isPlayer ? 'font-weight:900;color:#ffe14d;' : 'color:#dceeff;'}">${i + 1}. ${r.isPlayer ? 'YOU' : r.name} — ${r.rp} RP${r.isPlayer ? ' ⭐' : ''}</div>`).join('');
+            titleBox.appendChild(leagueBoard);
+        }
         top.appendChild(titleBox);
         const topActions = document.createElement('div');
         topActions.className = 'ranked-queue-top-actions';
@@ -80312,7 +79732,7 @@ function checkHit(target, b, i){
                 // Prestige League standings (rebuild 2026-11-20): the
                 // leaderboard resets every 3 days; the 2 names shown with
                 // you are your teammates.
-                if (prestigeLeague) {
+                if (prestigeLeague && !prestigeLeague.locked) {
                     const leagueDiv = document.createElement('div');
                     const standings = getPrestigeLeagueStandings(prestigeLeague);
                     const rank = getPrestigeLeaguePlayerRank(prestigeLeague);
@@ -80869,14 +80289,9 @@ function checkHit(target, b, i){
       // central funnels — cube pickups call it directly). Gating here, not at
       // the call sites, so no scattered progress call can leak.
       if (isFriendlyBattle) return false;
-      addJourneyQuestProgress(questKey, amount);
       if (!ENABLE_EVENT_HUB) {
-          const base = addDailyWeeklyQuestProgress(questKey, amount);
-          const limited = addLimitedQuestProgress(questKey, amount);
-          return base || limited;
+          return addDailyWeeklyQuestProgress(questKey, amount);
       }
-      progressSoulStarterQuests(questKey, amount);
-      addLimitedQuestProgress(questKey, amount);
       if (!playerData.event) resetEventQuests();
       const normalizedQuestKey = normalizeQuestKey(questKey);
       let q = playerData.event.quests && playerData.event.quests[normalizedQuestKey];
@@ -80912,20 +80327,11 @@ function checkHit(target, b, i){
       if (!ENABLE_EVENT_HUB) return null;
       // Rarity is pre-determined by the system (passed in as parameter)
       // Not based on user hold time - system chose the difficulty upfront
-      // Chance to drop a skin on epic/mythic
+      // Fixes round (2026-11-20): no skin drops — every skin is deleted
+      // and the only skin in the game is the tier-50 pass skin, which is
+      // never offered here. Event drops always award coins/gems.
       let awarded = null;
-      const eventSkins = Object.values(skinsDatabase).filter(s => s.eventOnly && s.dropOnly);
-      const candidates = eventSkins.filter(s => !(playerData.ownedSkins[s.brawler]||[]).includes(s.id));
-      if ((rarity === 'epic' && Math.random() < 0.12) || (rarity === 'mythic' && Math.random() < 0.5)) {
-          if (candidates.length > 0) {
-              const chosen = candidates[Math.floor(Math.random() * candidates.length)];
-              if (!playerData.ownedSkins[chosen.brawler]) playerData.ownedSkins[chosen.brawler] = [];
-              playerData.ownedSkins[chosen.brawler].push(chosen.id);
-              playerData.selectedSkins[chosen.brawler] = chosen.id;
-              awarded = { type: 'skin', id: chosen.id, rarity };
-          }
-      }
-      if (!awarded) {
+      {
           // Award coins/gems based on rarity instead of storing tapper counts
           const rewards = {
               'common': { coins: 50, gems: 0 },
@@ -81211,7 +80617,7 @@ function checkHit(target, b, i){
       const eventStatus = document.createElement('div'); eventStatus.style.padding='12px'; eventStatus.style.border='1px solid #ff6b6b'; eventStatus.style.borderRadius='12px'; eventStatus.style.background='linear-gradient(90deg, #1a0f1a, #061226)';
       const timeLeft = Math.max(0, EVENT_END_MS - Date.now());
       const daysLeft = Math.floor(timeLeft / (24*60*60*1000));
-      eventStatus.innerHTML = `<div style="fontWeight:900;color:#ff6b6b;">⏱️ Event Status</div><div style="font-size:12px;color:#cfeef7;margin-top:6px;line-height:1.6;">Event ends in <b>${daysLeft} day${daysLeft!==1?'s':''}</b><br>Skins available: <b>Event Drop Only</b><br>Shop access: <b>60 days after event</b><br>Mythic skin reward: <b>Molten Rock Chaird</b></div>`;
+      eventStatus.innerHTML = `<div style="fontWeight:900;color:#ff6b6b;">⏱️ Event Status</div><div style="font-size:12px;color:#cfeef7;margin-top:6px;line-height:1.6;">Event ends in <b>${daysLeft} day${daysLeft!==1?'s':''}</b><br>Shop access: <b>60 days after event</b></div>`;
       rightPanel.appendChild(eventStatus);
       // Drop opener - Hold to open
       const openerBox = document.createElement('div'); openerBox.style.padding='12px'; openerBox.style.border='1px solid #304876'; openerBox.style.borderRadius='12px'; openerBox.style.background='#061226'; openerBox.style.display='flex'; openerBox.style.flexDirection='column'; openerBox.style.alignItems='center';
@@ -81304,8 +80710,13 @@ function checkHit(target, b, i){
       // Arena Forge app overhaul round 2: the Circuit Pass tier road is live
       // again (it was dead code behind an early return to the Quest Board).
       // The Quest Board stays the missions view — the road's MISSIONS button
-      // links back to it, and the board's season tab keeps its own tier
-      // ladder. Both views read the same season-pass state.
+      // links back to it, and the board's season tab now shows season
+      // quests only (the pass ladder was removed from quests in the
+      // 2026-11-20 fixes round). Both views read the same season-pass state.
+      // Fixes round: make sure the pass-token module exists before any
+      // BrawePassTokens dereference below, or a failed module load kills
+      // the button silently.
+      ensureBrawePassTokens();
       if (!ENABLE_SEASON_PASS) { openQuestBoard(); return; }
       ensureSeasonPassState();
       const previousFocus = document.activeElement;
@@ -81334,7 +80745,7 @@ function checkHit(target, b, i){
           const progress=Math.min(100,pass.xp % 100), next=Math.max(0,100-progress);
           overlay.innerHTML = `<section class="circuit-panel">
               <header class="circuit-header"><div><small>SEASON 0${seasonProfile.seasonNumber} / ${seasonProfile.upperName}</small><h1>${seasonProfile.upperName} <span>PASS</span></h1></div><button data-action="close" aria-label="Close pass">✕</button></header>
-              <div class="circuit-summary"><div class="circuit-level"><b>${pass.level}</b><span>LEVEL / 25</span></div><div class="circuit-progress"><strong>${pass.level >= 25 ? 'REWARD ROAD COMPLETE' : next+' TOKENS TO NEXT LEVEL'}</strong><progress max="100" value="${pass.level>=25?100:progress}"></progress><small>${active?'15 tokens per completed match · 25 on a win · missions earn more':'Season ended'} · spending never removes progress</small></div><div class="circuit-wallet"><small>PASS TOKENS</small><b>◈ ${pass.tokenWallet.toLocaleString()}</b><span>${pass.tokensEarned.toLocaleString()} earned this season</span></div></div>
+              <div class="circuit-summary"><div class="circuit-level"><b>${pass.level}</b><span>LEVEL / ${SEASON_PASS_MAX_LEVEL}</span></div><div class="circuit-progress"><strong>${pass.level >= SEASON_PASS_MAX_LEVEL ? 'REWARD ROAD COMPLETE' : next+' TOKENS TO NEXT LEVEL'}</strong><progress max="100" value="${pass.level>=SEASON_PASS_MAX_LEVEL?100:progress}"></progress><small>${active?'15 tokens per completed match · 25 on a win · missions earn more':'Season ended'} · spending never removes progress</small></div><div class="circuit-wallet"><small>PASS TOKENS</small><b>◈ ${pass.tokenWallet.toLocaleString()}</b><span>${pass.tokensEarned.toLocaleString()} earned this season</span></div></div>
               <nav class="circuit-tabs"><button data-tab="road" aria-pressed="${tab==='road'}">REWARD ROAD</button><button data-tab="shop" aria-pressed="${tab==='shop'}">TOKEN EXCHANGE</button><button data-action="quests">MISSIONS ↗</button></nav>
               <main class="circuit-content"></main>
               <footer>Free and Premium rewards share progress. Your existing claims and Premium purchase are preserved.</footer>
@@ -81386,7 +80797,7 @@ function checkHit(target, b, i){
           } else {
               const note=document.createElement('p');note.className='circuit-shop-note';note.textContent='Choose your rewards. Tokens are earned, not purchased. Offers have seasonal limits; skins are permanent.';content.appendChild(note);
               const grid=document.createElement('div');grid.className='circuit-shop';
-              for(const offer of BrawePassTokens.offers){
+              for(const offer of ensureBrawePassTokens().offers){
                   // Round 2: guard the skin lookups — a missing skin id used to
                   // throw inside render() and kill the whole exchange tab.
                   const skin=offer.reward.type==='skin'?skinsDatabase[offer.reward.id]:null;

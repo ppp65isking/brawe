@@ -55,7 +55,7 @@ check('hub shows league line', game.includes('Prestige League PL${getPrestigeLea
 // --- Live behavior ------------------------------------------------------------------
 {
     const grants = [];
-    const playerData = {};
+    const playerData = { ranked: { points: 2500, highPoints: 2500 } }; // Ranked complete (item 11): the league is unlocked here
     const sandbox = {
         console, playerData,
         rankedTeammateNames: ['Ally 1', 'Ally 2'],
@@ -68,7 +68,9 @@ check('hub shows league line', game.includes('Prestige League PL${getPrestigeLea
         getRankedPrestige: (pts) => { const p = Math.max(0, Math.floor(pts || 0)); if (p < 2400) return 0; return Math.min(5, 1 + Math.floor((p - 2400) / 500)); },
     };
     vm.createContext(sandbox);
-    for (const fn of ['getPrestigeLeagueCycleKey', 'getPrestigeLeagueLevel', 'buildPrestigeLeagueOpponents', 'payPrestigeLeagueTop3Rewards', 'ensurePrestigeLeagueState', 'getPrestigeLeagueStandings', 'getPrestigeLeaguePlayerRank', 'recordPrestigeLeagueMatch']) {
+    // Ranked ladder consts for the item-11 unlock gate (hasCompletedRanked).
+    vm.runInContext(game.match(/    const RANKED_DIVISIONS = \[[\s\S]*?\n    \];/)[0] + '\n' + game.match(/    const RANKED_POINTS_PER_DIVISION = \d+;/)[0], sandbox);
+    for (const fn of ['hasCompletedRanked', 'getRankedTierInfo', 'getPrestigeLeagueCycleKey', 'getPrestigeLeagueLevel', 'buildPrestigeLeagueOpponents', 'payPrestigeLeagueTop3Rewards', 'ensurePrestigeLeagueState', 'getPrestigeLeagueStandings', 'getPrestigeLeaguePlayerRank', 'recordPrestigeLeagueMatch']) {
         vm.runInContext(extractFunction(game, fn), sandbox);
     }
     const CYCLE = 3 * 24 * 60 * 60 * 1000;
@@ -106,10 +108,11 @@ check('hub shows league line', game.includes('Prestige League PL${getPrestigeLea
     check('league points never go below 0', league.points === 20);
 
     // Determinism: same cycle + same match sequence = same movement.
-    const playerData2 = {};
+    const playerData2 = { ranked: { points: 2500, highPoints: 2500 } };
     const sandbox2 = { ...sandbox, playerData: playerData2 };
     vm.createContext(sandbox2);
-    for (const fn of ['getPrestigeLeagueCycleKey', 'getPrestigeLeagueLevel', 'buildPrestigeLeagueOpponents', 'payPrestigeLeagueTop3Rewards', 'ensurePrestigeLeagueState', 'getPrestigeLeagueStandings', 'getPrestigeLeaguePlayerRank', 'recordPrestigeLeagueMatch']) {
+    vm.runInContext(game.match(/    const RANKED_DIVISIONS = \[[\s\S]*?\n    \];/)[0] + '\n' + game.match(/    const RANKED_POINTS_PER_DIVISION = \d+;/)[0], sandbox2);
+    for (const fn of ['hasCompletedRanked', 'getRankedTierInfo', 'getPrestigeLeagueCycleKey', 'getPrestigeLeagueLevel', 'buildPrestigeLeagueOpponents', 'payPrestigeLeagueTop3Rewards', 'ensurePrestigeLeagueState', 'getPrestigeLeagueStandings', 'getPrestigeLeaguePlayerRank', 'recordPrestigeLeagueMatch']) {
         vm.runInContext(extractFunction(game, fn), sandbox2);
     }
     const run2 = (code) => vm.runInContext(code, sandbox2);

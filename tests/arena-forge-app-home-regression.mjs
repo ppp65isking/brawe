@@ -108,7 +108,7 @@ check('syncAppHome is hooked at the end of setHomeTab', game.includes("document.
 // App home optimize: the app tab is internal appHomeTab state, not the
 // web events view's is-active class — the moved web view stays hidden in
 // app mode and the native events view is what the Events tab shows.
-check('app tab is internal appHomeTab state, not the web events view', game.includes("const activeView = appHomeTab === 'fighters' ? 'fighters' : appHomeTab === 'events' ? 'events' : 'home';") && !game.includes("document.getElementById('homeEventsView')?.classList.contains('is-active')"));
+check('app tab is internal appHomeTab state, not the web events view', game.includes("const activeView = appHomeTab === 'fighters' ? 'fighters' : appHomeTab === 'events' ? 'events' : appHomeTab === 'fighter' ? 'fighter' : 'home';") && !game.includes("document.getElementById('homeEventsView')?.classList.contains('is-active')"));
 check('app shell hides when the home screen hides (match start) via MutationObserver', game.includes('new MutationObserver(syncAppHomeVisibility).observe(homeScreenEl, { attributes: true, attributeFilter: [\'style\'] })') && game.includes("appHomeEl.classList.toggle('app-home-hidden', hidden);"));
 check('first sync is deferred past initial evaluation (no TDZ reads at boot)', game.includes('if (typeof setTimeout === \'function\') setTimeout(syncAppHome, 0);'));
 check('syncAppHome no-ops on the website (appHomeEl null / not native)', game.includes('if (!appHomeEl || !isNativeAppMode()) return;'));

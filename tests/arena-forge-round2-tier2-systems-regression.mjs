@@ -148,7 +148,7 @@ check('aim stick still writes the same aim + one-shot fire values', game.include
 check('move stick still writes the same move values', game.includes('mobileInput.moveX = x;') && game.includes('mobileInput.moveY = y;'));
 
 // --- 2. Deep links ---
-check('deep-link route table lists all eight screens', game.includes("const APP_DEEP_LINK_ROUTES = ['home', 'fighters', 'events', 'shop', 'pass', 'tournament', 'profile', 'settings'];"));
+check('deep-link route table lists all nine screens (fighter view added — fixes round item 9)', game.includes("const APP_DEEP_LINK_ROUTES = ['home', 'fighters', 'fighter', 'events', 'shop', 'pass', 'tournament', 'profile', 'settings'];"));
 function extractDeepLinkReader() {
     const start = game.indexOf("    const APP_DEEP_LINK_ROUTES = ['home'");
     const end = game.indexOf('    function setAppDeepLink(route) {', start);

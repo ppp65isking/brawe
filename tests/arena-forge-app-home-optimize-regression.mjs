@@ -19,14 +19,14 @@ function check(name, cond) { if (cond) passed++; else { failed++; failures.push(
 // --- Fighters view: shell + builders exist ---
 check('fighters view container exists in the app shell', game.includes('id="appHomeFightersView"'));
 check('fighters builders exist', game.includes('function buildAppFightersView() {') && game.includes('function renderAppFightersStrip() {') && game.includes('function renderAppFightersDetail() {') && game.includes('function appFightersVisibleList() {') && game.includes('function appFightersPlay(id) {') && game.includes('function appFightersUpgrade(id) {') && game.includes('function appFightersKitPick(id, key) {'));
-check('fighters shell has search box + role chips + strip + detail', game.includes('id="appFightersSearch"') && game.includes('id="appFightersRoles"') && game.includes('id="appFightersStrip"') && game.includes('id="appFightersDetail"'));
+check('fighters shell has search box + icon buttons + strip (detail moved to its own full screen)', game.includes('id="appFightersSearch"') && game.includes('id="appFightersFavToggle"') && game.includes('id="appFightersStrip"') && game.includes('id="appFighterDetail"') && !game.includes('id="appFightersRoles"') && !game.includes('id="appFightersDetail"'));
 check('fighters tab opens the native view (not the web gallery)', game.includes("if (tab === 'fighters') buildAppFightersView();"));
 
 // --- Fighters view: horizontal strip of smaller cards + search + class filter ---
 check('strip cards are small (92px) with portrait + name + power', game.includes('.app-fighter-card{flex:none;width:92px;') && game.includes('class="app-fighter-portrait"') && game.includes('data-app-fighter="${id}"'));
 check('strip scrolls horizontally', game.includes('#appFightersStrip{flex:none;display:flex;gap:8px;overflow-x:auto;'));
 check('search input filters the strip on input', game.includes("view.querySelector('#appFightersSearch')?.addEventListener('input'") && game.includes("appFightersState.search = event.target.value || '';") && game.includes('renderAppFightersStrip();'));
-check('role chips come from brawlerData roles at runtime', game.includes('function appFightersRoles() {') && game.includes("const role = brawlerData[id]?.role || 'Fighter';") && game.includes('data-app-role="${role}"'));
+check('favorites star + sort-in-sheet replace the role chips (fixes round)', game.includes('function syncAppFightersFavBtn() {') && game.includes('id="appFilterSort"') && game.includes('favoritesOnly: false'));
 check('strip defaults to class sort (role, then name)', game.includes('// Brawl Stars default: class sort — group by role, then name.') && game.includes('if (ra !== rb) return ra.localeCompare(rb);'));
 check('locked fighters show LOCKED, unlocked show their power', game.includes("${locked ? '🔒 LOCKED' : `POWER ${pData.level || 1}`}"));
 check('selected fighter gets the ring (is-selected)', game.includes("class=\"app-fighter-card${appFightersState.focused === id ? ' is-selected' : ''}"));

@@ -5,10 +5,11 @@ const gameCode = fs.readFileSync('game.js', 'utf8');
 
 console.log('--- Running Beam Rework & Splitter Free Instinct Regression Tests ---');
 
-// 1. Splitter free instinct in shop
-assert(gameCode.includes("The Splitter's Special Gift"), 'Must have Splitter Special Gift section in shop');
-assert(gameCode.includes('splitterInstinctFreeShardsV1'), 'Must have splitter free instinct claim key');
-assert(gameCode.includes("addSpecialAbilityPiece('splitter');"), 'Must award Splitter instinct piece');
+// 1. Splitter free instinct gift is GONE with the Offer Archive
+// (fixes round 2026-11-20, item 5: the archive tab held the gift card).
+assert(!gameCode.includes("The Splitter's Special Gift"), 'Splitter gift section is gone with the Offer Archive');
+assert(!gameCode.includes('splitterInstinctFreeShardsV1'), 'Splitter free-instinct claim key is gone with the Offer Archive');
+assert(!gameCode.includes("addSpecialAbilityPiece('splitter');"), 'No Splitter free-shard grant remains in the shop');
 
 // 2. Beam Signature Ability constants & functions
 assert(gameCode.includes('BEAM_SIGNATURE_COOLDOWN_MS = 12000'), 'Must have 12s signature cooldown');

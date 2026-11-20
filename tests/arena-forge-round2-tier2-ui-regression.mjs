@@ -134,36 +134,21 @@ check('ranked queue overlay z-index and close path untouched', rankedFn.includes
 // ================= 3. SHOP EMPTY STATES =================
 check('shared empty-state builder exists (icon + line + action)', game.includes('const makeShopEmptyState = ({ icon, titleText, bodyText, actionLabel, onAction }) => {') && game.includes("empty.className = 'brawe-shop-empty'") && game.includes("empty.style.gridColumn = '1 / -1'"));
 check('empty-state action button clears 44px', game.includes("btn.style.minHeight = '44px'") && game.slice(game.indexOf('const makeShopEmptyState'), game.indexOf('const makeShopEmptyState') + 2600).includes("btn.style.background = '#5df2c2'"));
-check('skins tab shows an empty state when its filter list is empty', skinsTab.includes('if (!skinList.length) {') && skinsTab.includes('grid.appendChild(makeShopEmptyState({'));
-check('skins empty copy covers owned / locked / buyable / all', skinsTab.includes("owned: { titleText: 'No skins owned yet'") && skinsTab.includes("locked: { titleText: 'No locked fighters'") && skinsTab.includes("buyable: { titleText: 'Nothing left to buy'") && skinsTab.includes("all: { titleText: 'No skins in the catalogue'"));
-check('skins empty action resets the filters to the full catalogue', skinsTab.includes("actionLabel: shopSkinOwnership === 'all' ? 'BACK TO DAILY DEALS' : 'BROWSE ALL SKINS'") && skinsTab.includes("shopSkinOwnership = 'all';") && skinsTab.includes("shopSkinQuery = '';"));
-check('skins empty action for the all-view goes back to Daily Deals via the sidebar', skinsTab.includes("sidebar.querySelector('[data-tab-id=\"daily\"]')") && skinsTab.includes('dailyBtn.click()'));
-check('search no-match has its own hidden empty state', skinsTab.includes("searchEmpty.setAttribute('data-shop-search-empty', '1')") && skinsTab.includes("titleText: 'No skins match that search'") && skinsTab.includes("actionLabel: 'CLEAR SEARCH'"));
-check('search handler toggles the no-match state (not the filter state)', skinsTab.includes("const noMatch = wrap.querySelector('[data-shop-search-empty]');") && skinsTab.includes("noMatch.style.display = (q && visible === 0 && totalCards > 0) ? '' : 'none'"));
-check('clear-search restores every card and the count', skinsTab.includes("wrap.querySelectorAll('[data-skin-card]').forEach(card => { card.style.display = ''; });") && skinsTab.includes("count.textContent = `${skinList.length} skins`"));
-check('skins filter predicates are intact (owned / buyable / locked / all)', skinsTab.includes("if (shopSkinOwnership === 'owned') return owned;") && skinsTab.includes("if (shopSkinOwnership === 'buyable') return !owned && !locked;") && skinsTab.includes("if (shopSkinOwnership === 'locked') return locked;"));
-// Behavior mirror: run the real skins filter predicate against fixtures.
-const filterSrc = extractBraced(game, game.indexOf('Object.values(skinsDatabase).filter(skin => {'));
-check('skins filter predicate extracts cleanly', !!filterSrc && filterSrc.startsWith('Object.values(skinsDatabase).filter(skin => {'));
-if (filterSrc) {
-    const runFilter = (ownership, ownedSkins, unlocked) => {
-        const skinsDatabase = { a: { id: 'a', brawler: 'x' }, b: { id: 'b', brawler: 'y' }, c: { id: 'c', brawler: 'z' } };
-        const playerData = { ownedSkins, unlockedBrawlers: unlocked };
-        return new Function('skinsDatabase', 'playerData', 'shopSkinOwnership', `return ${filterSrc});`)(skinsDatabase, playerData, ownership);
-    };
-    check('filter mirror: owned is empty when nothing is owned', runFilter('owned', {}, { x: true, y: true, z: true }).length === 0);
-    check('filter mirror: locked is empty when every fighter is unlocked', runFilter('locked', {}, { x: true, y: true, z: true }).length === 0);
-    check('filter mirror: buyable is empty when everything is owned', runFilter('buyable', { x: ['a'], y: ['b'], z: ['c'] }, { x: true, y: true, z: true }).length === 0);
-    check('filter mirror: all still lists the full catalogue', runFilter('all', {}, { x: true }).length === 3);
-    check('filter mirror: owned lists only owned skins', runFilter('owned', { y: ['b'] }, { x: true, y: true, z: true }).map((s) => s.id).join(',') === 'b');
-    check('filter mirror: locked lists only locked-fighter skins', runFilter('locked', {}, { x: true, y: false, z: true }).map((s) => s.id).join(',') === 'b');
-}
+// Fixes round (2026-11-20): the skins tab is deleted — every skin is
+// deleted and the only skin in the game is the tier-50 pass skin, so
+// there is no skins filter, no skins empty state, and no skins predicate.
+check('skins tab is deleted (no renderer, no filter state, no Skin of the day)', !game.includes('const renderSkinsTab = () => {') && !game.includes('shopSkinQuery') && !game.includes('shopSkinOwnership') && !game.includes('shopSkinSort') && !game.includes('Skin of the day') && !game.includes("createSidebarButton('🎭 SKIN CATALOGUE', 'skins')"));
+check('skins filter predicate is gone with the tab', !game.includes('Object.values(skinsDatabase).filter(skin => {'));
+// Fixes round: the skins filter mirror is deleted with the tab — the
+// skinsDatabase still exists (pass grant + fighter equip UI need it),
+// but no shop code filters it anymore.
+check('skinsDatabase still holds only Holiday Lights for the pass grant', game.includes('holiday-lights-freezeon') && game.includes('passOnly: true'));
 // Never-empty tabs: fixed cards / fixed tiers / fixed wheel segments.
 check('daily tab can never be empty (5 fixed cards + stipend fallback)', countCards(dailyTab) >= 6 && dailyTab.includes("titleText: '🔰 Forge Stipend'"));
 check('fighter tab can never be empty (upgrade + loadout fund are fixed)', countCards(fighterTab) >= 2 && fighterTab.includes('Loadout Fund'));
-check('featured tab can never be empty (5 fixed cards)', countCards(featuredTab) >= 5 && featuredTab.includes("titleText: '🎁 Daily Freebie'") && featuredTab.includes('Tapper Mega Bundle'));
+check('featured tab (offer archive) is deleted entirely', !game.includes('const renderFeaturedTab = () => {') && !game.includes("createSidebarButton('🎁 OFFER ARCHIVE', 'featured')"));
 check('wheel tab can never be empty (fixed 8-segment wheel + spin button)', (wheelTab.match(/\{ text: '/g) || []).length === 8 && wheelTab.includes("spinBtn.textContent = 'SPIN WHEEL (🪙 100)'"));
-check('only the skins tab renders through a filterable list', !dailyTab.includes('shopSkinOwnership') && !fighterTab.includes('shopSkinOwnership') && !featuredTab.includes('shopSkinOwnership') && !exchangeTab.includes('shopSkinOwnership') && !overdriveTab.includes('shopSkinOwnership') && !wheelTab.includes('shopSkinOwnership'));
+check('no shop tab renders through a skins filter list anymore', !game.includes('shopSkinOwnership'));
 
 // --- Scope guards ---
 check('diag gate untouched (?diag=1)', game.includes("new URLSearchParams(window.location.search || '').get('diag') === '1'"));

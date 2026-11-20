@@ -38,34 +38,28 @@ function sliceBetween(startMarker, endMarker) {
     return game.slice(start, end);
 }
 
-// --- 4-per-column portrait grid (and the card that makes it work) ---
-const baseGrid = "#appFightersStrip{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;";
-const portraitGrid = "@media (orientation:portrait) and (max-width:560px){#appFightersStrip{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}}";
-check('grid: portrait phones show 4 fighters per column',
-    game.includes(portraitGrid));
-check('grid: the 4-col portrait rule comes AFTER the base grid rule, so it wins',
-    game.indexOf(portraitGrid) > game.indexOf(baseGrid) && game.indexOf(baseGrid) !== -1);
-check('grid: landscape keeps the v2 wide-card grid (300px auto-fill)',
-    game.includes("@media (orientation:landscape){#appFightersStrip{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}}"));
-check('grid: one scroller is kept — the view scrolls, the grid does not',
-    game.includes('#appHomeFightersView{touch-action:pan-y}') &&
-    game.includes('#appFightersStrip{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;overflow:visible;position:static;touch-action:pan-y'));
-check('cards: portrait cards are taller (3/4) so the strip fits at 4-across',
-    game.includes('.app-fighter-card{aspect-ratio:3/4}'));
-check('cards: 34px right strip is kept (rarity bar + power badge + kit)',
-    game.includes('.app-fighter-rarity{position:absolute;top:0;right:0;bottom:0;width:34px;') &&
-    game.includes('.app-fighter-power{position:absolute;top:5px;right:3px;') &&
-    game.includes('.app-fighter-kit{position:absolute;top:44px;right:0;bottom:8px;width:34px;'));
-check('cards: portrait strip elements shrink to fit (24px badge, 14px kit icons, 16px upgrade badge, 22px fav)',
-    game.includes('.app-fighter-power{width:24px;height:24px;font-size:12px;top:4px;right:5px}') &&
-    game.includes('.app-fighter-kit-icons i{width:14px;height:14px;border-radius:5px;font-size:9px}') &&
-    game.includes('.app-fighter-upg{min-width:16px;height:16px;font-size:10px;padding:0 3px}') &&
-    game.includes('.app-fighter-fav{width:22px;height:22px;font-size:13px;top:4px;left:4px}'));
-check('cards: portrait name / bricks chip / locked text shrink to fit',
-    game.includes('.app-fighter-card b{font-size:10px;right:36px;bottom:4px;max-width:calc(100% - 40px)}') &&
-    game.includes('.app-fighter-trophies{font-size:8px;padding:1px 4px;left:4px;bottom:4px}') &&
-    game.includes('.app-fighter-card.is-locked small{font-size:9px}') &&
-    game.includes('.app-fighter-cost{font-size:8px;line-height:1.25}'));
+// --- Paging grid, fixes round (2026-11-20): 4 small cards per column,
+// columns left-to-right, swipe to page — same in portrait AND landscape.
+check('grid: strip is a horizontal paging scroller with 4-per-column pages',
+    game.includes('#appFightersStrip{display:flex;flex-direction:row;gap:10px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x proximity') &&
+    game.includes('#appFightersStrip .app-fighters-page{flex:0 0 auto;width:118px;display:grid;grid-template-rows:repeat(4,minmax(0,1fr));gap:8px;scroll-snap-align:start}') &&
+    game.includes("@media (orientation:landscape){#appFightersStrip .app-fighters-page{width:96px}}"));
+check('grid: old 280px/300px grid and 16/10 + 3/4 cards are gone',
+    !game.includes('#appFightersStrip{display:grid') && !game.includes('repeat(auto-fill,minmax(280px,1fr))') &&
+    !game.includes('aspect-ratio:16/10') && !game.includes('aspect-ratio:3/4'));
+check('grid: strip renders pages of 4 small cards',
+    game.includes('for (let i = 0; i < list.length; i += 4) pages.push(list.slice(i, i + 4));'));
+check('cards: small cards keep the power badge + upgrade count, thin the rarity edge, hide the kit strip',
+    game.includes('.app-fighter-power{position:absolute;top:4px;right:3px;z-index:3;width:24px;height:24px;') &&
+    game.includes('.app-fighter-rarity{position:absolute;top:0;right:0;bottom:0;width:6px;') &&
+    game.includes('.app-fighter-kit{display:none}') &&
+    game.includes('.app-fighter-upg{position:absolute;top:32px;right:3px;') &&
+    game.includes('.app-fighter-card .app-fighter-fav{top:4px;left:4px;right:auto;width:22px;height:22px;font-size:13px}'));
+check('cards: small-card name / locked text / cost fit the small card, bricks chip hidden',
+    game.includes('.app-fighter-card b{position:absolute;left:6px;bottom:4px;') &&
+    game.includes('.app-fighter-trophies{display:none}') &&
+    game.includes('.app-fighter-card.is-locked small{display:flex;position:absolute;left:0;right:6px;top:50%;transform:translateY(-130%);z-index:3;justify-content:center;font-size:10px;') &&
+    game.includes('.app-fighter-cost{position:absolute;left:0;right:6px;top:50%;transform:translateY(10%);z-index:3;display:block;text-align:center;font-size:9px;'));
 
 // --- Icon top bar: search + filter icons, collapsible search ---
 check('topbar: toolbar has an icon top bar with a search toggle and a filter button',
@@ -88,19 +82,20 @@ check('topbar: top bar is hidden on wide windows; the filter row unwraps there (
     game.includes('.app-fighters-topbar{display:none}') &&
     game.includes('.app-fighters-filter-row{display:contents}') &&
     game.includes('<div class="app-fighters-filter-row">'));
-check('topbar: portrait toolbar is a compact column (icon bar / search / sort+roles+count)',
+check('topbar: toolbar is a compact column (icon bar / search / count)',
     game.includes('.app-fighters-toolbar{flex-direction:column;align-items:stretch;gap:6px;padding:2px 2px 8px}') &&
     game.includes('.app-fighters-filter-row{display:flex;align-items:center;gap:8px;flex:none}'));
 check('topbar: sticky toolbar rule itself is untouched (still pins to the view top)',
     game.includes('.app-fighters-toolbar{position:sticky;top:0;z-index:3;background:linear-gradient(160deg,#06101f,#0a2140)'));
-check('topbar: search + sort + roles + count all still exist (same ids as before)',
-    game.includes('id="appFightersSearch"') && game.includes('id="appFightersSort"') &&
-    game.includes('id="appFightersRoles"') && game.includes('id="appFightersCount"') &&
+check('topbar: search + icon buttons + count exist; sort + roles are gone (fixes round)',
+    game.includes('id="appFightersSearch"') && game.includes('id="appFightersFavToggle"') &&
+    game.includes('id="appFightersCount"') && game.includes('id="appFilterSort"') &&
+    !game.includes('id="appFightersRoles"') && !game.includes('<select id="appFightersSort"') &&
     game.includes('<span id="appFightersCount" class="app-fighters-count"></span>'));
 
 // --- Filter sheet: rarity / power / owned, persisted, live ---
-check('filter: state carries the three filter fields with all-defaults',
-    game.includes("sort: 'favorites', rarity: 'all', minPower: 0, owned: 'all'"));
+check('filter: state carries the filter fields with all-defaults (plus favoritesOnly)',
+    game.includes("sort: 'favorites', rarity: 'all', minPower: 0, owned: 'all', favoritesOnly: false"));
 check('filter: rarity / power-band / owned vocabularies + storage key',
     game.includes("const APP_FIGHTERS_FILTERS_KEY = 'brawl_arena_fighters_filters';") &&
     game.includes("const APP_FIGHTER_RARITIES = ['Starter', 'Rare', 'Epic', 'Mythic', 'Exotic', 'Unique', 'Anomaly'];") &&
@@ -113,7 +108,7 @@ check('filter: stored filters load validated (bad values fall back to defaults)'
     game.includes('if (APP_FIGHTER_OWNED_STATES.includes(storedFilters.owned))'));
 check('filter: save helper writes the same key as JSON',
     game.includes('function saveAppFightersFilters() {') &&
-    game.includes("localStorage.setItem(APP_FIGHTERS_FILTERS_KEY, JSON.stringify({ rarity: appFightersState.rarity || 'all', minPower: Number(appFightersState.minPower) || 0, owned: appFightersState.owned || 'all' }));"));
+    game.includes("localStorage.setItem(APP_FIGHTERS_FILTERS_KEY, JSON.stringify({ rarity: appFightersState.rarity || 'all', minPower: Number(appFightersState.minPower) || 0, owned: appFightersState.owned || 'all', favoritesOnly: !!appFightersState.favoritesOnly }));"));
 check('filter: visible list applies rarity, min power and owned state (each short-circuits on default)',
     game.includes("const rarityFilter = appFightersState.rarity || 'all';") &&
     game.includes('if (r !== rarityFilter) return false;') &&
@@ -135,7 +130,7 @@ check('filter: sheet has rarity, power and owned selects with the right options'
     game.includes('data-app-filter-done="1"'));
 check('filter: sheet changes persist + re-render + sync the button; CLEAR ALL resets all three',
     game.includes('saveAppFightersFilters(); renderAppFightersStrip(); syncAppFightersFilterBtn();') &&
-    game.includes("appFightersState.rarity = 'all'; appFightersState.minPower = 0; appFightersState.owned = 'all';"));
+    game.includes("appFightersState.rarity = 'all'; appFightersState.minPower = 0; appFightersState.owned = 'all'; appFightersState.sort = 'favorites'; appFightersState.favoritesOnly = false;"));
 check('filter: filter button lights up while any filter is set (and only then)',
     game.includes('function syncAppFightersFilterBtn() {') &&
     game.includes("btn.classList.toggle('is-active', !!active);") &&
@@ -153,14 +148,14 @@ check('sizing: home top bar + hero + quick row + event chip tighten on portrait 
 check('sizing: search field is 16px on portrait phones (no focus zoom)',
     game.includes('.app-fighters-search-wrap .app-fighters-search{font-size:16px}') &&
     game.includes('.app-filter-field select{min-height:44px;'));
-check('sizing: role chips + sort + detail text tighten on portrait phones',
-    game.includes('.app-fighters-role{padding:6px 10px;font-size:11px}') &&
-    game.includes('.app-fighters-filter-row .app-fighters-sort{padding:8px 6px;font-size:12px}') &&
-    game.includes('.app-fighters-detail-info h3{font-size:clamp(22px,4.5vh,30px)}'));
+check('sizing: detail text tightens on portrait phones (role chips + sort select are gone)',
+    game.includes('.app-fighters-detail-info h3{font-size:clamp(22px,4.5vh,30px)}') &&
+    !game.includes('.app-fighters-role{padding:6px 10px;font-size:11px}') &&
+    !game.includes('.app-fighters-filter-row .app-fighters-sort{padding:8px 6px;font-size:12px}'));
 
 // --- No boxes on mobile ---
-check('nobox: fighters detail panel goes flat on portrait phones (border + background removed)',
-    game.includes('#appFightersDetail{border:0;border-radius:0;background:transparent;box-shadow:none;padding:12px 4px}'));
+check('nobox: fighter-page detail panel goes flat (border + background removed)',
+    game.includes('#appFighterDetail{flex:1 1 auto;min-height:0;overflow-y:auto;display:flex;gap:14px;padding:12px 4px;border:0;border-radius:0;background:transparent;box-shadow:none}'));
 check('nobox: kit slots + stat pills lose their heavy borders on portrait phones',
     game.includes('.app-kit-slot{border-color:transparent;background:rgba(255,255,255,.05)}') &&
     game.includes('.app-fighters-detail-stats span{padding:4px 8px;font-size:11px;border-color:transparent;background:rgba(255,255,255,.06)}'));
@@ -170,9 +165,8 @@ check('nobox: profile ranked boxes lose their heavy borders on portrait phones',
     game.includes('.native-app .profile-ranked-boxes>div{border-color:transparent;background:rgba(10,16,32,.4)}'));
 
 // --- Desktop / v2 keep-list: unchanged ---
-check('keep: v2 card is still a 16/10 wide card with dark border + hard shadow (base rule)',
-    game.includes('aspect-ratio:16/10;background:var(--card-color,#0b69bd)') &&
-    game.includes('border:3px solid #0a1428;box-shadow:0 4px 0 rgba(0,0,0,.45);'));
+check('keep: card keeps the dark border + hard shadow, now small (fixes round)',
+    game.includes('.app-fighter-card{position:relative;width:auto;padding:0;border-radius:10px;overflow:hidden;text-align:left;border:2px solid #0a1428;box-shadow:0 3px 0 rgba(0,0,0,.45);background:var(--card-color,#0b69bd)}'));
 check('keep: home PLAY is still giant yellow',
     game.includes('#appHomePlay{min-height:64px;font-size:26px;background:linear-gradient(180deg,#ffe14d,#ffb400);'));
 check('keep: home chips + hero trophy + menu button still exist',
@@ -292,10 +286,11 @@ try {
     run(sliceBetween('    const kitSplit = (raw) => {', '    const kitName = '));
     run(sliceBetween('    const kitName = ', '    const kitDesc = '));
     run(sliceBetween('    const kitDesc = ', '    function toggleAppFighterFavorite(id) {'));
+    run(sliceBetween('    function playableBrawlerIds() {', '    // Emergency balance hold:'));
     run(sliceBetween('    function appFightersVisibleList() {', '    function buildAppFightersView() {'));
     run(sliceBetween('    function syncAppFightersFilterBtn() {', '    function renderAppFightersStrip() {'));
     run(sliceBetween('    function renderAppFightersStrip() {', '    // Kit name/description split'));
-    run(sliceBetween('    function saveAppFightersFilters() {', '    function appFightersRoles() {'));
+    run(sliceBetween('    function saveAppFightersFilters() {', '    function appFightersVisibleList() {'));
     check('runtime: Fighters + filter functions extracted and evaluated', true);
 } catch (err) {
     check('runtime: Fighters + filter functions extracted and evaluated (' + err.message + ')', false);
@@ -374,10 +369,10 @@ check('runtime sync: clearing all filters → button inactive again',
 lsStore.clear();
 run(`appFightersState.rarity = 'Mythic'; appFightersState.minPower = 9; appFightersState.owned = 'owned'; saveAppFightersFilters();`);
 check('runtime persist: save writes the filters key as JSON with all three fields',
-    (() => { try { const v = JSON.parse(lsStore.get('brawl_arena_fighters_filters')); return v.rarity === 'Mythic' && v.minPower === 9 && v.owned === 'owned'; } catch (_) { return false; } })());
+    (() => { try { const v = JSON.parse(lsStore.get('brawl_arena_fighters_filters')); return v.rarity === 'Mythic' && v.minPower === 9 && v.owned === 'owned' && v.favoritesOnly === false; } catch (_) { return false; } })());
 run(`appFightersState.rarity = 'all'; appFightersState.minPower = 0; appFightersState.owned = 'all'; saveAppFightersFilters();`);
 check('runtime persist: saving defaults writes the all-defaults JSON',
-    lsStore.get('brawl_arena_fighters_filters') === JSON.stringify({ rarity: 'all', minPower: 0, owned: 'all' }));
+    lsStore.get('brawl_arena_fighters_filters') === JSON.stringify({ rarity: 'all', minPower: 0, owned: 'all', favoritesOnly: false }));
 
 console.log(`arena-forge-mobile-ui: ${passed} passed, ${failed} failed`);
 if (failed) { console.log('FAILURES:'); for (const f of failures) console.log(' - ' + f); process.exit(1); }
