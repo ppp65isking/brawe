@@ -70,27 +70,29 @@ check('pass road shows 50 tiers', game.includes("aria-label','Reward road: 50 ti
 check('Random Piece has a pass UI label', game.includes("randomPiece:'Random Piece'"));
 
 // --- Overflow: every 1000 XP = 2 random tappers, every 2500 = super tapper --
+// Pass total is 38,950 XP now (2026-11-20, Anthony: "switch both"), so
+// overflow starts past 38,950, not 4,900.
 {
     const grants = [];
     const sandbox = {
         console,
         SEASON_PASS_MAX_LEVEL: 50,
-        SEASON_PASS_XP_PER_LEVEL: 100,
+        SEASON_PASS_TOTAL_XP: 38950,
         grantReward: (r) => { grants.push(r); return true; },
         grantRandomTappers: (n) => { for (let i = 0; i < n; i++) grants.push({ type: 'randomTapper', amount: 1 }); },
     };
     vm.createContext(sandbox);
     vm.runInContext(extractFunction(game, 'awardSeasonPassOverflow'), sandbox);
     const run = (code) => vm.runInContext(code, sandbox);
-    const pass = { xp: 4900, overflowSteps: 0, overflowSuperSteps: 0 };
+    const pass = { xp: 38950, overflowSteps: 0, overflowSuperSteps: 0 };
     sandbox.pass = pass;
     run('awardSeasonPassOverflow(pass)');
-    check('at exactly tier 50 (4900 XP) no overflow grants', grants.length === 0);
-    pass.xp = 5900; // +1000 over
+    check('at exactly tier 50 (38950 XP) no overflow grants', grants.length === 0);
+    pass.xp = 39950; // +1000 over
     run('awardSeasonPassOverflow(pass)');
     check('1000 XP over = 2 random tappers', grants.filter(g => g.type === 'randomTapper').length === 2);
     check('1000 XP over = no super tapper yet', grants.filter(g => g.type === 'superTapper').length === 0);
-    pass.xp = 7400; // +2500 over
+    pass.xp = 41450; // +2500 over
     run('awardSeasonPassOverflow(pass)');
     check('2500 XP over = super tapper granted', grants.filter(g => g.type === 'superTapper').length === 1);
     check('2500 XP over = second 1000-step also paid (4 random tappers total)', grants.filter(g => g.type === 'randomTapper').length === 4);

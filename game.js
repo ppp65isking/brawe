@@ -901,6 +901,17 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         .ranked-hub-pass .ranked-hub-pass-go{margin-left:auto;flex:none;font-size:12px;font-weight:1000;color:#e9d5ff}
         .ranked-hub-play{padding:16px 20px;border:0;border-radius:16px;background:linear-gradient(90deg,#00f5d4,#38bdf8,#a855f7);color:#04122b;font-size:clamp(20px,3.4vw,26px);font-weight:1000;letter-spacing:.06em;cursor:pointer;box-shadow:0 0 26px rgba(0,245,212,.65),0 6px 0 rgba(0,0,0,.45)}
         .ranked-hub-play:active{transform:translateY(3px)}
+        /* Ranked entry redesign (2026-11-20): Teams and Solo are both
+           visible in the same hub and selectable. Two mode tabs sit
+           above the cards; the selected card is highlighted and each
+           card carries its own PLAY button. Both cards get equal width
+           so Solo fits alongside Teams instead of squeezing beside it. */
+        .ranked-hub-mode-tabs{display:flex;gap:10px;margin-top:16px}
+        .ranked-hub-mode-tab{flex:1;padding:12px 10px;border-radius:14px;border:2px solid rgba(0,245,212,.35);background:rgba(2,0,20,.6);color:#bfefff;font-size:13px;font-weight:1000;letter-spacing:.05em;cursor:pointer;text-align:center}
+        .ranked-hub-mode-tab.is-selected{border-color:#00f5d4;background:linear-gradient(90deg,rgba(0,245,212,.25),rgba(168,85,247,.25));color:#fff;box-shadow:0 0 18px rgba(0,245,212,.4)}
+        .ranked-hub-solo{display:flex;flex-direction:column;gap:12px;min-width:0}
+        .ranked-hub-main.is-selected,.ranked-hub-solo.is-selected{outline:2px solid rgba(0,245,212,.7);outline-offset:4px;border-radius:18px}
+        .ranked-hub-play-card{width:100%;margin-top:auto;padding:12px 16px;font-size:clamp(16px,2.6vw,20px)}
         @media (max-width:640px){.ranked-hub-body{grid-template-columns:1fr}.ranked-hub-panel{padding:16px}}
         /* Neon carries into the draft + pass too (same screens, same
            glow). Inline styles set the base colors, so these win with
@@ -948,7 +959,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         .ranked-hub-back{width:40px;height:40px;flex:none;border-radius:10px;background:#0a1428;border:2px solid rgba(255,255,255,.3);color:#fff;font-size:22px;font-weight:1000;cursor:pointer}
         .ranked-hub-top{display:flex;align-items:center;gap:12px}
         .ranked-hub-top>div{flex:1;text-align:left}
-        .ranked-hub-body{display:grid;grid-template-columns:280px minmax(0,1fr);gap:18px}
+        .ranked-hub-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}
         .ranked-hub-pass{flex-direction:column;align-items:center;gap:8px;padding:22px 16px;text-align:center;position:relative;background:linear-gradient(180deg,#ffd166,#ffb400);color:#231303;border:3px solid #0a1428;box-shadow:0 6px 0 rgba(0,0,0,.45)}
         .ranked-hub-pass-clip{width:46px;height:16px;border-radius:8px;background:#0a1428;box-shadow:inset 0 0 0 2px rgba(255,255,255,.25)}
         .ranked-hub-pass-title{font-size:15px;font-weight:1000;letter-spacing:.06em}
@@ -6614,7 +6625,8 @@ const bolznstienPendingStrikes = [];
             const xpEl = document.getElementById('appHomeXpChip');
             if (xpEl && playerData?.seasonPass) {
                 const pass = playerData.seasonPass;
-                xpEl.textContent = `🎫 LV ${pass.level} · ${Math.min(100, pass.xp % 100)}/100`;
+                const info = seasonPassLevelProgress(pass.xp || 0);
+                xpEl.textContent = `🎫 LV ${info.level} · ${info.xpInto}/${info.xpPerLevel}`;
                 xpEl.hidden = false;
             } else if (xpEl) xpEl.hidden = true;
         } catch (_) {}
@@ -6629,12 +6641,10 @@ const bolznstienPendingStrikes = [];
     }
     // Mobile landscape home UI (Anthony's sketch, 2026-11-20): the
     // season-pass bar on the action row — pure math so the suite can
-    // test it without a DOM. 100 XP per tier; tier 50 is max.
+    // test it without a DOM. Per-tier XP from the 38,950 pass table;
+    // tier 50 is max. Level is derived from total XP, never stored.
     function getLandscapePassBarInfo(pass) {
-        const level = Math.max(1, Math.min(SEASON_PASS_MAX_LEVEL, Math.floor(pass?.level || 1)));
-        const xpInto = Math.max(0, Math.floor(pass?.xp || 0) % SEASON_PASS_XP_PER_LEVEL);
-        const maxed = level >= SEASON_PASS_MAX_LEVEL;
-        return { level, xpInto, xpPerLevel: SEASON_PASS_XP_PER_LEVEL, xpToNext: maxed ? 0 : SEASON_PASS_XP_PER_LEVEL - xpInto, pct: maxed ? 100 : Math.round((xpInto / SEASON_PASS_XP_PER_LEVEL) * 100), maxed };
+        return seasonPassLevelProgress(Math.max(0, Math.floor(pass?.xp || 0)));
     }
     function renderAppHomeLandscapeBar() {
         const passBtn = document.getElementById('appHomeLandscapePass');
@@ -10228,7 +10238,56 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
       const EMBER_FORGE_START_UTC = Date.UTC(2027, 0, 1, 0, 0, 0); // Season 7 starts Jan 1, 2027
       const EMBER_FORGE_END_UTC = Date.UTC(2027, 1, 1, 0, 0, 0); // Season 7 runs through Jan 31, 2027
       const SEASON_PASS_MAX_LEVEL = 50;
-      const SEASON_PASS_XP_PER_LEVEL = 100;
+      // Pass XP model (2026-11-20, Anthony: "switch both" — the pass
+      // total is 38,950 XP, not 4,900): per-tier XP, escalating in five
+      // bands. Anthony's own XP bands add to 38,950 but the per-tier
+      // numbers were never written into code, so these band values are
+      // BUILDER PICKS — a proportional rescale of the old flat 100
+      // XP/level (average 795 XP per level-up, 38,950 / 49), ramped so
+      // early tiers are cheaper and late tiers cost more. Entry i is
+      // the XP to go from tier i+1 to tier i+2 (49 entries, tiers 1-50).
+      // 50 tiers, premium price and the tier-50 skin are untouched.
+      const SEASON_PASS_XP_PER_TIER = [
+          400, 400, 400, 400, 400, 400, 400, 400, 400, // level-ups 1-9 (tiers 1-9 -> 2-10)
+          650, 650, 650, 650, 650, 650, 650, 650, 650, 650, // level-ups 10-19
+          800, 800, 800, 800, 800, 800, 800, 800, 800, 800, // level-ups 20-29
+          950, 950, 950, 950, 950, 950, 950, 950, 950, 950, // level-ups 30-39
+          1135, 1135, 1135, 1135, 1135, 1135, 1135, 1135, 1135, 1135 // level-ups 40-49
+      ];
+      const SEASON_PASS_TOTAL_XP = 38950; // sum of SEASON_PASS_XP_PER_TIER — the 38,950 total Anthony confirmed
+      // Total XP needed to reach `level` (level 1 needs 0). Pure table
+      // math: the level is derived from XP, never stored independently.
+      function seasonPassXpToReachLevel(level) {
+          let total = 0;
+          const ups = Math.max(0, Math.min(SEASON_PASS_MAX_LEVEL - 1, Math.floor(level || 1) - 1));
+          for (let i = 0; i < ups; i++) total += SEASON_PASS_XP_PER_TIER[i] || 0;
+          return total;
+      }
+      function seasonPassLevelForXp(xp) {
+          let remaining = Math.max(0, Math.floor(xp || 0));
+          let level = 1;
+          for (let i = 0; i < SEASON_PASS_XP_PER_TIER.length && remaining >= SEASON_PASS_XP_PER_TIER[i]; i++) { remaining -= SEASON_PASS_XP_PER_TIER[i]; level++; }
+          return Math.min(SEASON_PASS_MAX_LEVEL, level);
+      }
+      function seasonPassXpIntoLevel(xp) {
+          const level = seasonPassLevelForXp(xp);
+          return Math.max(0, Math.floor(xp || 0) - seasonPassXpToReachLevel(level));
+      }
+      function seasonPassXpPerLevel(xp) {
+          const level = seasonPassLevelForXp(xp);
+          if (level >= SEASON_PASS_MAX_LEVEL) return SEASON_PASS_XP_PER_TIER[SEASON_PASS_XP_PER_TIER.length - 1];
+          return SEASON_PASS_XP_PER_TIER[level - 1];
+      }
+      // One progress object for every pass bar in the game: level, XP
+      // into the current tier, XP the tier costs, XP to the next tier,
+      // percent, and whether the pass is maxed. Maxed shows a full bar.
+      function seasonPassLevelProgress(xp) {
+          const level = seasonPassLevelForXp(xp);
+          const maxed = level >= SEASON_PASS_MAX_LEVEL;
+          const xpPerLevel = seasonPassXpPerLevel(xp);
+          const xpInto = maxed ? xpPerLevel : seasonPassXpIntoLevel(xp);
+          return { level, xpInto, xpPerLevel, xpToNext: maxed ? 0 : xpPerLevel - xpInto, pct: maxed ? 100 : Math.round((xpInto / xpPerLevel) * 100), maxed };
+      }
       const SEASON_PREMIUM_UNLOCK_GEMS = 100;
       const SEASON_PREMIUM_UNLOCK_COINS = 11999;
       const TURKEY_TROUBLE_PASS_TIERS = [
@@ -10359,27 +10418,33 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           {tier:24,title:'Present Storm',free:{type:'present',amount:2},premium:{type:'present',amount:2}},
           {tier:25,title:'EMBERLORD',free:{type:'present',amount:2},premium:{type:'pinPack',amount:3,bonusGems:15}}
       ];
+      // Xplodemis season quests (2026-11-20, Anthony: "switch both"):
+      // Pass XP rescaled from the old 100/175/275/430 ladder (sum 4,900)
+      // to 795/1391/2186/3418 (sum 38,950 = the new pass total), keeping
+      // the same ladder shape — proportional rescale, so the per-stage
+      // numbers are BUILDER PICKS (old x 38,950/4,900, rounded, and the
+      // rounding cancels exactly). Targets, rewards and timers untouched.
       const XPLODEMIS_QUEST_DEFS = [
-          {id:'xplodemis_01',stage:1,kind:'play_match',title:'First Snowfall',desc:'Play 5 battles.',target:5,rewards:{coins:200,souls:12},xpReward:100},
-          {id:'xplodemis_02',stage:2,kind:'deal_damage',title:'Firework Warmup',desc:'Deal 50,000 damage.',target:50000,rewards:{coins:240,corePieces:5},xpReward:100},
-          {id:'xplodemis_03',stage:3,kind:'win_match',title:'Sleigh Ride',desc:'Win 13 battles.',target:13,rewards:{souls:20},xpReward:100},
-          {id:'xplodemis_04',stage:4,kind:'defeat_enemies',title:'Grinch Patrol',desc:'Defeat 30 enemies.',target:30,rewards:{coins:300,tappers:1},xpReward:100},
-          {id:'xplodemis_05',stage:5,kind:'perform_supers',title:'Carol Chorus',desc:'Activate 20 Power Moves.',target:20,rewards:{coins:340,souls:24},xpReward:100},
-          {id:'xplodemis_06',stage:6,kind:'christmas_showdown_matches',title:'First Christmas Showdown',desc:'Play 5 Christmas Showdown battles.',target:5,rewards:{presents:1},xpReward:175},
-          {id:'xplodemis_07',stage:7,kind:'use_gadget',title:'Toy Workshop',desc:'Use 20 Tools.',target:20,rewards:{coins:380,corePieces:8},xpReward:175},
-          {id:'xplodemis_08',stage:8,kind:'deal_damage',title:'Blizzard Grind',desc:'Deal 300,000 damage.',target:300000,rewards:{souls:55,superTappers:1},xpReward:175},
-          {id:'xplodemis_09',stage:9,kind:'different_fighters',title:'Reindeer Squad',desc:'Finish battles with 10 different Fighters.',target:10,rewards:{souls:65},xpReward:175},
-          {id:'xplodemis_10',stage:10,kind:'christmas_powerups',title:'Buff Collector',desc:'Pick up 12 buffs in Christmas Showdown.',target:12,rewards:{presents:1,coins:500},xpReward:175},
-          {id:'xplodemis_11',stage:11,kind:'win_match',title:'Halfway to Christmas',desc:'Win 15 battles.',target:15,rewards:{coins:500,tappers:1},xpReward:275},
-          {id:'xplodemis_12',stage:12,kind:'defeat_enemies',title:'Krampus Reaper',desc:'Defeat 120 enemies.',target:120,rewards:{superTappers:1,corePieces:12},xpReward:275},
-          {id:'xplodemis_13',stage:13,kind:'perform_supers',title:'Twinkle Toes',desc:'Activate 60 Power Moves.',target:60,rewards:{coins:800},xpReward:275},
-          {id:'xplodemis_14',stage:14,kind:'christmas_showdown_wins',title:'Christmas Champion',desc:'Win 3 Christmas Showdowns.',target:3,rewards:{presents:1,souls:90},xpReward:275},
-          {id:'xplodemis_15',stage:15,kind:'deal_damage',title:'Present Bonanza',desc:'Deal 750,000 damage.',target:750000,rewards:{presents:2},xpReward:275},
-          {id:'xplodemis_16',stage:16,kind:'perform_supers',title:'Super Stockings',desc:'Activate 80 Power Moves.',target:80,rewards:{hyperTappers:1,corePieces:15},xpReward:430},
-          {id:'xplodemis_17',stage:17,kind:'christmas_powerups',title:'Buff Blizzard',desc:'Pick up 30 buffs in Christmas Showdown.',target:30,rewards:{coins:1000},xpReward:430},
-          {id:'xplodemis_18',stage:18,kind:'deal_damage',title:'Damage Decorator',desc:'Deal 1,500,000 damage.',target:1500000,rewards:{souls:120,gems:10},xpReward:430},
-          {id:'xplodemis_19',stage:19,kind:'defeat_enemies',title:'Snowball Fight Finale',desc:'Defeat 175 enemies.',target:175,rewards:{presents:2,coins:1200},xpReward:430},
-          {id:'xplodemis_20',stage:20,kind:'win_match',title:'XPLODEMIS MASTER',desc:'Win 35 battles this season.',target:35,rewards:{coins:1500,presents:2,hyperTappers:1},xpReward:430}
+          {id:'xplodemis_01',stage:1,kind:'play_match',title:'First Snowfall',desc:'Play 5 battles.',target:5,rewards:{coins:200,souls:12},xpReward:795},
+          {id:'xplodemis_02',stage:2,kind:'deal_damage',title:'Firework Warmup',desc:'Deal 50,000 damage.',target:50000,rewards:{coins:240,corePieces:5},xpReward:795},
+          {id:'xplodemis_03',stage:3,kind:'win_match',title:'Sleigh Ride',desc:'Win 13 battles.',target:13,rewards:{souls:20},xpReward:795},
+          {id:'xplodemis_04',stage:4,kind:'defeat_enemies',title:'Grinch Patrol',desc:'Defeat 30 enemies.',target:30,rewards:{coins:300,tappers:1},xpReward:795},
+          {id:'xplodemis_05',stage:5,kind:'perform_supers',title:'Carol Chorus',desc:'Activate 20 Power Moves.',target:20,rewards:{coins:340,souls:24},xpReward:795},
+          {id:'xplodemis_06',stage:6,kind:'christmas_showdown_matches',title:'First Christmas Showdown',desc:'Play 5 Christmas Showdown battles.',target:5,rewards:{presents:1},xpReward:1391},
+          {id:'xplodemis_07',stage:7,kind:'use_gadget',title:'Toy Workshop',desc:'Use 20 Tools.',target:20,rewards:{coins:380,corePieces:8},xpReward:1391},
+          {id:'xplodemis_08',stage:8,kind:'deal_damage',title:'Blizzard Grind',desc:'Deal 300,000 damage.',target:300000,rewards:{souls:55,superTappers:1},xpReward:1391},
+          {id:'xplodemis_09',stage:9,kind:'different_fighters',title:'Reindeer Squad',desc:'Finish battles with 10 different Fighters.',target:10,rewards:{souls:65},xpReward:1391},
+          {id:'xplodemis_10',stage:10,kind:'christmas_powerups',title:'Buff Collector',desc:'Pick up 12 buffs in Christmas Showdown.',target:12,rewards:{presents:1,coins:500},xpReward:1391},
+          {id:'xplodemis_11',stage:11,kind:'win_match',title:'Halfway to Christmas',desc:'Win 15 battles.',target:15,rewards:{coins:500,tappers:1},xpReward:2186},
+          {id:'xplodemis_12',stage:12,kind:'defeat_enemies',title:'Krampus Reaper',desc:'Defeat 120 enemies.',target:120,rewards:{superTappers:1,corePieces:12},xpReward:2186},
+          {id:'xplodemis_13',stage:13,kind:'perform_supers',title:'Twinkle Toes',desc:'Activate 60 Power Moves.',target:60,rewards:{coins:800},xpReward:2186},
+          {id:'xplodemis_14',stage:14,kind:'christmas_showdown_wins',title:'Christmas Champion',desc:'Win 3 Christmas Showdowns.',target:3,rewards:{presents:1,souls:90},xpReward:2186},
+          {id:'xplodemis_15',stage:15,kind:'deal_damage',title:'Present Bonanza',desc:'Deal 750,000 damage.',target:750000,rewards:{presents:2},xpReward:2186},
+          {id:'xplodemis_16',stage:16,kind:'perform_supers',title:'Super Stockings',desc:'Activate 80 Power Moves.',target:80,rewards:{hyperTappers:1,corePieces:15},xpReward:3418},
+          {id:'xplodemis_17',stage:17,kind:'christmas_powerups',title:'Buff Blizzard',desc:'Pick up 30 buffs in Christmas Showdown.',target:30,rewards:{coins:1000},xpReward:3418},
+          {id:'xplodemis_18',stage:18,kind:'deal_damage',title:'Damage Decorator',desc:'Deal 1,500,000 damage.',target:1500000,rewards:{souls:120,gems:10},xpReward:3418},
+          {id:'xplodemis_19',stage:19,kind:'defeat_enemies',title:'Snowball Fight Finale',desc:'Defeat 175 enemies.',target:175,rewards:{presents:2,coins:1200},xpReward:3418},
+          {id:'xplodemis_20',stage:20,kind:'win_match',title:'XPLODEMIS MASTER',desc:'Win 35 battles this season.',target:35,rewards:{coins:1500,presents:2,hyperTappers:1},xpReward:3418}
       ];
       const EMBER_FORGE_QUEST_DEFS = [
           {id:'ember_01',stage:1,kind:'play_match',title:'First Lighting',desc:'Play 3 battles.',target:3,rewards:{coins:200,souls:12},xpReward:100},
@@ -10512,9 +10577,21 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
               { id: 'core-cache', name: 'Core Piece Cache', icon: '💠', cost: 800, limit: 3, reward: { type: 'corePieces', amount: 25 } },
               { id: 'random-piece', name: 'Random Piece Bundle', icon: '🧩', cost: 1200, limit: 2, reward: { type: 'randomPiece', amount: 3 } }
           ]);
-          function normalize(pass, maxLevel = 50) {
+          function normalize(pass, maxLevel = 50, xpTable) {
               pass.xp = integer(pass.xp);
-              pass.level = Math.min(maxLevel, Math.max(1, integer(pass.level), Math.floor(pass.xp / 100) + 1));
+              // 38,950 pass table (2026-11-20): when a per-tier XP table
+              // is passed, the level is derived from XP alone — an old
+              // save's stored level is NOT kept, or a 4,900-XP save would
+              // stay at tier 50 under the new 38,950 total. Without a
+              // table the old flat-100 behaviour is preserved verbatim.
+              const table = Array.isArray(xpTable) && xpTable.length === Math.max(0, maxLevel - 1) && xpTable.every(v => Number.isFinite(v) && v > 0) ? xpTable : null;
+              if (table) {
+                  let remaining = pass.xp, level = 1;
+                  for (let i = 0; i < table.length && remaining >= table[i]; i++) { remaining -= table[i]; level++; }
+                  pass.level = Math.min(maxLevel, level);
+              } else {
+                  pass.level = Math.min(maxLevel, Math.max(1, integer(pass.level), Math.floor(pass.xp / 100) + 1));
+              }
               if (pass.tokenSchema !== 1) {
                   pass.tokensEarned = pass.xp;
                   pass.tokenWallet = pass.xp;
@@ -10526,18 +10603,18 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
               if (!pass.tokenPurchases || typeof pass.tokenPurchases !== 'object') pass.tokenPurchases = {};
               return pass;
           }
-          function earn(pass, amount, maxLevel = 50) {
-              normalize(pass, maxLevel);
+          function earn(pass, amount, maxLevel = 50, xpTable) {
+              normalize(pass, maxLevel, xpTable);
               amount = integer(amount);
               if (!amount) return false;
               pass.xp += amount;
               pass.tokensEarned += amount;
               pass.tokenWallet += amount;
-              normalize(pass, maxLevel);
+              normalize(pass, maxLevel, xpTable);
               return true;
           }
-          function purchase(pass, id, grant) {
-              normalize(pass);
+          function purchase(pass, id, grant, xpTable) {
+              normalize(pass, undefined, xpTable);
               const offer = offers.find(entry => entry.id === id);
               if (!offer || pass.tokenWallet < offer.cost || integer(pass.tokenPurchases[id]) >= offer.limit) return false;
               if (grant(offer.reward) === false) return false;
@@ -10564,7 +10641,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           }
           const pass = playerData.seasonPass;
           pass.questSchemaVersion = SEASON_PASS_SCHEMA_VERSION;
-          BrawePassTokens.normalize(pass, SEASON_PASS_MAX_LEVEL);
+          BrawePassTokens.normalize(pass, SEASON_PASS_MAX_LEVEL, SEASON_PASS_XP_PER_TIER);
           if (!Array.isArray(pass.claimedFreeRewards)) pass.claimedFreeRewards = [];
           if (!Array.isArray(pass.claimedPremiumRewards)) pass.claimedPremiumRewards = [];
           if (pass.overflowSteps == null) pass.overflowSteps = 0;
@@ -10617,7 +10694,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
       }
       function awardSeasonPassOverflow(pass) {
           if (!pass) return;
-          const maxXp = (SEASON_PASS_MAX_LEVEL - 1) * SEASON_PASS_XP_PER_LEVEL;
+          const maxXp = SEASON_PASS_TOTAL_XP;
           const over = Math.max(0, Math.floor(pass.xp || 0) - maxXp);
           const steps = Math.floor(over / 1000);
           const superSteps = Math.floor(over / 2500);
@@ -10638,7 +10715,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           if (!ENABLE_SEASON_QUESTS) return false;
           if (!isSeason3PassActive()) return false;
           ensureSeasonPassState();
-          if (!BrawePassTokens.earn(playerData.seasonPass, amount, SEASON_PASS_MAX_LEVEL)) return false;
+          if (!BrawePassTokens.earn(playerData.seasonPass, amount, SEASON_PASS_MAX_LEVEL, SEASON_PASS_XP_PER_TIER)) return false;
           awardSeasonPassOverflow(playerData.seasonPass);
           saveProgress();
           updateEventBadge();
@@ -15835,8 +15912,8 @@ let blinkEyeDodgeState = null;
         const ranked = rankedBucket || playerData.ranked;
         if (!ranked || typeof ranked !== 'object') return null;
         const result = computeRankedSeasonReset(ranked.points || 0, ranked.seasonStats);
-        // Ranked Solo floors its reset at Brick Master I (1300 RP): solo
-        // leagues start above Brick Fume III, so a solo reset can never
+        // Ranked Solo floors its reset at Brick Fume III (1200 RP): solo
+        // leagues start at Brick Fume III, so a solo reset can never
         // drop a player below that floor. Teams passes no floor (0).
         const newPoints = Math.max(Math.max(0, Math.floor(floorRp || 0)), result.newPoints);
         ranked.points = newPoints;
@@ -15896,15 +15973,15 @@ let blinkEyeDodgeState = null;
     // RP gain rules as Ranked Teams (mode + kills + damage + objective +
     // win). Solo has its own RP bucket, its own Prestige League ladder
     // and its own soft reset + elo boost — Teams is untouched.
-    const RANKED_SOLO_PLACEMENT_FLOOR_RP = 1300; // Brick Master I: the league above Brick Fume III — solo leagues start here, never below
+    const RANKED_SOLO_PLACEMENT_FLOOR_RP = 1200; // Brick Fume III (1200-1299 RP): solo leagues start here, never below — Anthony, 2026-11-20: "solo p leagues start at 1200rp now solo only". Teams keeps its 1300 RP floor (Brick Master I, above Fume III).
     const RANKED_SOLO_PLACEMENT_CAP_RP = 2400; // Brick Legend III / PL1 entry — higher solo prestige must be earned in Solo, not placed into
     const RANKED_SOLO_LEAGUE_OPPONENT_SALT = 7919; // solo league opponents differ from the Teams ladder
     // First solo league placement (BUILDER PICK, flagged for Anthony's
     // call): your Teams RP carries over as the base — clamped to the
-    // solo floor (1300) and the PL1 entry cap (2400) — plus this
+    // solo floor (1200, Brick Fume III) and the PL1 entry cap (2400) — plus this
     // placement match's own RP delta under the Teams rules. A strong
     // Teams player places high, a weak one places near the floor, and
-    // nobody ever places below Brick Master I.
+    // nobody ever places below Brick Fume III.
     function computeRankedSoloPlacement(teamsPoints, rpParts) {
         const teams = Math.max(0, Math.floor(teamsPoints || 0));
         const basePoints = Math.max(RANKED_SOLO_PLACEMENT_FLOOR_RP, Math.min(RANKED_SOLO_PLACEMENT_CAP_RP, teams));
@@ -47344,13 +47421,14 @@ let heistFeverActive = false;
         const soloPlacementHtml = `
                 <div class="ranked-hub-solo-placement">
                   <div style="font-weight:900;color:#ffd166;">🎯 PLAY 1 RANKED SOLO MATCH TO GET PLACED</div>
-                  <div class="ranked-hub-meta">Your Teams rank (${tierInfo.label} · ${rankedPoints} RP) + your match stats set your starting league. Solo leagues start at Brick Master I (1300 RP) — no solo placement below that floor.</div>
+                  <div class="ranked-hub-meta">Your Teams rank (${tierInfo.label} · ${rankedPoints} RP) + your match stats set your starting league. Solo leagues start at Brick Fume III (1200 RP) — no solo placement below that floor.</div>
                 </div>`;
         const hub = document.createElement('div');
         hub.className = 'ranked-hub-overlay';
         hub.id = 'rankedHubOverlay';
         hub.setAttribute('role', 'dialog');
         hub.setAttribute('aria-label', 'Ranked');
+        hub.setAttribute('data-ranked-mode', 'teams');
         hub.innerHTML = `
           <div class="ranked-hub-panel" style="--ranked-color:${tierInfo.color || '#00f5d4'}">
             <div class="ranked-hub-top">
@@ -47358,8 +47436,12 @@ let heistFeverActive = false;
               <div><h2>RANKED</h2><small>SEASON ${seasonProfile.seasonNumber} · ${seasonProfile.upperName} · RANKED RESETS EVERY SEASON</small></div>
               <button type="button" class="ranked-hub-close" data-ranked-hub="close" aria-label="Close ranked">✕</button>
             </div>
+            <div class="ranked-hub-mode-tabs" role="tablist" aria-label="Ranked mode">
+              <button type="button" class="ranked-hub-mode-tab is-selected" role="tab" aria-selected="true" data-ranked-mode-tab="teams">⚔️ RANKED TEAMS · ${tierInfo.label.toUpperCase()} · ${tierInfo.points} RP</button>
+              <button type="button" class="ranked-hub-mode-tab" role="tab" aria-selected="false" data-ranked-mode-tab="solo">🎯 RANKED SOLO · ${soloPlaced ? `${soloTierInfo.label.toUpperCase()} · ${soloPoints} RP` : 'NOT PLACED YET'}</button>
+            </div>
             <div class="ranked-hub-body">
-              <div class="ranked-hub-main">
+              <div class="ranked-hub-main is-selected">
                 <div class="ranked-hub-season"><span>SEASON ${seasonProfile.seasonNumber}</span><span>${seasonProfile.upperName} · ENDS ${seasonProfile.endLabel.toUpperCase()}</span></div>
                 <div class="ranked-hub-emblem">
                   <span class="ranked-hub-glyph" aria-hidden="true">⚔️</span>
@@ -47368,6 +47450,7 @@ let heistFeverActive = false;
                 </div>
                 ${inPrestigeLeague ? leagueBoardHtml : rankedProgressHtml}
                 <div class="ranked-hub-meta">${inPrestigeLeague ? `Division safety floor: ${floor} RP` : `${tierInfo.nextLabel ? `${Math.max(0, tierInfo.nextThreshold - tierInfo.points)} RP to ${tierInfo.nextLabel} · ` : ''}Division safety floor: ${floor} RP${halfwayRp != null ? ` · Halfway at ${halfwayRp} RP` : ''}`}</div>
+                <button type="button" class="ranked-hub-play ranked-hub-play-card" data-ranked-hub="play">▶ PLAY RANKED</button>
               </div>
               <div class="ranked-hub-solo">
                 <div class="ranked-hub-season"><span>RANKED SOLO</span><span>SOLO SHOWDOWN · WITH BOTS</span></div>
@@ -47377,17 +47460,43 @@ let heistFeverActive = false;
                   <span>${soloPlaced ? `${soloPoints} RP · DIVISION ${soloTierInfo.index + 1} OF ${RANKED_DIVISIONS.length}` : 'Play 1 Ranked Solo match to get placed'}</span>
                 </div>
                 ${!soloPlaced ? soloPlacementHtml : (soloInPrestigeLeague ? soloLeagueBoardHtml : soloProgressHtml)}
-                <div class="ranked-hub-meta">${soloPlaced ? (soloInPrestigeLeague ? `Division safety floor: ${soloFloor} RP` : `${soloTierInfo.nextLabel ? `${Math.max(0, soloTierInfo.nextThreshold - soloTierInfo.points)} RP to ${soloTierInfo.nextLabel} · ` : ''}Division safety floor: ${soloFloor} RP${soloHalfwayRp != null ? ` · Halfway at ${soloHalfwayRp} RP` : ''}`) : 'Solo leagues start at Brick Master I (1300 RP) — no solo placement below that floor.'}</div>
+                <div class="ranked-hub-meta">${soloPlaced ? (soloInPrestigeLeague ? `Division safety floor: ${soloFloor} RP` : `${soloTierInfo.nextLabel ? `${Math.max(0, soloTierInfo.nextThreshold - soloTierInfo.points)} RP to ${soloTierInfo.nextLabel} · ` : ''}Division safety floor: ${soloFloor} RP${soloHalfwayRp != null ? ` · Halfway at ${soloHalfwayRp} RP` : ''}`) : 'Solo leagues start at Brick Fume III (1200 RP) — no solo placement below that floor.'}</div>
+                <button type="button" class="ranked-hub-play ranked-hub-play-card" data-ranked-hub="play-solo">▶ PLAY RANKED SOLO</button>
               </div>
             </div>
             <div class="ranked-hub-foot">
               <span class="ranked-hub-boost">${eloBoostActive ? `⚡ ELO BOOST ×2 · UNTIL ${playerData.ranked.resetBoostTarget} RP` : 'RANK BOOST!'}</span>
-              <button type="button" class="ranked-hub-play" data-ranked-hub="play">▶ PLAY RANKED</button>
               <span class="ranked-hub-boost">${soloEloBoostActive ? `⚡ SOLO ELO BOOST ×2 · UNTIL ${soloBucket.resetBoostTarget} RP` : 'SOLO RANK BOOST!'}</span>
-              <button type="button" class="ranked-hub-play-solo" data-ranked-hub="play-solo">▶ PLAY RANKED SOLO</button>
             </div>
           </div>`;
+        // Ranked entry redesign (2026-11-20): Teams and Solo are both
+        // visible in the same hub and selectable. The tabs pick the
+        // mode — the selected card is highlighted and the overlay
+        // records it in data-ranked-mode (Teams by default; Solo stays
+        // visible). Each card carries its own PLAY button, so the mode
+        // you pick is the match you play. Tab taps never close the hub.
+        const toggleRankedHubClass = (el, cls, on) => {
+            if (!el) return;
+            const parts = String(el.className || '').split(' ').filter(Boolean);
+            const at = parts.indexOf(cls);
+            if (on && at === -1) parts.push(cls);
+            if (!on && at !== -1) parts.splice(at, 1);
+            el.className = parts.join(' ');
+        };
+        const selectRankedHubMode = (mode) => {
+            const next = mode === 'solo' ? 'solo' : 'teams';
+            hub.setAttribute('data-ranked-mode', next);
+            hub.querySelectorAll('[data-ranked-mode-tab]').forEach((tab) => {
+                const selected = tab.dataset.rankedModeTab === next;
+                toggleRankedHubClass(tab, 'is-selected', selected);
+                tab.setAttribute('aria-selected', selected ? 'true' : 'false');
+            });
+            toggleRankedHubClass(hub.querySelector('.ranked-hub-main'), 'is-selected', next === 'teams');
+            toggleRankedHubClass(hub.querySelector('.ranked-hub-solo'), 'is-selected', next === 'solo');
+        };
         hub.addEventListener('click', (event) => {
+            const modeTab = event.target.closest ? event.target.closest('[data-ranked-mode-tab]') : null;
+            if (modeTab) { appBuzz(12); selectRankedHubMode(modeTab.dataset.rankedModeTab); return; }
             const btn = event.target.closest('[data-ranked-hub]');
             if (!btn && event.target !== hub) return;
             const action = btn ? btn.dataset.rankedHub : 'close';
@@ -80262,7 +80371,7 @@ function checkHit(target, b, i){
                 rankedDelta = rankedRpParts.total;
                 // First Ranked Solo match = placement match: your Teams
                 // rank + this match's stats place you (floored at Brick
-                // Master I). The placement IS the gain — no elo boost,
+                // Fume III, 1200 RP). The placement IS the gain — no elo boost,
                 // no division-climb payout on top of it.
                 const soloPlacement = (isRankedSoloMatch && !rankedBucket.placed)
                     ? computeRankedSoloPlacement((playerData.ranked && playerData.ranked.points) || 0, rankedRpParts)
@@ -81530,7 +81639,8 @@ function checkHit(target, b, i){
       const render = () => {
           ensureSeasonPassState();
           const pass=playerData.seasonPass, active=isSeason3PassActive(), seasonProfile=getActiveSeasonProfile();
-          const progress=Math.min(100,pass.xp % 100), next=Math.max(0,100-progress);
+          const passInfo = seasonPassLevelProgress(pass.xp || 0);
+          const progress = passInfo.pct, next = passInfo.xpToNext;
           overlay.innerHTML = `<section class="circuit-panel">
               <header class="circuit-header"><button data-action="close" class="circuit-back" aria-label="Back to home">←</button><div><small>SEASON 0${seasonProfile.seasonNumber} / ${seasonProfile.upperName}</small><h1>${seasonProfile.upperName} <span>PASS</span></h1></div><button data-action="close" aria-label="Close pass">✕</button></header>
               <div class="circuit-summary"><div class="circuit-level"><b>${pass.level}</b><span>LEVEL / ${SEASON_PASS_MAX_LEVEL}</span></div><div class="circuit-progress"><strong>${pass.level >= SEASON_PASS_MAX_LEVEL ? 'REWARD ROAD COMPLETE' : next+' TOKENS TO NEXT LEVEL'}</strong><progress max="100" value="${pass.level>=SEASON_PASS_MAX_LEVEL?100:progress}"></progress><small>${active?'15 tokens per completed match · 25 on a win · missions earn more':'Season ended'} · spending never removes progress</small></div><div class="circuit-wallet"><small>PASS TOKENS</small><b>◈ ${pass.tokenWallet.toLocaleString()}</b><span>${pass.tokensEarned.toLocaleString()} earned this season</span></div></div>
@@ -81601,7 +81711,7 @@ function checkHit(target, b, i){
                   const button=document.createElement('button');button.textContent=owned?'OWNED':bought>=offer.limit?'SOLD OUT':'◈ '+offer.cost.toLocaleString();
                   button.disabled=owned||bought>=offer.limit||pass.tokenWallet<offer.cost||!active;
                   button.onclick=()=>{confirmCircuitPassAction(`Spend ${offer.cost} Pass Tokens on ${offer.name}?`,()=>{
-                      if(BrawePassTokens.purchase(pass,offer.id,reward=>{grantSeasonReward(reward);return true;})){saveProgress();if(typeof showToast==='function')showToast('Bought '+offer.name);render();}
+                      if(BrawePassTokens.purchase(pass,offer.id,reward=>{grantSeasonReward(reward);return true;},SEASON_PASS_XP_PER_TIER)){saveProgress();if(typeof showToast==='function')showToast('Bought '+offer.name);render();}
                   });};card.appendChild(button);grid.appendChild(card);
               }content.appendChild(grid);
           }

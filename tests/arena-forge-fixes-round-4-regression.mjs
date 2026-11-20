@@ -349,6 +349,9 @@ check('item2 guarantee: closeSeasonPassOverlay exists and removes node + Escape 
     const smokeCollectButtons = (el) => { const out = []; const walk = (e) => { for (const c of e.children) { if (c.tagName === 'BUTTON') out.push(c); walk(c); } }; walk(el); return out; };
     // 50-tier fixture mirroring the real Xplodemis pass shape (tier 50 =
     // Holiday Lights skin on the premium track).
+    // 38,950 pass table (2026-11-20): the road render calls
+    // seasonPassLevelProgress, which needs the table + helpers in the vm.
+    const passXpPerTier = vm.runInContext(`(${extractConstArray(game, 'SEASON_PASS_XP_PER_TIER')})`, vm.createContext({}));
     const fixtureTiers = Array.from({ length: 50 }, (_, i) => {
         const tier = i + 1;
         return tier === 50
@@ -365,7 +368,7 @@ check('item2 guarantee: closeSeasonPassOverlay exists and removes node + Escape 
             addEventListener: () => {}, removeEventListener: () => {}, querySelector: () => null,
         },
         ENABLE_SEASON_PASS: true, ENABLE_SEASON_QUESTS: true,
-        SEASON_PREMIUM_UNLOCK_GEMS: 100, SEASON_PREMIUM_UNLOCK_COINS: 11999, SEASON_PASS_MAX_LEVEL: 50,
+        SEASON_PREMIUM_UNLOCK_GEMS: 100, SEASON_PREMIUM_UNLOCK_COINS: 11999, SEASON_PASS_MAX_LEVEL: 50, SEASON_PASS_XP_PER_TIER: passXpPerTier,
         playerData: {
             coins: 10000, gems: 100, souls: 0, starrDrops: 0, superTapperCount: 0, hyperTapperCount: 0,
             presentCount: 0, ownedSkins: {}, selectedSkins: {},
@@ -403,7 +406,8 @@ check('item2 guarantee: closeSeasonPassOverlay exists and removes node + Escape 
     };
     vm.createContext(smoke);
     vm.runInContext(passTokensSrc, smoke);
-    for (const fn of ['ensureBrawePassTokens', 'describeCircuitReward', 'grantSeasonReward', 'claimSeasonPassTrackReward', 'unlockSeasonPremium', 'confirmCircuitPassAction', 'openSeasonPass']) {
+    for (const fn of ['seasonPassXpToReachLevel', 'seasonPassLevelForXp', 'seasonPassXpIntoLevel', 'seasonPassXpPerLevel', 'seasonPassLevelProgress',
+        'ensureBrawePassTokens', 'describeCircuitReward', 'grantSeasonReward', 'claimSeasonPassTrackReward', 'unlockSeasonPremium', 'confirmCircuitPassAction', 'openSeasonPass']) {
         vm.runInContext(extractFunction(game, fn), smoke);
     }
     vm.runInContext('openSeasonPass()', smoke);

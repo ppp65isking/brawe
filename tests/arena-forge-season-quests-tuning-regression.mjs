@@ -3,7 +3,7 @@
 // accrue ZERO progress, (3) harder than daily/weekly, (4) time-unlock
 // schedule with live countdowns. Ranked Solo: ranked Showdown with bots,
 // own RP bucket + Prestige League ladder, placement from Teams rank +
-// match stats floored at Brick Master I (1300 RP). Landscape home UI:
+// match stats floored at Brick Fume III (1200 RP). Landscape home UI:
 // Anthony's sketch — rounded buttons, 3-column fighters grid, icon-only
 // bottom nav as a left rail, profile goes home from Fighters, season-pass
 // bar with tier progress, quick tools/talents from the hero power level.
@@ -82,24 +82,32 @@ function extractConst(src, name) {
 const evalLiteral = (src) => vm.runInContext(`(${src})`, vm.createContext({}));
 
 // --- static: pass XP total ----------------------------------------------------
-// The code's pass model is flat: 50 tiers, 100 XP per level, level =
-// floor(xp/100)+1, so tier 50 needs (50-1)*100 = 4900 XP. Anthony's own
-// bands add to 38,950 — that figure lives in his notes, NOT in code —
-// and 38,950 XP of quests would flood the pass 8x over (overflow pays
-// tappers every 1000 XP past 4900). The code's sum is the budget.
+// The code's pass model is per-tier (2026-11-20, Anthony: "switch both"):
+// 50 tiers, SEASON_PASS_XP_PER_TIER is 49 level-up costs in five bands
+// (400 / 650 / 800 / 950 / 1135) summing to 38,950 XP. Anthony's own
+// bands add to 38,950 too, but the per-tier numbers were never written
+// into code, so the band values are BUILDER PICKS (proportional rescale
+// of the old flat 100 XP/level). Overflow pays tappers every 1000 XP
+// past 38,950.
 const PASS_MAX_LEVEL = evalLiteral(extractConst(game, 'SEASON_PASS_MAX_LEVEL'));
-const PASS_XP_PER_LEVEL = evalLiteral(extractConst(game, 'SEASON_PASS_XP_PER_LEVEL'));
-const CODE_PASS_TOTAL = (PASS_MAX_LEVEL - 1) * PASS_XP_PER_LEVEL;
-check('pass total: code model is 50 tiers x 100 XP/level', PASS_MAX_LEVEL === 50 && PASS_XP_PER_LEVEL === 100);
-check(`pass total: code sum is ${CODE_PASS_TOTAL} XP (Anthony's 38,950 bands are not in code — code wins)`, CODE_PASS_TOTAL === 4900);
+const PASS_XP_PER_TIER = evalLiteral(extractConst(game, 'SEASON_PASS_XP_PER_TIER'));
+const PASS_TOTAL_XP = evalLiteral(extractConst(game, 'SEASON_PASS_TOTAL_XP'));
+const CODE_PASS_TOTAL = PASS_XP_PER_TIER.reduce((s, v) => s + v, 0);
+check('pass total: code model is 50 tiers with a 49-entry per-tier XP table', PASS_MAX_LEVEL === 50 && PASS_XP_PER_TIER.length === 49);
+check('pass total: per-tier table is the 400/650/800/950/1135 bands (BUILDER PICK)',
+    PASS_XP_PER_TIER.slice(0, 9).every(v => v === 400) && PASS_XP_PER_TIER.slice(9, 19).every(v => v === 650)
+    && PASS_XP_PER_TIER.slice(19, 29).every(v => v === 800) && PASS_XP_PER_TIER.slice(29, 39).every(v => v === 950)
+    && PASS_XP_PER_TIER.slice(39, 49).every(v => v === 1135));
+check(`pass total: code sum is ${CODE_PASS_TOTAL} XP and the total const agrees`, CODE_PASS_TOTAL === 38950 && PASS_TOTAL_XP === 38950);
+check('pass total: flat 100 XP/level model is gone', !game.includes('SEASON_PASS_XP_PER_LEVEL'));
 const xplodemisDefs = evalLiteral(extractConst(game, 'XPLODEMIS_QUEST_DEFS'));
 const xpSum = xplodemisDefs.reduce((s, d) => s + d.xpReward, 0);
 check(`(a) season quest XP sums to the pass total (${xpSum} = ${CODE_PASS_TOTAL})`, xpSum === CODE_PASS_TOTAL);
-check('(a) XP is weighted later/harder: bands 100 (stages 1-5) < 175 (6-10) < 275 (11-15) < 430 (16-20)',
-    xplodemisDefs.slice(0, 5).every(d => d.xpReward === 100)
-    && xplodemisDefs.slice(5, 10).every(d => d.xpReward === 175)
-    && xplodemisDefs.slice(10, 15).every(d => d.xpReward === 275)
-    && xplodemisDefs.slice(15, 20).every(d => d.xpReward === 430));
+check('(a) XP is weighted later/harder: bands 795 (stages 1-5) < 1391 (6-10) < 2186 (11-15) < 3418 (16-20) — proportional rescale, BUILDER PICK',
+    xplodemisDefs.slice(0, 5).every(d => d.xpReward === 795)
+    && xplodemisDefs.slice(5, 10).every(d => d.xpReward === 1391)
+    && xplodemisDefs.slice(10, 15).every(d => d.xpReward === 2186)
+    && xplodemisDefs.slice(15, 20).every(d => d.xpReward === 3418));
 check('(a) still 20 season quests, stages 1..20 in order', xplodemisDefs.length === 20 && xplodemisDefs.every((d, i) => d.stage === i + 1));
 
 // --- static: zero-progress + time gate wiring ---------------------------------
@@ -151,8 +159,9 @@ check('no bare word-boundary forbidden brawler token in game.js or this suite',
 // --- static: Ranked Solo --------------------------------------------------------
 check('solo: mode base table pays solo Showdown +5 (BUILDER PICK, same as Arena Forge)',
     (() => { const t = evalLiteral(extractConst(game, 'RANKED_RP_MODE_BASE')); return t.solo === 5 && t.arena_forge === 5 && t.knock_donate === 0 && t.brick_vault === 0; })());
-check('solo: placement helper exists and floors at Brick Master I (1300 RP, the league above Brick Fume III)',
-    game.includes('function computeRankedSoloPlacement(') && game.includes('const RANKED_SOLO_PLACEMENT_FLOOR_RP = 1300;')
+check('solo: placement helper exists and floors at Brick Fume III (1200 RP, Anthony 2026-11-20 — solo only; Teams keeps 1300)',
+    game.includes('function computeRankedSoloPlacement(') && game.includes('const RANKED_SOLO_PLACEMENT_FLOOR_RP = 1200;')
+    && game.includes('return points >= 1300; // Brick Master I (idx 13) and above')
     && game.includes('const RANKED_SOLO_PLACEMENT_CAP_RP = 2400;'));
 check('solo: match-end settles into the solo bucket and runs the placement on the first solo match',
     game.includes('const rankedBucket = isRankedSoloMatch ? playerData.rankedSolo : playerData.ranked;')
@@ -296,7 +305,7 @@ for (const name of ['TURKEY_TROUBLE_PASS_TIERS', 'XPLODEMIS_PASS_TIERS', 'EMBER_
 for (const name of ['TURKEY_TROUBLE_SEASON_ID', 'TURKEY_TROUBLE_START_UTC', 'TURKEY_TROUBLE_END_UTC',
     'XPLODEMIS_SEASON_ID', 'XPLODEMIS_START_UTC', 'XPLODEMIS_END_UTC',
     'EMBER_FORGE_SEASON_ID', 'EMBER_FORGE_START_UTC', 'EMBER_FORGE_END_UTC',
-    'SEASON_PASS_SCHEMA_VERSION', 'SEASON_PASS_MAX_LEVEL', 'SEASON_PASS_XP_PER_LEVEL', 'SEASON_QUEST_STAGE_COUNT',
+    'SEASON_PASS_SCHEMA_VERSION', 'SEASON_PASS_MAX_LEVEL', 'SEASON_PASS_XP_PER_TIER', 'SEASON_PASS_TOTAL_XP', 'SEASON_QUEST_STAGE_COUNT',
     'SEASON_QUEST_UNLOCK_STEP_MS',
     'RANKED_DIVISIONS', 'RANKED_POINTS_PER_DIVISION', 'RANKED_GOLD_MIN_DIVISION_INDEX',
     'RANKED_PRESTIGE_STEP_RP', 'RANKED_PRESTIGE_MAX', 'PRESTIGE_LEAGUE_MAX',
@@ -311,6 +320,7 @@ for (const name of ['TURKEY_TROUBLE_SEASON_ID', 'TURKEY_TROUBLE_START_UTC', 'TUR
 }
 vm.createContext(smoke);
 for (const fn of ['ensureBrawePassTokens', 'getActiveSeasonProfile', 'getActiveSeasonPassId',
+    'seasonPassXpToReachLevel', 'seasonPassLevelForXp', 'seasonPassXpIntoLevel', 'seasonPassXpPerLevel', 'seasonPassLevelProgress',
     'buildSeasonPassQuests', 'resetSeasonPassForAll', 'ensureSeasonPassState',
     'isSeason3PassActive', 'getClaimableSeasonQuestCount', 'questRewardText',
     'normalizeQuestKey', 'progressSeasonPassQuest', 'claimSeasonPassQuestReward',
@@ -362,12 +372,12 @@ check('(b) kills do NOT accrue into locked stage 4 (defeat_enemies x500)',
     (() => { run("progressSeasonPassQuest('defeat_enemies', 500)"); return quests().xplodemis_04.progress === 0; })());
 check('(b) damage does NOT accrue into completion-locked stage 2 (deal_damage x2,000,000)',
     (() => { run("progressSeasonPassQuest('deal_damage', 2000000)"); return quests().xplodemis_02.progress === 0; })());
-check('(b) matches DO accrue into the available stage 1 (play_match x5 completes it, +100 Pass XP)',
+check('(b) matches DO accrue into the available stage 1 (play_match x5 completes it, +795 Pass XP — rescaled 2026-11-20)',
     (() => {
         const before = xpAwardCalls.length;
         run("progressSeasonPassQuest('play_match', 5)");
         return quests().xplodemis_01.progress === 5 && quests().xplodemis_01.completed === true
-            && xpAwardCalls.length === before + 1 && xpAwardCalls[xpAwardCalls.length - 1] === 100;
+            && xpAwardCalls.length === before + 1 && xpAwardCalls[xpAwardCalls.length - 1] === 795;
     })());
 // Drive stages 2-8 to completion with their exact new targets.
 for (const [kind, amount] of [['deal_damage', 50000], ['win_match', 13], ['defeat_enemies', 30], ['perform_supers', 20], ['christmas_showdown_matches', 5], ['use_gadget', 20], ['deal_damage', 300000]]) {
@@ -448,9 +458,9 @@ check('solo: placement uses Teams rank + match stats (Teams 2000 + win delta 50 
         const p = run('computeRankedSoloPlacement(2000, { total: 50 })');
         return p.points === 2050 && p.basePoints === 2000 && p.matchDelta === 50;
     })());
-check('solo: placement never lands below the Brick Fume III floor (Teams 0 + loss -> 1300)',
-    run('computeRankedSoloPlacement(0, { total: -10 })').points === 1300
-    && run('computeRankedSoloPlacement(100, { total: 40 })').points === 1340);
+check('solo: placement never lands below the Brick Fume III floor (Teams 0 + loss -> 1200)',
+    run('computeRankedSoloPlacement(0, { total: -10 })').points === 1200
+    && run('computeRankedSoloPlacement(100, { total: 40 })').points === 1240);
 check('solo: placement caps at PL1 entry (Teams 2600 + win -> 2400, higher solo prestige must be earned)',
     run('computeRankedSoloPlacement(2600, { total: 60 })').points === 2400
     && run('computeRankedSoloPlacement(2300, { total: 50 })').points === 2350);
@@ -483,7 +493,7 @@ check('solo: hub shows the placement call-to-action before the first solo match'
         const html = hub ? hub.innerHTML : '';
         return html.includes('RANKED SOLO') && html.includes('PLAY 1 RANKED SOLO MATCH TO GET PLACED')
             && html.includes('data-ranked-hub="play-solo"') && html.includes('▶ PLAY RANKED SOLO')
-            && html.includes('Solo leagues start at Brick Master I (1300 RP)');
+            && html.includes('Solo leagues start at Brick Fume III (1200 RP)');
     })());
 check('solo: hub shows the solo progress bar once placed (1350 RP = Brick Master I, halfway 1350)',
     (() => {
@@ -498,12 +508,12 @@ check('solo: hub shows the solo progress bar once placed (1350 RP = Brick Master
             && html.includes('HALFWAY') && html.includes('NEXT: BRICK MASTER II')
             && !html.includes('NOT PLACED YET');
     })());
-check('solo: soft reset applies to solo and never drops below the 1300 floor (1500, no wins -> 1300)',
+check('solo: soft reset applies to solo and never drops below the 1200 floor (1500, no wins -> 1200)',
     (() => {
         smoke.playerData.rankedSolo = { points: 1500, rewardsClaimed: [], highPoints: 1500, winStreak: 0, seasonId: 'turkey-trouble-arena-forge-2026-s5', seasonStats: { wins: 0, matches: 0, kills: 0, damage: 0 } };
         run('ensureRankedSoloSeasonState()');
         const s = smoke.playerData.rankedSolo;
-        return s.points === 1300 && s.seasonId === PASS_ID && s.resetBoostTarget === 1500
+        return s.points === 1200 && s.seasonId === PASS_ID && s.resetBoostTarget === 1500
             && s.seasonStats.wins === 0 && s.seasonStats.matches === 0;
     })());
 check('solo: elo boost is x2 while below the pre-reset rank, x1 once back at it',
@@ -638,11 +648,16 @@ check('hygiene: zero bare forbidden word in game.js + this suite',
     !/\bcluster\b/i.test(game) && !/\bcluster\b/i.test(self));
 
 // --- vm: landscape pass-bar math + render + quick loadout ----------------------
+// Per-tier table (2026-11-20): level is derived from XP. Cumulative XP to
+// reach tier 7 is 6x400 = 2400, so xp 2600 = tier 7, 200 into a 400 tier;
+// to reach tier 10 is 9x400 = 3600, so xp 3925 = tier 10, 325 into a 650
+// tier. Maxed shows a full bar (xpInto = xpPerLevel of the last tier).
 check('landscape vm: pass-bar math — tier 1 fresh, mid-tier, maxed',
-    run('JSON.stringify(getLandscapePassBarInfo({level:1,xp:0}))') === JSON.stringify({ level: 1, xpInto: 0, xpPerLevel: 100, xpToNext: 100, pct: 0, maxed: false }) &&
-    run('JSON.stringify(getLandscapePassBarInfo({level:7,xp:640}))') === JSON.stringify({ level: 7, xpInto: 40, xpPerLevel: 100, xpToNext: 60, pct: 40, maxed: false }) &&
-    run('JSON.stringify(getLandscapePassBarInfo({level:50,xp:99999}))') === JSON.stringify({ level: 50, xpInto: 99, xpPerLevel: 100, xpToNext: 0, pct: 100, maxed: true }) &&
-    run('JSON.stringify(getLandscapePassBarInfo(null))') === JSON.stringify({ level: 1, xpInto: 0, xpPerLevel: 100, xpToNext: 100, pct: 0, maxed: false }));
+    run('JSON.stringify(getLandscapePassBarInfo({level:1,xp:0}))') === JSON.stringify({ level: 1, xpInto: 0, xpPerLevel: 400, xpToNext: 400, pct: 0, maxed: false }) &&
+    run('JSON.stringify(getLandscapePassBarInfo({level:7,xp:2600}))') === JSON.stringify({ level: 7, xpInto: 200, xpPerLevel: 400, xpToNext: 200, pct: 50, maxed: false }) &&
+    run('JSON.stringify(getLandscapePassBarInfo({level:10,xp:3925}))') === JSON.stringify({ level: 10, xpInto: 325, xpPerLevel: 650, xpToNext: 325, pct: 50, maxed: false }) &&
+    run('JSON.stringify(getLandscapePassBarInfo({level:50,xp:99999}))') === JSON.stringify({ level: 50, xpInto: 1135, xpPerLevel: 1135, xpToNext: 0, pct: 100, maxed: true }) &&
+    run('JSON.stringify(getLandscapePassBarInfo(null))') === JSON.stringify({ level: 1, xpInto: 0, xpPerLevel: 400, xpToNext: 400, pct: 0, maxed: false }));
 check('landscape vm: render fills the pass bar + event pill from live state',
     (() => {
         const landPass = new El('button'); landPass.id = 'appHomeLandscapePass';
@@ -656,10 +671,10 @@ check('landscape vm: render fills the pass bar + event pill from live state',
         smokeBody.appendChild(landPass); smokeBody.appendChild(landEvent);
         smoke.HOME_MODE_DATA = { solo: ['solo', '⚔', 'Showdown', 'Enter the arena'] };
         smoke.showdownMode = 'solo';
-        smoke.playerData.seasonPass = { level: 7, xp: 640 };
+        smoke.playerData.seasonPass = { level: 7, xp: 2600 };
         run('renderAppHomeLandscapeBar()');
-        return barFill.style.width === '40%' && label.textContent === '🎁 SEASON PASS · TIER 7'
-            && sub.textContent === '40/100 XP · 60 XP TO TIER 8'
+        return barFill.style.width === '50%' && label.textContent === '🎁 SEASON PASS · TIER 7'
+            && sub.textContent === '200/400 XP · 200 XP TO TIER 8'
             && evLabel.textContent === '⚔ Showdown';
     })());
 check('landscape vm: quick loadout sheet lists tools/talents and equips on tap; locked slots refuse',

@@ -60,7 +60,7 @@ check('season quest stage count is 20', game.includes('const SEASON_QUEST_STAGE_
     check('stage 13 is a live perform_supers quest', defs[12] && defs[12].kind === 'perform_supers' && defs[12].title === 'Twinkle Toes');
     check('stage 19 is a live defeat_enemies quest', defs[18] && defs[18].kind === 'defeat_enemies' && defs[18].title === 'Snowball Fight Finale');
     check('every stage has a target and an XP reward', defs.every(d => typeof d.target === 'number' && d.target > 0 && typeof d.xpReward === 'number' && d.xpReward > 0));
-    check('season quest XP sums to the full pass total (4900 = 49 levels x 100 XP; tuning round 2026-11-20)', defs.reduce((sum, d) => sum + d.xpReward, 0) === 4900);
+    check('season quest XP sums to the full pass total (38950; 795/1391/2186/3418 bands, 2026-11-20 rescale)', defs.reduce((sum, d) => sum + d.xpReward, 0) === 38950);
     check('Christmas Showdown quests kept (mode + tracking live)', defs.some(d => d.kind === 'christmas_showdown_matches') && defs.some(d => d.kind === 'christmas_showdown_wins'));
 }
 
