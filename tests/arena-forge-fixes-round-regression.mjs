@@ -172,8 +172,8 @@ check('shop dispatch has no featured/skins branches',
 // ================= 6. FIGHTERS PAGING GRID =================
 check('strip is a horizontal paging scroller (both orientations)',
     game.includes('#appFightersStrip{display:flex;flex-direction:row;gap:10px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x proximity') &&
-    game.includes('#appFightersStrip .app-fighters-page{flex:0 0 auto;width:118px;display:grid;grid-template-rows:repeat(4,minmax(0,1fr));gap:8px;scroll-snap-align:start}') &&
-    game.includes("@media (orientation:landscape){#appFightersStrip .app-fighters-page{width:96px}}"));
+    game.includes('#appFightersStrip .app-fighters-page{flex:1 0 118px;max-width:260px;display:grid;grid-template-rows:repeat(4,minmax(0,1fr));gap:8px;scroll-snap-align:start}') &&
+    game.includes("@media (orientation:landscape){#appFightersStrip .app-fighters-page{flex-basis:96px;max-width:220px}}"));
 check('old fighters strip grid and 16/10 cards are gone',
     !game.includes('#appFightersStrip{display:grid') && !game.includes('repeat(auto-fill,minmax(280px,1fr))') &&
     !game.includes('aspect-ratio:16/10') && !game.includes('aspect-ratio:3/4'));
@@ -215,7 +215,12 @@ check('sort moved into the filter sheet (rarity / power / owned / sort)',
     game.includes("t.id === 'appFilterSort'") && game.includes('id="appFilterRarity"') &&
     game.includes('id="appFilterPower"') && game.includes('id="appFilterOwned"'));
 check('landscape phones get the icon top bar too (not portrait-only)',
-    game.includes('@media (orientation:landscape) and (max-width:900px){') &&
+    // Fixes round 2: the old (max-width:900px) cap missed landscape
+    // phones (~915-1140 CSS px), so the bar is now unconditional —
+    // the landscape query has no width cap and the base rules below
+    // it cover every width.
+    game.includes('@media (orientation:landscape){') &&
+    !game.includes('@media (orientation:landscape) and (max-width:900px)') &&
     game.includes('.app-fighters-topbar{display:flex;align-items:center;gap:8px;flex:none}'));
 
 // ================= 9. FULL SCREENS =================
