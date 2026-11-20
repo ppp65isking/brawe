@@ -55,9 +55,14 @@ check('fighters: strip pages are one column of 4 (118px portrait, 96px landscape
 check('fighters: view is the one scroller (touch-action pan-y, momentum kept)',
     game.includes('#appHomeFightersView{touch-action:pan-y}') &&
     game.includes('#appHomeFightersView{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}'));
-check('fighters: old 280px/300px grid is gone (same paging layout in both orientations)',
-    !game.includes('#appFightersStrip{display:grid') && !game.includes('repeat(auto-fill,minmax(280px,1fr))') &&
-    !game.includes('repeat(auto-fill,minmax(300px,1fr))'));
+// Landscape home UI (sketch, 2026-11-20): paging stays the portrait
+// layout; landscape is a 3-column grid per Anthony's sketch. The old
+// auto-fill grids stay gone; the only grid rule is the landscape one.
+check('fighters: old 280px/300px grid is gone (paging in portrait, 3-col grid in landscape)',
+    !game.includes('repeat(auto-fill,minmax(280px,1fr))') &&
+    !game.includes('repeat(auto-fill,minmax(300px,1fr))') &&
+    [...game.matchAll(/#appFightersStrip\{display:grid/g)].length === 1 &&
+    game.includes('.native-app #appFightersStrip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));'));
 check('fighters: container carries the grid class',
     game.includes('<div id="appFightersStrip" class="app-fighters-grid"></div>'));
 check('fighters: card has power badge, bricks chip, rarity strip in markup',
@@ -129,9 +134,11 @@ check('pass: same state/flow (tiers, claims, MISSIONS link)',
     game.includes('data-action="quests"') && game.includes("tab==='road'"));
 
 // --- (4) Ranked neon hub ---
+// Ranked Solo round (2026-11-20): hub gained a third arg (onPlaySolo) for
+// the solo PLAY button — signature pin updated, gating behavior unchanged.
 check('ranked: hub function exists and gates the draft behind PLAY',
-    game.includes('function openRankedHubOverlay(queueOverlay, onPlay) {') &&
-    game.includes('openRankedHubOverlay(overlay, () => { renderDraft(); scheduleNextTurn(250); })') &&
+    game.includes('function openRankedHubOverlay(queueOverlay, onPlay, onPlaySolo) {') &&
+    game.includes('openRankedHubOverlay(overlay, () => { renderDraft(); scheduleNextTurn(250); }, () => { if (aiTurnTimer) clearTimeout(aiTurnTimer); overlay.remove(); startRankedSoloMatch(); })') &&
     !game.includes('        renderDraft();\n        overlay.appendChild(panel);'));
 check('ranked: hub has emblem + RP bar + PLAY + close (old pass card deleted)',
     game.includes('class="ranked-hub-emblem"') && game.includes('class="ranked-hub-bar"') &&

@@ -1096,6 +1096,93 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         /* Filter sheet close button (round 2): a visible X in the header,
            next to DONE / CLEAR ALL at the bottom and tap-outside. */
         .app-filter-close{flex:none;width:36px;height:36px;display:grid;place-items:center;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.12);color:#fff;font-size:16px;font-weight:1000;line-height:1;cursor:pointer}
+        /* ---- Mobile landscape home UI (Anthony's sketch, 2026-11-20):
+           rounded buttons everywhere, 3-column fighters grid, icon-only
+           bottom nav as a left rail, profile goes home from Fighters,
+           season-pass bar with tier progress, quick tools/talents from
+           the hero power level. Scoped to .native-app + landscape, so
+           portrait, desktop and the website are untouched. The sketch
+           is the layout + element list; spacing and finish are polished
+           here — generous gaps, breathing room, clean alignment,
+           nothing cramped like the hand-drawn sketch. ---- */
+        #appHomeLandscapeRail,#appHomeLandscapeBar,#appHomeLandscapeSettingsBtn,#appHomeHero .app-hero-power{display:none}
+        .app-fighters-home-btn{display:none}
+        @media (orientation:landscape){
+        .native-app #appHome{padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right))}
+        /* Top strip, sketch order: currencies (13) + bricks (12) on the
+           left; More (5), Profile (3), Settings (2), Save on the right.
+           Season + Ranked chips hide — the pass bar + Play Ranked
+           button below carry the same info and taps. Profile collapses
+           to its icon. */
+        .native-app #appHomeTop{gap:12px}
+        .native-app #appHomeTop #homeCurrencyBar{margin-left:0}
+        .native-app #appHomeCurrencies{order:1}
+        .native-app #appHomeTrophyChip{order:2}
+        .native-app #appHomeMenuBtn{order:3;margin-left:auto}
+        .native-app #appHomePlayer{order:4;padding:6px 10px}
+        .native-app #appHomePlayerName{display:none}
+        .native-app #appHomeLandscapeSettingsBtn{order:5}
+        .native-app #appHomeSaveBtn{order:6}
+        .native-app #appHomeSeasonChip,.native-app #appHomeRankedChip{display:none}
+        .native-app #appHomeLandscapeSettingsBtn{flex:none;width:44px;height:44px;display:grid;place-items:center;border-radius:999px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.08);color:#fff;font-size:20px;cursor:pointer}
+        /* Bottom tab bar: replaced by the rail on home and by nothing
+           on Fighters (profile goes home there). Events / Shop /
+           Settings / Fighter views keep the bar in landscape, so no
+           destination is ever stranded. */
+        .native-app #appHome[data-app-tab="home"] #appHomeTabs,.native-app #appHome[data-app-tab="fighters"] #appHomeTabs,.native-app #appHome[data-app-tab="fighter"] #appHomeTabs{display:none}
+        /* Home grid: narrow icon rail + hero, action row across the
+           bottom. The old quick row / side buttons / play row hide —
+           every one of their taps lives in the rail, the top strip or
+           the action row below. */
+        .native-app #appHomeHeroView.is-active{display:grid;grid-template-columns:60px minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;gap:16px}
+        .native-app #appHomeQuickRow,.native-app #appHomeSideRight,.native-app #appHomePlayRow{display:none}
+        .native-app #appHomeHero{grid-column:2;grid-row:1;min-height:0;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:20px;padding:20px 18px}
+        .native-app #appHomeHero .app-hero-side{display:none}
+        .native-app #appHomeHero .app-hero-stats{display:none}
+        .native-app #appHomeHero .app-hero-info{align-items:center;text-align:center}
+        /* Left rail: the icon-only bottom nav (Search / Filter / Shop).
+           Shop rides along because hiding the tab bar would otherwise
+           strand the store — the sketch rail shows four slots and only
+           Search + Filter are named, so Shop takes a third and the
+           fourth stays breathing room. */
+        .native-app #appHomeLandscapeRail{grid-column:1;grid-row:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;min-width:0}
+        .native-app #appHomeLandscapeRail button{flex:none;width:48px;height:48px;display:grid;place-items:center;border-radius:999px;border:2px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff;font-size:22px;cursor:pointer}
+        /* Bottom action row: pass bar (4) stretches, then Quest (6) +
+           Tappers (7) icons, event pill (8), Play Ranked (9), PLAY (10). */
+        .native-app #appHomeLandscapeBar{grid-column:1/-1;grid-row:2;display:flex;align-items:center;gap:12px;min-width:0;padding:2px 0}
+        .native-app #appHomeLandscapeBar button{border-radius:999px;cursor:pointer}
+        .app-land-pass{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:5px;padding:10px 16px;border:1px solid rgba(255,255,255,.2);background:rgba(8,20,42,.6);color:#fff;text-align:left}
+        .app-land-pass b{font-size:13px;font-weight:1000;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .app-land-pass small{font-size:11px;font-weight:800;color:#9fc6e8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .app-land-pass-bar{display:block;height:8px;border-radius:999px;background:rgba(255,255,255,.14);overflow:hidden}
+        .app-land-pass-bar i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#ffd166,#ff9f1c)}
+        .app-land-icon-btn{flex:none;width:48px;height:48px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.2);background:rgba(8,20,42,.6);color:#fff;font-size:22px}
+        .app-land-event{flex:none;display:flex;align-items:center;gap:8px;max-width:220px;padding:12px 16px;border:1px solid rgba(255,255,255,.2);background:rgba(8,20,42,.6);color:#fff;font-weight:800}
+        .app-land-event b{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .app-land-event i{font-style:normal;font-size:9px;font-weight:1000;letter-spacing:.08em;color:#ffd166}
+        .app-land-ranked{flex:none;padding:13px 18px;border:2px solid #0a1428;background:linear-gradient(180deg,#7dd3fc,#0369a1);color:#fff;font-weight:1000;font-size:14px;box-shadow:0 4px 0 rgba(0,0,0,.45)}
+        .app-land-play{flex:none;min-width:150px;padding:14px 26px;border:2px solid #0a1428;background:linear-gradient(180deg,#7dff6a,#37c837);color:#062b07;font-weight:1000;font-size:20px;box-shadow:0 4px 0 rgba(0,0,0,.45)}
+        /* Hero power button: the power level, tappable — opens the quick
+           tools/talents sheet. Landscape only; portrait keeps the stats. */
+        .native-app #appHomeHero .app-hero-power{position:absolute;top:12px;right:12px;z-index:4;display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;border:2px solid #fff;background:radial-gradient(circle at 35% 30%,#e9a7ff,#a855f7 60%,#7c3aed);color:#fff;font-size:13px;font-weight:1000;cursor:pointer;box-shadow:0 0 12px rgba(168,85,247,.9),0 2px 0 rgba(0,0,0,.5)}
+        /* Fighters, landscape: 3-column grid (the sketch's 3 columns —
+           portrait keeps the 4-per-column paging). The page wrappers
+           dissolve so cards flow into the grid; the kit strip (tool /
+           talent / surge) shows on the right side of each square, next
+           to the power badge. The profile button in the top bar goes
+           home — there is no bottom nav on this screen. */
+        .native-app .app-fighters-home-btn{display:grid}
+        .native-app #appFightersHomeBtn{order:3}
+        .native-app #appFightersFavToggle{order:4}
+        .native-app #appFightersStrip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;overflow-x:hidden;overflow-y:auto;scroll-snap-type:none;max-height:none;padding:4px 2px 12px}
+        .native-app #appFightersStrip .app-fighters-page{display:contents}
+        .native-app .app-fighter-card{aspect-ratio:1/1;min-height:0}
+        .native-app .app-fighter-kit{display:flex;position:absolute;right:6px;top:50%;transform:translateY(-50%);z-index:3}
+        .native-app .app-fighter-kit-icons{display:flex;flex-direction:column;gap:4px}
+        .native-app .app-fighter-kit-icons i{font-style:normal;font-size:14px;line-height:1;opacity:.45}
+        .native-app .app-fighter-kit-icons i.on{opacity:1}
+        }
+        .app-quick-close{width:100%;padding:12px;border:0;border-radius:12px;background:#ff9f1c;color:#231303;font-weight:1000;font-size:14px;cursor:pointer}
         `;
         document.head.appendChild(styleSheet);
     function getScaledStats(brawlerId, levelOverride) {
@@ -1777,7 +1864,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
     // 1000 objective damage (max +5); Arena Forge mode +5 base, other
     // ranked modes +0; streak +5 at 2 wins then +2 per extra win (max
     // +15, unchanged); MVP +10 on a win, +5 on a loss (unchanged).
-    const RANKED_RP_MODE_BASE = { arena_forge: 5, knock_donate: 0, brick_vault: 0 };
+    const RANKED_RP_MODE_BASE = { arena_forge: 5, knock_donate: 0, brick_vault: 0, solo: 5 }; // Ranked Solo mode base is a BUILDER PICK (same as Arena Forge, the flagship ranked mode)
     function calcRankedRpGain({ mode, kills, damage, objectiveDamage, won, streak, mvp }) {
         const modeRp = RANKED_RP_MODE_BASE[mode] || 0;
         const winRp = won ? 20 : -10;
@@ -6275,6 +6362,60 @@ const bolznstienPendingStrikes = [];
                 if (event.target.closest('#circuitPassOverlay button')) appBuzz(10);
             } catch (_) {}
         });
+        // Mobile landscape home UI (Anthony's sketch, 2026-11-20):
+        // icon-only left rail (Search / Filter / Shop), the landscape
+        // action row (pass bar + Quest / Tappers + event + Play Ranked
+        // + PLAY), and the top-strip Settings icon. All created here so
+        // the pinned shell template above stays byte-identical; each
+        // button reuses an existing opener, so no new behavior is
+        // invented — only new doors to it. Hidden by CSS unless the app
+        // is in landscape, so portrait + web are untouched.
+        const landscapeTop = document.getElementById('appHomeTop');
+        if (landscapeTop && !document.getElementById('appHomeLandscapeSettingsBtn')) {
+            const settingsBtn = document.createElement('button');
+            settingsBtn.id = 'appHomeLandscapeSettingsBtn';
+            settingsBtn.type = 'button';
+            settingsBtn.setAttribute('aria-label', 'Settings');
+            settingsBtn.textContent = '⚙️';
+            settingsBtn.addEventListener('click', () => { appBuzz(10); setAppHomeTab('settings'); });
+            landscapeTop.appendChild(settingsBtn);
+        }
+        const heroView = document.getElementById('appHomeHeroView');
+        if (heroView && !document.getElementById('appHomeLandscapeRail')) {
+            const rail = document.createElement('nav');
+            rail.id = 'appHomeLandscapeRail';
+            rail.setAttribute('aria-label', 'Quick navigation');
+            rail.innerHTML = `
+              <button type="button" data-land-rail="search" aria-label="Search fighters">🔍</button>
+              <button type="button" data-land-rail="filter" aria-label="Filter fighters">⚙</button>
+              <button type="button" data-land-rail="shop" aria-label="Shop">🛒</button>`;
+            rail.addEventListener('click', (event) => {
+                const btn = event.target.closest('[data-land-rail]');
+                if (!btn) return;
+                appBuzz(10);
+                const action = btn.dataset.landRail;
+                if (action === 'search') { setAppHomeTab('fighters'); document.getElementById('appHomeFightersView')?.classList.add('app-fighters-search-open'); document.getElementById('appFightersSearch')?.focus(); }
+                else if (action === 'filter') { setAppHomeTab('fighters'); if (typeof openAppFightersFilterSheet === 'function') openAppFightersFilterSheet(); }
+                else if (action === 'shop') { setAppHomeTab('shop'); }
+            });
+            heroView.insertBefore(rail, heroView.firstChild);
+            const bar = document.createElement('div');
+            bar.id = 'appHomeLandscapeBar';
+            bar.innerHTML = `
+              <button type="button" id="appHomeLandscapePass" class="app-land-pass" aria-label="Season pass"><b>🎁 SEASON PASS</b><span class="app-land-pass-bar"><i style="width:0%"></i></span><small></small></button>
+              <button type="button" id="appHomeLandscapeQuests" class="app-land-icon-btn" aria-label="Quests">📜</button>
+              <button type="button" id="appHomeLandscapeTappers" class="app-land-icon-btn" aria-label="Tappers">⭐</button>
+              <button type="button" id="appHomeLandscapeEvent" class="app-land-event" aria-label="Change event"><b></b><i>CHANGE</i></button>
+              <button type="button" id="appHomeLandscapeRanked" class="app-land-ranked">⚔️ RANKED</button>
+              <button type="button" id="appHomeLandscapePlay" class="app-land-play">▶ PLAY</button>`;
+            bar.querySelector('#appHomeLandscapePass')?.addEventListener('click', () => { appBuzz(10); if (typeof openSeasonPass === 'function') openSeasonPass(); setAppDeepLink('pass'); });
+            bar.querySelector('#appHomeLandscapeQuests')?.addEventListener('click', () => { appBuzz(10); if (typeof openQuestBoard === 'function') openQuestBoard(); });
+            bar.querySelector('#appHomeLandscapeTappers')?.addEventListener('click', () => { appBuzz(10); if (typeof openAppTapperSheet === 'function') openAppTapperSheet(); });
+            bar.querySelector('#appHomeLandscapeEvent')?.addEventListener('click', () => { appBuzz(10); setAppHomeTab('events'); });
+            bar.querySelector('#appHomeLandscapeRanked')?.addEventListener('click', () => { appBuzz(10); if (typeof openRankedQueueUI === 'function') openRankedQueueUI(); });
+            bar.querySelector('#appHomeLandscapePlay')?.addEventListener('click', () => { appBuzz(12); document.getElementById('startMatch')?.click(); });
+            heroView.appendChild(bar);
+        }
         syncAppHomeVisibility();
         try {
             new MutationObserver(syncAppHomeVisibility).observe(homeScreenEl, { attributes: true, attributeFilter: ['style'] });
@@ -6428,6 +6569,7 @@ const bolznstienPendingStrikes = [];
         const heroBricksHtml = `<div class="app-hero-trophy" aria-hidden="true">🧱 ${heroBricks.toLocaleString()}<span>${level}</span></div>`;
         hero.innerHTML = `
           ${heroBricksHtml}
+          <button type="button" class="app-hero-power" data-hero-power aria-label="Quick-change tools and talents">🔧 POWER ${level}</button>
           ${portraitHtml}
           <div class="app-hero-info">
             <small>READY TO BRAWL</small>
@@ -6444,6 +6586,11 @@ const bolznstienPendingStrikes = [];
           ${heroSideHtml}`;
         hero.querySelector('[data-hero-side="events"]')?.addEventListener('click', (event) => { event.stopPropagation(); appBuzz(10); setAppHomeTab('events'); });
         hero.querySelector('[data-hero-side="tournament"]')?.addEventListener('click', (event) => { event.stopPropagation(); appBuzz(10); if (typeof openTournamentHub === 'function') openTournamentHub(); setAppDeepLink('tournament'); });
+        // Landscape home UI (sketch, 2026-11-20): tapping the power
+        // level opens the quick tools/talents menu — it must not also
+        // trigger the hero's own fighters tap, so it stops propagation
+        // like the side cards above. The button is landscape-only CSS.
+        hero.querySelector('[data-hero-power]')?.addEventListener('click', (event) => { event.stopPropagation(); appBuzz(10); if (typeof openAppQuickLoadout === 'function') openAppQuickLoadout(); });
     }
     function renderAppHomeTop() {
         const nameEl = document.getElementById('appHomePlayerName');
@@ -6480,6 +6627,80 @@ const bolznstienPendingStrikes = [];
         try { mapCountdown = `New map in: ${formatHomeEventCountdown(getHomeDailyRotationEndsAt() - Date.now())}`; } catch (_) {}
         chip.innerHTML = `<span aria-hidden="true">${modeEntry[1] || '⚔'}</span><b>${modeEntry[2] || 'Battle'}</b><small>${modeEntry[3] || ''}</small><small class="app-home-map-count">${mapCountdown}</small><i>CHANGE</i>`;
     }
+    // Mobile landscape home UI (Anthony's sketch, 2026-11-20): the
+    // season-pass bar on the action row — pure math so the suite can
+    // test it without a DOM. 100 XP per tier; tier 50 is max.
+    function getLandscapePassBarInfo(pass) {
+        const level = Math.max(1, Math.min(SEASON_PASS_MAX_LEVEL, Math.floor(pass?.level || 1)));
+        const xpInto = Math.max(0, Math.floor(pass?.xp || 0) % SEASON_PASS_XP_PER_LEVEL);
+        const maxed = level >= SEASON_PASS_MAX_LEVEL;
+        return { level, xpInto, xpPerLevel: SEASON_PASS_XP_PER_LEVEL, xpToNext: maxed ? 0 : SEASON_PASS_XP_PER_LEVEL - xpInto, pct: maxed ? 100 : Math.round((xpInto / SEASON_PASS_XP_PER_LEVEL) * 100), maxed };
+    }
+    function renderAppHomeLandscapeBar() {
+        const passBtn = document.getElementById('appHomeLandscapePass');
+        if (passBtn && playerData?.seasonPass) {
+            const info = getLandscapePassBarInfo(playerData.seasonPass);
+            const bar = passBtn.querySelector('.app-land-pass-bar i');
+            if (bar) bar.style.width = `${info.pct}%`;
+            const label = passBtn.querySelector('b');
+            if (label) label.textContent = `🎁 SEASON PASS · TIER ${info.level}`;
+            const sub = passBtn.querySelector('small');
+            if (sub) sub.textContent = info.maxed ? 'MAX TIER · PASS COMPLETE' : `${info.xpInto}/${info.xpPerLevel} XP · ${info.xpToNext} XP TO TIER ${info.level + 1}`;
+        }
+        const eventBtn = document.getElementById('appHomeLandscapeEvent');
+        if (eventBtn) {
+            const modeEntry = HOME_MODE_DATA?.[showdownMode] || HOME_MODE_DATA?.solo || [showdownMode, '⚔', 'Battle', 'Enter the arena'];
+            const label = eventBtn.querySelector('b');
+            if (label) label.textContent = `${modeEntry[1] || '⚔'} ${modeEntry[2] || 'Battle'}`;
+        }
+    }
+    // Quick tools/talents menu (sketch item 11, 2026-11-20): tap the
+    // hero power level and change the hero fighter's tools + talents
+    // without opening the full fighter page. Reuses the kit-sheet
+    // overlay and appFightersKitPick, so equips are the same writes
+    // the detail page makes. Locked slots show their power gate and
+    // cannot be picked; Core Surge is info-only (no equip choice).
+    function openAppQuickLoadout() {
+        if (!isNativeAppMode()) return;
+        const id = selectedBrawler;
+        const data = brawlerData[id];
+        if (!data) return;
+        document.getElementById('appQuickLoadoutSheet')?.remove();
+        const pData = getEffectiveBrawlerProgress(id);
+        const level = pData.level || 1;
+        const slot = (key, label, name, isLocked, lockedText, equipped, desc = '') => `<button type="button" class="app-kit-slot${equipped ? ' is-equipped' : ''}${isLocked ? ' is-locked' : ''}" data-quick-kit="${key}" aria-disabled="${isLocked ? 'true' : 'false'}">
+          <small>${label}${equipped ? ' · EQUIPPED' : ''}</small>
+          <b>${isLocked ? lockedText : name}</b>${!isLocked && desc ? `
+          <span class="app-kit-desc">${desc}</span>` : ''}
+        </button>`;
+        const sheet = document.createElement('div');
+        sheet.id = 'appQuickLoadoutSheet';
+        sheet.className = 'app-kit-sheet-overlay';
+        sheet.innerHTML = `
+          <div class="app-kit-sheet" role="dialog" aria-label="Quick loadout">
+            <div class="app-kit-sheet-label">QUICK LOADOUT · POWER ${level}</div>
+            <h3>${data.name || id}</h3>
+            <div class="app-kit-sheet-sub">Tap a tool or talent to equip it — no need to open the fighter page.</div>
+            <div class="app-kit-slots">
+              ${slot('g1', 'TOOL 1', kitName(data.g1, 'Gadget 1'), !pData.gadgetUnlocked, 'LOCKED · POWER 7', pData.selectedGadget === 'g1', kitDesc(data.g1))}
+              ${data.g2 ? slot('g2', 'TOOL 2', kitName(data.g2, 'Gadget 2'), !pData.gadgetUnlocked, 'LOCKED · POWER 7', pData.selectedGadget === 'g2', kitDesc(data.g2)) : ''}
+              ${slot('sp1', 'TALENT 1', kitName(data.sp1, 'Star Power 1'), !pData.starPowerUnlocked, 'LOCKED · POWER 9', pData.selectedStar === 'slow', kitDesc(data.sp1))}
+              ${slot('sp2', 'TALENT 2', kitName(data.sp2, 'Star Power 2'), !pData.starPowerUnlocked, 'LOCKED · POWER 9', pData.selectedStar === 'long', kitDesc(data.sp2))}
+            </div>
+            <div class="app-kit-sheet-desc">Core Surge unlocks at Power 11 and is always on once unlocked.</div>
+            <button type="button" class="app-quick-close" data-quick-close>CLOSE</button>
+          </div>`;
+        sheet.addEventListener('click', (event) => {
+            if (event.target === sheet || event.target.closest('[data-quick-close]')) { sheet.remove(); return; }
+            const btn = event.target.closest('[data-quick-kit]');
+            if (!btn || btn.getAttribute('aria-disabled') === 'true') return;
+            appBuzz(10);
+            appFightersKitPick(id, btn.dataset.quickKit);
+            sheet.remove();
+            syncAppHome();
+        });
+        document.body.appendChild(sheet);
+    }
     // App polish pass (H2): cold-start fallback. If the hero render
     // throws (bad save data, a missing portrait), the home screen must
     // still show a tappable hero instead of the empty static shell.
@@ -6491,10 +6712,15 @@ const bolznstienPendingStrikes = [];
     }
     function syncAppHome() {
         if (!appHomeEl || !isNativeAppMode()) return;
+        // Landscape home UI (sketch, 2026-11-20): keep the shell's tab
+        // marker in sync even before the first setAppHomeTab call, so
+        // the tab bar is hidden from the first landscape paint.
+        try { appHomeEl.dataset.appTab = appHomeTab; } catch (_) {}
         try { applyAppSeasonTheme(); } catch (_) {}
         try { renderAppHomeHero(); } catch (_) { try { renderAppHomeHeroFallback(); } catch (_) {} }
         try { renderAppHomeTop(); } catch (_) {}
         try { renderAppHomeEventChip(); } catch (_) {}
+        try { renderAppHomeLandscapeBar(); } catch (_) {}
         // Quick-row badges: the web quest button's badge is maintained
         // by updateQuestBadge, so read its live value; the pass badge
         // comes from the same counter the quest board tabs use.
@@ -6565,6 +6791,11 @@ const bolznstienPendingStrikes = [];
     }
     function setAppHomeTab(tab) {
         if (!appHomeEl) return;
+        // Landscape home UI (sketch, 2026-11-20): the shell carries the
+        // active tab as a data attribute so landscape CSS can hide the
+        // bottom tab bar on home + fighters (rail / profile replace it)
+        // while Events / Shop / Settings keep it.
+        try { appHomeEl.dataset.appTab = tab; } catch (_) {}
         // H1: opening Shop sets the tab state honestly (SHOP highlights
         // while the overlay is open) and arms the close-watcher; the open
         // itself still reuses openHomeShop() exactly as before.
@@ -6766,6 +6997,7 @@ const bolznstienPendingStrikes = [];
                   <button type="button" id="appFightersSearchToggle" class="app-fighters-icon-btn" aria-label="Search fighters" aria-expanded="false">🔍</button>
                   <button type="button" id="appFightersFilterBtn" class="app-fighters-icon-btn" aria-label="Filter fighters" aria-pressed="false">⚙</button>
                   <button type="button" id="appFightersFavToggle" class="app-fighters-icon-btn" aria-label="Favorites only" aria-pressed="false">★</button>
+                  <button type="button" id="appFightersHomeBtn" class="app-fighters-icon-btn app-fighters-home-btn" aria-label="Back to home">👤</button>
                 </div>
                 <div class="app-fighters-search-wrap">
                   <input id="appFightersSearch" class="app-fighters-search" type="search" placeholder="🔎 Search fighters…" autocomplete="off" enterkeyhint="search">
@@ -6824,6 +7056,13 @@ const bolznstienPendingStrikes = [];
                 syncAppFightersFavBtn();
                 syncAppFightersClearChip();
                 renderAppFightersStrip();
+            });
+            // Landscape home UI (sketch, 2026-11-20): no bottom nav on
+            // the Fighters screen — the profile icon (3) goes home.
+            // Landscape-only via CSS; hidden in portrait.
+            view.querySelector('#appFightersHomeBtn')?.addEventListener('click', () => {
+                appBuzz(10);
+                setAppHomeTab('home');
             });
             // Fixes round 2 (2026-11-20): the clear-filters chip resets
             // without opening the sheet — the way out of a filtered view.
@@ -10121,26 +10360,26 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           {tier:25,title:'EMBERLORD',free:{type:'present',amount:2},premium:{type:'pinPack',amount:3,bonusGems:15}}
       ];
       const XPLODEMIS_QUEST_DEFS = [
-          {id:'xplodemis_01',stage:1,kind:'play_match',title:'First Snowfall',desc:'Play 3 battles.',target:3,rewards:{coins:200,souls:12},xpReward:100},
-          {id:'xplodemis_02',stage:2,kind:'deal_damage',title:'Firework Warmup',desc:'Deal 25,000 damage.',target:25000,rewards:{coins:240,corePieces:5},xpReward:100},
-          {id:'xplodemis_03',stage:3,kind:'win_match',title:'Sleigh Ride',desc:'Win 2 battles.',target:2,rewards:{souls:20},xpReward:100},
-          {id:'xplodemis_04',stage:4,kind:'defeat_enemies',title:'Grinch Patrol',desc:'Defeat 15 enemies.',target:15,rewards:{coins:300,tappers:1},xpReward:100},
-          {id:'xplodemis_05',stage:5,kind:'perform_supers',title:'Carol Chorus',desc:'Activate 10 Power Moves.',target:10,rewards:{coins:340,souls:24},xpReward:100},
-          {id:'xplodemis_06',stage:6,kind:'christmas_showdown_matches',title:'First Christmas Showdown',desc:'Play 2 Christmas Showdown battles.',target:2,rewards:{presents:1},xpReward:100},
-          {id:'xplodemis_07',stage:7,kind:'use_gadget',title:'Toy Workshop',desc:'Use 10 Tools.',target:10,rewards:{coins:380,corePieces:8},xpReward:100},
-          {id:'xplodemis_08',stage:8,kind:'deal_damage',title:'Blizzard Grind',desc:'Deal 150,000 damage.',target:150000,rewards:{souls:55,superTappers:1},xpReward:100},
-          {id:'xplodemis_09',stage:9,kind:'different_fighters',title:'Reindeer Squad',desc:'Finish battles with 6 different Fighters.',target:6,rewards:{souls:65},xpReward:100},
-          {id:'xplodemis_10',stage:10,kind:'christmas_powerups',title:'Buff Collector',desc:'Pick up 5 buffs in Christmas Showdown.',target:5,rewards:{presents:1,coins:500},xpReward:100},
-          {id:'xplodemis_11',stage:11,kind:'win_match',title:'Halfway to Christmas',desc:'Win 8 battles.',target:8,rewards:{coins:500,tappers:1},xpReward:100},
-          {id:'xplodemis_12',stage:12,kind:'defeat_enemies',title:'Krampus Reaper',desc:'Defeat 75 enemies.',target:75,rewards:{superTappers:1,corePieces:12},xpReward:100},
-          {id:'xplodemis_13',stage:13,kind:'perform_supers',title:'Twinkle Toes',desc:'Activate 25 Power Moves.',target:25,rewards:{coins:800},xpReward:100},
-          {id:'xplodemis_14',stage:14,kind:'christmas_showdown_wins',title:'Christmas Champion',desc:'Win a Christmas Showdown.',target:1,rewards:{presents:1,souls:90},xpReward:100},
-          {id:'xplodemis_15',stage:15,kind:'deal_damage',title:'Present Bonanza',desc:'Deal 500,000 damage.',target:500000,rewards:{presents:2},xpReward:100},
-          {id:'xplodemis_16',stage:16,kind:'perform_supers',title:'Super Stockings',desc:'Activate 40 Power Moves.',target:40,rewards:{hyperTappers:1,corePieces:15},xpReward:100},
-          {id:'xplodemis_17',stage:17,kind:'christmas_powerups',title:'Buff Blizzard',desc:'Pick up 15 buffs in Christmas Showdown.',target:15,rewards:{coins:1000},xpReward:100},
-          {id:'xplodemis_18',stage:18,kind:'deal_damage',title:'Damage Decorator',desc:'Deal 1,000,000 damage.',target:1000000,rewards:{souls:120,gems:10},xpReward:100},
-          {id:'xplodemis_19',stage:19,kind:'defeat_enemies',title:'Snowball Fight Finale',desc:'Defeat 100 enemies.',target:100,rewards:{presents:2,coins:1200},xpReward:100},
-          {id:'xplodemis_20',stage:20,kind:'win_match',title:'XPLODEMIS MASTER',desc:'Win 20 battles this season.',target:20,rewards:{coins:1500,presents:2,hyperTappers:1},xpReward:100}
+          {id:'xplodemis_01',stage:1,kind:'play_match',title:'First Snowfall',desc:'Play 5 battles.',target:5,rewards:{coins:200,souls:12},xpReward:100},
+          {id:'xplodemis_02',stage:2,kind:'deal_damage',title:'Firework Warmup',desc:'Deal 50,000 damage.',target:50000,rewards:{coins:240,corePieces:5},xpReward:100},
+          {id:'xplodemis_03',stage:3,kind:'win_match',title:'Sleigh Ride',desc:'Win 13 battles.',target:13,rewards:{souls:20},xpReward:100},
+          {id:'xplodemis_04',stage:4,kind:'defeat_enemies',title:'Grinch Patrol',desc:'Defeat 30 enemies.',target:30,rewards:{coins:300,tappers:1},xpReward:100},
+          {id:'xplodemis_05',stage:5,kind:'perform_supers',title:'Carol Chorus',desc:'Activate 20 Power Moves.',target:20,rewards:{coins:340,souls:24},xpReward:100},
+          {id:'xplodemis_06',stage:6,kind:'christmas_showdown_matches',title:'First Christmas Showdown',desc:'Play 5 Christmas Showdown battles.',target:5,rewards:{presents:1},xpReward:175},
+          {id:'xplodemis_07',stage:7,kind:'use_gadget',title:'Toy Workshop',desc:'Use 20 Tools.',target:20,rewards:{coins:380,corePieces:8},xpReward:175},
+          {id:'xplodemis_08',stage:8,kind:'deal_damage',title:'Blizzard Grind',desc:'Deal 300,000 damage.',target:300000,rewards:{souls:55,superTappers:1},xpReward:175},
+          {id:'xplodemis_09',stage:9,kind:'different_fighters',title:'Reindeer Squad',desc:'Finish battles with 10 different Fighters.',target:10,rewards:{souls:65},xpReward:175},
+          {id:'xplodemis_10',stage:10,kind:'christmas_powerups',title:'Buff Collector',desc:'Pick up 12 buffs in Christmas Showdown.',target:12,rewards:{presents:1,coins:500},xpReward:175},
+          {id:'xplodemis_11',stage:11,kind:'win_match',title:'Halfway to Christmas',desc:'Win 15 battles.',target:15,rewards:{coins:500,tappers:1},xpReward:275},
+          {id:'xplodemis_12',stage:12,kind:'defeat_enemies',title:'Krampus Reaper',desc:'Defeat 120 enemies.',target:120,rewards:{superTappers:1,corePieces:12},xpReward:275},
+          {id:'xplodemis_13',stage:13,kind:'perform_supers',title:'Twinkle Toes',desc:'Activate 60 Power Moves.',target:60,rewards:{coins:800},xpReward:275},
+          {id:'xplodemis_14',stage:14,kind:'christmas_showdown_wins',title:'Christmas Champion',desc:'Win 3 Christmas Showdowns.',target:3,rewards:{presents:1,souls:90},xpReward:275},
+          {id:'xplodemis_15',stage:15,kind:'deal_damage',title:'Present Bonanza',desc:'Deal 750,000 damage.',target:750000,rewards:{presents:2},xpReward:275},
+          {id:'xplodemis_16',stage:16,kind:'perform_supers',title:'Super Stockings',desc:'Activate 80 Power Moves.',target:80,rewards:{hyperTappers:1,corePieces:15},xpReward:430},
+          {id:'xplodemis_17',stage:17,kind:'christmas_powerups',title:'Buff Blizzard',desc:'Pick up 30 buffs in Christmas Showdown.',target:30,rewards:{coins:1000},xpReward:430},
+          {id:'xplodemis_18',stage:18,kind:'deal_damage',title:'Damage Decorator',desc:'Deal 1,500,000 damage.',target:1500000,rewards:{souls:120,gems:10},xpReward:430},
+          {id:'xplodemis_19',stage:19,kind:'defeat_enemies',title:'Snowball Fight Finale',desc:'Defeat 175 enemies.',target:175,rewards:{presents:2,coins:1200},xpReward:430},
+          {id:'xplodemis_20',stage:20,kind:'win_match',title:'XPLODEMIS MASTER',desc:'Win 35 battles this season.',target:35,rewards:{coins:1500,presents:2,hyperTappers:1},xpReward:430}
       ];
       const EMBER_FORGE_QUEST_DEFS = [
           {id:'ember_01',stage:1,kind:'play_match',title:'First Lighting',desc:'Play 3 battles.',target:3,rewards:{coins:200,souls:12},xpReward:100},
@@ -10356,6 +10595,9 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
                   delete pass.quests[questId];
               }
           }
+          // Season quests tuning (2026-11-20): never let a stale save
+          // smuggle progress into a locked stage.
+          sanitizeSeasonQuestProgress(pass);
       }
       function isSeason3PassActive(now=Date.now()){return now<EMBER_FORGE_END_UTC;} // Seasons 4-7 run back to back through January 31, 2027
       function resetSeasonPass() {
@@ -10791,12 +11033,69 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           const previousStageQuest = Object.values(bucket || {}).find(q => q.stage === quest.stage - 1);
           return !previousStageQuest || !!previousStageQuest.completed;
       }
-      // Season quests (2026-11-20 fix): a stage is available only once
-      // the previous stage is complete — stage 1 is always available.
-      // Later stages stay VISIBLE but grayed out as "Coming Soon", never
-      // hidden and never claimable/active until they unlock.
-      function isSeasonQuestStageUnlocked(quest) {
+      // Season quest time unlocks (2026-11-20 tuning): stages also unlock
+      // on a TIME schedule across the season — one stage every 2 days from
+      // the season start (BUILDER PICK, flagged for Anthony's call).
+      // Stage 1 opens with the season; stage 20 opens Dec 28, 2026, so
+      // the last stage still has the final days of the season to finish.
+      const SEASON_QUEST_UNLOCK_STEP_MS = 2 * 24 * 60 * 60 * 1000;
+      function seasonQuestStageUnlockMs(stage, seasonStartUtc) {
+          const s = Math.max(1, Math.floor(stage || 1));
+          const start = Number.isFinite(seasonStartUtc) ? seasonStartUtc : XPLODEMIS_START_UTC;
+          return start + (s - 1) * SEASON_QUEST_UNLOCK_STEP_MS;
+      }
+      function seasonQuestStageStartUtc(quest, nowMs) {
+          try { return getActiveSeasonProfile(nowMs).startUtc; } catch (_) { return XPLODEMIS_START_UTC; }
+      }
+      // Pure (given quest + nowMs): has this stage's unlock time arrived?
+      function isSeasonQuestStageTimeUnlocked(quest, nowMs = Date.now(), seasonStartUtc) {
           if (!quest || typeof quest.stage !== 'number' || quest.stage <= 1) return true;
+          const start = Number.isFinite(seasonStartUtc) ? seasonStartUtc : seasonQuestStageStartUtc(quest, nowMs);
+          return nowMs >= seasonQuestStageUnlockMs(quest.stage, start);
+      }
+      // Pure: "2d 4h" / "5h 12m" / "45m" until the stage unlocks.
+      function formatSeasonQuestUnlockCountdown(msRemaining) {
+          const ms = Math.max(0, Math.floor(msRemaining || 0));
+          if (ms <= 0) return 'Unlocked';
+          const totalMinutes = Math.floor(ms / 60000);
+          const days = Math.floor(totalMinutes / 1440);
+          const hours = Math.floor((totalMinutes % 1440) / 60);
+          const minutes = totalMinutes % 60;
+          if (days > 0) return `${days}d ${hours}h`;
+          if (hours > 0) return `${hours}h ${minutes}m`;
+          return `${Math.max(1, minutes)}m`;
+      }
+      // Season quests tuning (2026-11-20): a locked stage can NEVER hold
+      // progress — not even from a stale save. On every season-state
+      // load, walk the stages in order and zero any stage that is
+      // time-locked or whose previous stage is not complete (progress,
+      // completion AND claim all reset, so nothing smuggles through).
+      function sanitizeSeasonQuestProgress(pass) {
+          if (!pass || !pass.quests || typeof pass.quests !== 'object') return pass;
+          const defs = buildSeasonPassQuests().slice().sort((a, b) => (a.stage || 0) - (b.stage || 0));
+          let prevCompleted = true;
+          for (const def of defs) {
+              const state = pass.quests[def.id];
+              if (!state) { prevCompleted = false; continue; }
+              const timeLocked = !isSeasonQuestStageTimeUnlocked(def);
+              const locked = timeLocked || !prevCompleted;
+              if (locked) {
+                  state.progress = 0;
+                  state.completed = false;
+                  state.rewardClaimed = false;
+              }
+              prevCompleted = !!state.completed;
+          }
+          return pass;
+      }
+      // Season quests (2026-11-20 fix + tuning): a stage is available only
+      // once the previous stage is complete AND its unlock time has arrived.
+      // Stage 1 is always available. Later stages stay VISIBLE but grayed
+      // out as "Coming Soon", never hidden and never claimable/active until
+      // they unlock — and ZERO progress accrues while locked.
+      function isSeasonQuestStageUnlocked(quest, nowMs = Date.now()) {
+          if (!quest || typeof quest.stage !== 'number' || quest.stage <= 1) return true;
+          if (!isSeasonQuestStageTimeUnlocked(quest, nowMs)) return false;
           const bucket = (playerData.seasonPass && playerData.seasonPass.quests) || {};
           const previousStageQuest = Object.values(bucket).find(q => q.stage === quest.stage - 1);
           return !previousStageQuest || !!previousStageQuest.completed;
@@ -11089,6 +11388,11 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
               }
               return column;
           }
+          // Season quests tuning (2026-11-20): the unlock countdowns tick
+          // live while the season tab is open. The id lives in this
+          // openQuestBoard call's scope; the tick clears itself once no
+          // countdown spans remain (board closed), so intervals never pile up.
+          let seasonQuestUnlockTimerId = null;
           function createSeasonView() {
               const pass = playerData.seasonPass || {};
               const wrapper = document.createElement('div');
@@ -11146,6 +11450,17 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
                   // VISIBLE but grayed out as "Coming Soon" until the
                   // previous stage is complete — never hidden.
                   const unlocked = isSeasonQuestStageUnlocked(quest);
+                  // Season quests tuning (2026-11-20): every Coming Soon
+                  // card shows a live countdown to its time unlock.
+                  const timeUnlocked = isSeasonQuestStageTimeUnlocked(quest);
+                  const unlockAtMs = seasonQuestStageUnlockMs(quest.stage, seasonProfileForQuests.startUtc);
+                  const prevState = quest.stage > 1 ? Object.values(pass.quests || {}).find(s => s.stage === quest.stage - 1) : null;
+                  const completionLocked = !!prevState && !prevState.completed;
+                  const unlockNote = !unlocked
+                      ? (!timeUnlocked
+                          ? `Coming soon — unlocks in <span data-season-quest-unlock-utc="${unlockAtMs}">${formatSeasonQuestUnlockCountdown(Math.max(0, unlockAtMs - Date.now()))}</span>${completionLocked ? ' — after the previous stage is complete' : ''}.`
+                          : 'Coming soon — unlocks after the previous stage is complete.')
+                      : '';
                   const percent = Math.max(0, Math.min(100, Math.round((questState.progress || 0) / Math.max(1, quest.target) * 100)));
                   const questCard = document.createElement('div');
                   questCard.style.padding = '10px';
@@ -11160,7 +11475,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
                           <div style="font-size:11px;color:${rewardClaimed ? '#58e4b6' : (done ? '#ffb15a' : (unlocked ? '#8fd8ff' : '#7f97b2'))};font-weight:800;">${rewardClaimed ? 'Claimed' : (done ? 'Claim Ready' : (unlocked ? 'In Progress' : 'Coming Soon'))}</div>
                       </div>
                       <div style="font-size:11px;color:#95b8d4;margin:4px 0 6px 0;line-height:1.3;">${quest.desc}</div>
-                      ${!unlocked ? `<div style="font-size:11px;color:#7f97b2;margin-bottom:6px;">Coming soon — unlocks after the previous stage is complete.</div>` : ''}
+                      ${unlockNote ? `<div style="font-size:11px;color:#7f97b2;margin-bottom:6px;">${unlockNote}</div>` : ''}
                       <div style="font-size:11px;color:#ffda8f;margin-bottom:6px;">Quest Reward: ${questRewardText(Object.assign({}, questState.rewards || quest.rewards, { passXP: questState.xpReward || quest.xpReward || 100 }))}</div>
                       <div style="height:6px;border-radius:999px;overflow:hidden;background:#0d1c2c;">
                           <div style="height:100%;width:${percent}%;background:${rewardClaimed ? '#58e4b6' : (done ? '#ffb15a' : (unlocked ? '#5ec4ff' : '#5f6f82'))};"></div>
@@ -11189,6 +11504,34 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
                   questCard.appendChild(claimBtn);
                   questBox.appendChild(questCard);
               }
+              // Season quests tuning (2026-11-20): tick every Coming Soon
+              // countdown live (30s) while the season tab is open. When a
+              // timer hits zero the tab re-renders so the quest unlocks.
+              // Guarded: vm/jsdom harnesses have no setInterval or
+              // querySelectorAll on their document, so this is a no-op there.
+              try {
+                  if (typeof setInterval === 'function' && document && typeof document.querySelectorAll === 'function') {
+                      if (seasonQuestUnlockTimerId != null) { try { clearInterval(seasonQuestUnlockTimerId); } catch (_) {} seasonQuestUnlockTimerId = null; }
+                      seasonQuestUnlockTimerId = setInterval(() => {
+                          try {
+                              const now = Date.now();
+                              const spans = document.querySelectorAll('[data-season-quest-unlock-utc]');
+                              if (!spans || !spans.length) { try { clearInterval(seasonQuestUnlockTimerId); } catch (_) {} seasonQuestUnlockTimerId = null; return; }
+                              let anyExpired = false;
+                              spans.forEach(el => {
+                                  const unlockAt = Number(el.getAttribute && el.getAttribute('data-season-quest-unlock-utc'));
+                                  if (!Number.isFinite(unlockAt)) return;
+                                  if (unlockAt - now <= 0) { anyExpired = true; return; }
+                                  el.textContent = formatSeasonQuestUnlockCountdown(unlockAt - now);
+                              });
+                              if (anyExpired) {
+                                  if (typeof setActiveTab === 'function') { try { setActiveTab('season'); } catch (_) {} }
+                                  try { refreshHomeUI(); } catch (_) {}
+                              }
+                          } catch (_) {}
+                      }, 30000);
+                  }
+              } catch (_) {}
               // Season quests fix (2026-11-20): the quest box was built
               // but NEVER attached to the wrapper, so the season tab
               // rendered empty even though all 20 quests were seeded.
@@ -13824,6 +14167,7 @@ let blinkEyeDodgeState = null;
     }
     let isMirrorMode = false;
     let isRankedMatch = false;
+    let isRankedSoloMatch = false; // Ranked Solo (2026-11-20): this ranked match is a solo Showdown, not Teams
     let rankedTeammatePicks = [];
     let rankedTeammateNames = [];
     let rankedBans = { player: [], enemy: [] };
@@ -15365,10 +15709,10 @@ let blinkEyeDodgeState = null;
         const points = Math.max(0, Math.floor((playerData.ranked && playerData.ranked.points) || 0));
         return getRankedTierInfo(points).index >= RANKED_DIVISIONS.length - 1;
     }
-    function buildPrestigeLeagueOpponents(cycleKey) {
+    function buildPrestigeLeagueOpponents(cycleKey, salt = 0) {
         const names = TOURNAMENT_BOT_NAMES;
         const out = [];
-        let seed = ((cycleKey * 2654435761) >>> 0) || 1;
+        let seed = (((cycleKey * 2654435761 + salt) >>> 0) || 1);
         const next = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
         const used = new Set();
         while (out.length < PRESTIGE_LEAGUE_OPPONENT_COUNT) {
@@ -15391,10 +15735,16 @@ let blinkEyeDodgeState = null;
             league.lastCycleReward = null;
         }
     }
-    function ensurePrestigeLeagueState(now = Date.now()) {
+    function ensurePrestigeLeagueState(now = Date.now(), solo) {
+        // Ranked Solo has its own Prestige League ladder (same 3-day
+        // cycles, same top-3 payouts, no teammates). `solo` defaults to
+        // the live solo flag when omitted, so match settlement routes
+        // automatically and every existing Teams call is unchanged.
+        const useSolo = solo === true || (solo == null && typeof isRankedSoloMatch !== 'undefined' && !!isRankedSoloMatch);
         if (!playerData.prestigeLeague || typeof playerData.prestigeLeague !== 'object') playerData.prestigeLeague = {};
-        const league = playerData.prestigeLeague;
-        if (!hasCompletedRanked()) {
+        if (useSolo && (!playerData.prestigeLeagueSolo || typeof playerData.prestigeLeagueSolo !== 'object')) playerData.prestigeLeagueSolo = {};
+        const league = useSolo ? playerData.prestigeLeagueSolo : playerData.prestigeLeague;
+        if (!(useSolo ? hasCompletedRankedSolo() : hasCompletedRanked())) {
             // Locked: no leaderboard yet — no opponents, no teammates,
             // no cycle, no payouts. Unlocks the moment Ranked is
             // completed; the cycle starts then (cycleKey stays unset here
@@ -15415,13 +15765,13 @@ let blinkEyeDodgeState = null;
             league.cycleKey = key;
             league.points = 0;
             league.matchesPlayed = 0;
-            league.opponents = buildPrestigeLeagueOpponents(key);
-            league.teammates = (rankedTeammateNames || []).slice(0, 2);
+            league.opponents = buildPrestigeLeagueOpponents(key, useSolo ? RANKED_SOLO_LEAGUE_OPPONENT_SALT : 0);
+            league.teammates = useSolo ? [] : (rankedTeammateNames || []).slice(0, 2);
             if (league.lastCycleRank == null) league.lastCycleRank = null;
         }
         if (league.points == null) league.points = 0;
-        if (!Array.isArray(league.opponents)) league.opponents = buildPrestigeLeagueOpponents(key);
-        if (!Array.isArray(league.teammates)) league.teammates = (rankedTeammateNames || []).slice(0, 2);
+        if (!Array.isArray(league.opponents)) league.opponents = buildPrestigeLeagueOpponents(key, useSolo ? RANKED_SOLO_LEAGUE_OPPONENT_SALT : 0);
+        if (!Array.isArray(league.teammates)) league.teammates = useSolo ? [] : (rankedTeammateNames || []).slice(0, 2);
         if (league.matchesPlayed == null) league.matchesPlayed = 0;
         return league;
     }
@@ -15433,8 +15783,9 @@ let blinkEyeDodgeState = null;
     function getPrestigeLeaguePlayerRank(league) {
         return getPrestigeLeagueStandings(league).findIndex(r => r.isPlayer) + 1;
     }
-    function recordPrestigeLeagueMatch(won, rankedDelta) {
-        const league = ensurePrestigeLeagueState();
+    function recordPrestigeLeagueMatch(won, rankedDelta, solo) {
+        const useSolo = solo === true || (solo == null && typeof isRankedSoloMatch !== 'undefined' && !!isRankedSoloMatch);
+        const league = ensurePrestigeLeagueState(Date.now(), useSolo);
         if (league.locked) return league;
         league.points = Math.max(0, (league.points || 0) + rankedDelta);
         league.matchesPlayed = (league.matchesPlayed || 0) + 1;
@@ -15448,7 +15799,7 @@ let blinkEyeDodgeState = null;
             const swing = 5 + Math.floor(next() * 11); // 5..15
             opp.rp = Math.max(0, opp.rp + (won ? -swing : swing));
         }
-        league.teammates = (rankedTeammateNames || []).slice(0, 2);
+        league.teammates = useSolo ? [] : (rankedTeammateNames || []).slice(0, 2);
         return league;
     }
     // Ranked Seasons (2026-11-20 rework): Ranked resets every season,
@@ -15480,21 +15831,30 @@ let blinkEyeDodgeState = null;
         }
         return { previousPoints: prev, newPoints, drop: prev - newPoints, wasPrestige, boostTarget: prev };
     }
-    function applyRankedSeasonReset() {
-        const ranked = playerData.ranked;
+    function applyRankedSeasonReset(rankedBucket, floorRp = 0) {
+        const ranked = rankedBucket || playerData.ranked;
         if (!ranked || typeof ranked !== 'object') return null;
         const result = computeRankedSeasonReset(ranked.points || 0, ranked.seasonStats);
-        ranked.points = result.newPoints;
+        // Ranked Solo floors its reset at Brick Master I (1300 RP): solo
+        // leagues start above Brick Fume III, so a solo reset can never
+        // drop a player below that floor. Teams passes no floor (0).
+        const newPoints = Math.max(Math.max(0, Math.floor(floorRp || 0)), result.newPoints);
+        ranked.points = newPoints;
         ranked.seasonId = getActiveSeasonPassId();
         ranked.seasonStats = { wins: 0, matches: 0, kills: 0, damage: 0 };
         // Elo boost: x2 RP on wins until you climb back to the rank you
         // were at (the pre-reset RP). highPoints is all-time — untouched.
         ranked.resetBoostTarget = result.boostTarget;
-        ranked.resetBoostFrom = result.newPoints;
-        return result;
+        ranked.resetBoostFrom = newPoints;
+        return { ...result, newPoints, drop: result.previousPoints - newPoints };
     }
     function isRankedEloBoostActive() {
-        const ranked = playerData.ranked;
+        // Ranked Solo matches settle against the solo bucket: when the
+        // solo flag is set (match settlement), the boost reads the solo
+        // bucket; everywhere else (hub, lobby) it reads Teams.
+        const ranked = (typeof isRankedSoloMatch !== 'undefined' && isRankedSoloMatch && playerData.rankedSolo)
+            ? playerData.rankedSolo
+            : playerData.ranked;
         if (!ranked || !Number.isFinite(ranked.resetBoostTarget) || ranked.resetBoostTarget <= 0) return false;
         return Math.max(0, Math.floor(ranked.points || 0)) < ranked.resetBoostTarget;
     }
@@ -15530,6 +15890,74 @@ let blinkEyeDodgeState = null;
         }
         if (!playerData.ownedSkins) playerData.ownedSkins = {};
         if (!playerData.selectedSkins) playerData.selectedSkins = {};
+    }
+    // --- Ranked Solo (2026-11-20) -------------------------------------------
+    // Ranked Showdown: solo Showdown with bots, RP on the line, the SAME
+    // RP gain rules as Ranked Teams (mode + kills + damage + objective +
+    // win). Solo has its own RP bucket, its own Prestige League ladder
+    // and its own soft reset + elo boost — Teams is untouched.
+    const RANKED_SOLO_PLACEMENT_FLOOR_RP = 1300; // Brick Master I: the league above Brick Fume III — solo leagues start here, never below
+    const RANKED_SOLO_PLACEMENT_CAP_RP = 2400; // Brick Legend III / PL1 entry — higher solo prestige must be earned in Solo, not placed into
+    const RANKED_SOLO_LEAGUE_OPPONENT_SALT = 7919; // solo league opponents differ from the Teams ladder
+    // First solo league placement (BUILDER PICK, flagged for Anthony's
+    // call): your Teams RP carries over as the base — clamped to the
+    // solo floor (1300) and the PL1 entry cap (2400) — plus this
+    // placement match's own RP delta under the Teams rules. A strong
+    // Teams player places high, a weak one places near the floor, and
+    // nobody ever places below Brick Master I.
+    function computeRankedSoloPlacement(teamsPoints, rpParts) {
+        const teams = Math.max(0, Math.floor(teamsPoints || 0));
+        const basePoints = Math.max(RANKED_SOLO_PLACEMENT_FLOOR_RP, Math.min(RANKED_SOLO_PLACEMENT_CAP_RP, teams));
+        const matchDelta = Math.floor((rpParts && rpParts.total) || 0);
+        const points = Math.max(RANKED_SOLO_PLACEMENT_FLOOR_RP, Math.min(RANKED_SOLO_PLACEMENT_CAP_RP, basePoints + matchDelta));
+        return { points, basePoints, matchDelta, teamsPoints: teams, floorPoints: RANKED_SOLO_PLACEMENT_FLOOR_RP };
+    }
+    function ensureRankedSoloSeasonState() {
+        if (!playerData.rankedSolo || typeof playerData.rankedSolo !== 'object') {
+            playerData.rankedSolo = { points: 0, rewardsClaimed: [], placed: false };
+        }
+        const solo = playerData.rankedSolo;
+        solo.points = Math.max(0, Math.floor(solo.points || 0));
+        if (solo.highPoints == null) solo.highPoints = solo.points;
+        solo.highPoints = Math.max(solo.highPoints, solo.points);
+        if (!Array.isArray(solo.rewardsClaimed)) solo.rewardsClaimed = [];
+        if (solo.winStreak == null) solo.winStreak = 0;
+        if (solo.placed == null) solo.placed = false;
+        if (!solo.seasonStats || typeof solo.seasonStats !== 'object') {
+            solo.seasonStats = { wins: 0, matches: 0, kills: 0, damage: 0 };
+        }
+        const activeRankedSeasonId = getActiveSeasonPassId();
+        if (solo.seasonId == null) solo.seasonId = activeRankedSeasonId;
+        if (solo.seasonId !== activeRankedSeasonId) {
+            applyRankedSeasonReset(solo, RANKED_SOLO_PLACEMENT_FLOOR_RP);
+        }
+        if (solo.weekKey == null) solo.weekKey = getRankedWeekKey();
+        if (solo.weekKey !== getRankedWeekKey()) {
+            solo.weekKey = getRankedWeekKey();
+        }
+        return solo;
+    }
+    function isRankedSoloEloBoostActive() {
+        const solo = playerData.rankedSolo;
+        if (!solo || !Number.isFinite(solo.resetBoostTarget) || solo.resetBoostTarget <= 0) return false;
+        return Math.max(0, Math.floor(solo.points || 0)) < solo.resetBoostTarget;
+    }
+    // Solo Prestige League unlock mirrors Teams: the solo ladder is
+    // complete once you reach Brick Legend III (2400 RP) in Solo.
+    function hasCompletedRankedSolo() {
+        const points = Math.max(0, Math.floor((playerData.rankedSolo && playerData.rankedSolo.points) || 0));
+        return getRankedTierInfo(points).index >= RANKED_DIVISIONS.length - 1;
+    }
+    function startRankedSoloMatch() {
+        ensureRankedSoloSeasonState();
+        clearRankedSessionState();
+        rankedTeammateNames = [];
+        isRankedMatch = true;
+        isRankedSoloMatch = true;
+        showdownMode = 'solo';
+        if (brawlerSelect) brawlerSelect.value = selectedBrawler;
+        updateShowdownModeUI();
+        launchShowdownMatch();
     }
         let showdownMode = 'solo';
     const MODE_MODIFIER_ROTATE_MS = 20 * 60 * 1000;
@@ -16036,6 +16464,7 @@ let heistFeverActive = false;
         mageny: true, draflygon: true, drainbow: true, kage: true, cinderion: true, cursed: true, bolznstien: true, rager: true, badbat: true },
       soulSummoner: { pullCount: 0, deferredQueue: [], road: [], soulBank: 0, soulWater: 0, targetBrawler: null, pendingWaterReward: null, pendingTargetPick: null },
       ranked: { points: 0, rewardsClaimed: [] },
+      rankedSolo: { points: 0, rewardsClaimed: [], placed: false },
       specialAbilities: null,
       specialAbilityQuests: null,
       specialAbilityQuestEvent: null,
@@ -16142,6 +16571,7 @@ let heistFeverActive = false;
                   if (data.persistent.soulSummoner) playerData.soulSummoner = data.persistent.soulSummoner;
                   if (data.persistent.evilDoctorUnlockEndAt != null) playerData.evilDoctorUnlockEndAt = data.persistent.evilDoctorUnlockEndAt;
                   if (data.persistent.ranked) playerData.ranked = data.persistent.ranked;
+                  if (data.persistent.rankedSolo) playerData.rankedSolo = data.persistent.rankedSolo;
                   mergeProfileProgressionSave(data.persistent.profile, data.persistent.brickBonV2);
                   if (data.persistent.specialAbilities) playerData.specialAbilities = data.persistent.specialAbilities;
                   if (data.persistent.specialAbilityQuests) playerData.specialAbilityQuests = data.persistent.specialAbilityQuests;
@@ -16293,6 +16723,7 @@ let heistFeverActive = false;
                    unlockedBrawlers: playerData.unlockedBrawlers,
                    soulSummoner: playerData.soulSummoner,
                     ranked: playerData.ranked,
+                    rankedSolo: playerData.rankedSolo,
                     profile: playerData.profile,
                     brickBonV2: playerData.brickBonV2,
                     specialAbilities: playerData.specialAbilities,
@@ -46798,6 +47229,7 @@ let heistFeverActive = false;
     let rankedEnemyPicks = [];
     function clearRankedSessionState() {
         isRankedMatch = false;
+        isRankedSoloMatch = false;
         rankedTeammatePicks = [];
         rankedEnemyPicks = [];
         rankedBans = { player: [], enemy: [] };
@@ -46833,7 +47265,7 @@ let heistFeverActive = false;
     // getRankedTierInfo, pass progress from getRankedPassProgress) — no
     // new ranks, rewards or currencies. The queue overlay is built
     // underneath and its draft only starts via onPlay.
-    function openRankedHubOverlay(queueOverlay, onPlay) {
+    function openRankedHubOverlay(queueOverlay, onPlay, onPlaySolo) {
         ensureRankedSeasonState();
         const rankedPoints = playerData?.ranked?.points || 0;
         const tierInfo = getRankedTierInfo(rankedPoints);
@@ -46875,6 +47307,45 @@ let heistFeverActive = false;
                   ${leagueTeammates ? `<div class="ranked-hub-meta">Teammates: ${leagueTeammates}</div>` : ''}
                   <div class="ranked-hub-meta">Leaderboard updates after every ranked match · resets every 3 days</div>
                 </div>`;
+        // Ranked Solo (2026-11-20): the same hub shows the solo ladder —
+        // its own progress bar / Prestige League board, placement state
+        // and elo boost — next to Teams, never instead of it.
+        const soloBucket = ensureRankedSoloSeasonState();
+        const soloPoints = Math.max(0, Math.floor(soloBucket.points || 0));
+        const soloTierInfo = getRankedTierInfo(soloPoints);
+        const soloFloor = getRankedDivisionFloor(soloPoints);
+        const soloIntoDivision = Math.max(0, soloPoints - soloFloor);
+        const soloDivisionPct = soloTierInfo.nextThreshold ? Math.min(100, Math.round((soloIntoDivision / Math.max(1, soloTierInfo.nextThreshold - soloFloor)) * 100)) : 100;
+        const soloHalfwayRp = soloTierInfo.nextThreshold ? Math.floor((soloFloor + soloTierInfo.nextThreshold) / 2) : null;
+        const soloPlaced = !!soloBucket.placed;
+        const soloLeagueState = ensurePrestigeLeagueState(Date.now(), true);
+        const soloInPrestigeLeague = !soloLeagueState.locked;
+        const soloEloBoostActive = isRankedSoloEloBoostActive();
+        const soloLeagueStandings = soloInPrestigeLeague ? getPrestigeLeagueStandings(soloLeagueState) : [];
+        const soloLeagueRank = soloInPrestigeLeague ? getPrestigeLeaguePlayerRank(soloLeagueState) : 0;
+        const soloProgressHtml = soloTierInfo.nextThreshold ? `
+                <div>
+                  <div class="ranked-hub-bar-label"><span>${soloTierInfo.label.toUpperCase()}</span><span>HALFWAY · ${soloHalfwayRp} RP</span><span>NEXT: ${soloTierInfo.nextLabel.toUpperCase()} · ${soloTierInfo.nextThreshold} RP</span></div>
+                  <div class="ranked-hub-bar" role="progressbar" aria-valuenow="${soloDivisionPct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${soloDivisionPct}%"></i></div>
+                  <div class="ranked-hub-ticks"><span>${soloFloor} RP</span><span>HALFWAY ${soloHalfwayRp} RP</span><span>${soloTierInfo.nextThreshold} RP</span></div>
+                </div>` : `
+                <div>
+                  <div class="ranked-hub-bar-label"><span>${soloTierInfo.label.toUpperCase()}</span><span>MAX DIVISION</span></div>
+                  <div class="ranked-hub-bar" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"><i style="width:100%"></i></div>
+                  <div class="ranked-hub-ticks"><span>${soloFloor} RP</span><span>${soloTierInfo.points} RP</span><span>MAX</span></div>
+                </div>`;
+        const soloLeagueBoardHtml = `
+                <div class="ranked-hub-league">
+                  <div style="font-weight:900;color:#ffd166;">👑 SOLO PRESTIGE LEAGUE LEADERBOARD</div>
+                  <div class="ranked-hub-bar-label"><span>👑 SOLO PRESTIGE LEAGUE PL${getPrestigeLeagueLevel(soloPoints)}</span><span>YOU ARE #${soloLeagueRank}</span></div>
+                  <div class="ranked-hub-league-board">${soloLeagueStandings.map((r, i) => `<div style="${r.isPlayer ? 'font-weight:900;color:#ffe14d;' : 'color:#dceeff;'}">${i + 1}. ${r.isPlayer ? 'YOU' : r.name} — ${r.rp} RP${r.isPlayer ? ' ⭐' : ''}</div>`).join('')}</div>
+                  <div class="ranked-hub-meta">Leaderboard updates after every ranked match · resets every 3 days</div>
+                </div>`;
+        const soloPlacementHtml = `
+                <div class="ranked-hub-solo-placement">
+                  <div style="font-weight:900;color:#ffd166;">🎯 PLAY 1 RANKED SOLO MATCH TO GET PLACED</div>
+                  <div class="ranked-hub-meta">Your Teams rank (${tierInfo.label} · ${rankedPoints} RP) + your match stats set your starting league. Solo leagues start at Brick Master I (1300 RP) — no solo placement below that floor.</div>
+                </div>`;
         const hub = document.createElement('div');
         hub.className = 'ranked-hub-overlay';
         hub.id = 'rankedHubOverlay';
@@ -46898,10 +47369,22 @@ let heistFeverActive = false;
                 ${inPrestigeLeague ? leagueBoardHtml : rankedProgressHtml}
                 <div class="ranked-hub-meta">${inPrestigeLeague ? `Division safety floor: ${floor} RP` : `${tierInfo.nextLabel ? `${Math.max(0, tierInfo.nextThreshold - tierInfo.points)} RP to ${tierInfo.nextLabel} · ` : ''}Division safety floor: ${floor} RP${halfwayRp != null ? ` · Halfway at ${halfwayRp} RP` : ''}`}</div>
               </div>
+              <div class="ranked-hub-solo">
+                <div class="ranked-hub-season"><span>RANKED SOLO</span><span>SOLO SHOWDOWN · WITH BOTS</span></div>
+                <div class="ranked-hub-emblem">
+                  <span class="ranked-hub-glyph" aria-hidden="true">🎯</span>
+                  <b>${soloPlaced ? (soloInPrestigeLeague ? getRankedDisplayLabel(soloPoints) : soloTierInfo.label) : 'NOT PLACED YET'}</b>
+                  <span>${soloPlaced ? `${soloPoints} RP · DIVISION ${soloTierInfo.index + 1} OF ${RANKED_DIVISIONS.length}` : 'Play 1 Ranked Solo match to get placed'}</span>
+                </div>
+                ${!soloPlaced ? soloPlacementHtml : (soloInPrestigeLeague ? soloLeagueBoardHtml : soloProgressHtml)}
+                <div class="ranked-hub-meta">${soloPlaced ? (soloInPrestigeLeague ? `Division safety floor: ${soloFloor} RP` : `${soloTierInfo.nextLabel ? `${Math.max(0, soloTierInfo.nextThreshold - soloTierInfo.points)} RP to ${soloTierInfo.nextLabel} · ` : ''}Division safety floor: ${soloFloor} RP${soloHalfwayRp != null ? ` · Halfway at ${soloHalfwayRp} RP` : ''}`) : 'Solo leagues start at Brick Master I (1300 RP) — no solo placement below that floor.'}</div>
+              </div>
             </div>
             <div class="ranked-hub-foot">
               <span class="ranked-hub-boost">${eloBoostActive ? `⚡ ELO BOOST ×2 · UNTIL ${playerData.ranked.resetBoostTarget} RP` : 'RANK BOOST!'}</span>
               <button type="button" class="ranked-hub-play" data-ranked-hub="play">▶ PLAY RANKED</button>
+              <span class="ranked-hub-boost">${soloEloBoostActive ? `⚡ SOLO ELO BOOST ×2 · UNTIL ${soloBucket.resetBoostTarget} RP` : 'SOLO RANK BOOST!'}</span>
+              <button type="button" class="ranked-hub-play-solo" data-ranked-hub="play-solo">▶ PLAY RANKED SOLO</button>
             </div>
           </div>`;
         hub.addEventListener('click', (event) => {
@@ -46909,6 +47392,7 @@ let heistFeverActive = false;
             if (!btn && event.target !== hub) return;
             const action = btn ? btn.dataset.rankedHub : 'close';
             if (action === 'play') { appBuzz(12); hub.remove(); try { onPlay(); } catch (_) {} return; }
+            if (action === 'play-solo') { appBuzz(12); hub.remove(); if (typeof onPlaySolo === 'function') { try { onPlaySolo(); } catch (_) {} } return; }
             // Close: the draft never started, so there is no AI timer to
             // clear — removing the queue overlay is the whole cleanup.
             hub.remove();
@@ -47961,7 +48445,7 @@ let heistFeverActive = false;
         // only starts when PLAY is tapped, so no AI turn is ever
         // scheduled before the player is in. The hub sits above the
         // queue overlay (z 2300 > 2200); closing it closes the queue.
-        openRankedHubOverlay(overlay, () => { renderDraft(); scheduleNextTurn(250); });
+        openRankedHubOverlay(overlay, () => { renderDraft(); scheduleNextTurn(250); }, () => { if (aiTurnTimer) clearTimeout(aiTurnTimer); overlay.remove(); startRankedSoloMatch(); });
     }
     // Prop Hunt v2: pre-match role picker. The choice is session-only
     // (propHuntSelectedRole) and is consumed by spawnPropHuntBots /
@@ -48625,6 +49109,7 @@ let heistFeverActive = false;
           friendlyBattlePendingConfig = null;
           isCustomMutatorMatch = true;
           isRankedMatch = false;
+          isRankedSoloMatch = false;
           showdownMode = friendlyBattleConfig.mode;
           setActiveMutators(friendlyBattleConfig.modifiers[0] || 'classic', friendlyBattleConfig.modifiers[1] || null, friendlyBattleConfig.modifiers[2] || null);
       }
@@ -79737,26 +80222,35 @@ function checkHit(target, b, i){
             let rankedPromotionGems = 0;
             let isRankedMVP = false;
             if (isRankedMatch) {
-                if (!playerData.ranked || typeof playerData.ranked !== 'object') {
-                    playerData.ranked = { points: 0, rewardsClaimed: [] };
+                // Ranked Solo (2026-11-20): solo matches settle into
+                // their own bucket (playerData.rankedSolo) with the SAME
+                // RP rules; Teams keeps using playerData.ranked.
+                if (isRankedSoloMatch) {
+                    ensureRankedSoloSeasonState();
+                } else {
+                    if (!playerData.ranked || typeof playerData.ranked !== 'object') {
+                        playerData.ranked = { points: 0, rewardsClaimed: [] };
+                    }
+                    ensureRankedSeasonState();
                 }
-                ensureRankedSeasonState();
-                const beforePoints = Math.max(0, Math.floor(playerData.ranked.points || 0));
+                const rankedBucket = isRankedSoloMatch ? playerData.rankedSolo : playerData.ranked;
+                const rankedLabel = isRankedSoloMatch ? 'Ranked Solo' : 'Ranked';
+                const beforePoints = Math.max(0, Math.floor(rankedBucket.points || 0));
                 const beforeTier = getRankedTierInfo(beforePoints);
                 // MVP evaluation: top performance / damage / victory, now
                 // from the real per-match damage ledger (the old
                 // fullOnDamageEarned was always 0, so MVP never fired).
                 isRankedMVP = (won && matchDamageDealt >= 3000) || (!won && matchDamageDealt >= 6000);
                 if (won) {
-                    playerData.ranked.winStreak = (playerData.ranked.winStreak || 0) + 1;
+                    rankedBucket.winStreak = (rankedBucket.winStreak || 0) + 1;
                 } else {
-                    playerData.ranked.winStreak = 0;
+                    rankedBucket.winStreak = 0;
                 }
                 // Ranked Seasons (2026-11-20 rework): per-season gameplay
                 // stats feed the next season's soft reset (rank + wins +
                 // win rate). ensureRankedSeasonState above initialised the
                 // bucket for this season.
-                const rankedSeasonStats = playerData.ranked.seasonStats;
+                const rankedSeasonStats = rankedBucket.seasonStats;
                 rankedSeasonStats.matches = (rankedSeasonStats.matches || 0) + 1;
                 if (won) rankedSeasonStats.wins = (rankedSeasonStats.wins || 0) + 1;
                 rankedSeasonStats.kills = (rankedSeasonStats.kills || 0) + (matchKills || 0);
@@ -79764,36 +80258,53 @@ function checkHit(target, b, i){
                 // Ranked RP (rebuild 2026-11-20): mode + kills + damage +
                 // objective + win — not just win/loss. Ranked Pass XP is
                 // gone with the Ranked Pass.
-                rankedRpParts = calcRankedRpGain({ mode: showdownMode, kills: matchKills, damage: matchDamageDealt, objectiveDamage: matchObjectiveDamage, won, streak: playerData.ranked.winStreak || 0, mvp: isRankedMVP });
+                rankedRpParts = calcRankedRpGain({ mode: showdownMode, kills: matchKills, damage: matchDamageDealt, objectiveDamage: matchObjectiveDamage, won, streak: rankedBucket.winStreak || 0, mvp: isRankedMVP });
                 rankedDelta = rankedRpParts.total;
-                // Ranked Seasons (2026-11-20 rework): elo boost — double
-                // RP gains on wins until you climb back to your pre-reset
-                // rank. Losses are never boosted. The RP gain rules
-                // themselves (mode + kills + damage + objective + win)
-                // are unchanged; the boost is a post-calc multiplier.
-                if (rankedDelta > 0 && isRankedEloBoostActive()) {
-                    rankedDelta = rankedDelta * RANKED_ELO_BOOST_MULTIPLIER;
-                    rankedEloBoostApplied = true;
-                }
-                const safetyFloor = getRankedDivisionFloor(beforePoints);
-                const afterPoints = Math.max(safetyFloor, beforePoints + rankedDelta);
-                playerData.ranked.points = afterPoints;
-                playerData.ranked.highPoints = Math.max(playerData.ranked.highPoints || 0, afterPoints);
-                const afterTier = getRankedTierInfo(afterPoints);
-                rankedDivisionSummary = `${beforeTier.label} (${beforePoints} RP) → ${afterTier.label} (${afterPoints} RP)`;
-                if (afterTier.index > beforeTier.index) {
-                    for (let idx = beforeTier.index + 1; idx <= afterTier.index; idx++) {
-                        rankedPromotionCoins += 150;
-                        rankedPromotionSouls += 10;
-                        if ((idx + 1) % 4 === 0) rankedPromotionGems += 2;
+                // First Ranked Solo match = placement match: your Teams
+                // rank + this match's stats place you (floored at Brick
+                // Master I). The placement IS the gain — no elo boost,
+                // no division-climb payout on top of it.
+                const soloPlacement = (isRankedSoloMatch && !rankedBucket.placed)
+                    ? computeRankedSoloPlacement((playerData.ranked && playerData.ranked.points) || 0, rankedRpParts)
+                    : null;
+                if (soloPlacement) {
+                    rankedBucket.points = soloPlacement.points;
+                    rankedBucket.highPoints = Math.max(rankedBucket.highPoints || 0, soloPlacement.points);
+                    rankedBucket.placed = true;
+                    rankedBucket.placement = soloPlacement;
+                    rankedDelta = soloPlacement.points;
+                    const placedTier = getRankedTierInfo(soloPlacement.points);
+                    rankedDivisionSummary = `Placed: ${placedTier.label} (${soloPlacement.points} RP)`;
+                } else {
+                    // Ranked Seasons (2026-11-20 rework): elo boost — double
+                    // RP gains on wins until you climb back to your pre-reset
+                    // rank. Losses are never boosted. The RP gain rules
+                    // themselves (mode + kills + damage + objective + win)
+                    // are unchanged; the boost is a post-calc multiplier.
+                    if (rankedDelta > 0 && isRankedEloBoostActive()) {
+                        rankedDelta = rankedDelta * RANKED_ELO_BOOST_MULTIPLIER;
+                        rankedEloBoostApplied = true;
                     }
-                    const beforePrestige = getRankedPrestige(beforePoints);
-                    const afterPrestige = getRankedPrestige(afterPoints);
-                    for (let p = beforePrestige + 1; p <= afterPrestige; p++) {
-                        rankedPromotionCoins += 250;
-                        rankedPromotionSouls += 25;
+                    const safetyFloor = getRankedDivisionFloor(beforePoints);
+                    const afterPoints = Math.max(safetyFloor, beforePoints + rankedDelta);
+                    rankedBucket.points = afterPoints;
+                    rankedBucket.highPoints = Math.max(rankedBucket.highPoints || 0, afterPoints);
+                    const afterTier = getRankedTierInfo(afterPoints);
+                    rankedDivisionSummary = `${beforeTier.label} (${beforePoints} RP) → ${afterTier.label} (${afterPoints} RP)`;
+                    if (afterTier.index > beforeTier.index) {
+                        for (let idx = beforeTier.index + 1; idx <= afterTier.index; idx++) {
+                            rankedPromotionCoins += 150;
+                            rankedPromotionSouls += 10;
+                            if ((idx + 1) % 4 === 0) rankedPromotionGems += 2;
+                        }
+                        const beforePrestige = getRankedPrestige(beforePoints);
+                        const afterPrestige = getRankedPrestige(afterPoints);
+                        for (let p = beforePrestige + 1; p <= afterPrestige; p++) {
+                            rankedPromotionCoins += 250;
+                            rankedPromotionSouls += 25;
+                        }
+                        rewardCoins += rankedPromotionCoins;
                     }
-                    rewardCoins += rankedPromotionCoins;
                 }
                 // Prestige League (rebuild 2026-11-20): this match moves
                 // your league points and your opponents' RP in sync.
@@ -79801,8 +80312,8 @@ function checkHit(target, b, i){
                 // boost is a ranked-ladder catch-up, not league performance.
                 prestigeLeague = recordPrestigeLeagueMatch(won, rankedRpParts.total);
                 rankText = rankText
-                    ? `${rankText} | Ranked ${rankedDelta >= 0 ? '+' : ''}${rankedDelta} RP`
-                    : `Ranked ${rankedDelta >= 0 ? '+' : ''}${rankedDelta} RP`;
+                    ? `${rankText} | ${rankedLabel} ${rankedDelta >= 0 ? '+' : ''}${rankedDelta} RP`
+                    : `${rankedLabel} ${rankedDelta >= 0 ? '+' : ''}${rankedDelta} RP`;
             }
             let earnedDropCount = 0;
             // Friendly Battles earn no Starr Drops of any kind.
@@ -79926,7 +80437,7 @@ function checkHit(target, b, i){
             rankedDiv.style.fontWeight = 'bold';
             rankedDiv.style.color = '#ffd9a0';
             if (isRankedMatch) {
-                let rpBreakdown = `⚔️ Ranked ${rankedDelta >= 0 ? '+' : ''}${rankedDelta} RP`;
+                let rpBreakdown = `⚔️ ${isRankedSoloMatch ? 'Ranked Solo' : 'Ranked'} ${rankedDelta >= 0 ? '+' : ''}${rankedDelta} RP`;
                 if (rankedRpParts && rankedRpParts.streakRp > 0) rpBreakdown += ` (+${rankedRpParts.streakRp} Streak)`;
                 if (isRankedMVP) rpBreakdown += ` ⭐ MVP Bonus!`;
                 rankedDiv.textContent = rpBreakdown;
@@ -79961,7 +80472,7 @@ function checkHit(target, b, i){
                     ];
                     if (p.streakRp > 0) rpLines.push(`🔥 Win streak: +${p.streakRp}`);
                     if (p.mvpRp > 0) rpLines.push(`⭐ MVP: +${p.mvpRp}`);
-                    if (rankedEloBoostApplied) rpLines.push(`⚡ Elo Boost ×${RANKED_ELO_BOOST_MULTIPLIER} — climbing back to ${playerData.ranked.resetBoostTarget} RP`);
+                    if (rankedEloBoostApplied) rpLines.push(`⚡ Elo Boost ×${RANKED_ELO_BOOST_MULTIPLIER} — climbing back to ${(isRankedSoloMatch ? playerData.rankedSolo : playerData.ranked).resetBoostTarget} RP`);
                     rpBreakdownDiv.innerHTML = rpLines.map(l => `<div>${l}</div>`).join('');
                     rpBreakdownDiv.style.fontSize = '16px';
                     rpBreakdownDiv.style.fontWeight = 'bold';
@@ -79978,7 +80489,7 @@ function checkHit(target, b, i){
                     const rank = getPrestigeLeaguePlayerRank(prestigeLeague);
                     const teamNames = (prestigeLeague.teammates || []).join(' & ');
                     const rows = standings.slice(0, 5).map((r, i) => `<div>${i + 1}. ${r.isPlayer ? 'YOU' : r.name} — ${r.rp} RP${r.isPlayer ? ' ⭐' : ''}</div>`).join('');
-                    leagueDiv.innerHTML = `<div style="font-weight:900;color:#ffd166;">👑 Prestige League — you are #${rank}</div>${rows}${teamNames ? `<div style="color:#a5d8ff;">Teammates: ${teamNames}</div>` : ''}${prestigeLeague.lastCycleReward ? `<div style="color:#9ef6d6;">Last cycle: #${prestigeLeague.lastCycleReward.rank} — +${prestigeLeague.lastCycleReward.gems} gems, +${prestigeLeague.lastCycleReward.tappers} tappers</div>` : ''}`;
+                    leagueDiv.innerHTML = `<div style="font-weight:900;color:#ffd166;">👑 ${isRankedSoloMatch ? 'Solo Prestige League' : 'Prestige League'} — you are #${rank}</div>${rows}${teamNames ? `<div style="color:#a5d8ff;">Teammates: ${teamNames}</div>` : ''}${prestigeLeague.lastCycleReward ? `<div style="color:#9ef6d6;">Last cycle: #${prestigeLeague.lastCycleReward.rank} — +${prestigeLeague.lastCycleReward.gems} gems, +${prestigeLeague.lastCycleReward.tappers} tappers</div>` : ''}`;
                     leagueDiv.style.fontSize = '16px';
                     leagueDiv.style.marginTop = '8px';
                     rewardsBox.appendChild(leagueDiv);

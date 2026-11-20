@@ -210,8 +210,13 @@ check('search toggle still flips the open class',
 check('strip is a horizontal paging scroller with scroll-snap',
     game.includes('#appFightersStrip{display:flex;flex-direction:row;gap:10px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x proximity') &&
     game.includes('scroll-snap-align:start'));
-check('no later rule turns the strip back into a grid',
-    game.lastIndexOf('#appFightersStrip{display:flex') > game.lastIndexOf('#appFightersStrip{display:grid'));
+// Landscape home UI (sketch, 2026-11-20): the strip DOES become a grid
+// in landscape now — 3 columns per Anthony's sketch. The pin narrows:
+// the only grid rule is the .native-app landscape one; the base layout
+// stays the paging scroller.
+check('no grid rule except the landscape 3-column one',
+    [...game.matchAll(/#appFightersStrip\{display:grid/g)].length === 1 &&
+    game.includes('.native-app #appFightersStrip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));'));
 check('pages are 4-small-card columns that grow to fill the strip (no empty blue area on a short list)',
     game.includes('#appFightersStrip .app-fighters-page{flex:1 0 118px;max-width:260px;display:grid;grid-template-rows:repeat(4,minmax(0,1fr));gap:8px;scroll-snap-align:start}') &&
     game.includes("@media (orientation:landscape){#appFightersStrip .app-fighters-page{flex-basis:96px;max-width:220px}}"));

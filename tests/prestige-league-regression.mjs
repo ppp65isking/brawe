@@ -51,7 +51,7 @@ check('match-end records the league match', game.includes('prestigeLeague = reco
 // delta — the elo boost is a ranked-ladder catch-up, not league
 // performance, so it must not inflate league points.
 check('teammate names captured at draft finish', game.includes('rankedTeammateNames = blueRoster.filter((_, idx) => idx !== playerSlot)'));
-check('results screen shows league standings', game.includes('Prestige League — you are #${rank}'));
+check('results screen shows league standings', game.includes("isRankedSoloMatch ? 'Solo Prestige League' : 'Prestige League'") && game.includes('— you are #${rank}')); // Ranked Solo (2026-11-20): the header names the ladder (Solo vs Teams)
 check('results screen shows teammates', game.includes('Teammates: ${teamNames}'));
 check('hub shows league line', game.includes('Prestige League PL${getPrestigeLeagueLevel(rankedPoints)}'));
 

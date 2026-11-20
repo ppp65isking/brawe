@@ -170,13 +170,21 @@ check('shop dispatch has no featured/skins branches',
     tabContent.includes("activeTab === 'wheel'") && !tabContent.includes("'featured'") && !tabContent.includes("'skins'"));
 
 // ================= 6. FIGHTERS PAGING GRID =================
-check('strip is a horizontal paging scroller (both orientations)',
+// Landscape home UI (sketch, 2026-11-20): paging is the portrait +
+// base layout now; landscape uses the 3-column grid below.
+check('strip is a horizontal paging scroller (portrait + base)',
     game.includes('#appFightersStrip{display:flex;flex-direction:row;gap:10px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x proximity') &&
     game.includes('#appFightersStrip .app-fighters-page{flex:1 0 118px;max-width:260px;display:grid;grid-template-rows:repeat(4,minmax(0,1fr));gap:8px;scroll-snap-align:start}') &&
     game.includes("@media (orientation:landscape){#appFightersStrip .app-fighters-page{flex-basis:96px;max-width:220px}}"));
-check('old fighters strip grid and 16/10 cards are gone',
-    !game.includes('#appFightersStrip{display:grid') && !game.includes('repeat(auto-fill,minmax(280px,1fr))') &&
-    !game.includes('aspect-ratio:16/10') && !game.includes('aspect-ratio:3/4'));
+// Landscape home UI (sketch, 2026-11-20): the strip DOES become a grid
+// in landscape now — 3 columns per Anthony's sketch. The old auto-fill
+// grids and 16/10 + 3/4 cards stay gone; the only grid rule is the
+// .native-app landscape one.
+check('old fighters strip grid and 16/10 cards are gone (landscape 3-col grid excepted)',
+    !game.includes('repeat(auto-fill,minmax(280px,1fr))') &&
+    !game.includes('aspect-ratio:16/10') && !game.includes('aspect-ratio:3/4') &&
+    [...game.matchAll(/#appFightersStrip\{display:grid/g)].length === 1 &&
+    game.includes('.native-app #appFightersStrip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));'));
 check('strip renders pages of 4 small cards',
     game.includes('const cardHtml = (id) => {') &&
     game.includes('for (let i = 0; i < list.length; i += 4) pages.push(list.slice(i, i + 4));') &&
