@@ -15982,8 +15982,13 @@ let blinkEyeDodgeState = null;
     // the upside is capped — a loss still subtracts its full delta.
     // The placement RESULT is still capped at 2400 RP (Brick Legend III
     // / PL1 entry) — higher solo prestige must be earned in Solo, not
-    // placed into. There is NO 1200 floor on placement any more: a low
-    // Teams rank places low. FLAG: no Teams placement match exists in
+    // placed into — and floored at the solo ladder start, 1200 RP
+    // (Brick Fume III), since 2026-11-20 (Anthony: "Make sure people
+    // already over 1200 get placed into a leauge"): a Teams rank over
+    // 1200 seeds your solo league, so you land in the league matching
+    // your RP even if you lose the placement match, and nobody places
+    // below the ladder start — a low Teams rank places at 1200 RP, the
+    // ladder start, never at 0. FLAG: no Teams placement match exists in
     // this build (Teams starts at 0 RP with no placement flow), so the
     // +500 Teams cap is pinned here as the standing rule — Anthony to
     // confirm whether Teams should ever have a placement match. FLAG 2:
@@ -15991,28 +15996,31 @@ let blinkEyeDodgeState = null;
     // (mode 5 + win 20 + kills 10 + damage 10 + objective 5 + streak 15
     // + mvp 10), so the +300/+500 caps never bind yet — they pin the
     // rule for future RP-rule changes, not a number a player can hit.
-    // The 1200 RP / Brick Fume III number now lives ONLY as the solo
-    // LADDER start (RANKED_SOLO_LADDER_FLOOR_RP): the solo ladder begins
+    // The 1200 RP / Brick Fume III number is the solo LADDER start
+    // (RANKED_SOLO_LADDER_FLOOR_RP): the solo ladder begins
     // at Fume III and runs up through Master, Legend and Prestige, so a
-    // solo soft reset never drops below 1200 RP and solo displays never
-    // show a league below Fume III.
+    // solo soft reset never drops below 1200 RP, solo displays never
+    // show a league below Fume III, and a solo placement never lands
+    // below 1200 RP either.
     const RANKED_TEAMS_PLACEMENT_DELTA_CAP_RP = 500; // Teams placement match: at most +500 RP
     const RANKED_SOLO_PLACEMENT_DELTA_CAP_RP = 300; // Solo placement match: at most +300 RP
     const RANKED_SOLO_PLACEMENT_CAP_RP = 2400; // Brick Legend III / PL1 entry — higher solo prestige must be earned in Solo, not placed into
-    const RANKED_SOLO_LADDER_FLOOR_RP = 1200; // Brick Fume III (1200-1299 RP): the solo ladder starts here, never below — Anthony, 2026-11-20: "solo p leagues start at 1200rp now solo only". Used for the solo soft reset + solo displays, NEVER as a placement clamp.
+    const RANKED_SOLO_LADDER_FLOOR_RP = 1200; // Brick Fume III (1200-1299 RP): the solo ladder starts here, never below — Anthony, 2026-11-20: "solo p leagues start at 1200rp now solo only". Used for the solo soft reset + solo displays, and since 2026-11-20 also as the solo placement RESULT floor (nobody places below the ladder start).
     const RANKED_SOLO_LADDER_START_INDEX = 12; // Brick Fume III in RANKED_DIVISIONS (100 RP/division) — first solo league; pinned by tests
     const RANKED_SOLO_LEAGUE_OPPONENT_SALT = 7919; // solo league opponents differ from the Teams ladder
     // First solo league placement: your Teams RP carries over as the
     // base — capped at the PL1 entry cap (2400) — plus this placement
     // match's own RP delta under the Teams rules, capped at +300 RP. A
-    // strong Teams player places high, a weak one places low, and the
-    // match itself can never add more than +300 RP.
+    // strong Teams player places high, a weak one places at the ladder
+    // start (1200 RP), and the match itself can never add more than
+    // +300 RP. The RESULT is floored at the solo ladder start (1200 RP)
+    // so nobody places below it, and capped at 2400 RP.
     function computeRankedSoloPlacement(teamsPoints, rpParts) {
         const teams = Math.max(0, Math.floor(teamsPoints || 0));
         const basePoints = Math.min(RANKED_SOLO_PLACEMENT_CAP_RP, teams);
         const rawDelta = Math.floor((rpParts && rpParts.total) || 0);
         const matchDelta = Math.min(RANKED_SOLO_PLACEMENT_DELTA_CAP_RP, rawDelta);
-        const points = Math.max(0, Math.min(RANKED_SOLO_PLACEMENT_CAP_RP, basePoints + matchDelta));
+        const points = Math.max(RANKED_SOLO_LADDER_FLOOR_RP, Math.min(RANKED_SOLO_PLACEMENT_CAP_RP, basePoints + matchDelta));
         return { points, basePoints, matchDelta, rawDelta, teamsPoints: teams, deltaCapPoints: RANKED_SOLO_PLACEMENT_DELTA_CAP_RP, capPoints: RANKED_SOLO_PLACEMENT_CAP_RP };
     }
     // Solo ladder (corrected 2026-11-20): the solo ladder starts at
@@ -80428,10 +80436,15 @@ function checkHit(target, b, i){
                 rankedDelta = rankedRpParts.total;
                 // First Ranked Solo match = placement match: your Teams
                 // rank is the base, and this match's own RP delta under
-                // the Teams rules can add at most +300 RP (capped, not
-                // floored — Anthony 2026-11-20); the result is capped at
-                // 2400 RP. The placement IS the gain — no elo boost,
-                // no division-climb payout on top of it.
+                // the Teams rules can add at most +300 RP (the delta is
+                // capped, not floored — Anthony 2026-11-20); the RESULT
+                // is capped at 2400 RP and floored at the solo ladder
+                // start (1200 RP), so a player already over 1200 places
+                // into the league matching their RP and nobody places
+                // below the ladder start. The placement IS the gain —
+                // no elo boost, no division-climb payout on top of it.
+                // Placed is set here, unconditionally, so a first solo
+                // match can never leave the player stuck unplaced.
                 const soloPlacement = (isRankedSoloMatch && !rankedBucket.placed)
                     ? computeRankedSoloPlacement((playerData.ranked && playerData.ranked.points) || 0, rankedRpParts)
                     : null;

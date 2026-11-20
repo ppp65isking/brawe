@@ -348,15 +348,15 @@ function clickHub(hub, target) {
     for (const fn of listeners) fn({ target });
 }
 
-// solo placement is CAPPED (+300), not floored: base = Teams RP, match delta capped
+// solo placement is CAPPED (+300) on the delta, with the RESULT floored at the 1200 ladder start: base = Teams RP, match delta capped
 check('solo vm: placement caps the match delta at +300 (Teams 2000 + 500-delta match -> +300, 2300 RP)',
     run('computeRankedSoloPlacement(2000, { total: 500 })').points === 2300
     && run('computeRankedSoloPlacement(2000, { total: 500 })').matchDelta === 300
     && run('computeRankedSoloPlacement(2000, { total: 500 })').deltaCapPoints === 300);
-check('solo vm: placement has no floor any more (Teams 0 + loss -> 0, Teams 100 + 40 -> 140)',
-    run('computeRankedSoloPlacement(0, { total: -10 })').points === 0
+check('solo vm: placement RESULT floors at the 1200 ladder start (Teams 0 + loss -> 1200, Teams 100 + 40 -> 1200)',
+    run('computeRankedSoloPlacement(0, { total: -10 })').points === 1200
     && run('computeRankedSoloPlacement(0, { total: -10 })').matchDelta === -10
-    && run('computeRankedSoloPlacement(100, { total: 40 })').points === 140);
+    && run('computeRankedSoloPlacement(100, { total: 40 })').points === 1200);
 check('solo vm: placement still caps the result at 2400 (Teams 2600 + win -> 2400)',
     run('computeRankedSoloPlacement(2600, { total: 60 })').points === 2400
     && run('computeRankedSoloPlacement(2000, { total: 50 })').points === 2050);
