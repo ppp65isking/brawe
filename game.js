@@ -15973,21 +15973,75 @@ let blinkEyeDodgeState = null;
     // RP gain rules as Ranked Teams (mode + kills + damage + objective +
     // win). Solo has its own RP bucket, its own Prestige League ladder
     // and its own soft reset + elo boost — Teams is untouched.
-    const RANKED_SOLO_PLACEMENT_FLOOR_RP = 1200; // Brick Fume III (1200-1299 RP): solo leagues start here, never below — Anthony, 2026-11-20: "solo p leagues start at 1200rp now solo only". Teams keeps its 1300 RP floor (Brick Master I, above Fume III).
+    // Ranked Solo placement (corrected 2026-11-20, Anthony: "teams only
+    // can place you up to 500 rp and solo now can only place you up to
+    // 300 rp"): the placement match's RP contribution is CAPPED, not
+    // clamped into a floor. Your Ranked Teams rank is the base; the
+    // placement match's own RP delta under the Teams rules can add at
+    // most +300 RP in Solo (+500 RP in a Teams placement match). Only
+    // the upside is capped — a loss still subtracts its full delta.
+    // The placement RESULT is still capped at 2400 RP (Brick Legend III
+    // / PL1 entry) — higher solo prestige must be earned in Solo, not
+    // placed into. There is NO 1200 floor on placement any more: a low
+    // Teams rank places low. FLAG: no Teams placement match exists in
+    // this build (Teams starts at 0 RP with no placement flow), so the
+    // +500 Teams cap is pinned here as the standing rule — Anthony to
+    // confirm whether Teams should ever have a placement match. FLAG 2:
+    // under today's RP rules the biggest possible match delta is +75
+    // (mode 5 + win 20 + kills 10 + damage 10 + objective 5 + streak 15
+    // + mvp 10), so the +300/+500 caps never bind yet — they pin the
+    // rule for future RP-rule changes, not a number a player can hit.
+    // The 1200 RP / Brick Fume III number now lives ONLY as the solo
+    // LADDER start (RANKED_SOLO_LADDER_FLOOR_RP): the solo ladder begins
+    // at Fume III and runs up through Master, Legend and Prestige, so a
+    // solo soft reset never drops below 1200 RP and solo displays never
+    // show a league below Fume III.
+    const RANKED_TEAMS_PLACEMENT_DELTA_CAP_RP = 500; // Teams placement match: at most +500 RP
+    const RANKED_SOLO_PLACEMENT_DELTA_CAP_RP = 300; // Solo placement match: at most +300 RP
     const RANKED_SOLO_PLACEMENT_CAP_RP = 2400; // Brick Legend III / PL1 entry — higher solo prestige must be earned in Solo, not placed into
+    const RANKED_SOLO_LADDER_FLOOR_RP = 1200; // Brick Fume III (1200-1299 RP): the solo ladder starts here, never below — Anthony, 2026-11-20: "solo p leagues start at 1200rp now solo only". Used for the solo soft reset + solo displays, NEVER as a placement clamp.
+    const RANKED_SOLO_LADDER_START_INDEX = 12; // Brick Fume III in RANKED_DIVISIONS (100 RP/division) — first solo league; pinned by tests
     const RANKED_SOLO_LEAGUE_OPPONENT_SALT = 7919; // solo league opponents differ from the Teams ladder
-    // First solo league placement (BUILDER PICK, flagged for Anthony's
-    // call): your Teams RP carries over as the base — clamped to the
-    // solo floor (1200, Brick Fume III) and the PL1 entry cap (2400) — plus this
-    // placement match's own RP delta under the Teams rules. A strong
-    // Teams player places high, a weak one places near the floor, and
-    // nobody ever places below Brick Fume III.
+    // First solo league placement: your Teams RP carries over as the
+    // base — capped at the PL1 entry cap (2400) — plus this placement
+    // match's own RP delta under the Teams rules, capped at +300 RP. A
+    // strong Teams player places high, a weak one places low, and the
+    // match itself can never add more than +300 RP.
     function computeRankedSoloPlacement(teamsPoints, rpParts) {
         const teams = Math.max(0, Math.floor(teamsPoints || 0));
-        const basePoints = Math.max(RANKED_SOLO_PLACEMENT_FLOOR_RP, Math.min(RANKED_SOLO_PLACEMENT_CAP_RP, teams));
-        const matchDelta = Math.floor((rpParts && rpParts.total) || 0);
-        const points = Math.max(RANKED_SOLO_PLACEMENT_FLOOR_RP, Math.min(RANKED_SOLO_PLACEMENT_CAP_RP, basePoints + matchDelta));
-        return { points, basePoints, matchDelta, teamsPoints: teams, floorPoints: RANKED_SOLO_PLACEMENT_FLOOR_RP };
+        const basePoints = Math.min(RANKED_SOLO_PLACEMENT_CAP_RP, teams);
+        const rawDelta = Math.floor((rpParts && rpParts.total) || 0);
+        const matchDelta = Math.min(RANKED_SOLO_PLACEMENT_DELTA_CAP_RP, rawDelta);
+        const points = Math.max(0, Math.min(RANKED_SOLO_PLACEMENT_CAP_RP, basePoints + matchDelta));
+        return { points, basePoints, matchDelta, rawDelta, teamsPoints: teams, deltaCapPoints: RANKED_SOLO_PLACEMENT_DELTA_CAP_RP, capPoints: RANKED_SOLO_PLACEMENT_CAP_RP };
+    }
+    // Solo ladder (corrected 2026-11-20): the solo ladder starts at
+    // Brick Fume III (1200 RP) — leagues below it do not exist in solo,
+    // so the solo ladder is 13 divisions (Fume III .. Legend III) plus
+    // Prestige, shorter than the 25-division Teams ladder. The league
+    // TABLE is unchanged; solo just starts at index 12. Solo points
+    // below 1200 RP (a low placement, or losses after placing) display
+    // at the bottom rung — Fume III, division 1 of 13 — never as a
+    // lower league.
+    function getRankedSoloTierInfo(pointsRaw) {
+        const info = getRankedTierInfo(pointsRaw);
+        const teamIndex = Math.max(RANKED_SOLO_LADDER_START_INDEX, info.index);
+        const current = RANKED_DIVISIONS[teamIndex] || RANKED_DIVISIONS[RANKED_SOLO_LADDER_START_INDEX];
+        const next = teamIndex < RANKED_DIVISIONS.length - 1 ? RANKED_DIVISIONS[teamIndex + 1] : null;
+        return {
+            index: teamIndex - RANKED_SOLO_LADDER_START_INDEX, // solo-relative: Fume III = 0
+            teamIndex,
+            points: info.points,
+            label: current.label,
+            color: current.color,
+            nextLabel: next ? next.label : null,
+            nextThreshold: next ? (teamIndex + 1) * RANKED_POINTS_PER_DIVISION : null,
+            divisionsTotal: RANKED_DIVISIONS.length - RANKED_SOLO_LADDER_START_INDEX // 13
+        };
+    }
+    function getRankedSoloDivisionFloor(pointsRaw) {
+        // Solo division safety floor: never below the solo ladder start.
+        return Math.max(RANKED_SOLO_LADDER_FLOOR_RP, getRankedDivisionFloor(pointsRaw));
     }
     function ensureRankedSoloSeasonState() {
         if (!playerData.rankedSolo || typeof playerData.rankedSolo !== 'object') {
@@ -16006,7 +16060,7 @@ let blinkEyeDodgeState = null;
         const activeRankedSeasonId = getActiveSeasonPassId();
         if (solo.seasonId == null) solo.seasonId = activeRankedSeasonId;
         if (solo.seasonId !== activeRankedSeasonId) {
-            applyRankedSeasonReset(solo, RANKED_SOLO_PLACEMENT_FLOOR_RP);
+            applyRankedSeasonReset(solo, RANKED_SOLO_LADDER_FLOOR_RP);
         }
         if (solo.weekKey == null) solo.weekKey = getRankedWeekKey();
         if (solo.weekKey !== getRankedWeekKey()) {
@@ -47389,27 +47443,30 @@ let heistFeverActive = false;
         // and elo boost — next to Teams, never instead of it.
         const soloBucket = ensureRankedSoloSeasonState();
         const soloPoints = Math.max(0, Math.floor(soloBucket.points || 0));
-        const soloTierInfo = getRankedTierInfo(soloPoints);
-        const soloFloor = getRankedDivisionFloor(soloPoints);
+        // Solo ladder (corrected 2026-11-20): solo displays use the
+        // solo-aware tier info — the ladder starts at Brick Fume III
+        // (1200 RP), 13 divisions, never a league below Fume III.
+        const soloLadderInfo = getRankedSoloTierInfo(soloPoints);
+        const soloFloor = getRankedSoloDivisionFloor(soloPoints);
         const soloIntoDivision = Math.max(0, soloPoints - soloFloor);
-        const soloDivisionPct = soloTierInfo.nextThreshold ? Math.min(100, Math.round((soloIntoDivision / Math.max(1, soloTierInfo.nextThreshold - soloFloor)) * 100)) : 100;
-        const soloHalfwayRp = soloTierInfo.nextThreshold ? Math.floor((soloFloor + soloTierInfo.nextThreshold) / 2) : null;
+        const soloDivisionPct = soloLadderInfo.nextThreshold ? Math.min(100, Math.round((soloIntoDivision / Math.max(1, soloLadderInfo.nextThreshold - soloFloor)) * 100)) : 100;
+        const soloHalfwayRp = soloLadderInfo.nextThreshold ? Math.floor((soloFloor + soloLadderInfo.nextThreshold) / 2) : null;
         const soloPlaced = !!soloBucket.placed;
         const soloLeagueState = ensurePrestigeLeagueState(Date.now(), true);
         const soloInPrestigeLeague = !soloLeagueState.locked;
         const soloEloBoostActive = isRankedSoloEloBoostActive();
         const soloLeagueStandings = soloInPrestigeLeague ? getPrestigeLeagueStandings(soloLeagueState) : [];
         const soloLeagueRank = soloInPrestigeLeague ? getPrestigeLeaguePlayerRank(soloLeagueState) : 0;
-        const soloProgressHtml = soloTierInfo.nextThreshold ? `
+        const soloProgressHtml = soloLadderInfo.nextThreshold ? `
                 <div>
-                  <div class="ranked-hub-bar-label"><span>${soloTierInfo.label.toUpperCase()}</span><span>HALFWAY · ${soloHalfwayRp} RP</span><span>NEXT: ${soloTierInfo.nextLabel.toUpperCase()} · ${soloTierInfo.nextThreshold} RP</span></div>
+                  <div class="ranked-hub-bar-label"><span>${soloLadderInfo.label.toUpperCase()}</span><span>HALFWAY · ${soloHalfwayRp} RP</span><span>NEXT: ${soloLadderInfo.nextLabel.toUpperCase()} · ${soloLadderInfo.nextThreshold} RP</span></div>
                   <div class="ranked-hub-bar" role="progressbar" aria-valuenow="${soloDivisionPct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${soloDivisionPct}%"></i></div>
-                  <div class="ranked-hub-ticks"><span>${soloFloor} RP</span><span>HALFWAY ${soloHalfwayRp} RP</span><span>${soloTierInfo.nextThreshold} RP</span></div>
+                  <div class="ranked-hub-ticks"><span>${soloFloor} RP</span><span>HALFWAY ${soloHalfwayRp} RP</span><span>${soloLadderInfo.nextThreshold} RP</span></div>
                 </div>` : `
                 <div>
-                  <div class="ranked-hub-bar-label"><span>${soloTierInfo.label.toUpperCase()}</span><span>MAX DIVISION</span></div>
+                  <div class="ranked-hub-bar-label"><span>${soloLadderInfo.label.toUpperCase()}</span><span>MAX DIVISION</span></div>
                   <div class="ranked-hub-bar" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"><i style="width:100%"></i></div>
-                  <div class="ranked-hub-ticks"><span>${soloFloor} RP</span><span>${soloTierInfo.points} RP</span><span>MAX</span></div>
+                  <div class="ranked-hub-ticks"><span>${soloFloor} RP</span><span>${soloLadderInfo.points} RP</span><span>MAX</span></div>
                 </div>`;
         const soloLeagueBoardHtml = `
                 <div class="ranked-hub-league">
@@ -47421,7 +47478,7 @@ let heistFeverActive = false;
         const soloPlacementHtml = `
                 <div class="ranked-hub-solo-placement">
                   <div style="font-weight:900;color:#ffd166;">🎯 PLAY 1 RANKED SOLO MATCH TO GET PLACED</div>
-                  <div class="ranked-hub-meta">Your Teams rank (${tierInfo.label} · ${rankedPoints} RP) + your match stats set your starting league. Solo leagues start at Brick Fume III (1200 RP) — no solo placement below that floor.</div>
+                  <div class="ranked-hub-meta">Your Teams rank (${tierInfo.label} · ${rankedPoints} RP) + your match stats set your starting league. A placement match can add up to +300 RP. Solo leagues start at Brick Fume III (1200 RP) — the solo ladder has 13 divisions.</div>
                 </div>`;
         const hub = document.createElement('div');
         hub.className = 'ranked-hub-overlay';
@@ -47438,7 +47495,7 @@ let heistFeverActive = false;
             </div>
             <div class="ranked-hub-mode-tabs" role="tablist" aria-label="Ranked mode">
               <button type="button" class="ranked-hub-mode-tab is-selected" role="tab" aria-selected="true" data-ranked-mode-tab="teams">⚔️ RANKED TEAMS · ${tierInfo.label.toUpperCase()} · ${tierInfo.points} RP</button>
-              <button type="button" class="ranked-hub-mode-tab" role="tab" aria-selected="false" data-ranked-mode-tab="solo">🎯 RANKED SOLO · ${soloPlaced ? `${soloTierInfo.label.toUpperCase()} · ${soloPoints} RP` : 'NOT PLACED YET'}</button>
+              <button type="button" class="ranked-hub-mode-tab" role="tab" aria-selected="false" data-ranked-mode-tab="solo">🎯 RANKED SOLO · ${soloPlaced ? `${soloLadderInfo.label.toUpperCase()} · ${soloPoints} RP` : 'NOT PLACED YET'}</button>
             </div>
             <div class="ranked-hub-body">
               <div class="ranked-hub-main is-selected">
@@ -47456,11 +47513,11 @@ let heistFeverActive = false;
                 <div class="ranked-hub-season"><span>RANKED SOLO</span><span>SOLO SHOWDOWN · WITH BOTS</span></div>
                 <div class="ranked-hub-emblem">
                   <span class="ranked-hub-glyph" aria-hidden="true">🎯</span>
-                  <b>${soloPlaced ? (soloInPrestigeLeague ? getRankedDisplayLabel(soloPoints) : soloTierInfo.label) : 'NOT PLACED YET'}</b>
-                  <span>${soloPlaced ? `${soloPoints} RP · DIVISION ${soloTierInfo.index + 1} OF ${RANKED_DIVISIONS.length}` : 'Play 1 Ranked Solo match to get placed'}</span>
+                  <b>${soloPlaced ? (soloInPrestigeLeague ? getRankedDisplayLabel(soloPoints) : soloLadderInfo.label) : 'NOT PLACED YET'}</b>
+                  <span>${soloPlaced ? `${soloPoints} RP · DIVISION ${soloLadderInfo.index + 1} OF ${soloLadderInfo.divisionsTotal}` : 'Play 1 Ranked Solo match to get placed'}</span>
                 </div>
                 ${!soloPlaced ? soloPlacementHtml : (soloInPrestigeLeague ? soloLeagueBoardHtml : soloProgressHtml)}
-                <div class="ranked-hub-meta">${soloPlaced ? (soloInPrestigeLeague ? `Division safety floor: ${soloFloor} RP` : `${soloTierInfo.nextLabel ? `${Math.max(0, soloTierInfo.nextThreshold - soloTierInfo.points)} RP to ${soloTierInfo.nextLabel} · ` : ''}Division safety floor: ${soloFloor} RP${soloHalfwayRp != null ? ` · Halfway at ${soloHalfwayRp} RP` : ''}`) : 'Solo leagues start at Brick Fume III (1200 RP) — no solo placement below that floor.'}</div>
+                <div class="ranked-hub-meta">${soloPlaced ? (soloInPrestigeLeague ? `Division safety floor: ${soloFloor} RP` : `${soloLadderInfo.nextLabel ? `${Math.max(0, soloLadderInfo.nextThreshold - soloLadderInfo.points)} RP to ${soloLadderInfo.nextLabel} · ` : ''}Division safety floor: ${soloFloor} RP${soloHalfwayRp != null ? ` · Halfway at ${soloHalfwayRp} RP` : ''}`) : 'Solo leagues start at Brick Fume III (1200 RP) — the solo ladder has 13 divisions.'}</div>
                 <button type="button" class="ranked-hub-play ranked-hub-play-card" data-ranked-hub="play-solo">▶ PLAY RANKED SOLO</button>
               </div>
             </div>
@@ -80370,8 +80427,10 @@ function checkHit(target, b, i){
                 rankedRpParts = calcRankedRpGain({ mode: showdownMode, kills: matchKills, damage: matchDamageDealt, objectiveDamage: matchObjectiveDamage, won, streak: rankedBucket.winStreak || 0, mvp: isRankedMVP });
                 rankedDelta = rankedRpParts.total;
                 // First Ranked Solo match = placement match: your Teams
-                // rank + this match's stats place you (floored at Brick
-                // Fume III, 1200 RP). The placement IS the gain — no elo boost,
+                // rank is the base, and this match's own RP delta under
+                // the Teams rules can add at most +300 RP (capped, not
+                // floored — Anthony 2026-11-20); the result is capped at
+                // 2400 RP. The placement IS the gain — no elo boost,
                 // no division-climb payout on top of it.
                 const soloPlacement = (isRankedSoloMatch && !rankedBucket.placed)
                     ? computeRankedSoloPlacement((playerData.ranked && playerData.ranked.points) || 0, rankedRpParts)

@@ -196,7 +196,11 @@ for (const name of ['RANKED_POINTS_PER_DIVISION', 'RANKED_GOLD_MIN_DIVISION_INDE
     'RANKED_SEASON_RESET_WIN_CREDIT_CAP_RP', 'RANKED_SEASON_RESET_WINRATE_CREDIT_RP',
     'RANKED_ELO_BOOST_MULTIPLIER',
     // Ranked Solo (2026-11-20): the hub renders the solo ladder too.
-    'RANKED_SOLO_PLACEMENT_FLOOR_RP', 'RANKED_SOLO_PLACEMENT_CAP_RP', 'RANKED_SOLO_LEAGUE_OPPONENT_SALT']) {
+    // Corrected model: placement delta capped at +300 (Solo) / +500
+    // (Teams), no placement floor; 1200 RP is the solo ladder start.
+    'RANKED_SOLO_LADDER_FLOOR_RP', 'RANKED_SOLO_LADDER_START_INDEX',
+    'RANKED_TEAMS_PLACEMENT_DELTA_CAP_RP', 'RANKED_SOLO_PLACEMENT_DELTA_CAP_RP',
+    'RANKED_SOLO_PLACEMENT_CAP_RP', 'RANKED_SOLO_LEAGUE_OPPONENT_SALT']) {
     smoke[name] = evalLiteral(extractConst(game, name));
 }
 vm.createContext(smoke);
@@ -208,7 +212,8 @@ for (const fn of ['getRankedPrestige', 'getRankedDisplayLabel', 'getRankedTierIn
     'isRankedEloBoostActive', 'getRankedEloBoostMultiplier', 'ensureRankedSeasonState',
     'calcRankedRpGain', 'openRankedHubOverlay',
     // Ranked Solo (2026-11-20): the hub renders the solo ladder too.
-    'computeRankedSoloPlacement', 'ensureRankedSoloSeasonState', 'isRankedSoloEloBoostActive',
+    'computeRankedSoloPlacement', 'getRankedSoloTierInfo', 'getRankedSoloDivisionFloor',
+    'ensureRankedSoloSeasonState', 'isRankedSoloEloBoostActive',
     'hasCompletedRankedSolo']) {
     try { vm.runInContext(extractFunction(game, fn), smoke); }
     catch (e) { check(`smoke setup: extract+load ${fn}`, false); }

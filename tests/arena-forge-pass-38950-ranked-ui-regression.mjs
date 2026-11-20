@@ -4,11 +4,22 @@
 // (2) Ranked entry redesign: Teams and Solo are BOTH visible in the same
 //     Ranked hub and selectable via mode tabs, each with its own progress
 //     bar / Prestige League leaderboard view and its own PLAY button.
-// (3) Solo Prestige leagues start at 1200 RP now — solo ONLY. Teams keeps
-//     its 1300 RP floor (Brick Master I, above Fume III). 1200 RP is Brick
-//     Fume III (100 RP per division, idx 12), so the solo ladder now starts
-//     one division lower than Teams' floor — that is Anthony's call, and
-//     the interpretation is flagged, not smoothed over.
+// (3) Solo placement is CAPPED, not floored (corrected 2026-11-20,
+//     Anthony: "teams only can place you up to 500 rp and solo now can
+//     only place you up to 300 rp"). The placement match's own RP delta
+//     under the Teams rules can add at most +300 RP in Solo (+500 RP in
+//     a Teams placement match); the placement RESULT is still capped at
+//     2400 RP. The old solo [1200, 2400] clamp-as-floor is gone. 1200 RP
+//     is Brick Fume III (100 RP per division, idx 12), and it now lives
+//     ONLY as the solo LADDER start: the solo ladder is 13 divisions
+//     (Fume III .. Legend III) plus Prestige, shorter than Teams' 25,
+//     and solo soft resets never drop below 1200 RP. Teams keeps its
+//     1300 RP floor (Brick Master I, above Fume III). The capped-
+//     placement reading is flagged, not smoothed over: under today's
+//     RP rules the biggest possible match delta is +75, so the +300 /
+//     +500 caps never bind yet, and no Teams placement match exists in
+//     this build, so the +500 Teams cap is a pinned rule with no call
+//     site yet.
 // Builder picks flagged below: the per-tier band values (400/650/800/950/
 // 1135) and the rescaled quest bands (795/1391/2186/3418) — Anthony's own
 // bands add to 38,950 but the per-tier numbers were never written into
@@ -159,18 +170,26 @@ check('pass vm: an old maxed save (4900 XP) re-levels to tier 12 under the new t
     check('tokens: earn with the table credits XP and levels from it (795 XP -> tier 2)', earned.level === 2 && earned.xp === 795 && earned.tokenWallet === 795);
 }
 
-// --- (3) solo floor 1200, Teams floor still 1300 --------------------------------
-const SOLO_FLOOR = evalLiteral(extractConst(game, 'RANKED_SOLO_PLACEMENT_FLOOR_RP'));
+// --- (3) solo placement capped (+300), ladder starts at Fume III (1200) --------
+const SOLO_LADDER_FLOOR = evalLiteral(extractConst(game, 'RANKED_SOLO_LADDER_FLOOR_RP'));
+const SOLO_DELTA_CAP = evalLiteral(extractConst(game, 'RANKED_SOLO_PLACEMENT_DELTA_CAP_RP'));
+const TEAMS_DELTA_CAP = evalLiteral(extractConst(game, 'RANKED_TEAMS_PLACEMENT_DELTA_CAP_RP'));
 const SOLO_CAP = evalLiteral(extractConst(game, 'RANKED_SOLO_PLACEMENT_CAP_RP'));
-check('solo floor: placement floor const is 1200 RP', SOLO_FLOOR === 1200);
-check('solo floor: placement cap is still 2400 RP', SOLO_CAP === 2400);
-check('solo floor: 1200 RP is Brick Fume III (idx 12, 100 RP/division) — solo leagues now start at Fume III',
+const SOLO_LADDER_START = evalLiteral(extractConst(game, 'RANKED_SOLO_LADDER_START_INDEX'));
+check('solo caps: placement delta cap is +300 RP (Solo) / +500 RP (Teams)', SOLO_DELTA_CAP === 300 && TEAMS_DELTA_CAP === 500);
+check('solo ladder: ladder floor const is 1200 RP (Brick Fume III)', SOLO_LADDER_FLOOR === 1200);
+check('solo ladder: ladder starts at division index 12 (Brick Fume III)', SOLO_LADDER_START === 12);
+check('solo caps: placement result cap is still 2400 RP', SOLO_CAP === 2400);
+check('solo caps: the old placement-floor constant is gone (no clamp-as-floor)',
+    !game.includes('RANKED_SOLO_PLACEMENT_FLOOR_RP'));
+check('solo ladder: 1200 RP is Brick Fume III (idx 12, 100 RP/division) — solo leagues now start at Fume III',
     (() => {
         const divs = evalLiteral(extractConst(game, 'RANKED_DIVISIONS'));
         return divs[Math.floor(1200 / 100)].label === 'Brick Fume III' && divs[Math.floor(1300 / 100)].label === 'Brick Master I';
     })());
-check('solo floor: hub labels say Brick Fume III (1200 RP), not Master I (1300 RP)',
-    game.includes('Solo leagues start at Brick Fume III (1200 RP)') && !game.includes('Solo leagues start at Brick Master I (1300 RP)'));
+check('solo ladder: hub labels say Brick Fume III (1200 RP), not Master I (1300 RP), and never promise a placement floor',
+    game.includes('Solo leagues start at Brick Fume III (1200 RP)') && !game.includes('Solo leagues start at Brick Master I (1300 RP)')
+    && !game.includes('no solo placement below that floor'));
 check('teams floor: isRankedAboveBrickFume is still 1300 (Brick Master I) — Teams untouched',
     extractFunction(game, 'isRankedAboveBrickFume').includes('return points >= 1300;'));
 check('teams floor: division floor table still has the 1300 step — Teams untouched',
@@ -184,7 +203,7 @@ const hubSrc = extractFunction(game, 'openRankedHubOverlay');
 check('hub: mode tabs exist for both modes', hubSrc.includes('data-ranked-mode-tab="teams"') && hubSrc.includes('data-ranked-mode-tab="solo"'));
 check('hub: tabs show each mode\'s live rank (Teams label + RP, Solo label + RP or NOT PLACED YET)',
     hubSrc.includes('RANKED TEAMS · ${tierInfo.label.toUpperCase()} · ${tierInfo.points} RP')
-    && hubSrc.includes("RANKED SOLO · ${soloPlaced ? `${soloTierInfo.label.toUpperCase()} · ${soloPoints} RP` : 'NOT PLACED YET'}"));
+    && hubSrc.includes("RANKED SOLO · ${soloPlaced ? `${soloLadderInfo.label.toUpperCase()} · ${soloPoints} RP` : 'NOT PLACED YET'}"));
 check('hub: Teams is the default selection (data-ranked-mode=teams, Teams tab + card is-selected)',
     hubSrc.includes("hub.setAttribute('data-ranked-mode', 'teams')")
     && hubSrc.includes('class="ranked-hub-mode-tab is-selected"') && hubSrc.includes('class="ranked-hub-main is-selected"'));
@@ -293,7 +312,9 @@ for (const name of ['RANKED_POINTS_PER_DIVISION', 'RANKED_GOLD_MIN_DIVISION_INDE
     'RANKED_SEASON_RESET_PRESTIGE_FLOOR_RP', 'RANKED_SEASON_RESET_WIN_CREDIT_RP',
     'RANKED_SEASON_RESET_WIN_CREDIT_CAP_RP', 'RANKED_SEASON_RESET_WINRATE_CREDIT_RP',
     'RANKED_ELO_BOOST_MULTIPLIER',
-    'RANKED_SOLO_PLACEMENT_FLOOR_RP', 'RANKED_SOLO_PLACEMENT_CAP_RP', 'RANKED_SOLO_LEAGUE_OPPONENT_SALT']) {
+    'RANKED_SOLO_LADDER_FLOOR_RP', 'RANKED_SOLO_LADDER_START_INDEX',
+    'RANKED_TEAMS_PLACEMENT_DELTA_CAP_RP', 'RANKED_SOLO_PLACEMENT_DELTA_CAP_RP',
+    'RANKED_SOLO_PLACEMENT_CAP_RP', 'RANKED_SOLO_LEAGUE_OPPONENT_SALT']) {
     smoke[name] = evalLiteral(extractConst(game, name));
 }
 vm.createContext(smoke);
@@ -304,7 +325,8 @@ for (const fn of ['getRankedPrestige', 'getRankedDisplayLabel', 'getRankedTierIn
     'recordPrestigeLeagueMatch', 'computeRankedSeasonReset', 'applyRankedSeasonReset',
     'isRankedEloBoostActive', 'getRankedEloBoostMultiplier', 'ensureRankedSeasonState',
     'calcRankedRpGain', 'openRankedHubOverlay',
-    'computeRankedSoloPlacement', 'ensureRankedSoloSeasonState', 'isRankedSoloEloBoostActive',
+    'computeRankedSoloPlacement', 'getRankedSoloTierInfo', 'getRankedSoloDivisionFloor',
+    'ensureRankedSoloSeasonState', 'isRankedSoloEloBoostActive',
     'hasCompletedRankedSolo']) {
     try { vm.runInContext(extractFunction(game, fn), smoke); }
     catch (e) { check(`smoke setup: extract+load ${fn}`, false); }
@@ -326,12 +348,18 @@ function clickHub(hub, target) {
     for (const fn of listeners) fn({ target });
 }
 
-// solo clamp [1200, 2400] in the real helper
-check('solo vm: placement clamps to [1200, 2400] (Teams 0 + loss -> 1200, Teams 2600 + win -> 2400)',
-    run('computeRankedSoloPlacement(0, { total: -10 })').points === 1200
-    && run('computeRankedSoloPlacement(2600, { total: 60 })').points === 2400
-    && run('computeRankedSoloPlacement(2000, { total: 50 })').points === 2050
-    && run('computeRankedSoloPlacement(0, { total: -10 })').floorPoints === 1200);
+// solo placement is CAPPED (+300), not floored: base = Teams RP, match delta capped
+check('solo vm: placement caps the match delta at +300 (Teams 2000 + 500-delta match -> +300, 2300 RP)',
+    run('computeRankedSoloPlacement(2000, { total: 500 })').points === 2300
+    && run('computeRankedSoloPlacement(2000, { total: 500 })').matchDelta === 300
+    && run('computeRankedSoloPlacement(2000, { total: 500 })').deltaCapPoints === 300);
+check('solo vm: placement has no floor any more (Teams 0 + loss -> 0, Teams 100 + 40 -> 140)',
+    run('computeRankedSoloPlacement(0, { total: -10 })').points === 0
+    && run('computeRankedSoloPlacement(0, { total: -10 })').matchDelta === -10
+    && run('computeRankedSoloPlacement(100, { total: 40 })').points === 140);
+check('solo vm: placement still caps the result at 2400 (Teams 2600 + win -> 2400)',
+    run('computeRankedSoloPlacement(2600, { total: 60 })').points === 2400
+    && run('computeRankedSoloPlacement(2000, { total: 50 })').points === 2050);
 check('solo vm: a 1250-RP solo player is Brick Fume III — the new solo starting league',
     run('getRankedTierInfo(1250)').label === 'Brick Fume III' && run('getRankedTierInfo(1300)').label === 'Brick Master I');
 
@@ -380,12 +408,14 @@ check('solo vm: a 1250-RP solo player is Brick Fume III — the new solo startin
     check('hub vm: Teams card PLAY starts a Teams match and closes the hub', smoke.__playedTeams === 1 && smoke.__playedSolo === 0 && !smokeBody.children.includes(hub2));
 }
 
-// hub: unplaced solo still shows the placement CTA with the 1200 floor; prestige solo shows its own board
+// hub: unplaced solo still shows the placement CTA with the +300 cap and the Fume III ladder start; prestige solo shows its own board
 {
     const hub = openHub(500, 0, false);
     const html = hub ? hub.innerHTML : '';
-    check('hub vm: unplaced solo shows the placement CTA + Fume III 1200 floor',
+    check('hub vm: unplaced solo shows the placement CTA + capped placement (+300) + Fume III ladder start',
         html.includes('PLAY 1 RANKED SOLO MATCH TO GET PLACED') && html.includes('Solo leagues start at Brick Fume III (1200 RP)')
+        && html.includes('A placement match can add up to +300 RP')
+        && !html.includes('no solo placement below that floor')
         && html.includes('NOT PLACED YET'));
     smoke.playerData.ranked = { points: 500, rewardsClaimed: [], highPoints: 500, winStreak: 0, seasonId: PASS_ID, seasonStats: { wins: 0, matches: 0, kills: 0, damage: 0 } };
     smoke.playerData.rankedSolo = { points: 2400, rewardsClaimed: [], placed: true, highPoints: 2400, winStreak: 0, seasonId: PASS_ID, seasonStats: { wins: 0, matches: 0, kills: 0, damage: 0 } };
