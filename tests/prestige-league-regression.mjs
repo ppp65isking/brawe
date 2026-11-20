@@ -46,7 +46,10 @@ check('cycle is 3 days', game.includes('const PRESTIGE_LEAGUE_CYCLE_MS = 3 * 24 
 check('max PL5', game.includes('const PRESTIGE_LEAGUE_MAX = 5;'));
 check('5 opponents', game.includes('const PRESTIGE_LEAGUE_OPPONENT_COUNT = 5;'));
 check('top-3 rewards defined (1st 100 gems + 5 tappers)', game.includes('{ gems: 100, tappers: 5 }'));
-check('match-end records the league match', game.includes('prestigeLeague = recordPrestigeLeagueMatch(won, rankedDelta);'));
+check('match-end records the league match', game.includes('prestigeLeague = recordPrestigeLeagueMatch(won, rankedRpParts.total);'));
+// Ranked rework (2026-11-20): the league moves by the UNBOOSTED match
+// delta — the elo boost is a ranked-ladder catch-up, not league
+// performance, so it must not inflate league points.
 check('teammate names captured at draft finish', game.includes('rankedTeammateNames = blueRoster.filter((_, idx) => idx !== playerSlot)'));
 check('results screen shows league standings', game.includes('Prestige League — you are #${rank}'));
 check('results screen shows teammates', game.includes('Teammates: ${teamNames}'));
