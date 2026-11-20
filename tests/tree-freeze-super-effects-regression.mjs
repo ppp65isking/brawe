@@ -82,9 +82,9 @@ const near = (a, b, eps = 0.01) => Math.abs(a - b) < eps;
 
 // ================= 1. source pins: stamping + propagation =============
 assert.match(game, /const treeFreeze = entity\.id === player\.id && getActiveSkinForBrawler\('freezeon'\)\?\.id === 'tree-freeze-freezeon';/, 'Super stamps the skin only for the PLAYER cast (bots own no skins)');
-assert.match(game, /freezeonThrownRinks\.push\(\{ startX: entity\.x, startY: entity\.y, targetX: x, targetY: y, createdAt: now, impactAt: now \+ flightMs, ownerId: entity\.id, hyper: !!hyper, treeFreeze \}\);/, 'thrown rink carries the treeFreeze flag');
-assert.match(game, /freezeonPatches\.push\(\{ x, y, radius: FREEZEON_SUPER_RADIUS, until: now \+ FREEZEON_SUPER_DURATION_MS, nextTickAt: now, nextSnowballAt: 0, ownerId: thrown\.ownerId, hyper, treeFreeze: !!thrown\.treeFreeze \}\);/, 'landing propagates treeFreeze to the patch');
-assert.match(game, /fxKind: 'freezeonSuperSpawn', treeFreeze: !!thrown\.treeFreeze \}\);/, 'landing propagates treeFreeze to the impact explosion');
+assert.match(game, /freezeonThrownRinks\.push\(\{ startX: entity\.x, startY: entity\.y, targetX: x, targetY: y, createdAt: now, impactAt: now \+ flightMs, ownerId: entity\.id, hyper: !!hyper, treeFreeze(, holidayLights)? \}\);/, 'thrown rink carries the treeFreeze flag');
+assert.match(game, /freezeonPatches\.push\(\{ x, y, radius: FREEZEON_SUPER_RADIUS, until: now \+ FREEZEON_SUPER_DURATION_MS, nextTickAt: now, nextSnowballAt: 0, ownerId: thrown\.ownerId, hyper, treeFreeze: !!thrown\.treeFreeze(, holidayLights: !!thrown\.holidayLights)? \}\);/, 'landing propagates treeFreeze to the patch');
+assert.match(game, /fxKind: 'freezeonSuperSpawn', treeFreeze: !!thrown\.treeFreeze(, holidayLights: !!thrown\.holidayLights)? \}\);/, 'landing propagates treeFreeze to the impact explosion');
 assert.match(game, /thrown\.treeFreeze \? \(hyper \? '🎄 DEEP FREEZE!' : '🎄 TREE RINK!'\) : \(hyper \? '❄️ DEEP FREEZE!' : '❄️ ICE RINK!'\)/, 'floating text is Christmas when skinned, default otherwise');
 assert.match(game, /'❄️ ICE RINK!'/, 'default ICE RINK text still exists');
 
@@ -102,7 +102,7 @@ assert.match(renderSrc, /grad\.addColorStop\(0, p\.hyper \? 'rgba\(192,132,252,0
 assert.match(renderSrc, /strokeStyle = p\.hyper \? '#c084fc' : '#38bdf8';/, 'default patch ring still blue / purple');
 
 // ================= 3. source pins: thrown rink render =================
-assert.match(renderSrc, /strokeStyle = r\.treeFreeze \? \(r\.hyper \? '#fde047' : '#fbbf24'\) : \(r\.hyper \? '#c084fc' : '#38bdf8'\);/, 'landing marker is gold when skinned, blue otherwise');
+assert.match(renderSrc, /strokeStyle = (r\.holidayLights \? '#ffd60a' : )?r\.treeFreeze \? \(r\.hyper \? '#fde047' : '#fbbf24'\) : \(r\.hyper \? '#c084fc' : '#38bdf8'\);/, 'landing marker is gold when skinned, blue otherwise');
 assert.match(renderSrc, /\/\/ Tree Freeze: the flying can is a spinning gold star\./, 'flying can becomes a spinning gold star');
 assert.match(renderSrc, /\/\/ Small gold star at the landing point\./, 'landing point gets a small gold star');
 

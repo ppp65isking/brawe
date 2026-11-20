@@ -127,15 +127,16 @@ check('pass: same state/flow (tiers, claims, MISSIONS link)',
 // --- (4) Ranked neon hub ---
 check('ranked: hub function exists and gates the draft behind PLAY',
     game.includes('function openRankedHubOverlay(queueOverlay, onPlay) {') &&
-    game.includes('openRankedHubOverlay(overlay, () => { renderDraft(); scheduleNextTurn(500); })') &&
+    game.includes('openRankedHubOverlay(overlay, () => { renderDraft(); scheduleNextTurn(250); })') &&
     !game.includes('        renderDraft();\n        overlay.appendChild(panel);'));
 check('ranked: hub has emblem + RP bar + PLAY + close (old pass card deleted)',
     game.includes('class="ranked-hub-emblem"') && game.includes('class="ranked-hub-bar"') &&
     game.includes('data-ranked-hub="play"') &&
     game.includes('data-ranked-hub="close"') && game.includes('▶ PLAY RANKED'));
-check('ranked: hub reads the same tier/RP data (no new ranks or rewards)',
+check('ranked: hub reads the same tier/RP data + Prestige League standings (Ranked Pass deleted, stage 6-7)',
     game.includes('const tierInfo = getRankedTierInfo(rankedPoints);') &&
-    game.includes('RANKED_PASS_TIERS') && game.includes('getRankedDivisionFloor(rankedPoints)'));
+    game.includes('getPrestigeLeagueLevel(rankedPoints)') && game.includes('getRankedDivisionFloor(rankedPoints)') &&
+    !game.includes('RANKED_PASS_TIERS'));
 check('ranked: hub close removes the queue overlay (draft never started)',
     game.includes('queueOverlay.remove();'));
 check('ranked: neon CSS — hub, queue and pass all glow cyan/purple',

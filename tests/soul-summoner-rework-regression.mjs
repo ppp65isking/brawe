@@ -17,8 +17,8 @@ assert.match(game, /function getActiveConstellationTier/, 'getActiveConstellatio
 
 // 3. UI Title & Choice Options
 assert.match(game, /SOUL SUMMONER · SOUL ROAD/, 'Soul Summoner Soul Road title rendered');
-assert.match(game, /CURRENT SOUL ROAD STEP/, 'Current Soul Road step rendered');
+assert.ok(!game.includes('CURRENT SOUL ROAD STEP'), 'no Soul Road step display — the summoner is display-only now (rebuild stage 2)');
 assert.match(game, /RANDOM PICK/, 'Random Pick button exists');
-assert.match(game, /REROLL OPTIONS/, 'Reroll Options button exists');
+assert.ok(!game.includes('REROLL OPTIONS'), 'no reroll button — a summon offers 3 random brawlers, no reroll (rebuild stage 2)');
 
 console.log('Soul Summoner Choice & Random regression tests passed successfully!');

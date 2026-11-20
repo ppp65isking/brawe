@@ -219,14 +219,14 @@ function themeSandbox(seasonKey, native = true) {
 // --------------------------------------------------------------- stats -----
 const statsFnSrc = extractFunction(game, 'buildMatchResultsStats');
 check('results screen builds the stats section only in app mode', game.includes('if (isNativeAppMode()) {\n                resultCard.appendChild(buildMatchResultsStats(fullOnDamageEarned));'));
-// Full-On Damage was deleted: the match-damage stat is a constant 0 until a new per-match metric lands.
-check('stats section is fed the (now constant-0) match damage value', game.includes('const fullOnDamageEarned = 0;'));
+// Ranked RP rework (stage 6): match damage is a real per-match ledger again.
+check('stats section is fed the real per-match damage ledger', game.includes('const fullOnDamageEarned = matchDamageDealt;'));
 check('stats builder shows exactly one row: Match damage', statsFnSrc.includes("dmgLabel.textContent = '💥 Match damage'") && (statsFnSrc.match(/className = 'match-results-stat-row'/g) || []).length === 1);
 check('stats builder never labels the number "damage dealt" (it is the mixed match ledger)', !/damage dealt/i.test(statsFnSrc));
 check('stats builder has no takedown row (no per-match takedown data exists)', !/Takedown/i.test(statsFnSrc));
 check('stats builder has no healing row (no per-match healing data exists)', !/Healing/i.test(statsFnSrc));
 check('stats styles are scoped under .native-app (website never sees them)', game.includes('.native-app .match-results-stats{') && game.includes('.native-app .match-results-stat-row{'));
-check('no per-match takedown counter exists anywhere in game.js', !/matchKills|killsThisMatch|matchTakedowns|takedownsThisMatch/i.test(game));
+check('a per-match takedown counter exists for the Ranked RP ledger (rebuild stage 6)', game.includes('let matchKills = 0;') && game.includes('resetMatchRpLedger();'));
 check('no per-match healing counter exists anywhere in game.js', !/healingDone|healThisMatch|matchHeal|totalHealedThisMatch/i.test(game));
 check('takedowns exist only as the career cumulative counter', game.includes('careerStats.eliminations += 1'));
 check('healing records nothing per match (doHeal has no stats write)', (() => {
