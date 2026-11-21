@@ -1,19 +1,21 @@
-// Season Quests Tuning + Ranked Solo + Mobile Landscape Home UI (2026-11-20, Anthony's round).
+// Season Quests Tuning + Ranked Solo + Mobile Landscape Home UI (2026-11-20, Anthony's round;
+// solo ladder corrected 2026-11-21 — Solo is the BOTTOM of the table, Bronze I .. Fume III).
 // Season quests: (1) XP sums to the FULL pass total, (2) Coming Soon stages
 // accrue ZERO progress, (3) harder than daily/weekly, (4) time-unlock
 // schedule with live countdowns. Ranked Solo: ranked Showdown with bots,
 // own RP bucket + Prestige League ladder, placement from Teams rank +
 // match stats with the match delta capped at +300 RP (corrected
 // 2026-11-20 — the old 1200 RP placement floor is gone; 1200 RP is now
-// only the solo LADDER start at Brick Fume III, and solo soft resets
+// only the Solo Prestige start (PL1), and solo soft resets
 // never drop below it). Landscape home UI:
 // Anthony's sketch — rounded buttons, 3-column fighters grid, icon-only
 // bottom nav as a left rail, profile goes home from Fighters, season-pass
 // bar with tier progress, quick tools/talents from the hero power level.
 // Landscape ONLY: portrait, desktop and web are untouched.
 // Daily/weekly quests and their Pass XP (+25/+100), the Ranked RP gain
-// rules, Prestige League payouts (100/5, 50/3, 25/2), 3-day cycles and
-// max PL5 are untouched.
+// rules, Prestige League payouts (100/5, 50/3, 25/2), Teams 3-day cycles
+// and max PL5 are untouched. (Solo Prestige cycles are 2 days, corrected
+// 2026-11-21.)
 import fs from 'node:fs';
 import vm from 'node:vm';
 
@@ -162,7 +164,7 @@ check('no bare word-boundary forbidden brawler token in game.js or this suite',
 // --- static: Ranked Solo --------------------------------------------------------
 check('solo: mode base table pays solo Showdown +5 (BUILDER PICK, same as Arena Forge)',
     (() => { const t = evalLiteral(extractConst(game, 'RANKED_RP_MODE_BASE')); return t.solo === 5 && t.arena_forge === 5 && t.knock_donate === 0 && t.brick_vault === 0; })());
-check('solo: placement helper exists and caps the match delta at +300 RP (corrected 2026-11-20 — placement RESULT floors at the 1200 ladder start; 1200 RP is the solo ladder start, Teams keeps 1300)',
+check('solo: placement helper exists and caps the match delta at +300 RP (corrected 2026-11-20 — placement RESULT floors at 1200 RP, Solo Prestige starts there; 1200 RP is the solo Prestige start, Teams keeps 1300)',
     game.includes('function computeRankedSoloPlacement(') && game.includes('const RANKED_SOLO_PLACEMENT_DELTA_CAP_RP = 300;')
     && game.includes('const RANKED_TEAMS_PLACEMENT_DELTA_CAP_RP = 500;')
     && game.includes('const RANKED_SOLO_LADDER_FLOOR_RP = 1200;')
@@ -182,12 +184,13 @@ check('solo: solo bucket + solo league persist in the save',
     game.includes('rankedSolo: { points: 0, rewardsClaimed: [], placed: false }')
     && game.includes('if (data.persistent.rankedSolo) playerData.rankedSolo = data.persistent.rankedSolo;')
     && game.includes('rankedSolo: playerData.rankedSolo,'));
-check('solo: Prestige League payouts unchanged (100/5, 50/3, 25/2) and 3-day cycles, max PL5',
+check('solo: Prestige League payouts unchanged (100/5, 50/3, 25/2) and Teams 3-day cycles, max PL5 (Solo cycles are 2 days)',
     (() => {
         const rewards = evalLiteral(extractConst(game, 'PRESTIGE_LEAGUE_TOP3_REWARDS'));
         return rewards.length === 3 && rewards[0].gems === 100 && rewards[0].tappers === 5
             && rewards[1].gems === 50 && rewards[1].tappers === 3 && rewards[2].gems === 25 && rewards[2].tappers === 2;
-    })() && game.includes('const PRESTIGE_LEAGUE_MAX = 5;') && game.includes('3 * 24 * 60 * 60 * 1000'));
+    })() && game.includes('const PRESTIGE_LEAGUE_MAX = 5;') && game.includes('3 * 24 * 60 * 60 * 1000')
+    && game.includes('const PRESTIGE_LEAGUE_SOLO_CYCLE_MS = 2 * 24 * 60 * 60 * 1000;'));
 
 // --- vm smoke: real season state, real progress, real hub ----------------------
 function smokeMatches(el, sel) {
@@ -321,7 +324,8 @@ for (const name of ['TURKEY_TROUBLE_SEASON_ID', 'TURKEY_TROUBLE_START_UTC', 'TUR
     'RANKED_SEASON_RESET_PRESTIGE_FLOOR_RP', 'RANKED_SEASON_RESET_WIN_CREDIT_RP',
     'RANKED_SEASON_RESET_WIN_CREDIT_CAP_RP', 'RANKED_SEASON_RESET_WINRATE_CREDIT_RP',
     'RANKED_ELO_BOOST_MULTIPLIER',
-    'RANKED_SOLO_LADDER_FLOOR_RP', 'RANKED_SOLO_LADDER_START_INDEX',
+    'RANKED_SOLO_LADDER_FLOOR_RP', 'RANKED_SOLO_LADDER_START_INDEX', 'RANKED_SOLO_LADDER_END_INDEX',
+    'PRESTIGE_LEAGUE_SOLO_CYCLE_MS',
     'RANKED_TEAMS_PLACEMENT_DELTA_CAP_RP', 'RANKED_SOLO_PLACEMENT_DELTA_CAP_RP',
     'RANKED_SOLO_PLACEMENT_CAP_RP', 'RANKED_SOLO_LEAGUE_OPPONENT_SALT']) {
     smoke[name] = evalLiteral(extractConst(game, name));
@@ -343,7 +347,8 @@ for (const fn of ['ensureBrawePassTokens', 'getActiveSeasonProfile', 'getActiveS
     'computeRankedSeasonReset', 'applyRankedSeasonReset',
     'isRankedEloBoostActive', 'getRankedEloBoostMultiplier',
     'ensureRankedSeasonState', 'ensureRankedSoloSeasonState', 'isRankedSoloEloBoostActive',
-    'computeRankedSoloPlacement', 'getRankedSoloTierInfo', 'getRankedSoloDivisionFloor',
+    'computeRankedSoloPlacement', 'getRankedSoloPrestige', 'getRankedSoloDisplayLabel',
+    'getRankedSoloTierInfo', 'getRankedSoloDivisionFloor',
     'calcRankedRpGain', 'openRankedHubOverlay',
     'getLandscapePassBarInfo', 'renderAppHomeLandscapeBar', 'openAppQuickLoadout']) {
     try { vm.runInContext(extractFunction(game, fn), smoke); }
@@ -476,7 +481,7 @@ check('solo: placement RESULT floors at the 1200 ladder start (Teams 0 + loss ->
     run('computeRankedSoloPlacement(0, { total: -10 })').points === 1200
     && run('computeRankedSoloPlacement(0, { total: -10 })').matchDelta === -10
     && run('computeRankedSoloPlacement(100, { total: 40 })').points === 1200);
-check('solo: placement caps at PL1 entry (Teams 2600 + win -> 2400, higher solo prestige must be earned)',
+check('solo: placement caps at Solo PL3 (Teams 2600 + win -> 2400, higher solo prestige must be earned)',
     run('computeRankedSoloPlacement(2600, { total: 60 })').points === 2400
     && run('computeRankedSoloPlacement(2300, { total: 50 })').points === 2350);
 check('solo: solo leaderboard renders with RP and YOU highlighted',
@@ -495,7 +500,8 @@ check('solo: solo leaderboard renders with RP and YOU highlighted',
         const hub = smokeBody.children.find(c => c.id === 'rankedHubOverlay');
         const html = hub ? hub.innerHTML : '';
         return you && you.rp === 40 && rank >= 1 && rank <= 6
-            && html.includes('SOLO PRESTIGE LEAGUE LEADERBOARD') && html.includes('YOU — 40 RP')
+            && html.includes('SOLO PRESTIGE LEAGUE LEADERBOARD') && html.includes('SOLO PRESTIGE LEAGUE PL3')
+            && html.includes('YOU — 40 RP') && html.includes('resets every 2 days')
             && !html.includes('Teammates: Ally 1');
     })());
 check('solo: hub shows the placement call-to-action before the first solo match',
@@ -508,21 +514,22 @@ check('solo: hub shows the placement call-to-action before the first solo match'
         const html = hub ? hub.innerHTML : '';
         return html.includes('RANKED SOLO') && html.includes('PLAY 1 RANKED SOLO MATCH TO GET PLACED')
             && html.includes('data-ranked-hub="play-solo"') && html.includes('▶ PLAY RANKED SOLO')
-            && html.includes('Solo leagues start at Brick Fume III (1200 RP)')
+            && html.includes('Solo leagues run Bronze I to Fume III (0–1200 RP)')
             && html.includes('A placement match can add up to +300 RP')
             && !html.includes('no solo placement below that floor');
     })());
-check('solo: hub shows the solo progress bar once placed (1350 RP = Brick Master I, halfway 1350)',
+check('solo: hub shows the solo progress bar once placed (1050 RP = Brick Fume I, halfway 1050)',
     (() => {
         smoke.playerData.ranked = { points: 500, rewardsClaimed: [], highPoints: 500, winStreak: 0, seasonId: PASS_ID, seasonStats: { wins: 0, matches: 0, kills: 0, damage: 0 } };
-        smoke.playerData.rankedSolo = { points: 1350, rewardsClaimed: [], placed: true, highPoints: 1350, winStreak: 0, seasonId: PASS_ID, seasonStats: { wins: 0, matches: 0, kills: 0, damage: 0 } };
+        smoke.playerData.rankedSolo = { points: 1050, rewardsClaimed: [], placed: true, highPoints: 1050, winStreak: 0, seasonId: PASS_ID, seasonStats: { wins: 0, matches: 0, kills: 0, damage: 0 } };
         smoke.playerData.prestigeLeagueSolo = {};
         smokeBody.children = [];
         run('openRankedHubOverlay(__queueOverlay, () => {}, () => {})');
         const hub = smokeBody.children.find(c => c.id === 'rankedHubOverlay');
         const html = hub ? hub.innerHTML : '';
-        return html.includes('RANKED SOLO') && html.includes('<span>BRICK MASTER I</span>')
-            && html.includes('HALFWAY') && html.includes('NEXT: BRICK MASTER II')
+        return html.includes('RANKED SOLO') && html.includes('<span>BRICK FUME I</span>')
+            && html.includes('HALFWAY') && html.includes('NEXT: BRICK FUME II')
+            && html.includes('DIVISION 11 OF 13')
             && !html.includes('NOT PLACED YET');
     })());
 check('solo: soft reset applies to solo and never drops below the 1200 floor (1500, no wins -> 1200)',
