@@ -92,9 +92,10 @@ check('ui: hub leaderboard branch replaces the progress bar for Prestige League 
     hubSrc.includes('inPrestigeLeague ? leagueBoardHtml : rankedProgressHtml'));
 check('ui: hub elo-boost chip shows the live boost state and target',
     hubSrc.includes('ELO BOOST') && hubSrc.includes('resetBoostTarget'));
-check('seasons: soft-reset mapping exists and is pure (rank + wins + win rate)',
-    game.includes('function computeRankedSeasonReset(previousPoints, seasonStats)')
-    && extractFunction(game, 'computeRankedSeasonReset').includes('getRankedPrestige(prev)'));
+check('seasons: soft-reset mapping exists and is pure (rank + wins + win rate) — solo-aware (Solo Prestige at 1200, Teams at 2400)',
+    game.includes('function computeRankedSeasonReset(previousPoints, seasonStats, solo)')
+    && extractFunction(game, 'computeRankedSeasonReset').includes('prestigeFn(prev)')
+    && extractFunction(game, 'computeRankedSeasonReset').includes('solo ? getRankedSoloPrestige : getRankedPrestige'));
 check('seasons: reset is wired into ensureRankedSeasonState via the pass season id',
     extractFunction(game, 'ensureRankedSeasonState').includes('getActiveSeasonPassId()')
     && extractFunction(game, 'ensureRankedSeasonState').includes('applyRankedSeasonReset()'));
@@ -195,10 +196,12 @@ for (const name of ['RANKED_POINTS_PER_DIVISION', 'RANKED_GOLD_MIN_DIVISION_INDE
     'RANKED_SEASON_RESET_PRESTIGE_FLOOR_RP', 'RANKED_SEASON_RESET_WIN_CREDIT_RP',
     'RANKED_SEASON_RESET_WIN_CREDIT_CAP_RP', 'RANKED_SEASON_RESET_WINRATE_CREDIT_RP',
     'RANKED_ELO_BOOST_MULTIPLIER',
-    // Ranked Solo (2026-11-20): the hub renders the solo ladder too.
-    // Corrected model: placement delta capped at +300 (Solo) / +500
-    // (Teams); placement RESULT floored at 1200 RP, the solo ladder start.
-    'RANKED_SOLO_LADDER_FLOOR_RP', 'RANKED_SOLO_LADDER_START_INDEX',
+    // Ranked Solo (2026-11-20; ladder corrected 2026-11-21): the hub
+    // renders the solo ladder too. Corrected model: placement delta
+    // capped at +300 (Solo) / +500 (Teams); placement RESULT floored
+    // at 1200 RP (Solo Prestige starts there).
+    'RANKED_SOLO_LADDER_FLOOR_RP', 'RANKED_SOLO_LADDER_START_INDEX', 'RANKED_SOLO_LADDER_END_INDEX',
+    'PRESTIGE_LEAGUE_SOLO_CYCLE_MS',
     'RANKED_TEAMS_PLACEMENT_DELTA_CAP_RP', 'RANKED_SOLO_PLACEMENT_DELTA_CAP_RP',
     'RANKED_SOLO_PLACEMENT_CAP_RP', 'RANKED_SOLO_LEAGUE_OPPONENT_SALT']) {
     smoke[name] = evalLiteral(extractConst(game, name));
@@ -211,8 +214,9 @@ for (const fn of ['getRankedPrestige', 'getRankedDisplayLabel', 'getRankedTierIn
     'recordPrestigeLeagueMatch', 'computeRankedSeasonReset', 'applyRankedSeasonReset',
     'isRankedEloBoostActive', 'getRankedEloBoostMultiplier', 'ensureRankedSeasonState',
     'calcRankedRpGain', 'openRankedHubOverlay',
-    // Ranked Solo (2026-11-20): the hub renders the solo ladder too.
-    'computeRankedSoloPlacement', 'getRankedSoloTierInfo', 'getRankedSoloDivisionFloor',
+    // Ranked Solo (2026-11-20; ladder corrected 2026-11-21): the hub renders the solo ladder too.
+    'computeRankedSoloPlacement', 'getRankedSoloPrestige', 'getRankedSoloDisplayLabel',
+    'getRankedSoloTierInfo', 'getRankedSoloDivisionFloor',
     'ensureRankedSoloSeasonState', 'isRankedSoloEloBoostActive',
     'hasCompletedRankedSolo']) {
     try { vm.runInContext(extractFunction(game, fn), smoke); }

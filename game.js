@@ -15780,13 +15780,17 @@ let blinkEyeDodgeState = null;
         return `${d.getFullYear()}-W${String(Math.max(1, week)).padStart(2, '0')}`;
     }
     // --- Prestige League (Arena Forge rebuild 2026-11-20) -------------------
-    // Ranked Prestige is now the Prestige League: a 3-day-cycle leaderboard.
-    // Max PL5 (getRankedPrestige, capped at 5). The leaderboard resets
-    // every 3 days; top 3 at cycle end get gems + tappers (paid at
-    // rollover). The 2 names shown with you are your teammates. Opponents'
-    // RP moves up/down every match, synced to your result.
+    // Ranked Prestige is now the Prestige League: a cycle leaderboard.
+    // Teams runs 3-day cycles; Ranked Solo runs 2-day cycles (corrected
+    // 2026-11-21, Anthony: Solo Prestige starts at 1200 RP, solo only).
+    // Max PL5 (getRankedPrestige / getRankedSoloPrestige, capped at 5).
+    // The leaderboard resets at the end of each cycle; top 3 at cycle
+    // end get gems + tappers (paid at rollover). The 2 names shown with
+    // you are your teammates (Teams only — Solo has no teammates).
+    // Opponents' RP moves up/down every match, synced to your result.
     const PRESTIGE_LEAGUE_MAX = 5;
-    const PRESTIGE_LEAGUE_CYCLE_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
+    const PRESTIGE_LEAGUE_CYCLE_MS = 3 * 24 * 60 * 60 * 1000; // 3 days (Teams)
+    const PRESTIGE_LEAGUE_SOLO_CYCLE_MS = 2 * 24 * 60 * 60 * 1000; // 2 days (Solo, corrected 2026-11-21)
     // Top-3 rewards (builder pick, flagged in the rebuild report):
     // 1st 100 gems + 5 tappers, 2nd 50 gems + 3 tappers, 3rd 25 gems + 2 tappers.
     const PRESTIGE_LEAGUE_TOP3_REWARDS = [
@@ -15795,11 +15799,15 @@ let blinkEyeDodgeState = null;
         { gems: 25, tappers: 2 }
     ];
     const PRESTIGE_LEAGUE_OPPONENT_COUNT = 5;
-    function getPrestigeLeagueCycleKey(now = Date.now()) {
-        return Math.floor(now / PRESTIGE_LEAGUE_CYCLE_MS);
+    function getPrestigeLeagueCycleKey(now = Date.now(), solo) {
+        // Teams cycles are 3 days; Solo cycles are 2 days (corrected
+        // 2026-11-21). `solo` defaults to false, so every existing
+        // Teams call is unchanged.
+        return Math.floor(now / (solo ? PRESTIGE_LEAGUE_SOLO_CYCLE_MS : PRESTIGE_LEAGUE_CYCLE_MS));
     }
-    function getPrestigeLeagueLevel(pointsRaw) {
-        return Math.min(PRESTIGE_LEAGUE_MAX, getRankedPrestige(pointsRaw));
+    function getPrestigeLeagueLevel(pointsRaw, solo) {
+        // Solo Prestige starts at 1200 RP (PL1), Teams at 2400 RP.
+        return Math.min(PRESTIGE_LEAGUE_MAX, solo ? getRankedSoloPrestige(pointsRaw) : getRankedPrestige(pointsRaw));
     }
     // Prestige League unlock (fixes round 2026-11-20, item 11): the
     // leaderboard only exists once you have completed all of Ranked —
@@ -15838,10 +15846,11 @@ let blinkEyeDodgeState = null;
         }
     }
     function ensurePrestigeLeagueState(now = Date.now(), solo) {
-        // Ranked Solo has its own Prestige League ladder (same 3-day
-        // cycles, same top-3 payouts, no teammates). `solo` defaults to
-        // the live solo flag when omitted, so match settlement routes
-        // automatically and every existing Teams call is unchanged.
+        // Ranked Solo has its own Prestige League ladder (2-day cycles
+        // for Solo, 3-day for Teams; same top-3 payouts, no teammates
+        // in Solo). `solo` defaults to the live solo flag when omitted,
+        // so match settlement routes automatically and every existing
+        // Teams call is unchanged.
         const useSolo = solo === true || (solo == null && typeof isRankedSoloMatch !== 'undefined' && !!isRankedSoloMatch);
         if (!playerData.prestigeLeague || typeof playerData.prestigeLeague !== 'object') playerData.prestigeLeague = {};
         if (useSolo && (!playerData.prestigeLeagueSolo || typeof playerData.prestigeLeagueSolo !== 'object')) playerData.prestigeLeagueSolo = {};
@@ -15859,9 +15868,10 @@ let blinkEyeDodgeState = null;
             return league;
         }
         league.locked = false;
-        const key = getPrestigeLeagueCycleKey(now);
+        const key = getPrestigeLeagueCycleKey(now, useSolo);
         if (league.cycleKey !== key) {
-            // New 3-day cycle: pay out last cycle's top-3 rewards, then reset.
+            // New cycle (3 days Teams, 2 days Solo): pay out last
+            // cycle's top-3 rewards, then reset.
             // League points reset; ranked.points (RP) does NOT reset.
             if (league.cycleKey != null && Array.isArray(league.opponents)) payPrestigeLeagueTop3Rewards(league);
             league.cycleKey = key;
@@ -15909,12 +15919,17 @@ let blinkEyeDodgeState = null;
     // your rank plus last season's wins / win rate set the new rank —
     // a Prestige 5 player resets to Prestige 3, never to Bronze.
     // Pure function (no playerData writes) so tests can pin the mapping.
-    function computeRankedSeasonReset(previousPoints, seasonStats) {
+    function computeRankedSeasonReset(previousPoints, seasonStats, solo) {
         const prev = Math.max(0, Math.floor(previousPoints || 0));
         const stats = seasonStats || {};
         const wins = Math.max(0, Math.floor(stats.wins || 0));
         const matches = Math.max(0, Math.floor(stats.matches || 0));
-        const wasPrestige = getRankedPrestige(prev) > 0;
+        // Solo Prestige starts at 1200 RP (corrected 2026-11-21), Teams
+        // at 2400 RP — the reset drops 2 Prestige levels in whichever
+        // ladder this bucket plays in. `solo` defaults to false, so
+        // every existing Teams call is unchanged.
+        const prestigeFn = solo ? getRankedSoloPrestige : getRankedPrestige;
+        const wasPrestige = prestigeFn(prev) > 0;
         const winCredit = Math.min(RANKED_SEASON_RESET_WIN_CREDIT_CAP_RP, wins * RANKED_SEASON_RESET_WIN_CREDIT_RP);
         const winRate = matches >= 10 ? wins / matches : 0;
         const rateCredit = winRate >= 0.6 ? RANKED_SEASON_RESET_WINRATE_CREDIT_RP : 0;
@@ -15923,9 +15938,14 @@ let blinkEyeDodgeState = null;
         if (wasPrestige) {
             // Drop exactly 2 Prestige League levels, then wins / win rate
             // earn back some of the drop (up to 250 RP).
-            const newLevel = Math.max(1, getRankedPrestige(prev) - RANKED_SEASON_RESET_PRESTIGE_LEVELS_DROPPED);
-            newPoints = 2400 + (newLevel - 1) * RANKED_PRESTIGE_STEP_RP + credit;
-            newPoints = Math.max(RANKED_SEASON_RESET_PRESTIGE_FLOOR_RP, Math.min(prev, newPoints));
+            const newLevel = Math.max(1, prestigeFn(prev) - RANKED_SEASON_RESET_PRESTIGE_LEVELS_DROPPED);
+            // Prestige starts at 1200 RP in Solo, 2400 RP in Teams.
+            const prestigeBase = solo ? RANKED_SOLO_LADDER_FLOOR_RP : 2400;
+            // Prestige players never reset below the Solo ladder floor
+            // (1200 RP) in Solo, Brick Legend I (2200 RP) in Teams.
+            const prestigeFloor = solo ? RANKED_SOLO_LADDER_FLOOR_RP : RANKED_SEASON_RESET_PRESTIGE_FLOOR_RP;
+            newPoints = prestigeBase + (newLevel - 1) * RANKED_PRESTIGE_STEP_RP + credit;
+            newPoints = Math.max(prestigeFloor, Math.min(prev, newPoints));
         } else {
             // Drop 3 divisions (300 RP), then wins / win rate earn some back.
             newPoints = Math.max(0, prev - RANKED_SEASON_RESET_DROP_RP + credit);
@@ -15933,13 +15953,13 @@ let blinkEyeDodgeState = null;
         }
         return { previousPoints: prev, newPoints, drop: prev - newPoints, wasPrestige, boostTarget: prev };
     }
-    function applyRankedSeasonReset(rankedBucket, floorRp = 0) {
+    function applyRankedSeasonReset(rankedBucket, floorRp = 0, solo) {
         const ranked = rankedBucket || playerData.ranked;
         if (!ranked || typeof ranked !== 'object') return null;
-        const result = computeRankedSeasonReset(ranked.points || 0, ranked.seasonStats);
-        // Ranked Solo floors its reset at Brick Fume III (1200 RP): solo
-        // leagues start at Brick Fume III, so a solo reset can never
-        // drop a player below that floor. Teams passes no floor (0).
+        const result = computeRankedSeasonReset(ranked.points || 0, ranked.seasonStats, solo);
+        // Ranked Solo floors its reset at 1200 RP (Solo Prestige starts
+        // there): a solo reset can never drop a player below 1200 RP.
+        // Teams passes no floor (0).
         const newPoints = Math.max(Math.max(0, Math.floor(floorRp || 0)), result.newPoints);
         ranked.points = newPoints;
         ranked.seasonId = getActiveSeasonPassId();
@@ -16005,15 +16025,14 @@ let blinkEyeDodgeState = null;
     // placement match's own RP delta under the Teams rules can add at
     // most +300 RP in Solo (+500 RP in a Teams placement match). Only
     // the upside is capped — a loss still subtracts its full delta.
-    // The placement RESULT is still capped at 2400 RP (Brick Legend III
-    // / PL1 entry) — higher solo prestige must be earned in Solo, not
-    // placed into — and floored at the solo ladder start, 1200 RP
-    // (Brick Fume III), since 2026-11-20 (Anthony: "Make sure people
-    // already over 1200 get placed into a leauge"): a Teams rank over
-    // 1200 seeds your solo league, so you land in the league matching
-    // your RP even if you lose the placement match, and nobody places
-    // below the ladder start — a low Teams rank places at 1200 RP, the
-    // ladder start, never at 0. FLAG: no Teams placement match exists in
+    // The placement RESULT is still capped at 2400 RP (Solo PL3 — higher
+    // solo prestige must be earned in Solo, not placed into) and floored
+    // at 1200 RP (Solo Prestige starts there), since 2026-11-20
+    // (Anthony: "Make sure people already over 1200 get placed into a
+    // leauge"): a Teams rank over 1200 seeds your solo league, so you
+    // land in the league matching your RP even if you lose the placement
+    // match, and nobody places below 1200 RP — a low Teams rank places
+    // at 1200 RP, never at 0. FLAG: no Teams placement match exists in
     // this build (Teams starts at 0 RP with no placement flow), so the
     // +500 Teams cap is pinned here as the standing rule — Anthony to
     // confirm whether Teams should ever have a placement match. FLAG 2:
@@ -16021,25 +16040,33 @@ let blinkEyeDodgeState = null;
     // (mode 5 + win 20 + kills 10 + damage 10 + objective 5 + streak 15
     // + mvp 10), so the +300/+500 caps never bind yet — they pin the
     // rule for future RP-rule changes, not a number a player can hit.
-    // The 1200 RP / Brick Fume III number is the solo LADDER start
-    // (RANKED_SOLO_LADDER_FLOOR_RP): the solo ladder begins
-    // at Fume III and runs up through Master, Legend and Prestige, so a
-    // solo soft reset never drops below 1200 RP, solo displays never
-    // show a league below Fume III, and a solo placement never lands
-    // below 1200 RP either.
+    // The solo LADDER (corrected 2026-11-21, Anthony): the build had it
+    // backwards — Solo is NOT the top of the Teams ladder (Fume III ..
+    // Legend III). The solo ladder is RANKED_DIVISIONS indices 0-12
+    // ONLY: Brick Bronze I, II, III; Brick Silver I-IV; Brick Gold
+    // I-III; Brick Fume I, II, III (0-1200 RP), 13 divisions. Solo
+    // Prestige starts AT 1200 RP (solo only): PL1 1200, PL2 1700, PL3
+    // 2200, PL4 2700, PL5 3200 (500 RP steps, max PL5) — a leaderboard
+    // you climb by winning, resetting every 2 days (Teams stays 3).
+    // 1200 RP (RANKED_SOLO_LADDER_FLOOR_RP) is the Solo Prestige start,
+    // the solo placement RESULT floor and the solo soft-reset floor —
+    // never the ladder start. Solo points below 1200 display in the
+    // ladder (bottom rung Bronze I); solo points above 1200 display at
+    // the top rung (Fume III) with the right Solo Prestige level.
     const RANKED_TEAMS_PLACEMENT_DELTA_CAP_RP = 500; // Teams placement match: at most +500 RP
     const RANKED_SOLO_PLACEMENT_DELTA_CAP_RP = 300; // Solo placement match: at most +300 RP
-    const RANKED_SOLO_PLACEMENT_CAP_RP = 2400; // Brick Legend III / PL1 entry — higher solo prestige must be earned in Solo, not placed into
-    const RANKED_SOLO_LADDER_FLOOR_RP = 1200; // Brick Fume III (1200-1299 RP): the solo ladder starts here, never below — Anthony, 2026-11-20: "solo p leagues start at 1200rp now solo only". Used for the solo soft reset + solo displays, and since 2026-11-20 also as the solo placement RESULT floor (nobody places below the ladder start).
-    const RANKED_SOLO_LADDER_START_INDEX = 12; // Brick Fume III in RANKED_DIVISIONS (100 RP/division) — first solo league; pinned by tests
+    const RANKED_SOLO_PLACEMENT_CAP_RP = 2400; // Solo PL3 (2400 RP) — higher solo prestige must be earned in Solo, not placed into
+    const RANKED_SOLO_LADDER_FLOOR_RP = 1200; // Solo Prestige starts here (PL1, solo only) — also the solo placement RESULT floor and the solo soft-reset floor (never below 1200 RP). The solo LADDER itself starts at 0 RP (Brick Bronze I).
+    const RANKED_SOLO_LADDER_START_INDEX = 0; // Brick Bronze I in RANKED_DIVISIONS (100 RP/division) — first solo division; pinned by tests
+    const RANKED_SOLO_LADDER_END_INDEX = 12; // Brick Fume III in RANKED_DIVISIONS — last solo division (top of the solo ladder, 1200 RP); Solo Prestige starts at the next band; pinned by tests
     const RANKED_SOLO_LEAGUE_OPPONENT_SALT = 7919; // solo league opponents differ from the Teams ladder
     // First solo league placement: your Teams RP carries over as the
-    // base — capped at the PL1 entry cap (2400) — plus this placement
+    // base — capped at 2400 RP (Solo PL3) — plus this placement
     // match's own RP delta under the Teams rules, capped at +300 RP. A
-    // strong Teams player places high, a weak one places at the ladder
-    // start (1200 RP), and the match itself can never add more than
-    // +300 RP. The RESULT is floored at the solo ladder start (1200 RP)
-    // so nobody places below it, and capped at 2400 RP.
+    // strong Teams player places high, a weak one places at 1200 RP,
+    // and the match itself can never add more than +300 RP. The RESULT
+    // is floored at 1200 RP (Solo Prestige starts here) so nobody
+    // places below it, and capped at 2400 RP.
     function computeRankedSoloPlacement(teamsPoints, rpParts) {
         const teams = Math.max(0, Math.floor(teamsPoints || 0));
         const basePoints = Math.min(RANKED_SOLO_PLACEMENT_CAP_RP, teams);
@@ -16048,33 +16075,50 @@ let blinkEyeDodgeState = null;
         const points = Math.max(RANKED_SOLO_LADDER_FLOOR_RP, Math.min(RANKED_SOLO_PLACEMENT_CAP_RP, basePoints + matchDelta));
         return { points, basePoints, matchDelta, rawDelta, teamsPoints: teams, deltaCapPoints: RANKED_SOLO_PLACEMENT_DELTA_CAP_RP, capPoints: RANKED_SOLO_PLACEMENT_CAP_RP };
     }
-    // Solo ladder (corrected 2026-11-20): the solo ladder starts at
-    // Brick Fume III (1200 RP) — leagues below it do not exist in solo,
-    // so the solo ladder is 13 divisions (Fume III .. Legend III) plus
-    // Prestige, shorter than the 25-division Teams ladder. The league
-    // TABLE is unchanged; solo just starts at index 12. Solo points
-    // below 1200 RP (a low placement, or losses after placing) display
-    // at the bottom rung — Fume III, division 1 of 13 — never as a
-    // lower league.
+    // Solo Prestige (corrected 2026-11-21, Anthony): Solo Prestige
+    // starts AT 1200 RP, solo only — PL1 1200, PL2 1700, PL3 2200,
+    // PL4 2700, PL5 3200 (500 RP steps, max PL5). Teams Prestige is
+    // unchanged (starts at 2400 RP, getRankedPrestige).
+    function getRankedSoloPrestige(pointsRaw) {
+        const points = Math.max(0, Math.floor(pointsRaw || 0));
+        if (points < RANKED_SOLO_LADDER_FLOOR_RP) return 0;
+        return Math.min(RANKED_PRESTIGE_MAX, 1 + Math.floor((points - RANKED_SOLO_LADDER_FLOOR_RP) / RANKED_PRESTIGE_STEP_RP));
+    }
+    function getRankedSoloDisplayLabel(pointsRaw) {
+        const info = getRankedSoloTierInfo(pointsRaw);
+        const prestige = getRankedSoloPrestige(pointsRaw);
+        return prestige > 0 ? `${info.label} • Prestige League PL${prestige}` : info.label;
+    }
+    // Solo ladder (corrected 2026-11-21): the solo ladder is
+    // RANKED_DIVISIONS indices 0-12 ONLY — Bronze I .. Fume III
+    // (0-1200 RP), 13 divisions. Solo points map straight onto those
+    // divisions (100 RP each); points at/above 1200 sit at the top
+    // rung (Fume III, division 13 of 13) and climb Solo Prestige from
+    // there instead. Solo points below 1200 display in the ladder,
+    // bottoming at Bronze I — never as a league outside it.
     function getRankedSoloTierInfo(pointsRaw) {
         const info = getRankedTierInfo(pointsRaw);
-        const teamIndex = Math.max(RANKED_SOLO_LADDER_START_INDEX, info.index);
-        const current = RANKED_DIVISIONS[teamIndex] || RANKED_DIVISIONS[RANKED_SOLO_LADDER_START_INDEX];
-        const next = teamIndex < RANKED_DIVISIONS.length - 1 ? RANKED_DIVISIONS[teamIndex + 1] : null;
+        const soloIndex = Math.min(RANKED_SOLO_LADDER_END_INDEX, Math.max(RANKED_SOLO_LADDER_START_INDEX, info.index));
+        const current = RANKED_DIVISIONS[soloIndex] || RANKED_DIVISIONS[RANKED_SOLO_LADDER_START_INDEX];
+        const next = soloIndex < RANKED_SOLO_LADDER_END_INDEX ? RANKED_DIVISIONS[soloIndex + 1] : null;
         return {
-            index: teamIndex - RANKED_SOLO_LADDER_START_INDEX, // solo-relative: Fume III = 0
-            teamIndex,
+            index: soloIndex, // solo-relative == table index: Bronze I = 0 .. Fume III = 12
+            teamIndex: info.index,
             points: info.points,
             label: current.label,
             color: current.color,
             nextLabel: next ? next.label : null,
-            nextThreshold: next ? (teamIndex + 1) * RANKED_POINTS_PER_DIVISION : null,
-            divisionsTotal: RANKED_DIVISIONS.length - RANKED_SOLO_LADDER_START_INDEX // 13
+            nextThreshold: next ? (soloIndex + 1) * RANKED_POINTS_PER_DIVISION : null,
+            divisionsTotal: RANKED_SOLO_LADDER_END_INDEX - RANKED_SOLO_LADDER_START_INDEX + 1 // 13
         };
     }
     function getRankedSoloDivisionFloor(pointsRaw) {
-        // Solo division safety floor: never below the solo ladder start.
-        return Math.max(RANKED_SOLO_LADDER_FLOOR_RP, getRankedDivisionFloor(pointsRaw));
+        // Solo division floor: the start of the current solo division
+        // (100 RP bands, Bronze I .. Fume III) — never above the ladder
+        // top (1200 RP, Brick Fume III). Solo points above the ladder
+        // sit at the top rung, so the floor caps at 1200.
+        const points = Math.max(0, Math.floor(pointsRaw || 0));
+        return Math.min(RANKED_SOLO_LADDER_FLOOR_RP, Math.floor(points / RANKED_POINTS_PER_DIVISION) * RANKED_POINTS_PER_DIVISION);
     }
     function ensureRankedSoloSeasonState() {
         if (!playerData.rankedSolo || typeof playerData.rankedSolo !== 'object') {
@@ -16093,7 +16137,7 @@ let blinkEyeDodgeState = null;
         const activeRankedSeasonId = getActiveSeasonPassId();
         if (solo.seasonId == null) solo.seasonId = activeRankedSeasonId;
         if (solo.seasonId !== activeRankedSeasonId) {
-            applyRankedSeasonReset(solo, RANKED_SOLO_LADDER_FLOOR_RP);
+            applyRankedSeasonReset(solo, RANKED_SOLO_LADDER_FLOOR_RP, true);
         }
         if (solo.weekKey == null) solo.weekKey = getRankedWeekKey();
         if (solo.weekKey !== getRankedWeekKey()) {
@@ -16107,10 +16151,12 @@ let blinkEyeDodgeState = null;
         return Math.max(0, Math.floor(solo.points || 0)) < solo.resetBoostTarget;
     }
     // Solo Prestige League unlock mirrors Teams: the solo ladder is
-    // complete once you reach Brick Legend III (2400 RP) in Solo.
+    // complete once you reach its top, Brick Fume III (1200 RP) — which
+    // is also where Solo Prestige (PL1) begins. A freshly placed player
+    // (placement floor 1200 RP) unlocks the league at once.
     function hasCompletedRankedSolo() {
         const points = Math.max(0, Math.floor((playerData.rankedSolo && playerData.rankedSolo.points) || 0));
-        return getRankedTierInfo(points).index >= RANKED_DIVISIONS.length - 1;
+        return points >= RANKED_SOLO_LADDER_FLOOR_RP;
     }
     function startRankedSoloMatch() {
         ensureRankedSoloSeasonState();
@@ -47791,10 +47837,10 @@ let heistFeverActive = false;
         const seasonProfile = getActiveSeasonProfile();
         // Prestige League (2026-11-20 rework): if you are in it, the hub
         // shows the leaderboard instead of the progress bar. Opening the
-        // hub rolls the 3-day cycle and pays last cycle's top-3 rewards,
-        // and recordPrestigeLeagueMatch updates it after every ranked
-        // match — so what you see here is always the latest standings,
-        // with you and your allies' names.
+        // hub rolls the cycle (3-day Teams, 2-day Solo) and pays last
+        // cycle's top-3 rewards, and recordPrestigeLeagueMatch updates
+        // it after every ranked match — so what you see here is always
+        // the latest standings, with you and your allies' names.
         const leagueState = ensurePrestigeLeagueState();
         const inPrestigeLeague = !leagueState.locked;
         const eloBoostActive = isRankedEloBoostActive();
@@ -47826,11 +47872,14 @@ let heistFeverActive = false;
         // and elo boost — next to Teams, never instead of it.
         const soloBucket = ensureRankedSoloSeasonState();
         const soloPoints = Math.max(0, Math.floor(soloBucket.points || 0));
-        // Solo ladder (corrected 2026-11-20): solo displays use the
-        // solo-aware tier info — the ladder starts at Brick Fume III
-        // (1200 RP), 13 divisions, never a league below Fume III.
+        // Solo ladder (corrected 2026-11-21): solo displays use the
+        // solo-aware tier info — the ladder is Bronze I .. Fume III
+        // (0-1200 RP), 13 divisions, and Solo Prestige starts at 1200.
         const soloLadderInfo = getRankedSoloTierInfo(soloPoints);
         const soloFloor = getRankedSoloDivisionFloor(soloPoints);
+        // Division safety floor (match settlement): the Teams division
+        // floor table — a solo loss never drops you below it.
+        const soloSafetyFloor = getRankedDivisionFloor(soloPoints);
         const soloIntoDivision = Math.max(0, soloPoints - soloFloor);
         const soloDivisionPct = soloLadderInfo.nextThreshold ? Math.min(100, Math.round((soloIntoDivision / Math.max(1, soloLadderInfo.nextThreshold - soloFloor)) * 100)) : 100;
         const soloHalfwayRp = soloLadderInfo.nextThreshold ? Math.floor((soloFloor + soloLadderInfo.nextThreshold) / 2) : null;
@@ -47854,14 +47903,14 @@ let heistFeverActive = false;
         const soloLeagueBoardHtml = `
                 <div class="ranked-hub-league">
                   <div style="font-weight:900;color:#ffd166;">👑 SOLO PRESTIGE LEAGUE LEADERBOARD</div>
-                  <div class="ranked-hub-bar-label"><span>👑 SOLO PRESTIGE LEAGUE PL${getPrestigeLeagueLevel(soloPoints)}</span><span>YOU ARE #${soloLeagueRank}</span></div>
+                  <div class="ranked-hub-bar-label"><span>👑 SOLO PRESTIGE LEAGUE PL${getPrestigeLeagueLevel(soloPoints, true)}</span><span>YOU ARE #${soloLeagueRank}</span></div>
                   <div class="ranked-hub-league-board">${soloLeagueStandings.map((r, i) => `<div style="${r.isPlayer ? 'font-weight:900;color:#ffe14d;' : 'color:#dceeff;'}">${i + 1}. ${r.isPlayer ? 'YOU' : r.name} — ${r.rp} RP${r.isPlayer ? ' ⭐' : ''}</div>`).join('')}</div>
-                  <div class="ranked-hub-meta">Leaderboard updates after every ranked match · resets every 3 days</div>
+                  <div class="ranked-hub-meta">Leaderboard updates after every ranked match · resets every 2 days</div>
                 </div>`;
         const soloPlacementHtml = `
                 <div class="ranked-hub-solo-placement">
                   <div style="font-weight:900;color:#ffd166;">🎯 PLAY 1 RANKED SOLO MATCH TO GET PLACED</div>
-                  <div class="ranked-hub-meta">Your Teams rank (${tierInfo.label} · ${rankedPoints} RP) + your match stats set your starting league. A placement match can add up to +300 RP. Solo leagues start at Brick Fume III (1200 RP) — the solo ladder has 13 divisions.</div>
+                  <div class="ranked-hub-meta">Your Teams rank (${tierInfo.label} · ${rankedPoints} RP) + your match stats set your starting league. A placement match can add up to +300 RP. Solo leagues run Bronze I to Fume III (0–1200 RP) — 13 divisions — then Solo Prestige from 1200 RP.</div>
                 </div>`;
         const hub = document.createElement('div');
         hub.className = 'ranked-hub-overlay';
@@ -47896,11 +47945,11 @@ let heistFeverActive = false;
                 <div class="ranked-hub-season"><span>RANKED SOLO</span><span>SOLO SHOWDOWN · WITH BOTS</span></div>
                 <div class="ranked-hub-emblem">
                   <span class="ranked-hub-glyph" aria-hidden="true">🎯</span>
-                  <b>${soloPlaced ? (soloInPrestigeLeague ? getRankedDisplayLabel(soloPoints) : soloLadderInfo.label) : 'NOT PLACED YET'}</b>
+                  <b>${soloPlaced ? (soloInPrestigeLeague ? getRankedSoloDisplayLabel(soloPoints) : soloLadderInfo.label) : 'NOT PLACED YET'}</b>
                   <span>${soloPlaced ? `${soloPoints} RP · DIVISION ${soloLadderInfo.index + 1} OF ${soloLadderInfo.divisionsTotal}` : 'Play 1 Ranked Solo match to get placed'}</span>
                 </div>
                 ${!soloPlaced ? soloPlacementHtml : (soloInPrestigeLeague ? soloLeagueBoardHtml : soloProgressHtml)}
-                <div class="ranked-hub-meta">${soloPlaced ? (soloInPrestigeLeague ? `Division safety floor: ${soloFloor} RP` : `${soloLadderInfo.nextLabel ? `${Math.max(0, soloLadderInfo.nextThreshold - soloLadderInfo.points)} RP to ${soloLadderInfo.nextLabel} · ` : ''}Division safety floor: ${soloFloor} RP${soloHalfwayRp != null ? ` · Halfway at ${soloHalfwayRp} RP` : ''}`) : 'Solo leagues start at Brick Fume III (1200 RP) — the solo ladder has 13 divisions.'}</div>
+                <div class="ranked-hub-meta">${soloPlaced ? (soloInPrestigeLeague ? `Division safety floor: ${soloSafetyFloor} RP` : `${soloLadderInfo.nextLabel ? `${Math.max(0, soloLadderInfo.nextThreshold - soloLadderInfo.points)} RP to ${soloLadderInfo.nextLabel} · ` : ''}Division safety floor: ${soloSafetyFloor} RP${soloHalfwayRp != null ? ` · Halfway at ${soloHalfwayRp} RP` : ''}`) : 'Solo leagues run Bronze I to Fume III (0–1200 RP) — 13 divisions — then Solo Prestige from 1200 RP.'}</div>
                 <button type="button" class="ranked-hub-play ranked-hub-play-card" data-ranked-hub="play-solo">▶ PLAY RANKED SOLO</button>
               </div>
             </div>
@@ -80871,10 +80920,10 @@ function checkHit(target, b, i){
                 // rank is the base, and this match's own RP delta under
                 // the Teams rules can add at most +300 RP (the delta is
                 // capped, not floored — Anthony 2026-11-20); the RESULT
-                // is capped at 2400 RP and floored at the solo ladder
-                // start (1200 RP), so a player already over 1200 places
-                // into the league matching their RP and nobody places
-                // below the ladder start. The placement IS the gain —
+                // is capped at 2400 RP (Solo PL3) and floored at 1200 RP
+                // (Solo Prestige starts here), so a player already over
+                // 1200 places into the league matching their RP and
+                // nobody places below 1200 RP. The placement IS the gain —
                 // no elo boost, no division-climb payout on top of it.
                 // Placed is set here, unconditionally, so a first solo
                 // match can never leave the player stuck unplaced.
@@ -80887,8 +80936,7 @@ function checkHit(target, b, i){
                     rankedBucket.placed = true;
                     rankedBucket.placement = soloPlacement;
                     rankedDelta = soloPlacement.points;
-                    const placedTier = getRankedTierInfo(soloPlacement.points);
-                    rankedDivisionSummary = `Placed: ${placedTier.label} (${soloPlacement.points} RP)`;
+                    rankedDivisionSummary = `Placed: ${getRankedSoloDisplayLabel(soloPlacement.points)} (${soloPlacement.points} RP)`;
                 } else {
                     // Ranked Seasons (2026-11-20 rework): elo boost — double
                     // RP gains on wins until you climb back to your pre-reset
@@ -80911,8 +80959,11 @@ function checkHit(target, b, i){
                             rankedPromotionSouls += 10;
                             if ((idx + 1) % 4 === 0) rankedPromotionGems += 2;
                         }
-                        const beforePrestige = getRankedPrestige(beforePoints);
-                        const afterPrestige = getRankedPrestige(afterPoints);
+                        // Prestige level-ups pay the prestige bonus in
+                        // whichever ladder this match played in: Solo
+                        // Prestige starts at 1200 RP, Teams at 2400 RP.
+                        const beforePrestige = isRankedSoloMatch ? getRankedSoloPrestige(beforePoints) : getRankedPrestige(beforePoints);
+                        const afterPrestige = isRankedSoloMatch ? getRankedSoloPrestige(afterPoints) : getRankedPrestige(afterPoints);
                         for (let p = beforePrestige + 1; p <= afterPrestige; p++) {
                             rankedPromotionCoins += 250;
                             rankedPromotionSouls += 25;
@@ -81095,8 +81146,9 @@ function checkHit(target, b, i){
                     rewardsBox.appendChild(rpBreakdownDiv);
                 }
                 // Prestige League standings (rebuild 2026-11-20): the
-                // leaderboard resets every 3 days; the 2 names shown with
-                // you are your teammates.
+                // leaderboard resets every 3 days (Teams) / 2 days
+                // (Solo); the 2 names shown with you are your teammates
+                // (Teams only — Solo has no teammates).
                 if (prestigeLeague && !prestigeLeague.locked) {
                     const leagueDiv = document.createElement('div');
                     const standings = getPrestigeLeagueStandings(prestigeLeague);
