@@ -14,7 +14,7 @@ const rectsOverlap = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y +
 // --- Roster + gadget data, parsed from the real game.js ---
 const rosterMatch = game.match(/const allBrawlers = \[([\s\S]*?)\];/);
 const roster = [...rosterMatch[1].matchAll(/'([^']+)'/g)].map((m) => m[1]);
-check('roster parses: 105 selectable brawlers', roster.length === 105);
+check('roster parses: 106 selectable brawlers', roster.length === 106);
 function parseBrawlerData(src) {
     const start = src.indexOf('const brawlerData = {');
     let depth = 0, end = -1;
@@ -40,9 +40,9 @@ function parseBrawlerData(src) {
     return rows;
 }
 const gadgets = parseBrawlerData(game);
-check('brawlerData parses: 210 gadgets (105 g1 + 105 g2)', gadgets.length === 210
-    && gadgets.filter((g) => g.slot === 'g1').length === 105
-    && gadgets.filter((g) => g.slot === 'g2').length === 105);
+check('brawlerData parses: 212 gadgets (106 g1 + 106 g2)', gadgets.length === 212
+    && gadgets.filter((g) => g.slot === 'g1').length === 106
+    && gadgets.filter((g) => g.slot === 'g2').length === 106);
 check('every roster brawler has both gadgets in brawlerData',
     roster.every((b) => gadgets.some((g) => g.id === b && g.slot === 'g1') && gadgets.some((g) => g.id === b && g.slot === 'g2')));
 
@@ -67,18 +67,18 @@ if (iconSrc) {
 }
 if (iconApi) {
     const map = iconApi.MOBILE_GADGET_ICONS;
-    check('icon map has 210 entries', Object.keys(map).length === 210);
+    check('icon map has 212 entries', Object.keys(map).length === 212);
     check('icon map covers every gadget in brawlerData (no fallback needed)',
         gadgets.every((g) => typeof map[`${g.id}:${g.slot}`] === 'string' && map[`${g.id}:${g.slot}`].length > 0));
     check('no gadget maps to the gear fallback (\\u2699)',
         Object.values(map).every((v) => v !== '\u2699'));
     const distinct = new Set(Object.values(map)).size;
-    check(`icon map uses 161 distinct icons for 210 gadgets (repeats only inside one effect family)`, distinct === 161);
+    check(`icon map uses 162 distinct icons for 212 gadgets (repeats only inside one effect family)`, distinct === 162);
     // The icon map was byte-identical to the pre-deletions build (verified)
     // before Pitch; Pitch adds 2 entries, of which only ✳️ is a new icon
-    // (➕ repeats unopcoloco's). The pinned 210-entry / 161-distinct counts
+    // (➕ repeats unopcoloco's). The pinned 212-entry / 162-distinct counts
     // above are the no-new-art guard.
-    check('icon map has no entries beyond the 210 pinned above (no new art)', Object.keys(map).length === 210);
+    check('icon map has no entries beyond the 212 pinned above (no new art)', Object.keys(map).length === 212);
     // Getter behaviour.
     const get = iconApi.getMobileToolButtonIcon;
     check('getter: looma g1 -> Snip Snap icon', get('looma', 'g1') === map['looma:g1'] && get('looma', 'g1') === '🔪');

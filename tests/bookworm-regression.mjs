@@ -46,7 +46,7 @@
 // FreeZeon (2026-11-15) now makes 110 ids / 102 selectable.
 // Driller (2026-11-16) now makes 111 ids / 103 selectable.
 // Gravy (2026-11-16) now makes 112 ids / 104 selectable.
-// Delete-disabled (2026-11-16) now makes 104 ids / 104 selectable. Pitch (2026-11-20) now makes 105 ids / 105 selectable.
+// Delete-disabled (2026-11-16) now makes 104 ids / 104 selectable. Pitch (2026-11-20) now makes 105 ids / 105 selectable. Spritz (2026-11-22) now makes 106 ids / 106 selectable.
 // Known limitation (flagged, not a spec deviation): in Fused mode the
 // redirect and the jumps are skipped — the fused component fires the normal
 // main attack instead.
@@ -66,11 +66,11 @@ function check(name, cond) {
 const near = (a, b, eps = 0.01) => Math.abs(a - b) < eps;
 
 // ---------------------------------------------------------- 1. source pins
-check('roster includes bookworm (105 ids with Gravy + Pitch)', game.includes("'pandy', 'snipa', 'bookworm'"));
-check('selectable is 105 (105 ids, none disabled, bookworm not disabled)', (() => {
+check('roster includes bookworm (106 ids with Gravy + Pitch)', game.includes("'pandy', 'snipa', 'bookworm'"));
+check('selectable is 106 (106 ids, none disabled, bookworm not disabled)', (() => {
   const all = [...game.match(/const allBrawlers\s*=\s*\[([\s\S]*?)\];/)[1].matchAll(/'([^']+)'/g)].map(m => m[1]);
   const disabled = [];
-  return all.length === 105 && all.filter(id => !disabled.includes(id)).length === 105;
+  return all.length === 106 && all.filter(id => !disabled.includes(id)).length === 106;
 })());
 check('rarity Epic (170 souls)', game.includes("bookworm: 'Epic',") && game.includes('Epic: 170'));
 check('role Controller', game.includes("bookworm:'Controller',"));

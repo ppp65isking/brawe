@@ -72,11 +72,11 @@ function check(name, cond) {
 // ---------------------------------------------------------- 1. source pins
 check('kill switch SNIPA_ENABLED defaults on', game.includes('let SNIPA_ENABLED = true;'));
 check('visuals switch SNIPA_VISUALS_ENABLED defaults on', game.includes('let SNIPA_VISUALS_ENABLED = true;'));
-check('roster includes snipa (104 ids with Gravy)', game.includes("'pandy', 'snipa', 'bookworm'"));
-check('selectable is 104 (104 ids, none disabled, snipa not disabled)', (() => {
+check('roster includes snipa (106 ids with Gravy + Pitch + Spritz)', game.includes("'pandy', 'snipa', 'bookworm'"));
+check('selectable is 106 (106 ids, none disabled, snipa not disabled)', (() => {
   const all = [...game.match(/const allBrawlers\s*=\s*\[([\s\S]*?)\];/)[1].matchAll(/'([^']+)'/g)].map(m => m[1]);
   const disabled = [];
-  return all.length === 105 && all.filter(id => !disabled.includes(id)).length === 105;
+  return all.length === 106 && all.filter(id => !disabled.includes(id)).length === 106;
 })());
 check('rarity Epic (170 souls)', game.includes("snipa: 'Epic',") && game.includes('Epic: 170'));
 check('role Marksman', game.includes("snipa:'Marksman',"));

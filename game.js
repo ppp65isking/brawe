@@ -1313,6 +1313,11 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             const hpScale = getLevelHpScale(level);
             return { hp: Math.round(5200 * hpScale), dmg: Math.round(700 * scale), speed: 270 };
         }
+        if (brawlerId === 'spritz') {
+            const scale = 0.55 + (level - 1) * 0.045;
+            const hpScale = getLevelHpScale(level);
+            return { hp: Math.round(5200 * hpScale), dmg: Math.round(650 * scale), speed: 270 };
+        }
         if (brawlerId === 'looma') {
             const scale = 0.55 + (level - 1) * 0.045;
             const hpScale = getLevelHpScale(level);
@@ -1922,6 +1927,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             if (selectedBrawler === 'driller') { try { window.BraweDrillerVoice?.play('kill'); } catch (e) {} }
             // Gravy voice: player kill line.
             if (selectedBrawler === 'gravy') { try { window.BraweGravyVoice?.play('kill'); } catch (e) {} }
+            // Spritz voice: player kill line.
+            if (selectedBrawler === 'spritz') { try { window.BraweSpritzVoice?.play('kill'); } catch (e) {} }
             // Pitch voice: player kill line.
             if (selectedBrawler === 'pitch') { try { window.BrawePitchVoice?.play('kill'); } catch (e) {} }
         }
@@ -4420,6 +4427,8 @@ function updateGadgetInfo() {
         'gravy:g2': '🥄',
         'pitch:g1': '✳️',
         'pitch:g2': '➕',
+        'spritz:g1': '💧',
+        'spritz:g2': '🌊',
   };
   function getMobileToolButtonIcon(brawlerId, gadgetSlot) {
       // selectedBrawler / selectedGadget are let bindings declared later
@@ -5926,6 +5935,7 @@ const bolznstienPendingStrikes = [];
             driller: 1600,
             gravy: 1600,
             pitch: 1600,
+            spritz: 1600,
             carmela_fudge: 1400,
             oil_maker: 90,
             magnatar: 1450,
@@ -6000,6 +6010,7 @@ const bolznstienPendingStrikes = [];
             driller: 300,
             gravy: 300,
             pitch: 300,
+            spritz: 300,
             carmela_fudge: 180,
             oil_maker: 112,
             magnatar: 200,
@@ -7828,7 +7839,7 @@ const bolznstienPendingStrikes = [];
     // end (modules expose no stop); every later play() is silenced
     // immediately, no reload needed.
     const APP_MUTED_KEY = 'arenaForgeMutedV1';
-    const APP_AUDIO_MODULE_NAMES = ['BraweOutlitVoice', 'BraweFuserVoice', 'BraweVoodoyouVoice', 'BrawePandyVoice', 'BraweSnipaVoice', 'BraweBookwormVoice', 'BraweFreezeonVoice', 'BraweDrillerVoice', 'BraweGravyVoice', 'BrawePitchVoice', 'BraweHyperchargeSfx'];
+    const APP_AUDIO_MODULE_NAMES = ['BraweOutlitVoice', 'BraweFuserVoice', 'BraweVoodoyouVoice', 'BrawePandyVoice', 'BraweSnipaVoice', 'BraweBookwormVoice', 'BraweFreezeonVoice', 'BraweDrillerVoice', 'BraweGravyVoice', 'BrawePitchVoice', 'BraweSpritzVoice', 'BraweHyperchargeSfx'];
     function appSoundMuted() {
         try { return localStorage.getItem(APP_MUTED_KEY) === '1'; } catch (_) { return false; }
     }
@@ -8411,7 +8422,7 @@ const bolznstienPendingStrikes = [];
         'boom_arang', 'teether', 'fuel', 'xray', 'angel', 'demon', 'warrior', 'relay',
         'upiedown', 'chickpig', 'jetpack', 'snapper', 'rocketeer',
         'carmela_fudge', 'peter_pickle', 'unstable', 'homer', 'orbo', 'predator', 'fastpass', 'freestyle', 'portalo', 'ghoul', 'jacktrade', 'darkener', 'awakenator', 'ice_cream', 'kage', 'drainbow', 'draflygon', 'axeywaxy', 'trampaheal', 'mageny', 'ramage', 'upgradart', 'cinderion', 'cursed', 'king', 'anti_royal', 'sir_cheeseburger', 'weefee', 'blinkeye', 'bolznstien', 'magnatar', 'oil_maker', 'rager', 'badbat', 'looma',
-        'feathers', 'spikey', 'electrostien', 'mallow', 'nightshade', 'aegis', 'runner', 'aura_charmer', 'voltastein', 'staticstein', 'healnstein', 'voodoyou', 'pandy', 'snipa', 'bookworm', 'freezeon', 'driller', 'gravy', 'pitch'
+        'feathers', 'spikey', 'electrostien', 'mallow', 'nightshade', 'aegis', 'runner', 'aura_charmer', 'voltastein', 'staticstein', 'healnstein', 'voodoyou', 'pandy', 'snipa', 'bookworm', 'freezeon', 'driller', 'gravy', 'pitch', 'spritz'
     ];
     const registeredBrawlerModules = window.ArenaForgeModules?.brawlers || Object.create(null);
     for (const moduleId of Object.keys(registeredBrawlerModules)) {
@@ -8530,6 +8541,7 @@ const bolznstienPendingStrikes = [];
             aura_charmer: 'Mythic',
             staticstein: 'Mythic',
             voodoyou: 'Mythic',
+            spritz: 'Mythic',
             // Exotic (10)
             the_deleter: 'Exotic',
             copyphase: 'Exotic',
@@ -12486,6 +12498,17 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           g2: 'Echo Hex (Next Hex Toss fires a second plus-shaped burst when it lands)',
           sp1: 'Curveball (Her main-attack shards curve clockwise as they fly)',
           sp2: 'Stampede (Pigs from her Super run 50% faster for the first 3 seconds)'
+      },
+      'spritz': {
+          name: 'Spritz', role: 'Controller', rarity: 'Mythic', color: '#38bdf8',
+          desc: 'A spray-bottle schemer who cycles through mist, stream, and hose blast. His Super swaps his spray mode and drops water shells that burst into pushback shots.',
+          attack: 'Spray Cycle', attackDesc: 'Spritz fires in his current spray mode — Mist slows, Focus Stream pushes, Hose Blast explodes. His Super swaps the mode.',
+          super: 'Mode Swap', superDesc: 'Spritz swaps to his next spray mode and drops 2 water shells. Picking up a shell stores bonus ammo and fires 3 pushback stream shots around him.',
+          hyper: 'Triple Threat: his main attack fires one projectile that deals damage in the middle, trails slowing mist on the sides, and explodes in a water blast at the end. Mode Swap drops 3 shells instead of 2, and shell shots fire twice.',
+          g1: 'Water Circle (Spawn a circle of water around you that heals you while you stand in it. It disappears after 4 seconds)',
+          g2: 'All-Out Spray (Your next shot fires every projectile at once, like your Hypercharged main attack)',
+          sp1: 'Rooted Spray (Shell-pickup shots root enemies for 1 second)',
+          sp2: 'Double Splash (Your water blast explodes one extra time, and mist and stream projectiles fly 25% faster)'
       }
   };
     // Player-facing BRAWE vocabulary. Legacy save keys and combat identifiers
@@ -12509,7 +12532,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
     }
     // V4 standardized primary-role organization: exactly one gameplay role per brawler.
     const PRIMARY_ROLE_BY_BRAWLER = {
-        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank', rager:'Controller', looma:'Controller', feathers:'Controller', spikey:'Damage Dealer', electrostien:'Assassin', mallow:'Controller', nightshade:'Assassin', runner:'Controller', aura_charmer:'Support', voltastein:'Artillery', staticstein:'Damage Dealer', healnstein:'Support', voodoyou:'Controller', pandy:'Damage Dealer', bookworm:'Controller', freezeon:'Controller', driller:'Damage Dealer', gravy:'Artillery', pitch:'Artillery',
+        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank', rager:'Controller', looma:'Controller', feathers:'Controller', spikey:'Damage Dealer', electrostien:'Assassin', mallow:'Controller', nightshade:'Assassin', runner:'Controller', aura_charmer:'Support', voltastein:'Artillery', staticstein:'Damage Dealer', healnstein:'Support', voodoyou:'Controller', pandy:'Damage Dealer', bookworm:'Controller', freezeon:'Controller', driller:'Damage Dealer', gravy:'Artillery', pitch:'Artillery', spritz:'Controller',
     carmela_fudge:'Damage Dealer', bolznstien:'Damage Dealer', badbat:'Damage Dealer', magnatar:'Controller', oil_maker:'Controller', sir_cheeseburger:'Tank',
         kage:'Assassin', drainbow:'Controller', bowlin_rida:'Assassin', dashaholic:'Assassin', demon:'Assassin', jetpack:'Assassin', malakor:'Assassin', predator:'Assassin', teether:'Assassin',
         boom_arang:'Marksman', cheseypuff:'Marksman', crystila:'Marksman', homer:'Marksman', hunter:'Marksman', orbo:'Marksman', snapper:'Marksman', xray:'Marksman', snipa:'Marksman',
@@ -12546,6 +12569,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
             driller: '⛏️',
             gravy: '🫕',
             pitch: '🐷',
+            spritz: '💦',
     looma: '🪡🧵',
         sir_cheeseburger: '🛡️',
         anti_royal: '🏴‍☠️',
@@ -13319,6 +13343,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
       driller: { g1: 14000, g2: 16000 },
       gravy: { g1: 14000, g2: 16000 },
       pitch: { g1: 14000, g2: 16000 },
+      spritz: { g1: 14000, g2: 16000 },
       carmela_fudge: { g1: 8000, g2: 8000 },
       bolznstien: { g1: 14000, g2: 15000 },
       sir_cheeseburger: { g1: 13000, g2: 14000 },
@@ -13530,6 +13555,12 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
   let screenShakeAmount = 0;
   let stormRadius = 4000;
   let stormTimer = 0;
+    // Showdown storm Play Again fix (2026-11-22): the storm state was
+    // only ever reset in startDuelsRound, never on a Showdown launch —
+    // so a finished match's closed storm (small stormRadius, large
+    // stormTimer) carried into the next match and stayed visible until
+    // a page reload. Every Showdown launch resets it here.
+    function resetShowdownStorm() { stormTimer = 0; stormRadius = 4000; }
   // per-entity next-shot homing flag will be stored on the entity (player/bots) as nextDecayerHoming
   // Duels Mode State
   let isDuels = false;
@@ -26288,6 +26319,466 @@ let heistFeverActive = false;
             pitchVoicePrevGameOver = gameOver;
         } catch (e) {}
     }
+    // ===== Spritz systems (2026-11-22, Anthony's spec) =====
+    // Identity (Cosmo's picks at Anthony's direction — he can veto):
+    // Spritz, Mythic Controller, 270 souls, water blue #38bdf8, 💦.
+    // Three firing modes, cycled ONLY by using the Super (Mist -> Focus
+    // Stream -> Hose Blast). Mist is a wide slowing cloud, NOT a
+    // projectile. Focus Stream is a big water projectile that pushes
+    // enemies back and spends the normal ammo bar until reload. Hose
+    // Blast is a three-cone water blast that explodes.
+    // Super "Mode Swap": does NOT charge from dealing damage — it
+    // auto-charges over ~8s (his number) and can be held once ready.
+    // On use it cycles the mode AND drops 2 water shells (3 while
+    // Hypercharged). Picking up a shell stores bonus ammo AND fires 3
+    // pushback high-stream shots around him.
+    // Hypercharge: all three modes at once. The Hyper main attack is ONE
+    // projectile — damage in the middle, slowing mist on the sides, and
+    // at the end (hit or miss) it explodes in a water blast. Super drops
+    // 3 shells; each shell's pushback shots fire twice, the second hit
+    // pushing only, no damage.
+    // SP1 Rooted Spray (Anthony): shell-pickup shots root enemies 1s.
+    // SP2 Double Splash (Anthony): the water blast explodes one extra
+    // time; mist and stream projectiles fly 25% faster.
+    // G1 Water Circle (Anthony): a circle of water around him he can
+    // walk on; it heals him while he stays in it and is gone after 4s.
+    // G2 All-Out Spray (Anthony): his next shot fires every projectile
+    // at once, like the Hyper main attack.
+    // Builder picks (NOT his numbers — flagged for his correction): HP
+    // 5200 / speed 270 / reload 1600ms / fire delay 300ms; mode order
+    // Mist -> Focus Stream -> Hose Blast; mist range 550 / radius 150 /
+    // 2.5s / drift 60 px/s; stream 850 px/s / 700 range / 650 dmg /
+    // 120 pushback; hose cone 20 deg / 700 px/s / 450 range / 200 impact
+    // + 500 blast in 110px; Hyper main 750 px/s / 800 range / 800 middle
+    // + 600 blast in 130px; shell pickup radius 60; shell shots 500 dmg
+    // / 120 pushback / 500 range; second volley 300ms later; SP2 second
+    // blast 250ms later; G1 heal 400 HP/s / radius 160; bot Super gate
+    // 700px; kit names. Only the damage-charge path is blocked
+    // (grantMainAttackCharge); other super grants (mode bonuses,
+    // pickups) are untouched — open question, flagged.
+    const SPRITZ_SUPER_CHARGE_SECONDS = 8; // his number: Super auto-charges over ~8s, never from damage
+    const SPRITZ_MODE_ORDER = ['mist', 'stream', 'hose'];
+    const SPRITZ_MODE_LABELS = { mist: 'MIST', stream: 'FOCUS STREAM', hose: 'HOSE BLAST' };
+    const SPRITZ_MIST_RANGE = 550; // px — aim clamp for the mist cloud
+    const SPRITZ_MIST_RADIUS = 150; // px cloud radius
+    const SPRITZ_MIST_DURATION_MS = 2500; // ms cloud lifetime
+    const SPRITZ_MIST_DRIFT_SPEED = 60; // px/s cloud drift in the aim direction
+    const SPRITZ_MIST_SLOW_MS = 400; // ms slow linger refreshed on enemies inside
+    const SPRITZ_STREAM_SPEED = 850; // px/s Focus Stream projectile speed
+    const SPRITZ_STREAM_RANGE = 700; // px Focus Stream range
+    const SPRITZ_STREAM_DMG = 650; // P11 Focus Stream damage (see getScaledStats 'spritz'.dmg)
+    const SPRITZ_STREAM_KNOCKBACK = 120; // px pushback on a stream hit
+    const SPRITZ_HOSE_CONE_DEG = 20; // deg half-angle of the three-cone blast
+    const SPRITZ_HOSE_SPEED = 700; // px/s Hose Blast projectile speed
+    const SPRITZ_HOSE_RANGE = 450; // px Hose Blast range
+    const SPRITZ_HOSE_IMPACT_DMG = 200; // P11 damage on a direct hose hit
+    const SPRITZ_HOSE_BLAST_DMG = 500; // P11 water-blast explosion damage
+    const SPRITZ_HOSE_BLAST_RADIUS = 110; // px water-blast explosion radius
+    const SPRITZ_HYPER_MAIN_SPEED = 750; // px/s Hyper main projectile speed
+    const SPRITZ_HYPER_MAIN_RANGE = 800; // px Hyper main range
+    const SPRITZ_HYPER_MAIN_DMG = 800; // P11 Hyper main middle damage
+    const SPRITZ_HYPER_BLAST_DMG = 600; // P11 Hyper end-explosion damage
+    const SPRITZ_HYPER_BLAST_RADIUS = 130; // px Hyper end-explosion radius
+    const SPRITZ_HYPER_TRAIL_EVERY_PX = 60; // px travelled per mist puff left behind
+    const SPRITZ_HYPER_TRAIL_MIST_RADIUS = 60; // px radius of a trail mist puff
+    const SPRITZ_HYPER_TRAIL_MIST_MS = 1500; // ms lifetime of a trail mist puff
+    const SPRITZ_SUPER_SHELL_COUNT = 2; // shells per Mode Swap (his number)
+    const SPRITZ_SUPER_SHELL_COUNT_HYPER = 3; // shells while Hypercharged (his number)
+    const SPRITZ_SHELL_PICKUP_RADIUS = 60; // px shell pickup radius
+    const SPRITZ_SHELL_SHOT_COUNT = 3; // pushback shots per shell pickup (his number)
+    const SPRITZ_SHELL_SHOT_SPEED = 850; // px/s shell-shot speed
+    const SPRITZ_SHELL_SHOT_RANGE = 500; // px shell-shot range
+    const SPRITZ_SHELL_SHOT_DMG = 500; // P11 shell-shot damage
+    const SPRITZ_SHELL_SHOT_KNOCKBACK = 120; // px pushback on a shell-shot hit
+    const SPRITZ_SHELL_SECOND_VOLLEY_DELAY_MS = 300; // Hyper: second volley fires this long after the first
+    const SPRITZ_SP1_ROOT_MS = 1000; // SP1: shell shots root 1s (his number)
+    const SPRITZ_SP2_SPEED_MULT = 1.25; // SP2: mist + stream projectiles 25% faster (his number)
+    const SPRITZ_SP2_SECOND_BLAST_DELAY_MS = 250; // SP2: the water blast explodes again this long after the first
+    const SPRITZ_G1_HEAL_PER_S = 400; // HP/s healed inside the Water Circle
+    const SPRITZ_G1_RADIUS = 160; // px Water Circle radius
+    const SPRITZ_G1_DURATION_MS = 4000; // ms Water Circle lifetime (his number: 4s)
+    const SPRITZ_BOT_SUPER_RANGE = 700; // px — bots cast Mode Swap when an enemy is this close
+    let spritzMists = []; // {x, y, r, vx, vy, until, ownerId, hyper} — slowing mist clouds
+    let spritzShells = []; // {x, y, ownerId, hyper, createdAt} — water shells dropped by the Super
+    let spritzPendingVolleys = []; // {ang, ownerId, fireAt, pushOnly} — Hyper second shell-shot volleys waiting to fire
+    let spritzPendingBlasts = []; // {x, y, kind, ownerId, hyper, fireAt} — SP2 second water-blast explosions waiting to fire
+    let spritzWaterCircles = []; // {x, y, r, ownerId, until, nextTickAt} — G1 heal circles
+    let spritzVoicePrevPlaying = false;
+    let spritzVoicePrevGameOver = false;
+    let spritzVoiceMatchEndPlayed = false;
+    let spritzVoiceLastHp = null;
+    let spritzVoiceLastActionAt = 0;
+    let spritzVoiceLastIdleAt = 0;
+    function spritzLevelScale(entity) {
+        const lvl = entity === player ? getSelectedBrawlerLevel() : (entity.level || 11);
+        return 0.55 + (lvl - 1) * 0.045;
+    }
+    function spritzStarChoice(entity) { return getEntityStarChoice(entity); }
+    function spritzHasSP1(entity) { return spritzStarChoice(entity) === 'slow'; }
+    function spritzHasSP2(entity) { return spritzStarChoice(entity) === 'long'; }
+    function isSpritz(entity) { return !!entity && (entity.brawler === 'spritz' || (player && entity.id === player.id && selectedBrawler === 'spritz')); }
+    function spritzFindOwner(ownerId) { if (player && player.id === ownerId) return player; return bots.find((b) => b && b.id === ownerId) || null; }
+    function spritzModeOf(entity) {
+        const m = entity && entity.spritzMode;
+        return m === 'mist' || m === 'stream' || m === 'hose' ? m : 'mist';
+    }
+    // SP2: mist + stream projectiles fly 25% faster (his number).
+    function spritzSpeedMult(entity) { return spritzHasSP2(entity) ? SPRITZ_SP2_SPEED_MULT : 1; }
+    function spritzScaledDmg(entity, base) { return Math.round(base * spritzLevelScale(entity)); }
+    // Bonus ammo: a shell stores 1 bonus ammo on the owner. It pays for a
+    // shot only when the normal bar is empty (a reserve, not a refill).
+    // Used by fire()'s ammo gate + deduction; bots never hit that gate
+    // (their fire is throttle-gated), so the counter just accumulates.
+    function spritzCanFireWithBonusAmmo(entity, brawler, cost) {
+        if (brawler !== 'spritz') return false;
+        return (entity.spritzBonusAmmo || 0) >= (cost || 1);
+    }
+    function spritzSpendBonusAmmo(entity, cost) {
+        const c = cost || 1;
+        if ((entity.spritzBonusAmmo || 0) < c) return false;
+        entity.spritzBonusAmmo -= c;
+        return true;
+    }
+    // Main: fires the current mode — or the Hyper main projectile when
+    // Hypercharged or G2-armed (all modes at once, one projectile). The
+    // G2 flag is consumed on fire. Mist never creates a bullet.
+    function fireSpritzMain(fromEntity, targetX, targetY, isBot) {
+        const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
+        const g2 = !!fromEntity.spritzG2Armed;
+        fromEntity.spritzG2Armed = false;
+        if (hyper || g2) { spritzFireHyperMain(fromEntity, targetX, targetY); return true; }
+        const mode = spritzModeOf(fromEntity);
+        if (mode === 'mist') { spritzFireMist(fromEntity, targetX, targetY); return true; }
+        if (mode === 'hose') { spritzFireHoseBlast(fromEntity, targetX, targetY); return true; }
+        spritzFireStream(fromEntity, targetX, targetY);
+        return true;
+    }
+    // Mist: a wide cloud at the aimed point (NOT a projectile). It drifts
+    // slowly forward and slows every enemy standing in it.
+    function spritzFireMist(fromEntity, targetX, targetY) {
+        const ang = Math.atan2(targetY - fromEntity.y, targetX - fromEntity.x);
+        const dist = clamp(Math.hypot(targetX - fromEntity.x, targetY - fromEntity.y) || 0, 0, SPRITZ_MIST_RANGE);
+        const drift = SPRITZ_MIST_DRIFT_SPEED * spritzSpeedMult(fromEntity);
+        spritzMists.push({ x: fromEntity.x + Math.cos(ang) * dist, y: fromEntity.y + Math.sin(ang) * dist, r: SPRITZ_MIST_RADIUS, vx: Math.cos(ang) * drift, vy: Math.sin(ang) * drift, until: performance.now() + SPRITZ_MIST_DURATION_MS, ownerId: fromEntity.id, hyper: false });
+        return true;
+    }
+    // Focus Stream: one big water projectile that pushes enemies back
+    // (the pushback itself is applied by the checkHit hook). Spends the
+    // normal ammo bar until reload, like every other main attack.
+    function spritzFireStream(fromEntity, targetX, targetY) {
+        const ang = Math.atan2(targetY - fromEntity.y, targetX - fromEntity.x);
+        const speed = SPRITZ_STREAM_SPEED * spritzSpeedMult(fromEntity);
+        bullets.push({ ownerBrawler: 'spritz', isSpritzStream: true, x: fromEntity.x, y: fromEntity.y, vx: Math.cos(ang) * speed, vy: Math.sin(ang) * speed, life: 0, maxLife: SPRITZ_STREAM_RANGE / speed, damage: spritzScaledDmg(fromEntity, SPRITZ_STREAM_DMG), pierce: false, ownerId: fromEntity.id, hitIds: {}, hitboxMod: 1.5, hyperVisual: false });
+        return true;
+    }
+    // Hose Blast: three water projectiles in a cone. Each explodes in a
+    // water blast where it lands (checkHit hook on hit, bullet-loop hook
+    // on range expiry).
+    function spritzFireHoseBlast(fromEntity, targetX, targetY) {
+        const ang = Math.atan2(targetY - fromEntity.y, targetX - fromEntity.x);
+        const speed = SPRITZ_HOSE_SPEED * spritzSpeedMult(fromEntity);
+        const spread = SPRITZ_HOSE_CONE_DEG * Math.PI / 180;
+        for (let k = -1; k <= 1; k++) {
+            const a = ang + k * spread;
+            bullets.push({ ownerBrawler: 'spritz', isSpritzHoseBlast: true, x: fromEntity.x, y: fromEntity.y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, life: 0, maxLife: SPRITZ_HOSE_RANGE / speed, damage: spritzScaledDmg(fromEntity, SPRITZ_HOSE_IMPACT_DMG), pierce: false, ownerId: fromEntity.id, hitIds: {}, hitboxMod: 1.25, hyperVisual: false });
+        }
+        return true;
+    }
+    // Hyper main attack (Anthony's revision): ONE projectile — damage in
+    // the middle, slowing mist on the sides (trail puffs dropped as it
+    // flies, in updateSpritzSystems), and at the end (hit or miss) it
+    // explodes in a water blast. G2 fires this same projectile.
+    function spritzFireHyperMain(fromEntity, targetX, targetY) {
+        const ang = Math.atan2(targetY - fromEntity.y, targetX - fromEntity.x);
+        const speed = SPRITZ_HYPER_MAIN_SPEED * spritzSpeedMult(fromEntity);
+        bullets.push({ ownerBrawler: 'spritz', isSpritzHyperMain: true, x: fromEntity.x, y: fromEntity.y, vx: Math.cos(ang) * speed, vy: Math.sin(ang) * speed, life: 0, maxLife: SPRITZ_HYPER_MAIN_RANGE / speed, damage: spritzScaledDmg(fromEntity, SPRITZ_HYPER_MAIN_DMG), pierce: false, ownerId: fromEntity.id, hitIds: {}, hitboxMod: 1.5, hyperVisual: true, spritzTrailDist: 0 });
+        return true;
+    }
+    // A water blast goes off at (x, y): brawlers only, never structures
+    // or pets, never allies. `source` carries the blast kind ('hose' or
+    // 'hyper') or is a pending-blast record. SP2 schedules one extra
+    // explosion at the same spot (unless this IS the repeat).
+    function spritzExplodeAt(x, y, source, owner, isRepeat) {
+        const kind = source && source.kind ? source.kind : (source && source.isSpritzHyperMain ? 'hyper' : 'hose');
+        const hyper = !!(source && (source.hyper || source.hyperVisual));
+        const dmgBase = kind === 'hyper' ? SPRITZ_HYPER_BLAST_DMG : SPRITZ_HOSE_BLAST_DMG;
+        const radius = kind === 'hyper' ? SPRITZ_HYPER_BLAST_RADIUS : SPRITZ_HOSE_BLAST_RADIUS;
+        const dmg = owner ? spritzScaledDmg(owner, dmgBase) : dmgBase;
+        if (owner) {
+            for (const target of [player, ...bots]) {
+                if (!target || target.hp <= 0 || target.id === owner.id || areAlliedEntities(owner, target)) continue;
+                if (target.isStructure || target.isPet) continue;
+                if (Math.hypot(target.x - x, target.y - y) <= radius + (target.radius || 14)) {
+                    checkHit(target, { ownerBrawler: 'spritz', ownerId: owner.id, damage: dmg, pierce: true, hitIds: {}, isSpritzBlast: true }, -1);
+                }
+            }
+        }
+        explosions.push({ x: x, y: y, radius: radius, life: 0, maxLife: .4, color: hyper ? 'rgba(125,211,252,.6)' : 'rgba(56,189,248,.55)', legendary: true, fxKind: 'spritzWaterBlast', hyper: hyper });
+        spawnFloatingText(x, y - 40, hyper ? '💦 TIDAL BURST!' : '💦 SPLASH!', hyper ? '#bae6fd' : '#7dd3fc');
+        if (owner && !isRepeat && spritzHasSP2(owner)) {
+            spritzPendingBlasts.push({ x: x, y: y, kind: kind, ownerId: owner.id, hyper: hyper, fireAt: performance.now() + SPRITZ_SP2_SECOND_BLAST_DELAY_MS });
+        }
+        return true;
+    }
+    // Shell-pickup shots: 3 pushback high-stream shots fired around the
+    // owner, 120 degrees apart. The second (Hyper) volley pushes only —
+    // no damage, no root. SP1 roots on the first volley's hits.
+    function spritzFireShellShots(owner, pushOnly, baseAng) {
+        if (!owner || owner.hp <= 0) return false;
+        const ang0 = Number.isFinite(baseAng) ? baseAng : (Number.isFinite(owner.visualAimAngle) ? owner.visualAimAngle : 0);
+        const speed = SPRITZ_SHELL_SHOT_SPEED * spritzSpeedMult(owner);
+        const hyper = owner.id === player.id ? !!isHypercharged : !!owner.isHypercharged;
+        for (let k = 0; k < SPRITZ_SHELL_SHOT_COUNT; k++) {
+            const a = ang0 + k * (Math.PI * 2 / SPRITZ_SHELL_SHOT_COUNT);
+            bullets.push({ ownerBrawler: 'spritz', isSpritzShellShot: true, spritzRootMs: (!pushOnly && spritzHasSP1(owner)) ? SPRITZ_SP1_ROOT_MS : 0, x: owner.x, y: owner.y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, life: 0, maxLife: SPRITZ_SHELL_SHOT_RANGE / speed, damage: pushOnly ? 0 : spritzScaledDmg(owner, SPRITZ_SHELL_SHOT_DMG), pierce: false, ownerId: owner.id, hitIds: {}, hitboxMod: 1.25, hyperVisual: hyper });
+        }
+        return true;
+    }
+    // Super "Mode Swap": cycles to the next firing mode AND drops 2 water
+    // shells (3 while Hypercharged). Can be held once ready — nothing
+    // here forces the cast; the charge is time-based, not damage-based.
+    function castSpritzSuper(entity, hyper, targetX, targetY) {
+        if (!entity || entity.hp <= 0) return false;
+        const order = SPRITZ_MODE_ORDER;
+        const next = order[(order.indexOf(spritzModeOf(entity)) + 1) % order.length];
+        entity.spritzMode = next;
+        const count = hyper ? SPRITZ_SUPER_SHELL_COUNT_HYPER : SPRITZ_SUPER_SHELL_COUNT;
+        const now = performance.now();
+        for (let i = 0; i < count; i++) {
+            const ang = (i / count) * Math.PI * 2 + 0.6;
+            spritzShells.push({ x: clamp(entity.x + Math.cos(ang) * 56, 28, WORLD_W - 28), y: clamp(entity.y + Math.sin(ang) * 56, 28, WORLD_H - 28), ownerId: entity.id, hyper: !!hyper, createdAt: now });
+        }
+        if (entity.id === player.id) { try { window.BraweSpritzVoice?.play('super'); } catch (e) {} }
+        spawnFloatingText(entity.x, entity.y - 46, '💦 MODE SWAP: ' + SPRITZ_MODE_LABELS[next] + '!', '#7dd3fc');
+        return true;
+    }
+    // Gadgets: G1 Water Circle (a circle of water around him that heals
+    // him while he stays in it, gone after 4s), G2 All-Out Spray (his
+    // next shot fires every projectile at once, like the Hyper main).
+    function executeSpritzGadget(entity, gadget, isBot) {
+        if (!entity) return false;
+        if (gadget === 'g1') {
+            spritzWaterCircles.push({ x: entity.x, y: entity.y, r: SPRITZ_G1_RADIUS, ownerId: entity.id, until: performance.now() + SPRITZ_G1_DURATION_MS, nextTickAt: 0 });
+            spawnFloatingText(entity.x, entity.y - 40, '💧 WATER CIRCLE!', '#7dd3fc');
+            return true;
+        }
+        if (gadget === 'g2') {
+            entity.spritzG2Armed = true;
+            spawnFloatingText(entity.x, entity.y - 40, '🌊 ALL-OUT SPRAY!', '#7dd3fc');
+            return true;
+        }
+        return false;
+    }
+    // Per-frame Spritz maintenance: Super auto-charge (~8s, never from
+    // damage), mist drift + slow ticks, Hyper-main mist trail, shell
+    // pickups (+bonus ammo, 3 pushback shots, Hyper second volley),
+    // SP2 second blasts, G1 heal-circle ticks. Armed flags clear when
+    // the owner dies (Gravy precedent).
+    function updateSpritzSystems(dt) {
+        const now = performance.now();
+        for (const e of [player, ...bots]) {
+            if (!e) continue;
+            if (e.hp <= 0) { e.spritzG2Armed = false; continue; }
+            if (!isSpritz(e)) continue;
+            // Super auto-charge: 100 over ~8s (his number). Damage never
+            // charges it (see grantMainAttackCharge); Hypercharge still
+            // charges from damage as usual.
+            const rate = 100 / SPRITZ_SUPER_CHARGE_SECONDS;
+            if (e.id === player.id) {
+                if (typeof superCharge !== 'undefined' && superCharge < 100) {
+                    superCharge = clamp(superCharge + rate * dt, 0, 100);
+                    if (typeof updateSuperButton === 'function') updateSuperButton();
+                }
+            } else {
+                e.superCharge = clamp((e.superCharge || 0) + rate * dt, 0, 100);
+            }
+        }
+        // Mist clouds drift forward and expire; enemies standing in one
+        // are slowed (slowUntil refreshed, so the slow holds while inside).
+        for (let i = spritzMists.length - 1; i >= 0; i--) {
+            const m = spritzMists[i];
+            if (now >= m.until) { spritzMists.splice(i, 1); continue; }
+            m.x = clamp(m.x + (m.vx || 0) * dt, 0, WORLD_W);
+            m.y = clamp(m.y + (m.vy || 0) * dt, 0, WORLD_H);
+            const owner = spritzFindOwner(m.ownerId);
+            if (!owner) continue;
+            for (const target of [player, ...bots]) {
+                if (!target || target.hp <= 0 || target.id === owner.id || areAlliedEntities(owner, target)) continue;
+                if (target.isStructure || target.isPet) continue;
+                if (Math.hypot(target.x - m.x, target.y - m.y) <= m.r + (target.radius || 14)) {
+                    applyStatusEffect(target, 'slow', SPRITZ_MIST_SLOW_MS, owner);
+                }
+            }
+        }
+        // Hyper main trail: every 60px of flight it leaves a slowing
+        // mist puff on its sides (the mist half of "all modes at once").
+        for (const b of bullets) {
+            if (!b || !b.isSpritzHyperMain) continue;
+            const speed = Math.hypot(b.vx || 0, b.vy || 0);
+            b.spritzTrailDist = (b.spritzTrailDist || 0) + speed * dt;
+            if (b.spritzTrailDist >= SPRITZ_HYPER_TRAIL_EVERY_PX) {
+                b.spritzTrailDist = 0;
+                spritzMists.push({ x: b.x, y: b.y, r: SPRITZ_HYPER_TRAIL_MIST_RADIUS, vx: 0, vy: 0, until: now + SPRITZ_HYPER_TRAIL_MIST_MS, ownerId: b.ownerId, hyper: true });
+            }
+        }
+        // Shell pickups: only the owner picks up his own shells. A shell
+        // stores 1 bonus ammo AND fires 3 pushback shots around him.
+        // Hyper: the same 3 shots fire a second time (push-only).
+        for (let i = spritzShells.length - 1; i >= 0; i--) {
+            const s = spritzShells[i];
+            const owner = spritzFindOwner(s.ownerId);
+            if (!owner) { spritzShells.splice(i, 1); continue; }
+            if (owner.hp <= 0) continue;
+            if (Math.hypot(owner.x - s.x, owner.y - s.y) > SPRITZ_SHELL_PICKUP_RADIUS + (owner.radius || 14)) continue;
+            spritzShells.splice(i, 1);
+            owner.spritzBonusAmmo = (owner.spritzBonusAmmo || 0) + 1;
+            const baseAng = Number.isFinite(owner.visualAimAngle) ? owner.visualAimAngle : 0;
+            spritzFireShellShots(owner, false, baseAng);
+            spawnFloatingText(owner.x, owner.y - 40, '💦 SHELL! +1 AMMO', '#7dd3fc');
+            const hyper = owner.id === player.id ? !!isHypercharged : !!owner.isHypercharged;
+            if (hyper) spritzPendingVolleys.push({ ang: baseAng, ownerId: owner.id, fireAt: now + SPRITZ_SHELL_SECOND_VOLLEY_DELAY_MS, pushOnly: true });
+        }
+        // Hyper second volleys (push-only, no damage, no root).
+        for (let i = spritzPendingVolleys.length - 1; i >= 0; i--) {
+            const v = spritzPendingVolleys[i];
+            if (now < v.fireAt) continue;
+            spritzPendingVolleys.splice(i, 1);
+            const owner = spritzFindOwner(v.ownerId);
+            if (owner && owner.hp > 0) spritzFireShellShots(owner, true, v.ang);
+        }
+        // SP2 second water blasts (one extra explosion, same spot).
+        for (let i = spritzPendingBlasts.length - 1; i >= 0; i--) {
+            const pb = spritzPendingBlasts[i];
+            if (now < pb.fireAt) continue;
+            spritzPendingBlasts.splice(i, 1);
+            const owner = spritzFindOwner(pb.ownerId);
+            if (owner && owner.hp > 0) spritzExplodeAt(pb.x, pb.y, pb, owner, true);
+        }
+        // G1 Water Circles: heal the owner (only him) while he stands in
+        // his own circle, in 250ms ticks; the circle is gone after 4s.
+        for (let i = spritzWaterCircles.length - 1; i >= 0; i--) {
+            const c = spritzWaterCircles[i];
+            if (now >= c.until) { spritzWaterCircles.splice(i, 1); continue; }
+            const owner = spritzFindOwner(c.ownerId);
+            if (!owner || owner.hp <= 0) continue;
+            if (now < (c.nextTickAt || 0)) continue;
+            c.nextTickAt = now + 250;
+            if (Math.hypot(owner.x - c.x, owner.y - c.y) <= c.r + (owner.radius || 14)) {
+                owner.hp = Math.min(owner.maxHp, owner.hp + Math.round(SPRITZ_G1_HEAL_PER_S * 0.25));
+            }
+        }
+    }
+    // Render Spritz effects: mist clouds, water shells, G1 circles,
+    // Hyper aura. All keyed off real state — never a faked flag (Snipa lesson).
+    function renderSpritzEffects() {
+        const now = performance.now();
+        for (const m of spritzMists) {
+            ctx.save();
+            ctx.translate(m.x, m.y);
+            const wobble = 1 + 0.04 * Math.sin(now / 300 + m.x * 0.01);
+            const grad = ctx.createRadialGradient(0, 0, m.r * 0.1, 0, 0, m.r * wobble);
+            grad.addColorStop(0, m.hyper ? 'rgba(125,211,252,0.5)' : 'rgba(56,189,248,0.45)');
+            grad.addColorStop(1, 'rgba(56,189,248,0.08)');
+            ctx.fillStyle = grad;
+            ctx.beginPath(); ctx.arc(0, 0, m.r * wobble, 0, Math.PI * 2); ctx.fill();
+            ctx.globalAlpha = 0.7;
+            ctx.strokeStyle = m.hyper ? '#bae6fd' : '#38bdf8';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([10, 8]);
+            ctx.beginPath(); ctx.arc(0, 0, m.r * wobble, now / 600, now / 600 + Math.PI * 2); ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.restore();
+        }
+        for (const s of spritzShells) {
+            const bob = Math.sin(now / 240 + s.createdAt) * 3;
+            ctx.save();
+            ctx.translate(s.x, s.y + bob);
+            ctx.shadowColor = '#38bdf8';
+            ctx.shadowBlur = 12;
+            ctx.fillStyle = s.hyper ? '#bae6fd' : '#38bdf8';
+            ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 2); ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#e0f2fe';
+            ctx.beginPath(); ctx.arc(-3, -3, 3, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+        }
+        for (const c of spritzWaterCircles) {
+            ctx.save();
+            ctx.translate(c.x, c.y);
+            ctx.fillStyle = 'rgba(56,189,248,0.18)';
+            ctx.beginPath(); ctx.arc(0, 0, c.r, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([14, 8]);
+            ctx.beginPath(); ctx.arc(0, 0, c.r, now / 500, now / 500 + Math.PI * 2); ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.restore();
+        }
+        // Hyper aura ring around Spritz (Pandy/Snipa pattern).
+        for (const e of [player, ...bots]) {
+            if (!e || e.hp <= 0 || !isSpritz(e)) continue;
+            const hyper = e.id === player.id ? !!isHypercharged : !!e.isHypercharged;
+            if (!hyper) continue;
+            ctx.save();
+            ctx.globalAlpha = 0.9;
+            ctx.strokeStyle = 'rgba(125,211,252,0.9)';
+            ctx.lineWidth = 5;
+            ctx.shadowColor = '#38bdf8';
+            ctx.shadowBlur = 28;
+            ctx.beginPath();
+            ctx.arc(e.x, e.y, (e.radius || 14) + 20 + Math.sin(now / 200) * 3, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+        }
+    }
+    // Spritz voice watcher: spawn / win / death / hurt / idle (Gravy pattern).
+    function updateSpritzVoiceState() {
+        try {
+            if (typeof selectedBrawler === 'undefined' || !player) return;
+            const now = performance.now();
+            const isSpritzBrawler = selectedBrawler === 'spritz';
+            if (playing && !spritzVoicePrevPlaying) {
+                spritzVoiceMatchEndPlayed = false;
+                spritzVoiceLastHp = player.hp;
+                spritzVoiceLastActionAt = now;
+                spritzVoiceLastIdleAt = 0;
+                player.spritzWinAt = 0;
+                player.spritzDeathAt = 0;
+                if (isSpritzBrawler) window.BraweSpritzVoice?.play('spawn');
+            }
+            if (gameOver && !spritzVoicePrevGameOver && !spritzVoiceMatchEndPlayed) {
+                spritzVoiceMatchEndPlayed = true;
+                if (isSpritzBrawler) {
+                    if (player.hp > 0) {
+                        player.spritzWinAt = now;
+                        window.BraweSpritzVoice?.play('win');
+                    } else {
+                        player.spritzDeathAt = now;
+                        window.BraweSpritzVoice?.play('death');
+                        explosions.push({ x: player.x, y: player.y, radius: 60, life: 0, maxLife: .8, color: 'rgba(56,189,248,.55)' });
+                        spawnFloatingText(player.x, player.y - 46, '💦 SOAKED!', '#38bdf8');
+                    }
+                }
+            }
+            if (playing && !gameOver && isSpritzBrawler && player.hp > 0 && spritzVoiceLastHp !== null && player.hp < spritzVoiceLastHp) {
+                spritzVoiceLastActionAt = now;
+                window.BraweSpritzVoice?.play('hurt');
+            }
+            if (player) spritzVoiceLastHp = player.hp;
+            if (playing && !gameOver && isSpritzBrawler && player.hp > 0) {
+                const moved = Math.hypot((player.x || 0) - (player.spritzVoicePrevX ?? player.x ?? 0), (player.y || 0) - (player.spritzVoicePrevY ?? player.y ?? 0)) > 4;
+                if (moved || (player.lastAttackAt || 0) > spritzVoiceLastActionAt) spritzVoiceLastActionAt = now;
+                player.spritzVoicePrevX = player.x;
+                player.spritzVoicePrevY = player.y;
+                if (now - spritzVoiceLastActionAt > 20000 && now - spritzVoiceLastIdleAt > 25000) {
+                    spritzVoiceLastIdleAt = now;
+                    window.BraweSpritzVoice?.play('idle');
+                }
+            }
+            spritzVoicePrevPlaying = playing;
+            spritzVoicePrevGameOver = gameOver;
+        } catch (e) {}
+    }
     // ===== Christmas Showdown buffs (Season 6: Xplodemis) =====
     let christmasBuffTimer = 0;
     function isChristmasShowdownMatch() { return showdownMode === 'christmas_showdown' && !isTraining; }
@@ -29085,6 +29576,7 @@ let heistFeverActive = false;
         if (bot.brawler === 'driller') return distance < DRILLER_DRILL_RANGE + 60; // drill form: get close, then drive into them
         if (bot.brawler === 'gravy') return distance < GRAVY_SUPER_RANGE; // Gravy Boat wave reach
         if (bot.brawler === 'pitch') return distance < PITCH_BOT_SUPER_RANGE; // Pig Parade: pigs need to reach the enemy
+        if (bot.brawler === 'spritz') return distance < SPRITZ_BOT_SUPER_RANGE; // Mode Swap + shells: worth casting when an enemy is close
         const targetHpPct = target.hp ? target.hp / Math.max(1, target.maxHp || target.hp) : 1;
         const clustered = getBotLivingEnemies(bot).filter((enemy) => Math.hypot(enemy.x - target.x, enemy.y - target.y) < 190).length;
         const objectiveFight = isObjectiveMode && Math.hypot(target.x - (objectiveZone?.x || WORLD_W*0.5), target.y - (objectiveZone?.y || WORLD_H*0.5)) < (objectiveZone?.r || 240) + 80;
@@ -31252,12 +31744,12 @@ let heistFeverActive = false;
               if (!owner.isHypercharged) owner.hyperChargeCharge = clamp((owner.hyperChargeCharge || 0) + modeHyperGain, 0, 100);
           }
       } else if (owner.id === player.id) {
-          superCharge = clamp(superCharge + gain, 0, 100);
+          if (brawler !== 'spritz') superCharge = clamp(superCharge + gain, 0, 100); // Spritz: Super never charges from damage (auto-charges over ~8s in updateSpritzSystems); Hypercharge still charges.
           if (!isHypercharged) hyperChargeCharge = clamp(hyperChargeCharge + modeHyperGain, 0, 100);
           updateSuperButton();
           updateHyperButton();
       } else {
-          owner.superCharge = clamp((owner.superCharge || 0) + gain, 0, 100);
+          if (brawler !== 'spritz') owner.superCharge = clamp((owner.superCharge || 0) + gain, 0, 100); // Spritz: Super never charges from damage (auto-charges over ~8s in updateSpritzSystems).
           if (!owner.isHypercharged) owner.hyperChargeCharge = clamp((owner.hyperChargeCharge || 0) + modeHyperGain, 0, 100);
       }
       return true;
@@ -31332,14 +31824,14 @@ let heistFeverActive = false;
     resetPlayerHyperchargeState();
     outlitWallChains.length = 0;
     bullets.length = 0; ragerWarTotems.length = 0;
-    bolznstienPendingStrikes.length = 0; bolznstienShockTrails.length = 0; bolznstienChainArcs.length = 0; chocolatePuddles.length = 0; magnatarVortices.length = 0; oilMakerPuddles.length = 0; oilMakerBarrels.length = 0; oilMakerPendingPuddles.length = 0; steamerPoles.length = 0; weefeePoles.length = 0; chickpigEggZones.length = 0; rings.length = 0; cheeseFields.length = 0; healingPods.length = 0; explosions.length = 0; pendingClones.length = 0; destructibleWalls.length = 0; floatingTexts.length = 0; stickyNotes.length = 0; amplifierToolboxes.length = 0; amplifierScrewZones.length = 0; skeleParachutes.length = 0; skelePortals.length = 0; malakorHellZones.length = 0; malakorHands.length = 0; relativityZones.length = 0; packetTimeFields.length = 0; packetTelegraphs.length = 0; fastpassCheckpoints.length = 0; freestyleMicrophones.length = 0; portaloPortalPairs.length = 0; portaloPrisons.length = 0; portaloShockTimers.length = 0; ghoulHaunts.length = 0; darkenerClouds.length = 0; darkagons.length = 0; cursedStorms.length = 0; cursedHyperClouds.length = 0; antiRoyalMortarShells.length = 0; antiRoyalMortarZones.length = 0; jackTradeVolleys.length = 0; jackTradeThrownEffects.length = 0; jackTradeZones.length = 0; jackTradeEndpointShots.length = 0; badbatSwarm.length = 0; badbatShieldOrbs.length = 0; loomaThreads.length = 0; loomaWeaves.length = 0; feathersWindZones.length = 0; feathersStorms.length = 0; spikeyParkedBalls.length = 0; spikeyMegaBalls.length = 0; spikeyPendingSlams.length = 0; electricRealms.length = 0; electrostienPendingStrikes.length = 0; freezeonPatches.length = 0; freezeonSlipZones.length = 0; freezeonShatters.length = 0; freezeonThrownRinks.length = 0; freezeonPendingCones.length = 0; gravyPools.length = 0; gravyWaves.length = 0; gravyThrownGlobs.length = 0; pitchThrownHexes.length = 0; pitchPendingEchoes.length = 0;
+    bolznstienPendingStrikes.length = 0; bolznstienShockTrails.length = 0; bolznstienChainArcs.length = 0; chocolatePuddles.length = 0; magnatarVortices.length = 0; oilMakerPuddles.length = 0; oilMakerBarrels.length = 0; oilMakerPendingPuddles.length = 0; steamerPoles.length = 0; weefeePoles.length = 0; chickpigEggZones.length = 0; rings.length = 0; cheeseFields.length = 0; healingPods.length = 0; explosions.length = 0; pendingClones.length = 0; destructibleWalls.length = 0; floatingTexts.length = 0; stickyNotes.length = 0; amplifierToolboxes.length = 0; amplifierScrewZones.length = 0; skeleParachutes.length = 0; skelePortals.length = 0; malakorHellZones.length = 0; malakorHands.length = 0; relativityZones.length = 0; packetTimeFields.length = 0; packetTelegraphs.length = 0; fastpassCheckpoints.length = 0; freestyleMicrophones.length = 0; portaloPortalPairs.length = 0; portaloPrisons.length = 0; portaloShockTimers.length = 0; ghoulHaunts.length = 0; darkenerClouds.length = 0; darkagons.length = 0; cursedStorms.length = 0; cursedHyperClouds.length = 0; antiRoyalMortarShells.length = 0; antiRoyalMortarZones.length = 0; jackTradeVolleys.length = 0; jackTradeThrownEffects.length = 0; jackTradeZones.length = 0; jackTradeEndpointShots.length = 0; badbatSwarm.length = 0; badbatShieldOrbs.length = 0; loomaThreads.length = 0; loomaWeaves.length = 0; feathersWindZones.length = 0; feathersStorms.length = 0; spikeyParkedBalls.length = 0; spikeyMegaBalls.length = 0; spikeyPendingSlams.length = 0; electricRealms.length = 0; electrostienPendingStrikes.length = 0; freezeonPatches.length = 0; freezeonSlipZones.length = 0; freezeonShatters.length = 0; freezeonThrownRinks.length = 0; freezeonPendingCones.length = 0; gravyPools.length = 0; gravyWaves.length = 0; gravyThrownGlobs.length = 0; pitchThrownHexes.length = 0; pitchPendingEchoes.length = 0; spritzMists.length = 0; spritzShells.length = 0; spritzPendingVolleys.length = 0; spritzPendingBlasts.length = 0; spritzWaterCircles.length = 0;
     snapperWaves.length = 0;
     rocketeerFireZones.length = 0;
     jetpackFireZones.length = 0;
     rocketeerOrbitRockets.length = 0;
     minigunninMutationFireZones.length = 0;
     rocketeerAirstrikes.length = 0;
-    stormTimer = 0; // Reset storm every round
+    resetShowdownStorm(); // Reset storm every round (timer + radius — Play Again fix 2026-11-22)
     // Tournament polish: tournament matches play on the Champion's Ring
     // map instead of the plain Duels cross walls. Regular Duels keeps the
     // 4 center walls exactly as before.
@@ -36029,7 +36521,7 @@ let heistFeverActive = false;
             const steamerCost = brawler === 'steamer' ? 5 : (brawler === 'oil_maker' ? 3 : 2);
             const duckCost = null;
             const cost = crystalModeActive ? 1 : (duckCost ?? ((brawler === 'minigunnin' || brawler === 'steamer' || brawler === 'oil_maker') ? steamerCost : 1));
-            if (!fromEntity.fusedPartCall && brawler !== 'spikey' && ammo < cost && !ammoSaverFree) return; // Spikey's throws are gated by her ball cycle, not the generic ammo pool
+            if (!fromEntity.fusedPartCall && brawler !== 'spikey' && ammo < cost && !ammoSaverFree && !spritzCanFireWithBonusAmmo(fromEntity, brawler, cost)) return; // Spikey's throws are gated by her ball cycle, not the generic ammo pool
         }
     } else if (isDraflygonFlight && !fusedOuter) {
         if ((fromEntity.draflygonFlightAmmo || 0) <= 0) return;
@@ -36080,7 +36572,11 @@ let heistFeverActive = false;
             const duckCost = null;
             const classyUnlimitedAmmo = brawler === 'classy' && false;
             if (classyUnlimitedAmmo) ammo = maxAmmo;
-            else if (brawler !== 'spikey' && !ammoSaverFree) ammo -= (crystalModeActive ? 1 : (duckCost ?? ((brawler === 'minigunnin' || brawler === 'steamer' || brawler === 'oil_maker') ? steamerCost : 1))); // Spikey pays with a physical ball in the throw branch instead
+            else if (brawler !== 'spikey' && !ammoSaverFree) {
+                const spritzShotCost = crystalModeActive ? 1 : (duckCost ?? ((brawler === 'minigunnin' || brawler === 'steamer' || brawler === 'oil_maker') ? steamerCost : 1));
+                // Spritz: stored bonus ammo pays for the shot when the bar is empty.
+                if (!(brawler === 'spritz' && ammo < spritzShotCost && spritzSpendBonusAmmo(fromEntity, spritzShotCost))) ammo -= spritzShotCost; // Spikey pays with a physical ball in the throw branch instead
+            }
             if (ammoSaverFree) spawnFloatingText(player.x, player.y - 36, 'AMMO SAVED!', '#ffd66b');
         }
         player.lastAttackAt = now;
@@ -36121,6 +36617,8 @@ let heistFeverActive = false;
     if (!isBot && fromEntity === player && (fromEntity.fusedPartCall || selectedBrawler) === 'driller') { try { window.BraweDrillerVoice?.play('attack'); } catch (e) {} }
     // Gravy voice: player attack line (throttled inside the voice module).
     if (!isBot && fromEntity === player && (fromEntity.fusedPartCall || selectedBrawler) === 'gravy') { try { window.BraweGravyVoice?.play('attack'); } catch (e) {} }
+    // Spritz voice: player attack line (throttled inside the voice module).
+    if (!isBot && fromEntity === player && (fromEntity.fusedPartCall || selectedBrawler) === 'spritz') { try { window.BraweSpritzVoice?.play('attack'); } catch (e) {} }
     // Pitch voice: player attack line (throttled inside the voice module).
     if (!isBot && fromEntity === player && (fromEntity.fusedPartCall || selectedBrawler) === 'pitch') { try { window.BrawePitchVoice?.play('attack'); } catch (e) {} }
     fireArenaForgeCapturedHyperAttacks(fromEntity, ang, now);
@@ -38707,6 +39205,9 @@ let heistFeverActive = false;
     } else if (brawler === 'gravy') {
         fireGravyMain(fromEntity, targetX, targetY, isBot);
         return;
+    } else if (brawler === 'spritz') {
+        fireSpritzMain(fromEntity, targetX, targetY, isBot);
+        return;
     } else if (brawler === 'pitch') {
         firePitchMain(fromEntity, targetX, targetY, isBot);
         return;
@@ -40840,6 +41341,7 @@ let heistFeverActive = false;
     if (combatBrawler === 'freezeon') { castFreezeonSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'driller') { castDrillerSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'gravy') { castGravySuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
+    if (combatBrawler === 'spritz') { castSpritzSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'pitch') { castPitchSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'nightshade') { castNightshadeSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'aegis') { castAegisSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
@@ -42029,6 +42531,10 @@ let heistFeverActive = false;
       executePitchGadget(bot, 'g1', true);
     } else if (bot.brawler === 'pitch' && g === 'g2') {
       executePitchGadget(bot, 'g2', true);
+    } else if (bot.brawler === 'spritz' && g === 'g1') {
+      executeSpritzGadget(bot, 'g1', true);
+    } else if (bot.brawler === 'spritz' && g === 'g2') {
+      executeSpritzGadget(bot, 'g2', true);
     } else if (bot.brawler === 'nightshade' && g === 'g1') {
       executeNightshadeG1(bot, target?.x ?? (bot.x + Math.cos(ang) * 200), target?.y ?? (bot.y + Math.sin(ang) * 200));
     } else if (bot.brawler === 'nightshade' && g === 'g2') {
@@ -42563,6 +43069,7 @@ let heistFeverActive = false;
     if (botCombatBrawler === 'freezeon') { castFreezeonSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'driller') { castDrillerSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'gravy') { castGravySuper(bot, isHyper, targetX, targetY); return; }
+    if (botCombatBrawler === 'spritz') { castSpritzSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'pitch') { castPitchSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'nightshade') { castNightshadeSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'aegis') { castAegisSuper(bot, isHyper, targetX, targetY); return; }
@@ -44174,6 +44681,18 @@ let heistFeverActive = false;
         return;
     } else if (curBrawler === 'pitch' && curGadget === 'g2') {
         executePitchGadget(player, 'g2', false);
+        gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
+        setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
+        updateGadgetButton();
+        return;
+    } else if (curBrawler === 'spritz' && curGadget === 'g1') {
+        executeSpritzGadget(player, 'g1', false);
+        gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
+        setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
+        updateGadgetButton();
+        return;
+    } else if (curBrawler === 'spritz' && curGadget === 'g2') {
+        executeSpritzGadget(player, 'g2', false);
         gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
         setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
         updateGadgetButton();
@@ -49730,7 +50249,8 @@ let heistFeverActive = false;
       isBossFight = false;
       isBossFight = false;
       activeSkinTrial = null; // real matches never use trial skins
-      feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; freezeonPendingCones = []; gravyPools = []; gravyWaves = []; gravyThrownGlobs = []; pitchThrownHexes = []; pitchPendingEchoes = [];
+      feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; freezeonPendingCones = []; gravyPools = []; gravyWaves = []; gravyThrownGlobs = []; pitchThrownHexes = []; pitchPendingEchoes = []; spritzMists = []; spritzShells = []; spritzPendingVolleys = []; spritzPendingBlasts = []; spritzWaterCircles = []; player.spritzMode = 'mist';
+      resetShowdownStorm(); // Showdown storm Play Again fix (2026-11-22): a finished match's storm must never carry into the next match.
       isHyperEvent = false;
       isSoloTrial = false;
       isTraining = false;
@@ -50957,7 +51477,7 @@ isBrawlerLabMode = false;
       isDuelsMaxedMode = false;
       isWarperEvent = false;
       isObjectiveMode = false;
-      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; freezeonPendingCones = []; gravyPools = []; gravyWaves = []; gravyThrownGlobs = []; pitchThrownHexes = []; pitchPendingEchoes = []; isPropHuntMode = false; propHuntState = null;
+      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; freezeonPendingCones = []; gravyPools = []; gravyWaves = []; gravyThrownGlobs = []; pitchThrownHexes = []; pitchPendingEchoes = []; spritzMists = []; spritzShells = []; spritzPendingVolleys = []; spritzPendingBlasts = []; spritzWaterCircles = []; player.spritzMode = 'mist'; isPropHuntMode = false; propHuntState = null;
       soloTrialWave = 0;
       soloTrialPending = false;
       playing = true;
@@ -51081,7 +51601,7 @@ isBrawlerLabMode = false;
       isDuelsMaxedMode = false;
       isWarperEvent = false;
       isObjectiveMode = false;
-      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; freezeonPendingCones = []; gravyPools = []; gravyWaves = []; gravyThrownGlobs = []; pitchThrownHexes = []; pitchPendingEchoes = []; isPropHuntMode = false; propHuntState = null;
+      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; freezeonPendingCones = []; gravyPools = []; gravyWaves = []; gravyThrownGlobs = []; pitchThrownHexes = []; pitchPendingEchoes = []; spritzMists = []; spritzShells = []; spritzPendingVolleys = []; spritzPendingBlasts = []; spritzWaterCircles = []; player.spritzMode = 'mist'; isPropHuntMode = false; propHuntState = null;
       if (document.getElementById('topbar')) document.getElementById('topbar').textContent = 'Arena Forge - Rookie Course';
       playing = true;
       gameOver = false;
@@ -54969,6 +55489,20 @@ function checkHit(target, b, i){
         target.stunUntil = Math.max(target.stunUntil || 0, performance.now() + b.trapperHyperRootMs);
         spawnFloatingText(target.x, target.y - 24, 'DOUBLE GATED!', '#9db4ff');
     }
+    // Spritz (2026-11-22): stream + shell shots shove enemies away from
+    // their owner; shell shots root 1s with SP1. Hose blasts and the
+    // Hyper main detonate in a water blast where they land (hit or max
+    // range — the range case is the bullet-loop hook below).
+    if ((b.isSpritzStream || b.isSpritzShellShot) && owner) {
+        applyKnockback(target, owner.x, owner.y, b.isSpritzShellShot ? SPRITZ_SHELL_SHOT_KNOCKBACK : SPRITZ_STREAM_KNOCKBACK, performance.now());
+    }
+    if (b.isSpritzShellShot && b.spritzRootMs) {
+        applyStatusEffect(target, 'root', b.spritzRootMs);
+    }
+    if ((b.isSpritzHoseBlast || b.isSpritzHyperMain) && !b._spritzExploded) {
+        b._spritzExploded = true;
+        spritzExplodeAt(b.x, b.y, b, owner);
+    }
     if (b.isCheeseyPuff && b.cheeseyHyperBurst && b.stage >= b.stageCount - 1) {
         triggerCheeseyHyperBurst(b);
     }
@@ -56119,6 +56653,7 @@ function checkHit(target, b, i){
     if (playing && !gameOver) updateFreezeonSystems(dt);
     if (playing && !gameOver) updateGravySystems(dt);
     if (playing && !gameOver) updatePitchSystems(dt);
+    if (playing && !gameOver) updateSpritzSystems(dt);
     if (playing && !gameOver) updateDrillerSystems(dt);
     if (playing && !gameOver) updatePropPads();
     if (playing && !gameOver) updateChristmasShowdown(dt);
@@ -59232,6 +59767,14 @@ function checkHit(target, b, i){
           b._jetpackBombExploded = true;
           const bombOwner = b.ownerId === player.id ? player : bots.find(bt => bt && bt.id === b.ownerId);
           if (bombOwner) explodeJetpackBomb(b.jetpackBombLandX ?? b.x, b.jetpackBombLandY ?? b.y, bombOwner, b.jetpackBombDamage || JETPACK_DONOR_BOMB_DAMAGE, false, b.jetpackBombRadius || JETPACK_DONOR_BOMB_RADIUS);
+      }
+      // Spritz: hose blasts and the Hyper main detonate at the end of
+      // their flight (same pattern as the Voltastein volt above — resolve
+      // before generic expiry cleanup).
+      if ((b.isSpritzHoseBlast || b.isSpritzHyperMain) && b.life >= b.maxLife && !b._spritzExploded) {
+          b._spritzExploded = true;
+          const spritzOwner = b.ownerId === player.id ? player : bots.find(bt => bt && bt.id === b.ownerId);
+          spritzExplodeAt(b.x, b.y, b, spritzOwner);
       }
       if (b.isOilMakerCrude) {
           // Crude bullet does not drop mid-flight trails anymore: forms one puddle at the end
@@ -65465,6 +66008,38 @@ function checkHit(target, b, i){
                 ctx.beginPath(); ctx.arc(entity.x + size * 0.26, drawY - size * 0.08, size * 0.03, 0, Math.PI * 2); ctx.fill();
                 ctx.restore();
             }
+            if (brawlerId === 'spritz') {
+                ctx.save();
+                ctx.shadowColor = '#38bdf8';
+                ctx.shadowBlur = 8;
+                // Water-blue overalls body.
+                ctx.fillStyle = '#0369a1';
+                ctx.strokeStyle = '#0c4a6e';
+                ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(entity.x, drawY + size * 0.16, size * 0.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                // Head.
+                ctx.fillStyle = '#fcd9b8';
+                ctx.beginPath(); ctx.arc(entity.x, drawY - size * 0.08, size * 0.15, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                // Blue cap, worn backwards.
+                ctx.fillStyle = '#38bdf8';
+                ctx.beginPath(); ctx.arc(entity.x, drawY - size * 0.1, size * 0.15, Math.PI, 0); ctx.fill();
+                ctx.fillRect(entity.x - size * 0.17, drawY - size * 0.1, size * 0.34, size * 0.04);
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = '#0f172a';
+                ctx.beginPath();
+                ctx.arc(entity.x - size * 0.05, drawY - size * 0.08, size * 0.02, 0, Math.PI * 2);
+                ctx.arc(entity.x + size * 0.05, drawY - size * 0.08, size * 0.02, 0, Math.PI * 2);
+                ctx.fill();
+                // Spray bottle held up (blue bottle, white nozzle).
+                ctx.fillStyle = '#0284c7';
+                ctx.fillRect(entity.x + size * 0.2, drawY - size * 0.12, size * 0.1, size * 0.16);
+                ctx.fillStyle = '#e0f2fe';
+                ctx.fillRect(entity.x + size * 0.2, drawY - size * 0.16, size * 0.1, size * 0.05);
+                // A droplet flying off the nozzle.
+                ctx.fillStyle = '#7dd3fc';
+                ctx.beginPath(); ctx.arc(entity.x + size * 0.36, drawY - size * 0.2, size * 0.04, 0, Math.PI * 2); ctx.fill();
+                ctx.restore();
+            }
             ctx.textAlign = 'left';
             ctx.textBaseline = 'alphabetic';
     }
@@ -66289,6 +66864,7 @@ function checkHit(target, b, i){
     renderFreezeonEffects();
     renderGravyEffects();
     renderPitchEffects();
+    renderSpritzEffects();
     renderDrillerEffects();
     renderNightshadeEffects();
     renderRunnerEffects(ctx);
@@ -76744,6 +77320,47 @@ function checkHit(target, b, i){
               ctx.beginPath();
               ctx.arc(0, 0, 2.5, 0, Math.PI * 2);
               ctx.fill();
+          } else if (b.isSpritzStream || b.isSpritzShellShot) {
+              // Spritz stream / shell shot: a fat water droplet.
+              const spritzSize = b.isSpritzShellShot ? 9 : 11;
+              ctx.fillStyle = b.hyperVisual ? '#bae6fd' : '#38bdf8';
+              ctx.shadowColor = '#0284c7';
+              ctx.shadowBlur = 8;
+              ctx.beginPath();
+              ctx.arc(0, 0, spritzSize, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = '#e0f2fe';
+              ctx.beginPath();
+              ctx.arc(-spritzSize * 0.3, -spritzSize * 0.3, spritzSize * 0.3, 0, Math.PI * 2);
+              ctx.fill();
+          } else if (b.isSpritzHoseBlast) {
+              // Spritz hose blast: a spinning three-drop spray.
+              const spritzSize = 9;
+              ctx.fillStyle = b.hyperVisual ? '#bae6fd' : '#7dd3fc';
+              ctx.shadowColor = '#38bdf8';
+              ctx.shadowBlur = 8;
+              for (let d = 0; d < 3; d++) {
+                  const da = (performance.now() / 90) + d * (Math.PI * 2 / 3);
+                  ctx.beginPath();
+                  ctx.arc(Math.cos(da) * 5, Math.sin(da) * 5, spritzSize * 0.45, 0, Math.PI * 2);
+                  ctx.fill();
+              }
+          } else if (b.isSpritzHyperMain) {
+              // Spritz Hyper main: one big glowing droplet with a misty halo.
+              ctx.fillStyle = '#bae6fd';
+              ctx.shadowColor = '#38bdf8';
+              ctx.shadowBlur = 16;
+              ctx.beginPath();
+              ctx.arc(0, 0, 14, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = 'rgba(56,189,248,0.35)';
+              ctx.beginPath();
+              ctx.arc(0, 0, 20, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = '#ffffff';
+              ctx.beginPath();
+              ctx.arc(-4, -4, 4, 0, Math.PI * 2);
+              ctx.fill();
           } else {
               // Regular Ninja Star: Charcoal Obsidian Body with Razor Silver Edge & White Core
               const size = 10;
@@ -81682,6 +82299,7 @@ function checkHit(target, b, i){
         updateFreezeonVoiceState();
         updateGravyVoiceState();
         updatePitchVoiceState();
+        updateSpritzVoiceState();
         updateDrillerVoiceState();
         const homeVisible = homeScreen && homeScreen.style.display !== 'none';
         if (playing || !homeVisible) render();

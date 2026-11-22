@@ -18,7 +18,7 @@
 // in it. SP1 Rich & Savory: enemies in your pools take 40 dmg/s. SP2
 // Seconds, Please: standing in your own pool heals you 150 HP/s.
 // Voice lines are flavor-only (RULE ONE) and silent until Anthony picks a
-// voice. Roster: Gravy makes 112 ids / 104 selectable. Pitch (2026-11-20) now makes 105 ids / 105 selectable. Pools/waves/globs
+// voice. Roster: Gravy makes 112 ids / 104 selectable. Pitch (2026-11-20) now makes 105 ids / 105 selectable. Spritz (2026-11-22) now makes 106 ids / 106 selectable. Pools/waves/globs
 // affect brawlers only, never structures — and towers can NEVER gain HP.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -36,11 +36,11 @@ function check(name, cond) {
 const near = (a, b, eps = 0.01) => Math.abs(a - b) < eps;
 
 // ---------------------------------------------------------- 1. source pins
-check('roster includes gravy (105 ids)', game.includes("'pandy', 'snipa', 'bookworm', 'freezeon', 'driller', 'gravy'"));
-check('selectable is 105 (105 ids, none disabled, gravy not disabled)', (() => {
+check('roster includes gravy (106 ids)', game.includes("'pandy', 'snipa', 'bookworm', 'freezeon', 'driller', 'gravy'"));
+check('selectable is 106 (106 ids, none disabled, gravy not disabled)', (() => {
   const all = [...game.match(/const allBrawlers\s*=\s*\[([\s\S]*?)\];/)[1].matchAll(/'([^']+)'/g)].map(m => m[1]);
   const disabled = [];
-  return all.length === 105 && all.filter(id => !disabled.includes(id)).length === 105;
+  return all.length === 106 && all.filter(id => !disabled.includes(id)).length === 106;
 })());
 check('rarity Epic (170 souls)', game.includes("gravy: 'Epic',") && game.includes('Epic: 170'));
 check('role Thrower (primary Artillery, like every Thrower)', game.includes("name: 'Gravy', role: 'Thrower'") && game.includes("gravy:'Artillery',"));
