@@ -63,14 +63,14 @@ check('mute helpers defined exactly once each',
     count(game, 'function appSoundMuted(') === 1 &&
     count(game, 'function applyAppSoundMuted(') === 1 &&
     count(game, 'function appSetSoundMuted(') === 1);
-check('mute list names all 11 audio modules (10 voice + Hypercharge SFX)',
-    ['BraweOutlitVoice', 'BraweFuserVoice', 'BraweVoodoyouVoice', 'BrawePandyVoice', 'BraweSnipaVoice', 'BraweBookwormVoice', 'BraweFreezeonVoice', 'BraweDrillerVoice', 'BraweGravyVoice', 'BrawePitchVoice', 'BraweHyperchargeSfx']
+check('mute list names all 12 audio modules (11 voice + Hypercharge SFX)',
+    ['BraweOutlitVoice', 'BraweFuserVoice', 'BraweVoodoyouVoice', 'BrawePandyVoice', 'BraweSnipaVoice', 'BraweBookwormVoice', 'BraweFreezeonVoice', 'BraweDrillerVoice', 'BraweGravyVoice', 'BrawePitchVoice', 'BraweSpritzVoice', 'BraweHyperchargeSfx']
         .every((n) => game.includes(`'${n}'`)));
 check('mute list matches the audio call sites in game.js (no module missed, no extra)',
     (() => {
         const called = new Set([...game.matchAll(/window\.(Brawe\w+)\?\.(?:play|playActivation)\(/g)].map((m) => m[1]));
         const listed = [...game.match(/const APP_AUDIO_MODULE_NAMES = \[([^\]]*)\]/)[1].matchAll(/'([^']+)'/g)].map((m) => m[1]);
-        return called.size === 11 && listed.length === 11 && listed.every((n) => called.has(n)) && [...called].every((n) => listed.includes(n));
+        return called.size === 12 && listed.length === 12 && listed.every((n) => called.has(n)) && [...called].every((n) => listed.includes(n));
     })());
 check('mute pushes setEnabled(!muted) into each module', game.includes('mod.setEnabled(!muted)'));
 check('mute is applied at boot and again on load', game.includes('applyAppSoundMuted();\n    window.addEventListener(\'load\', applyAppSoundMuted);'));
@@ -130,7 +130,7 @@ vm.createContext(ctx);
 const run = (code) => vm.runInContext(code, ctx);
 
 // Load the REAL audio modules (bootstrap.js order) into the context.
-for (const f of ['outlit-voicelines.js', 'fuser-voicelines.js', 'hypercharge-sfx.js', 'voodoyou-voicelines.js', 'pandy-voicelines.js', 'snipa-voicelines.js', 'bookworm-voicelines.js', 'freezeon-voicelines.js', 'driller-voicelines.js', 'gravy-voicelines.js', 'pitch-voicelines.js']) {
+for (const f of ['outlit-voicelines.js', 'fuser-voicelines.js', 'hypercharge-sfx.js', 'voodoyou-voicelines.js', 'pandy-voicelines.js', 'snipa-voicelines.js', 'bookworm-voicelines.js', 'freezeon-voicelines.js', 'driller-voicelines.js', 'gravy-voicelines.js', 'pitch-voicelines.js', 'spritz-voicelines.js']) {
     vm.runInContext(fs.readFileSync(new URL(`../modules/audio/${f}`, import.meta.url), 'utf8'), ctx);
 }
 // Load the mute + reset helpers out of game.js into the same context.
@@ -143,16 +143,16 @@ for (const re of [/const APP_MUTED_KEY = '[^']+';/, /const APP_AUDIO_MODULE_NAME
     vm.runInContext(m[0], ctx);
 }
 
-const MODULES = ['BraweOutlitVoice', 'BraweFuserVoice', 'BraweVoodoyouVoice', 'BrawePandyVoice', 'BraweSnipaVoice', 'BraweBookwormVoice', 'BraweFreezeonVoice', 'BraweDrillerVoice', 'BraweGravyVoice', 'BrawePitchVoice', 'BraweHyperchargeSfx'];
+const MODULES = ['BraweOutlitVoice', 'BraweFuserVoice', 'BraweVoodoyouVoice', 'BrawePandyVoice', 'BraweSnipaVoice', 'BraweBookwormVoice', 'BraweFreezeonVoice', 'BraweDrillerVoice', 'BraweGravyVoice', 'BrawePitchVoice', 'BraweSpritzVoice', 'BraweHyperchargeSfx'];
 // Only six modules actually play audio today (the other four are silent
 // text stubs — see the mute comment in game.js — with no setEnabled hook
 // and no audio output at all).
 const AUDIO_MODULES = ['BraweOutlitVoice', 'BraweFuserVoice', 'BraweVoodoyouVoice', 'BrawePandyVoice', 'BraweSnipaVoice', 'BraweHyperchargeSfx'];
-const STUB_MODULES = ['BraweBookwormVoice', 'BraweFreezeonVoice', 'BraweDrillerVoice', 'BraweGravyVoice', 'BrawePitchVoice'];
-check('all 11 voice/SFX modules loaded; the 6 audio ones expose setEnabled/isEnabled',
+const STUB_MODULES = ['BraweBookwormVoice', 'BraweFreezeonVoice', 'BraweDrillerVoice', 'BraweGravyVoice', 'BrawePitchVoice', 'BraweSpritzVoice'];
+check('all 12 voice/SFX modules loaded; the 6 audio ones expose setEnabled/isEnabled',
     MODULES.every((n) => run(`typeof window.${n} === 'object' && (typeof window.${n}.play === 'function' || typeof window.${n}.playActivation === 'function')`)) &&
     AUDIO_MODULES.every((n) => run(`typeof window.${n}.setEnabled === 'function' && typeof window.${n}.isEnabled === 'function'`)));
-check('the 5 newer voice modules are silent text stubs: no setEnabled, play() emits no audio',
+check('the 6 newer voice modules are silent text stubs: no setEnabled, play() emits no audio',
     STUB_MODULES.every((n) => run(`typeof window.${n}.setEnabled === 'undefined'`)) &&
     (() => {
         FakeAudio.played.length = 0;

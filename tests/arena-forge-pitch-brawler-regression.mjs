@@ -21,7 +21,7 @@
 // landing; SP1 curve 1.6 rad/s; bot Super gate 650px; kit names (Hex Toss
 // / Pig Parade / Hex Cross / Echo Hex / Curveball / Stampede); voice lines
 // are flavor-only (RULE ONE) and silent until Anthony picks a voice.
-// Roster: Pitch makes 105 ids / 105 selectable. Pigs damage/knock back
+// Roster: Pitch makes 105 ids / 105 selectable. Spritz (2026-11-22) now makes 106 ids / 106 selectable. Pigs damage/knock back
 // brawlers only, never structures — and towers can NEVER gain HP.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -43,11 +43,11 @@ const near = (a, b, eps = 0.01) => Math.abs(a - b) < eps;
 const pitchBlock = game.slice(game.indexOf('// ===== Pitch systems'), game.indexOf('// ===== Christmas Showdown buffs'));
 
 // ---------------------------------------------------------- 1. source pins
-check('roster includes pitch (105 ids)', game.includes("'pandy', 'snipa', 'bookworm', 'freezeon', 'driller', 'gravy', 'pitch'"));
-check('selectable is 105 (105 ids, none disabled, pitch not disabled)', (() => {
+check('roster includes pitch (106 ids)', game.includes("'pandy', 'snipa', 'bookworm', 'freezeon', 'driller', 'gravy', 'pitch'"));
+check('selectable is 106 (106 ids, none disabled, pitch not disabled)', (() => {
   const all = [...game.match(/const allBrawlers\s*=\s*\[([\s\S]*?)\];/)[1].matchAll(/'([^']+)'/g)].map(m => m[1]);
   const disabled = [...game.match(/const disabledBrawlers = new Set\(\[([\s\S]*?)\]\)/)[1].matchAll(/'([^']+)'/g)].map(m => m[1]);
-  return all.length === 105 && all.filter(id => !disabled.includes(id)).length === 105 && !disabled.includes('pitch');
+  return all.length === 106 && all.filter(id => !disabled.includes(id)).length === 106 && !disabled.includes('pitch');
 })());
 check('rarity Epic (170 souls)', game.includes("pitch: 'Epic',") && game.includes('Epic: 170'));
 check('role Thrower (primary Artillery, like every Thrower)', game.includes("name: 'Pitch', role: 'Thrower'") && game.includes("pitch:'Artillery',"));
