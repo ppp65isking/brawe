@@ -26063,6 +26063,9 @@ let heistFeverActive = false;
         const hp = Math.round(PITCH_PIG_HP * getLevelDamageScale(level));
         const pig = { id: nextId++, x: clamp(x, 28, WORLD_W - 28), y: clamp(y, 28, WORLD_H - 28), z: 0, vx: 0, vy: 0, hp: hp, maxHp: hp, powerCubes: owner.powerCubes || 0, isDead: false, shield: 0, shieldMax: 0, radius: 22, speed: PITCH_PIG_SPEED, slowUntil: 0, brawler: 'chickpig_pig', lastTargetId: null, targetLockUntil: 0, lastShot: 0, superCharge: 0, hyperChargeCharge: 0, isHypercharged: false, gadgetArmed: false, gadgetCooldownUntil: 0, selectedStar: 'none', isPet: true, isChickpigPig: true, chickpigPigHyper: false, isPitchPig: true, pitchPigBoostUntil: boost ? now + PITCH_SP2_PIG_SPEED_DURATION_MS : 0, ownerId: owner.id, team: owner.team || 'player', ramCooldownUntil: 0, charging: false };
         bots.push(pig);
+        // Spawn poof: a small purple dust ring where the pig pops in
+        // (Super parade or a takedown pig). Visual only — no state change.
+        explosions.push({ x: pig.x, y: pig.y, radius: 40, life: 0, maxLife: .3, color: 'rgba(168,85,247,.5)', fxKind: 'pitchPigSpawn' });
         return pig;
     }
     // Specialty: every takedown Pitch scores spawns a pig at the victim.
@@ -26120,7 +26123,7 @@ let heistFeverActive = false;
                 bullets.push({ ownerBrawler: 'pitch', isPitchShard: true, pitchCurve: !!curve, x: x, y: y, vx: Math.cos(ang) * PITCH_SHARD_SPEED, vy: Math.sin(ang) * PITCH_SHARD_SPEED, life: 0, maxLife: PITCH_SHARD_MAX_LIFE, damage: shardDmg, pierce: false, ownerId: owner.id, hitIds: {}, hitboxMod: 1.25, hyperVisual: !!hyper });
             }
         }
-        explosions.push({ x: x, y: y, radius: PITCH_SPLASH_RADIUS, life: 0, maxLife: .4, color: hyper ? 'rgba(192,132,252,.55)' : 'rgba(168,85,247,.55)', legendary: true, fxKind: 'pitchHexBurst', hyper: !!hyper });
+        explosions.push({ x: x, y: y, radius: PITCH_SPLASH_RADIUS, life: 0, maxLife: .4, color: hyper ? 'rgba(192,132,252,.55)' : 'rgba(168,85,247,.55)', legendary: true, fxKind: 'pitchHexBurst', hyper: !!hyper, eightWay: eightWay });
         spawnFloatingText(x, y - 40, hyper ? '🐷 HEX STORM!' : '🐷 HEX BURST!', hyper ? '#e9d5ff' : '#ddd6fe');
         return true;
     }
@@ -26227,14 +26230,29 @@ let heistFeverActive = false;
             ctx.globalAlpha = 0.3;
             ctx.fillStyle = '#3b0764';
             ctx.beginPath(); ctx.ellipse(gx, gy, 16 * (1 - progress * 0.3), 7, 0, 0, Math.PI * 2); ctx.fill();
-            // The hex pot itself, riding the arc.
+            // Hex sparkle trail along the arc behind the pot.
+            ctx.globalAlpha = 0.6;
+            ctx.fillStyle = g.hyper ? '#e9d5ff' : '#c084fc';
+            for (let t = 1; t <= 3; t++) {
+                const tp = clamp(progress - t * 0.12, 0, 1);
+                const tx = g.startX + (g.targetX - g.startX) * tp;
+                const ty = g.startY + (g.targetY - g.startY) * tp - Math.sin(tp * Math.PI) * PITCH_THROW_ARC_HEIGHT;
+                ctx.beginPath(); ctx.arc(tx, ty, 3.5 - t * 0.8, 0, Math.PI * 2); ctx.fill();
+            }
+            // The hex pot itself, riding the arc and spinning as it flies.
             ctx.translate(wx, wy - arc);
+            ctx.rotate(progress * Math.PI * 4);
             ctx.globalAlpha = 0.95;
             ctx.shadowColor = g.hyper ? '#c084fc' : '#a855f7';
             ctx.shadowBlur = 16;
             ctx.fillStyle = g.hyper ? '#c084fc' : '#a855f7';
             ctx.beginPath(); ctx.arc(0, 0, 13, 0, Math.PI * 2); ctx.fill();
             ctx.shadowBlur = 0;
+            // Pot rim + handle so it reads as a pot, not a ball.
+            ctx.strokeStyle = g.hyper ? '#e9d5ff' : '#7e22ce';
+            ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 2); ctx.stroke();
+            ctx.beginPath(); ctx.arc(0, -13, 5, Math.PI, 0); ctx.stroke();
             ctx.fillStyle = '#86efac';
             ctx.beginPath(); ctx.arc(-3, -4, 4, 0, Math.PI * 2); ctx.fill();
             ctx.fillStyle = '#4ade80';
@@ -26350,7 +26368,8 @@ let heistFeverActive = false;
     // 2.5s / drift 60 px/s; stream 850 px/s / 700 range / 650 dmg /
     // 120 pushback; hose cone 20 deg / 700 px/s / 450 range / 200 impact
     // + 500 blast in 110px; Hyper main 750 px/s / 800 range / 800 middle
-    // + 600 blast in 130px; shell pickup radius 60; shell shots 500 dmg
+    // + 600 blast in 130px; shell pickup radius 60; shells land 180px
+// out (300ms toss arc, 150px wall floor); shell shots 500 dmg
     // / 120 pushback / 500 range; second volley 300ms later; SP2 second
     // blast 250ms later; G1 heal 400 HP/s / radius 160; bot Super gate
     // 700px; kit names. Only the damage-charge path is blocked
@@ -26398,8 +26417,12 @@ let heistFeverActive = false;
     const SPRITZ_G1_RADIUS = 160; // px Water Circle radius
     const SPRITZ_G1_DURATION_MS = 4000; // ms Water Circle lifetime (his number: 4s)
     const SPRITZ_BOT_SUPER_RANGE = 700; // px — bots cast Mode Swap when an enemy is this close
+    const SPRITZ_SUPER_SHELL_DISTANCE = 180; // px — shells land this far from Spritz on Mode Swap (builder pick: outside the 60px pickup radius + his ~14px body, so he must walk to them)
+    const SPRITZ_SHELL_FLIGHT_MS = 300; // ms — shells arc through the air to their landing spot (builder pick)
+    const SPRITZ_SHELL_ARC_HEIGHT = 40; // px peak of the shell toss arc (builder pick)
+    const SPRITZ_SHELL_MIN_DISTANCE = 150; // px — wall fallback floor: a shell never lands closer than this (builder pick, still outside pickup reach)
     let spritzMists = []; // {x, y, r, vx, vy, until, ownerId, hyper} — slowing mist clouds
-    let spritzShells = []; // {x, y, ownerId, hyper, createdAt} — water shells dropped by the Super
+    let spritzShells = []; // {x, y, fromX, fromY, landAt, ownerId, hyper, createdAt} — water shells tossed out by the Super; x/y is the landing spot, fromX/fromY + landAt drive the 300ms toss arc
     let spritzPendingVolleys = []; // {ang, ownerId, fireAt, pushOnly} — Hyper second shell-shot volleys waiting to fire
     let spritzPendingBlasts = []; // {x, y, kind, ownerId, hyper, fireAt} — SP2 second water-blast explosions waiting to fire
     let spritzWaterCircles = []; // {x, y, r, ownerId, until, nextTickAt} — G1 heal circles
@@ -26425,6 +26448,33 @@ let heistFeverActive = false;
     // SP2: mist + stream projectiles fly 25% faster (his number).
     function spritzSpeedMult(entity) { return spritzHasSP2(entity) ? SPRITZ_SP2_SPEED_MULT : 1; }
     function spritzScaledDmg(entity, base) { return Math.round(base * spritzLevelScale(entity)); }
+    // Shell landing: 180px out in the given direction, spread around
+    // him. Near a wall the clamp can shove a landing back onto him, so
+    // try the ±90° fallbacks and take the first spot that keeps the
+    // 150px floor; otherwise take the farthest of the three (corner case,
+    // still outside the 74px pickup reach).
+    function spritzShellLanding(entity, ang) {
+        const cands = [ang, ang + Math.PI / 2, ang - Math.PI / 2];
+        let best = null;
+        for (const a of cands) {
+            const x = clamp(entity.x + Math.cos(a) * SPRITZ_SUPER_SHELL_DISTANCE, 28, WORLD_W - 28);
+            const y = clamp(entity.y + Math.sin(a) * SPRITZ_SUPER_SHELL_DISTANCE, 28, WORLD_H - 28);
+            const d = Math.hypot(x - entity.x, y - entity.y);
+            if (d >= SPRITZ_SHELL_MIN_DISTANCE) return { x: x, y: y };
+            if (!best || d > best.d) best = { x: x, y: y, d: d };
+        }
+        return { x: best.x, y: best.y };
+    }
+    // Shell flight position: arcs from Spritz to its landing spot over
+    // the 300ms toss, then sits at the landing spot. Shells without
+    // flight fields (old saves / tests) are already landed.
+    function spritzShellFlightPos(s, now) {
+        if (!s || !Number.isFinite(s.landAt) || !Number.isFinite(s.fromX) || !Number.isFinite(s.fromY)) return { x: s.x, y: s.y, arc: 0, progress: 1 };
+        const dur = Math.max(1, s.landAt - s.createdAt);
+        const progress = clamp((now - s.createdAt) / dur, 0, 1);
+        const arc = Math.sin(progress * Math.PI) * SPRITZ_SHELL_ARC_HEIGHT;
+        return { x: s.fromX + (s.x - s.fromX) * progress, y: s.fromY + (s.y - s.fromY) * progress, arc: arc, progress: progress };
+    }
     // Bonus ammo: a shell stores 1 bonus ammo on the owner. It pays for a
     // shot only when the normal bar is empty (a reserve, not a refill).
     // Used by fire()'s ammo gate + deduction; bots never hit that gate
@@ -26546,8 +26596,11 @@ let heistFeverActive = false;
         const now = performance.now();
         for (let i = 0; i < count; i++) {
             const ang = (i / count) * Math.PI * 2 + 0.6;
-            spritzShells.push({ x: clamp(entity.x + Math.cos(ang) * 56, 28, WORLD_W - 28), y: clamp(entity.y + Math.sin(ang) * 56, 28, WORLD_H - 28), ownerId: entity.id, hyper: !!hyper, createdAt: now });
+            const landing = spritzShellLanding(entity, ang);
+            spritzShells.push({ x: landing.x, y: landing.y, fromX: entity.x, fromY: entity.y, landAt: now + SPRITZ_SHELL_FLIGHT_MS, ownerId: entity.id, hyper: !!hyper, createdAt: now });
         }
+        // Mode-swap burst: a visible water ring around him as the mode changes.
+        explosions.push({ x: entity.x, y: entity.y, radius: 90, life: 0, maxLife: .45, color: hyper ? 'rgba(125,211,252,.6)' : 'rgba(56,189,248,.55)', legendary: true, fxKind: 'spritzModeSwap', hyper: !!hyper });
         if (entity.id === player.id) { try { window.BraweSpritzVoice?.play('super'); } catch (e) {} }
         spawnFloatingText(entity.x, entity.y - 46, '💦 MODE SWAP: ' + SPRITZ_MODE_LABELS[next] + '!', '#7dd3fc');
         return true;
@@ -26629,6 +26682,7 @@ let heistFeverActive = false;
             const owner = spritzFindOwner(s.ownerId);
             if (!owner) { spritzShells.splice(i, 1); continue; }
             if (owner.hp <= 0) continue;
+            if (Number.isFinite(s.landAt) && now < s.landAt) continue; // still arcing to its landing spot — not pickable mid-toss
             if (Math.hypot(owner.x - s.x, owner.y - s.y) > SPRITZ_SHELL_PICKUP_RADIUS + (owner.radius || 14)) continue;
             spritzShells.splice(i, 1);
             owner.spritzBonusAmmo = (owner.spritzBonusAmmo || 0) + 1;
@@ -26690,16 +26744,33 @@ let heistFeverActive = false;
             ctx.restore();
         }
         for (const s of spritzShells) {
-            const bob = Math.sin(now / 240 + s.createdAt) * 3;
+            const fp = spritzShellFlightPos(s, now);
+            if (fp.progress < 1) {
+                // Landing marker while the shell is still arcing in.
+                ctx.save();
+                ctx.globalAlpha = 0.5;
+                ctx.strokeStyle = s.hyper ? '#bae6fd' : '#38bdf8';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([6, 5]);
+                ctx.beginPath(); ctx.arc(s.x, s.y, 12, 0, Math.PI * 2); ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.restore();
+            }
+            const bob = fp.progress < 1 ? 0 : Math.sin(now / 240 + s.createdAt) * 3;
             ctx.save();
-            ctx.translate(s.x, s.y + bob);
+            ctx.translate(fp.x, fp.y - fp.arc + bob);
+            // The shell itself: a spiral shell, not a plain orb.
             ctx.shadowColor = '#38bdf8';
             ctx.shadowBlur = 12;
             ctx.fillStyle = s.hyper ? '#bae6fd' : '#38bdf8';
             ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 2); ctx.fill();
             ctx.shadowBlur = 0;
+            ctx.strokeStyle = s.hyper ? '#e0f2fe' : '#075985';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(0, 0, 6.5, 0.5, Math.PI * 2 + 0.5); ctx.stroke();
+            ctx.beginPath(); ctx.arc(0, 0, 3.5, Math.PI, Math.PI * 2); ctx.stroke();
             ctx.fillStyle = '#e0f2fe';
-            ctx.beginPath(); ctx.arc(-3, -3, 3, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(-3, -3, 2.5, 0, Math.PI * 2); ctx.fill();
             ctx.restore();
         }
         for (const c of spritzWaterCircles) {
@@ -26712,6 +26783,14 @@ let heistFeverActive = false;
             ctx.setLineDash([14, 8]);
             ctx.beginPath(); ctx.arc(0, 0, c.r, now / 500, now / 500 + Math.PI * 2); ctx.stroke();
             ctx.setLineDash([]);
+            // Ripples on the water so it reads as a pool, not a flat disc.
+            ctx.globalAlpha = 0.5;
+            ctx.strokeStyle = '#bae6fd';
+            ctx.lineWidth = 2;
+            for (let r = 1; r <= 2; r++) {
+                const rippleR = c.r * (0.4 * r) * (0.85 + 0.15 * Math.sin(now / 500 + r * 2));
+                ctx.beginPath(); ctx.arc(0, 0, rippleR, 0, Math.PI * 2); ctx.stroke();
+            }
             ctx.restore();
         }
         // Hyper aura ring around Spritz (Pandy/Snipa pattern).
@@ -77321,17 +77400,32 @@ function checkHit(target, b, i){
               ctx.arc(0, 0, 2.5, 0, Math.PI * 2);
               ctx.fill();
           } else if (b.isSpritzStream || b.isSpritzShellShot) {
-              // Spritz stream / shell shot: a fat water droplet.
+              // Spritz stream / shell shot: a teardrop stretched along its
+              // flight, with a trailing wake — a spray, not a plain ball.
               const spritzSize = b.isSpritzShellShot ? 9 : 11;
+              const spritzAng = Math.atan2(b.vy || 0, b.vx || 1);
+              ctx.rotate(spritzAng);
+              ctx.fillStyle = b.hyperVisual ? 'rgba(186,230,253,0.5)' : 'rgba(56,189,248,0.45)';
+              ctx.beginPath();
+              ctx.moveTo(-spritzSize * 2.2, 0);
+              ctx.lineTo(-spritzSize * 0.4, -spritzSize * 0.45);
+              ctx.lineTo(-spritzSize * 0.4, spritzSize * 0.45);
+              ctx.closePath();
+              ctx.fill();
               ctx.fillStyle = b.hyperVisual ? '#bae6fd' : '#38bdf8';
               ctx.shadowColor = '#0284c7';
               ctx.shadowBlur = 8;
               ctx.beginPath();
-              ctx.arc(0, 0, spritzSize, 0, Math.PI * 2);
+              ctx.moveTo(spritzSize * 1.4, 0);
+              ctx.quadraticCurveTo(spritzSize * 0.9, -spritzSize, 0, -spritzSize * 0.8);
+              ctx.quadraticCurveTo(-spritzSize * 0.9, -spritzSize * 0.5, -spritzSize * 0.8, 0);
+              ctx.quadraticCurveTo(-spritzSize * 0.9, spritzSize * 0.5, 0, spritzSize * 0.8);
+              ctx.quadraticCurveTo(spritzSize * 0.9, spritzSize, spritzSize * 1.4, 0);
               ctx.fill();
+              ctx.shadowBlur = 0;
               ctx.fillStyle = '#e0f2fe';
               ctx.beginPath();
-              ctx.arc(-spritzSize * 0.3, -spritzSize * 0.3, spritzSize * 0.3, 0, Math.PI * 2);
+              ctx.arc(spritzSize * 0.4, -spritzSize * 0.25, spritzSize * 0.28, 0, Math.PI * 2);
               ctx.fill();
           } else if (b.isSpritzHoseBlast) {
               // Spritz hose blast: a spinning three-drop spray.
@@ -79629,6 +79723,98 @@ function checkHit(target, b, i){
                 const a = (s / 5) * Math.PI * 2 + ex.life * 2;
                 ctx.beginPath(); ctx.arc(ex.x + Math.cos(a) * gR * 0.8, ex.y + Math.sin(a) * gR * 0.8, 4, 0, Math.PI * 2); ctx.fill();
             }
+            ctx.restore();
+            continue;
+        }
+        if (ex.fxKind === 'spritzWaterBlast') {
+            // Spritz water blast: an expanding pool flash with a bright
+            // ring and droplets thrown outward. Keys off the blast's REAL
+            // Hyper state (light blue when Hyper) — never a faked flag.
+            const wAlpha = Math.max(0, 1 - ex.life / ex.maxLife);
+            const progress = clamp(ex.life / ex.maxLife, 0, 1);
+            const wR = (ex.radius || 110) * (0.45 + 0.55 * progress);
+            ctx.save();
+            ctx.globalAlpha = wAlpha;
+            ctx.fillStyle = ex.hyper ? 'rgba(186,230,253,0.5)' : 'rgba(56,189,248,0.5)';
+            ctx.beginPath(); ctx.arc(ex.x, ex.y, wR, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = ex.hyper ? '#bae6fd' : '#7dd3fc';
+            ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.arc(ex.x, ex.y, wR, 0, Math.PI * 2); ctx.stroke();
+            ctx.strokeStyle = ex.hyper ? '#e0f2fe' : '#38bdf8';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(ex.x, ex.y, wR * 0.7, 0, Math.PI * 2); ctx.stroke();
+            ctx.fillStyle = ex.hyper ? '#e0f2fe' : '#bae6fd';
+            for (let s = 0; s < 6; s++) {
+                const a = (s / 6) * Math.PI * 2 + ex.life * 3;
+                ctx.beginPath(); ctx.arc(ex.x + Math.cos(a) * wR * 0.9, ex.y + Math.sin(a) * wR * 0.9, 4.5, 0, Math.PI * 2); ctx.fill();
+            }
+            ctx.restore();
+            continue;
+        }
+        if (ex.fxKind === 'spritzModeSwap') {
+            // Spritz Mode Swap: twin expanding water rings + droplets
+            // bursting outward from him as the mode changes.
+            const sAlpha = Math.max(0, 1 - ex.life / ex.maxLife);
+            const progress = clamp(ex.life / ex.maxLife, 0, 1);
+            ctx.save();
+            ctx.globalAlpha = sAlpha;
+            ctx.strokeStyle = ex.hyper ? '#bae6fd' : '#38bdf8';
+            for (let ring = 0; ring < 2; ring++) {
+                ctx.lineWidth = Math.max(2, 5 - ring * 2);
+                ctx.beginPath(); ctx.arc(ex.x, ex.y, (ex.radius || 90) * (0.25 + progress * (0.55 + ring * 0.25)), 0, Math.PI * 2); ctx.stroke();
+            }
+            ctx.fillStyle = ex.hyper ? '#e0f2fe' : '#7dd3fc';
+            for (let s = 0; s < 8; s++) {
+                const a = (s / 8) * Math.PI * 2 + progress * 1.5;
+                const d = (ex.radius || 90) * (0.3 + progress * 0.7);
+                ctx.beginPath(); ctx.arc(ex.x + Math.cos(a) * d, ex.y + Math.sin(a) * d, 4, 0, Math.PI * 2); ctx.fill();
+            }
+            ctx.restore();
+            continue;
+        }
+        if (ex.fxKind === 'pitchHexBurst') {
+            // Pitch hex burst: a purple pool flash with the burst's real
+            // shape — 4 rays for a plus, 8 rays for a plus AND an X
+            // (Hyper or Hex Cross). Green hex sparks ride the rays.
+            const pAlpha = Math.max(0, 1 - ex.life / ex.maxLife);
+            const progress = clamp(ex.life / ex.maxLife, 0, 1);
+            const pR = (ex.radius || 100) * (0.45 + 0.55 * progress);
+            const rays = (ex.hyper || ex.eightWay) ? 8 : 4;
+            ctx.save();
+            ctx.globalAlpha = pAlpha;
+            ctx.fillStyle = ex.hyper ? 'rgba(192,132,252,0.5)' : 'rgba(168,85,247,0.5)';
+            ctx.beginPath(); ctx.arc(ex.x, ex.y, pR, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = ex.hyper ? '#c084fc' : '#a855f7';
+            ctx.lineWidth = 4;
+            ctx.lineCap = 'round';
+            for (let r = 0; r < rays; r++) {
+                const a = (r / rays) * Math.PI * 2;
+                ctx.beginPath();
+                ctx.moveTo(ex.x + Math.cos(a) * pR * 0.3, ex.y + Math.sin(a) * pR * 0.3);
+                ctx.lineTo(ex.x + Math.cos(a) * pR, ex.y + Math.sin(a) * pR);
+                ctx.stroke();
+            }
+            ctx.fillStyle = '#86efac';
+            for (let r = 0; r < rays; r++) {
+                const a = (r / rays) * Math.PI * 2;
+                ctx.beginPath(); ctx.arc(ex.x + Math.cos(a) * pR * 0.85, ex.y + Math.sin(a) * pR * 0.85, 3.5, 0, Math.PI * 2); ctx.fill();
+            }
+            ctx.restore();
+            continue;
+        }
+        if (ex.fxKind === 'pitchPigSpawn') {
+            // Pitch pig spawn poof: a small purple dust ring where a pig
+            // pops in (Super parade or a takedown pig). Visual only.
+            const dAlpha = Math.max(0, 1 - ex.life / ex.maxLife);
+            const progress = clamp(ex.life / ex.maxLife, 0, 1);
+            const dR = (ex.radius || 40) * (0.4 + 0.6 * progress);
+            ctx.save();
+            ctx.globalAlpha = dAlpha;
+            ctx.strokeStyle = '#c084fc';
+            ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.arc(ex.x, ex.y, dR, 0, Math.PI * 2); ctx.stroke();
+            ctx.fillStyle = 'rgba(168,85,247,0.35)';
+            ctx.beginPath(); ctx.arc(ex.x, ex.y, dR * 0.7, 0, Math.PI * 2); ctx.fill();
             ctx.restore();
             continue;
         }
