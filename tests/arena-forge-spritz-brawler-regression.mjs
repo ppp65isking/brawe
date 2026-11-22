@@ -27,8 +27,9 @@
 // px/s; stream 850 px/s / 700 range / 650 dmg / 120 pushback; hose cone
 // 20 deg / 700 px/s / 450 range / 200 impact + 500 blast in 110px;
 // Hyper main 750 px/s / 800 range / 800 middle + 600 blast in 130px;
-// shell pickup radius 60; shell shots 500 dmg / 120 pushback / 500
-// range; second volley 300ms later; SP2 second blast 250ms later; G1
+// shell pickup radius 60; shells land 180px out (300ms toss arc, 150px
+// wall floor) so he must walk to them — no auto-collect on cast; shell
+// shots 500 dmg / 120 pushback / 500 range; second volley 300ms later; SP2 second blast 250ms later; G1
 // heal 400 HP/s / radius 160; bot Super gate 700px; kit names (Spray
 // Cycle / Mode Swap / Water Circle / All-Out Spray / Rooted Spray /
 // Double Splash); bonus ammo is a reserve spent only when the normal bar
@@ -101,7 +102,7 @@ check('portrait body-art branch (blue cap + spray bottle)', game.includes("if (b
 check('bullet render branches (stream/shell + hose + hyper main)', game.includes('} else if (b.isSpritzStream || b.isSpritzShellShot) {') && game.includes('} else if (b.isSpritzHoseBlast) {') && game.includes('} else if (b.isSpritzHyperMain) {'));
 check('constants: super 8s, mist 550/150/2500/60, stream 850/700/650/120', game.includes('const SPRITZ_SUPER_CHARGE_SECONDS = 8;') && game.includes('const SPRITZ_MIST_RANGE = 550;') && game.includes('const SPRITZ_MIST_RADIUS = 150;') && game.includes('const SPRITZ_MIST_DURATION_MS = 2500;') && game.includes('const SPRITZ_MIST_DRIFT_SPEED = 60;') && game.includes('const SPRITZ_STREAM_SPEED = 850;') && game.includes('const SPRITZ_STREAM_RANGE = 700;') && game.includes('const SPRITZ_STREAM_DMG = 650;') && game.includes('const SPRITZ_STREAM_KNOCKBACK = 120;'));
 check('constants: hose 20deg/700/450/200/500/110, hyper 750/800/800/600/130', game.includes('const SPRITZ_HOSE_CONE_DEG = 20;') && game.includes('const SPRITZ_HOSE_SPEED = 700;') && game.includes('const SPRITZ_HOSE_RANGE = 450;') && game.includes('const SPRITZ_HOSE_IMPACT_DMG = 200;') && game.includes('const SPRITZ_HOSE_BLAST_DMG = 500;') && game.includes('const SPRITZ_HOSE_BLAST_RADIUS = 110;') && game.includes('const SPRITZ_HYPER_MAIN_SPEED = 750;') && game.includes('const SPRITZ_HYPER_MAIN_RANGE = 800;') && game.includes('const SPRITZ_HYPER_MAIN_DMG = 800;') && game.includes('const SPRITZ_HYPER_BLAST_DMG = 600;') && game.includes('const SPRITZ_HYPER_BLAST_RADIUS = 130;'));
-check('constants: shells 2/3, pickup 60, shots 3x500/120/500, second volley 300ms', game.includes('const SPRITZ_SUPER_SHELL_COUNT = 2;') && game.includes('const SPRITZ_SUPER_SHELL_COUNT_HYPER = 3;') && game.includes('const SPRITZ_SHELL_PICKUP_RADIUS = 60;') && game.includes('const SPRITZ_SHELL_SHOT_COUNT = 3;') && game.includes('const SPRITZ_SHELL_SHOT_DMG = 500;') && game.includes('const SPRITZ_SHELL_SHOT_KNOCKBACK = 120;') && game.includes('const SPRITZ_SHELL_SECOND_VOLLEY_DELAY_MS = 300;'));
+check('constants: shells 2/3, pickup 60, land 180px out (300ms toss, 40px arc, 150px wall floor), shots 3x500/120/500, second volley 300ms', game.includes('const SPRITZ_SUPER_SHELL_COUNT = 2;') && game.includes('const SPRITZ_SUPER_SHELL_COUNT_HYPER = 3;') && game.includes('const SPRITZ_SHELL_PICKUP_RADIUS = 60;') && game.includes('const SPRITZ_SUPER_SHELL_DISTANCE = 180;') && game.includes('const SPRITZ_SHELL_FLIGHT_MS = 300;') && game.includes('const SPRITZ_SHELL_ARC_HEIGHT = 40;') && game.includes('const SPRITZ_SHELL_MIN_DISTANCE = 150;') && game.includes('const SPRITZ_SHELL_SHOT_COUNT = 3;') && game.includes('const SPRITZ_SHELL_SHOT_DMG = 500;') && game.includes('const SPRITZ_SHELL_SHOT_KNOCKBACK = 120;') && game.includes('const SPRITZ_SHELL_SECOND_VOLLEY_DELAY_MS = 300;'));
 check('constants: SP1 root 1000ms, SP2 1.25x + second blast 250ms, G1 400/s/160/4000ms, bot gate 700', game.includes('const SPRITZ_SP1_ROOT_MS = 1000;') && game.includes('const SPRITZ_SP2_SPEED_MULT = 1.25;') && game.includes('const SPRITZ_SP2_SECOND_BLAST_DELAY_MS = 250;') && game.includes('const SPRITZ_G1_HEAL_PER_S = 400;') && game.includes('const SPRITZ_G1_RADIUS = 160;') && game.includes('const SPRITZ_G1_DURATION_MS = 4000;') && game.includes('const SPRITZ_BOT_SUPER_RANGE = 700;'));
 check('SP gates use stored keys slow/long (never sp1/sp2 alone)', game.includes("function spritzHasSP1(entity) { return spritzStarChoice(entity) === 'slow'; }") && game.includes("function spritzHasSP2(entity) { return spritzStarChoice(entity) === 'long'; }"));
 check('no Brawl Stars wording or Grom in the Spritz block', !spritzBlock.includes('Brawl Stars') && !spritzBlock.includes('Grom') && !spritzBlock.includes('Supercell'));
@@ -330,6 +331,7 @@ vm.runInContext(
   [
     'spritzLevelScale', 'spritzStarChoice', 'spritzHasSP1', 'spritzHasSP2', 'isSpritz',
     'spritzFindOwner', 'spritzModeOf', 'spritzSpeedMult', 'spritzScaledDmg',
+    'spritzShellLanding', 'spritzShellFlightPos',
     'spritzCanFireWithBonusAmmo', 'spritzSpendBonusAmmo', 'fireSpritzMain',
     'spritzFireMist', 'spritzFireStream', 'spritzFireHoseBlast', 'spritzFireHyperMain',
     'spritzExplodeAt', 'spritzFireShellShots', 'castSpritzSuper', 'executeSpritzGadget',
@@ -606,14 +608,16 @@ try {
   playerEnt.x = 500; playerEnt.y = 500;
   check('super: no shells before cast', spritzShells.length === 0);
   check('super: cast returns true and drops 2 shells', sandbox.castSpritzSuper(playerEnt, false, 500, 0) === true && spritzShells.length === 2);
-  check('super: shells land 56px out around the owner', spritzShells.every((s) => near(Math.hypot(s.x - 500, s.y - 500), 56, 0.5) && s.ownerId === 'p1' && s.hyper === false));
+  check('super: shells land 180px out around the owner (outside pickup reach)', spritzShells.every((s) => near(Math.hypot(s.x - 500, s.y - 500), 180, 0.5) && s.ownerId === 'p1' && s.hyper === false));
+  check('super: shells are tossed, not dropped — they arc in from his feet over 300ms', spritzShells.every((s) => s.fromX === 500 && s.fromY === 500 && s.landAt === nowMs + 300));
+  check('super: MODE SWAP burst explodes around him (visible cycle effect)', explosions.some((e) => e.fxKind === 'spritzModeSwap' && e.radius === 90 && e.x === 500 && e.y === 500));
   check('super: shells have unique spots', spritzShells[0].x !== spritzShells[1].x || spritzShells[0].y !== spritzShells[1].y);
   check('super: MODE SWAP floating text names the new mode', floatingTexts.some((t) => t.text === '💦 MODE SWAP: FOCUS STREAM!'));
   check('super: voice super line plays', voicePlays.includes('super'));
   // Hyper: 3 shells.
   resetWorld();
   playerEnt.x = 500; playerEnt.y = 500;
-  check('super (Hyper): 3 shells instead of 2', sandbox.castSpritzSuper(playerEnt, true, 500, 0) === true && spritzShells.length === 3 && spritzShells.every((s) => s.hyper === true));
+  check('super (Hyper): 3 shells instead of 2, all 180px out', sandbox.castSpritzSuper(playerEnt, true, 500, 0) === true && spritzShells.length === 3 && spritzShells.every((s) => s.hyper === true && near(Math.hypot(s.x - 500, s.y - 500), 180, 0.5)));
   check('super: dead entity cannot cast', (() => { resetWorld(); playerEnt.hp = 0; return sandbox.castSpritzSuper(playerEnt, false, 500, 0) === false && spritzShells.length === 0; })());
 } catch (e) { failures.push('super threw: ' + e.message); }
 
@@ -626,7 +630,23 @@ try {
   check('shell: 2 shells waiting before the pickup tick', spritzShells.length === 2 && (playerEnt.spritzBonusAmmo || 0) === 0);
   sandbox.updateSpritzSystems(0.016);
   syncSpritzArrays();
-  check('shell: both shells are picked up by the owner standing on them', spritzShells.length === 0);
+  check('shell: no auto-collect on cast — shells are 180px out, not under him', spritzShells.length === 2 && (playerEnt.spritzBonusAmmo || 0) === 0 && bullets.length === 0);
+  // Even standing on the landing spot mid-toss picks up nothing.
+  playerEnt.x = spritzShells[0].x; playerEnt.y = spritzShells[0].y;
+  sandbox.updateSpritzSystems(0.016);
+  syncSpritzArrays();
+  check('shell: no pickup while the shell is still arcing in', spritzShells.length === 2 && (playerEnt.spritzBonusAmmo || 0) === 0);
+  // Once landed, walking onto a shell picks it up.
+  nowMs += 300;
+  sandbox.updateSpritzSystems(0.016);
+  syncSpritzArrays();
+  check('shell: one shell is picked up once he walks onto it after landing', spritzShells.length === 1);
+  check('shell: the pickup stores 1 bonus ammo', playerEnt.spritzBonusAmmo === 1);
+  check('shell: the pickup fires 3 pushback shots', bullets.length === 3 && bullets.every((b) => b.isSpritzShellShot));
+  playerEnt.x = spritzShells[0].x; playerEnt.y = spritzShells[0].y;
+  sandbox.updateSpritzSystems(0.016);
+  syncSpritzArrays();
+  check('shell: the second shell is picked up the same way', spritzShells.length === 0);
   check('shell: each pickup stores 1 bonus ammo (2 total)', playerEnt.spritzBonusAmmo === 2);
   check('shell: each pickup fires 3 pushback shots (6 total)', bullets.length === 6 && bullets.every((b) => b.isSpritzShellShot));
   check('shell: shots fire 120 degrees apart around him', JSON.stringify(bulletAngles().sort((a, b) => a - b)) === JSON.stringify([0, 0, 120, 120, 240, 240]));
@@ -637,9 +657,10 @@ try {
   // Only the owner picks up his own shells.
   resetWorld();
   playerEnt.x = 500; playerEnt.y = 500;
-  const ally = mkAlly('a1', { x: 546, y: 532 });
   sandbox.castSpritzSuper(playerEnt, false, 500, 0);
-  playerEnt.x = 0; playerEnt.y = 0; // owner walks away; the ally stands on a shell
+  const ally = mkAlly('a1', { x: spritzShells[0].x, y: spritzShells[0].y }); // ally stands on a landed shell
+  playerEnt.x = 0; playerEnt.y = 0; // owner walks away
+  nowMs += 300; // shells have landed
   sandbox.updateSpritzSystems(0.016);
   syncSpritzArrays();
   check('shell: an ally standing on a shell cannot pick it up', spritzShells.length === 2 && (ally.spritzBonusAmmo || 0) === 0 && bullets.length === 0);
@@ -648,6 +669,7 @@ try {
   playerEnt.x = 500; playerEnt.y = 500;
   sandbox.castSpritzSuper(playerEnt, false, 500, 0);
   playerEnt.x = 1000; playerEnt.y = 1000;
+  nowMs += 300; // landed, but far away
   sandbox.updateSpritzSystems(0.016);
   syncSpritzArrays();
   check('shell: no pickup when the owner is far away', spritzShells.length === 2 && (playerEnt.spritzBonusAmmo || 0) === 0);
@@ -656,8 +678,8 @@ try {
   playerEnt.x = 500; playerEnt.y = 500;
   playerEnt.selectedStar = 'slow';
   sandbox.castSpritzSuper(playerEnt, false, 500, 0);
-  sandbox.updateSpritzSystems(0.016);
-  syncSpritzArrays();
+  nowMs += 300;
+  for (let k = 0; k < 2; k++) { playerEnt.x = spritzShells[0].x; playerEnt.y = spritzShells[0].y; sandbox.updateSpritzSystems(0.016); syncSpritzArrays(); }
   check('shell (SP1): shots carry the 1000ms root', bullets.length === 6 && bullets.every((b) => b.spritzRootMs === 1000));
   // Hyper: each shell's shots fire twice — second hit pushes only, no damage.
   resetWorld();
@@ -667,7 +689,10 @@ try {
   sandbox.castSpritzSuper(playerEnt, true, 500, 0);
   sandbox.updateSpritzSystems(0.016);
   syncSpritzArrays();
-  check('shell (Hyper): 3 shells picked up, 9 first-volley shots', spritzShells.length === 0 && bullets.length === 9 && playerEnt.spritzBonusAmmo === 3);
+  check('shell (Hyper): no auto-collect on cast — 3 shells still waiting', spritzShells.length === 3 && bullets.length === 0);
+  nowMs += 300;
+  for (let k = 0; k < 3; k++) { playerEnt.x = spritzShells[0].x; playerEnt.y = spritzShells[0].y; sandbox.updateSpritzSystems(0.016); syncSpritzArrays(); }
+  check('shell (Hyper): 3 shells picked up once he walks to them, 9 first-volley shots', spritzShells.length === 0 && bullets.length === 9 && playerEnt.spritzBonusAmmo === 3);
   check('shell (Hyper): a second volley is scheduled per shell, 300ms later', spritzPendingVolleys.length === 3 && spritzPendingVolleys.every((v) => v.fireAt === nowMs + 300 && v.pushOnly === true));
   nowMs += 100; // not yet
   sandbox.updateSpritzSystems(0.016);
@@ -678,7 +703,7 @@ try {
   syncSpritzArrays();
   check('shell (Hyper): second volleys fire (9 more shots)', spritzPendingVolleys.length === 0 && bullets.length === 18);
   check('shell (Hyper): second volley pushes only — 0 damage', bullets.slice(9).every((b) => b.damage === 0 && b.isSpritzShellShot));
-  check('shell (Hyper): second volley never roots, even with SP1', (() => { resetWorld(); playerEnt.x = 500; playerEnt.y = 500; playerEnt.selectedStar = 'slow'; sandbox.isHypercharged = true; sandbox.castSpritzSuper(playerEnt, true, 500, 0); sandbox.updateSpritzSystems(0.016); nowMs += 300; sandbox.updateSpritzSystems(0.016); syncSpritzArrays(); return bullets.slice(9).every((b) => b.spritzRootMs === 0); })());
+  check('shell (Hyper): second volley never roots, even with SP1', (() => { resetWorld(); playerEnt.x = 500; playerEnt.y = 500; playerEnt.selectedStar = 'slow'; sandbox.isHypercharged = true; sandbox.castSpritzSuper(playerEnt, true, 500, 0); nowMs += 300; for (let k = 0; k < 3; k++) { playerEnt.x = spritzShells[0].x; playerEnt.y = spritzShells[0].y; sandbox.updateSpritzSystems(0.016); syncSpritzArrays(); } nowMs += 300; sandbox.updateSpritzSystems(0.016); syncSpritzArrays(); return bullets.slice(9).every((b) => b.spritzRootMs === 0); })());
 } catch (e) { failures.push('shell pickup threw: ' + e.message); }
 
 // --- executed: gadgets (G1 Water Circle, G2 All-Out Spray) ---
