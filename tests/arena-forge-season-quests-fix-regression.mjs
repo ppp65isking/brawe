@@ -3,8 +3,8 @@
 // be VISIBLE but grayed out with a "coming soon" label — not hidden, not
 // claimable/active. Currently-available season quests stay normal + claimable.
 // Daily/weekly quests, Pass XP labels, the pass screen and fighters are
-// untouched; no reward or XP changes (Pass XP daily +25 / weekly +100 /
-// season +100 is Anthony's pending call).
+// untouched; no reward or XP changes (Pass XP daily +300 / weekly +600
+// is the 2026-11-23 rework — see the pitch-rework suite for the math).
 import fs from 'node:fs';
 import vm from 'node:vm';
 
@@ -196,8 +196,7 @@ const smoke = {
 for (const name of ['TURKEY_TROUBLE_SEASON_ID', 'TURKEY_TROUBLE_START_UTC', 'TURKEY_TROUBLE_END_UTC',
     'XPLODEMIS_SEASON_ID', 'XPLODEMIS_START_UTC', 'XPLODEMIS_END_UTC',
     'EMBER_FORGE_SEASON_ID', 'EMBER_FORGE_START_UTC', 'EMBER_FORGE_END_UTC',
-    'SEASON_PASS_SCHEMA_VERSION', 'SEASON_PASS_MAX_LEVEL', 'SEASON_PASS_XP_PER_TIER', 'SEASON_QUEST_STAGE_COUNT',
-    'SEASON_QUEST_UNLOCK_STEP_MS']) {
+    'SEASON_PASS_SCHEMA_VERSION', 'SEASON_PASS_MAX_LEVEL', 'SEASON_PASS_XP_PER_TIER', 'SEASON_QUEST_STAGE_COUNT']) {
     smoke[name] = evalLiteral(extractConst(game, name));
 }
 for (const name of ['TURKEY_TROUBLE_PASS_TIERS', 'XPLODEMIS_PASS_TIERS', 'EMBER_FORGE_PASS_TIERS',
@@ -210,11 +209,11 @@ for (const fn of ['ensureBrawePassTokens', 'getActiveSeasonProfile', 'getActiveS
     'isSeason3PassActive', 'getClaimableSeasonQuestCount', 'questRewardText',
     'normalizeQuestKey', 'progressSeasonPassQuest', 'claimSeasonPassQuestReward',
     'isQuestStageUnlocked', 'getQuestProgressCount', 'openQuestBoard',
-    // Season quests tuning (2026-11-20): the time gate + sanitize helpers
-    // the season functions now call — they must load too, or the vm
-    // harness throws the moment a season function runs.
-    'seasonQuestStageUnlockMs', 'seasonQuestStageStartUtc', 'isSeasonQuestStageTimeUnlocked',
-    'formatSeasonQuestUnlockCountdown', 'sanitizeSeasonQuestProgress']) {
+    // Season quests rework (2026-11-23): the time gate is DELETED — no
+    // timer functions exist anymore. Only the sanitize helper loads
+    // alongside the season functions, or the vm harness throws the
+    // moment a season function runs.
+    'sanitizeSeasonQuestProgress']) {
     try { vm.runInContext(extractFunction(game, fn), smoke); }
     catch (e) { check(`smoke setup: extract+load ${fn}`, false); }
 }
@@ -229,8 +228,9 @@ check('smoke setup: isSeasonQuestStageUnlocked loads in the harness', helperLoad
 // active profile is the rebuilt 50-tier Xplodemis season.
 // NOTE: overriding the HOST Date.now does NOT reach inside the vm context
 // (the context has its own Date intrinsic), so freeze the vm's Date too —
-// otherwise the season time gate reads the real wall clock and stage 2
-// stays time-locked until Nov 22 even after stage 1 completes.
+// otherwise the active season profile reads the real wall clock. There
+// is NO time gate anymore (rework 2026-11-23): the freeze only pins the
+// season window, it gates nothing.
 const realNow = Date.now;
 Date.now = () => Date.UTC(2026, 11, 5, 12, 0, 0);
 vm.runInContext('Date.now = () => Date.UTC(2026, 11, 5, 12, 0, 0);', smoke);

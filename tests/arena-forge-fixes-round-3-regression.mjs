@@ -255,8 +255,8 @@ check('pass is still 50 tiers, premium 100 gems / 11,999 coins, tier-50 Holiday 
     game.includes('SEASON_PREMIUM_UNLOCK_GEMS = 100') &&
     game.includes('SEASON_PREMIUM_UNLOCK_COINS = 11999') &&
     game.includes("{tier:50,title:'HOLIDAY LIGHTS',free:{type:'coins',amount:5000},premium:{type:'skin',id:'holiday-lights-freezeon'}}"));
-check('Pass XP unchanged: daily +25, weekly +100',
-    game.includes('rewards: weekly ? { coins:500+index*150, souls:35+index*10, questXP:35, passXP:100 } : { coins:150+index*40, questXP:20, passXP:25 }'));
+check('Pass XP unchanged: daily +300, weekly +600 (rework 2026-11-23 — was +25/+100)',
+    game.includes('rewards: weekly ? { coins:500+index*150, souls:35+index*10, questXP:35, passXP:600 } : { coins:150+index*40, questXP:20, passXP:300 }'));
 check('Pass XP: season quests rescaled (2026-11-20 pass-38950 round) — Xplodemis pays 795/1391/2186/3418 by stage band (sum 38,950), past/future seasons still 100',
     (() => {
         const vals = [...game.matchAll(/xpReward:([0-9]+)/g)].map((m) => m[1]);

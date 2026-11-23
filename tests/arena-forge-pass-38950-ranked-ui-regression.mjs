@@ -115,7 +115,7 @@ check('pass: tier-50 skin still Holiday Lights FreeZeon', game.includes("premium
 check('pass: overflow still every extra 1000 XP = 2 random tappers, every 2500 = a super tapper',
     extractFunction(game, 'awardSeasonPassOverflow').includes('SEASON_PASS_TOTAL_XP')
     && game.includes('const steps = Math.floor(over / 1000);') && game.includes('const superSteps = Math.floor(over / 2500);'));
-check('pass: daily (+25) / weekly (+100) Pass XP unchanged', game.includes('passXP:100') && game.includes('passXP:25'));
+check('pass: daily (+300) / weekly (+600) Pass XP — rework 2026-11-23 (was +25/+100)', game.includes('passXP:600') && game.includes('passXP:300'));
 check('pass: match XP unchanged (25 win / 15 loss)', game.includes('awardSeasonPassXp(won ? 25 : 15)'));
 
 const xplodemisDefs = evalLiteral(extractConst(game, 'XPLODEMIS_QUEST_DEFS'));

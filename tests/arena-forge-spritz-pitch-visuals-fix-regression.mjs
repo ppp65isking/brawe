@@ -222,7 +222,7 @@ try {
     isSpritz: (e) => e && e.brawler === 'spritz',
     isPitch: (e) => e && e.brawler === 'pitch',
     PITCH_THROW_ARC_HEIGHT: Number(game.match(/const PITCH_THROW_ARC_HEIGHT = (\d+);/)[1]),
-    PITCH_SPLASH_RADIUS: Number(game.match(/const PITCH_SPLASH_RADIUS = (\d+);/)[1]),
+    PITCH_SHARD_RANGE_PX: Number(game.match(/const PITCH_SHARD_RANGE_PX = (\d+);/)[1]),
     SPRITZ_SHELL_ARC_HEIGHT: Number(game.match(/const SPRITZ_SHELL_ARC_HEIGHT = (\d+);/)[1]),
   };
   sandbox.spritzShellFlightPos = vm.runInNewContext(
