@@ -54,8 +54,10 @@ assert.match(game, /function getBrawlerSortOrder[\s\S]*?Starter:\s*0,\s*Rare:\s*
 assert.match(game, /allBrawlers\.filter\(\s*b\s*=>\s*getBrawlerRarity\(b\)\s*!==\s*'Starter'/, 'autoSpendSoulsOnTarget excludes Starter brawlers');
 assert.match(game, /ss\.targetBrawler = locked\[Math\.floor\(Math\.random\(\) \* locked\.length\)\];/, 'autoSpendSoulsOnTarget picks a uniform random locked brawler');
 
-// 7. Fighter browser options & colors
-assert.match(game, /<option value="Starter">Starter<\/option>[\s\S]*?<option value="Rare">Rare<\/option>[\s\S]*?<option value="Epic">Epic<\/option>[\s\S]*?<option value="Mythic">Mythic<\/option>[\s\S]*?<option value="Exotic">Exotic<\/option>[\s\S]*?<option value="Unique">Unique<\/option>[\s\S]*?<option value="Anomaly">Anomaly<\/option>/, 'Fighter browser dropdown has all 7 tiers in order');
+// 7. Fighter browser options & colors (fighters redesign 2026-11-23: the
+// rarity dropdown is now a multi-checkbox group in the combined filter
+// panel — same 7 tiers, same order)
+assert.match(game, /const allFilterRarities = \['Starter', 'Rare', 'Epic', 'Mythic', 'Exotic', 'Unique', 'Anomaly'\];/, 'Fighter browser filter has all 7 tiers in order');
 assert.match(game, /'Unique':\s*'#ff9b42'/, 'Unique color mapped');
 assert.match(game, /'Starter':\s*'#9fb4c7'/, 'Starter color mapped');
 

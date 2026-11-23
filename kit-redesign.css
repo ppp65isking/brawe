@@ -370,7 +370,11 @@
 }
 .brawler-card__maxed-ribbon {
   position: absolute;
-  top: 8px;
+  /* Fighters redesign (2026-11-23): was top:8px, centered — the chip row
+     (absolute, top:6px, z-index 5) sat directly on top of it, hiding the
+     ribbon behind the LVL chip. Moved below the chips (they end ~30px);
+     stays centered with no rotation (maxed-card suite pins both). */
+  top: 34px;
   left: 50%;
   transform: translateX(-50%);
   background: linear-gradient(90deg, #ffd166, #ffb52e);

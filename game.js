@@ -1194,6 +1194,45 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         .native-app .app-fighter-kit-icons i.on{opacity:1}
         }
         .app-quick-close{width:100%;padding:12px;border:0;border-radius:12px;background:#ff9f1c;color:#231303;font-weight:1000;font-size:14px;cursor:pointer}
+        /* ---- Fighters redesign (2026-11-23, Anthony's Mobile-1 design) ----
+           The Fighters screen carries its own top bar (title + all
+           currencies + tapper/present buttons + currently playing) and a
+           Weekly Max-Out section above the roster. The global home top bar
+           stays home-only; the fighter page keeps its own wallet bar.
+           Strip cards gain a Weekly Max-Out pill, HP/DMG stats, an edit-kit
+           button, a rarity pin, and a visible bricks chip. */
+        .app-fighters-header{flex:none;display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:2px 2px 8px}
+        .app-fighters-header h2{margin:0;font-size:22px;font-weight:1000;letter-spacing:.02em;color:#fff}
+        .app-fighters-wallet{flex:1 1 auto;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+        .app-fighters-chip{padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.07);color:#fff;font-size:12px;font-weight:1000;white-space:nowrap}
+        button.app-fighters-chip{cursor:pointer}
+        button.app-fighters-chip:active{transform:scale(.96)}
+        .app-fighters-now-playing{flex:none;display:flex;align-items:center;gap:6px;padding:5px 10px 5px 6px;border-radius:999px;border:1px solid rgba(255,209,102,.55);background:rgba(255,159,28,.16);color:#ffd166;font-size:12px;font-weight:1000;cursor:pointer;white-space:nowrap}
+        .app-fighters-now-playing small{font-size:9px;font-weight:1000;letter-spacing:.08em}
+        .app-fighters-now-playing .app-fighters-now-icon{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;overflow:hidden;background:#0b69bd;font-size:15px}
+        .app-fighters-now-playing .app-fighters-now-icon svg{width:92%;height:92%}
+        .app-fighters-weekly{flex:none;margin:2px 2px 10px;padding:12px;border-radius:14px;border:1px solid rgba(255,209,102,.45);background:linear-gradient(120deg,rgba(255,209,102,.14),rgba(8,20,42,.6));color:#fff}
+        .app-fighters-weekly[hidden]{display:none}
+        .app-fighters-weekly-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+        .app-fighters-weekly-head small{font-size:10px;font-weight:1000;letter-spacing:.14em;color:#70e9ff}
+        .app-fighters-weekly-head strong{font-size:11px;font-weight:1000;color:#ffe06b;white-space:nowrap}
+        .app-fighters-weekly-head h3{margin:2px 0 4px;font-size:17px}
+        .app-fighters-weekly-head p{margin:0 0 8px;font-size:11px;color:#9cb0c7;line-height:1.4}
+        .app-fighters-weekly-row{display:flex;align-items:center;gap:10px;width:100%;padding:8px;border-radius:12px;border:1px solid rgba(255,255,255,.16);background:rgba(8,20,42,.55);color:#fff;text-align:left;cursor:pointer}
+        .app-fighters-weekly-row + .app-fighters-weekly-row{margin-top:6px}
+        .app-fighters-weekly-portrait{flex:none;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;overflow:hidden;border:2px solid #ffe267;background:#080e17;font-size:22px}
+        .app-fighters-weekly-portrait svg{width:92%;height:92%}
+        .app-fighters-weekly-copy{flex:1 1 auto;min-width:0}
+        .app-fighters-weekly-copy b{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .app-fighters-weekly-copy small{display:block;font-size:10px;font-weight:800;color:#9fc6e8}
+        .app-fighters-weekly-copy span{display:block;font-size:10px;font-weight:800;color:#ffd166}
+        .app-fighters-weekly-edit{flex:none;padding:7px 10px;border-radius:999px;border:1px solid rgba(125,233,255,.6);background:rgba(22,43,61,.9);color:#e9fbff;font-size:10px;font-weight:1000;cursor:pointer}
+        .app-fighter-trial{position:absolute;left:6px;bottom:30px;z-index:3;padding:2px 6px;border-radius:999px;border:1px solid #ffe267;background:#3c2d08;color:#fff0a7;font-size:7px;font-weight:1000;letter-spacing:.06em;white-space:nowrap}
+        .app-fighter-stats{position:absolute;left:6px;bottom:16px;z-index:3;font-size:8px;font-weight:1000;color:#fff;text-shadow:0 2px 0 #000,1px 0 0 #000,-1px 0 0 #000;white-space:nowrap}
+        .app-fighter-edit{position:absolute;right:4px;bottom:4px;z-index:3;padding:3px 7px;border-radius:999px;border:1px solid rgba(125,233,255,.6);background:rgba(8,20,42,.85);color:#e9fbff;font-size:8px;font-weight:1000;cursor:pointer;white-space:nowrap}
+        .app-fighter-rarity-pin{position:absolute;top:6px;right:31px;z-index:3;font-size:13px;line-height:1;color:var(--rarity-color,#9fb4c7);text-shadow:0 2px 0 #000}
+        #appFightersStrip .app-fighter-card b{max-width:calc(100% - 64px)}
+        #appFightersStrip .app-fighter-trophies{display:block;position:absolute;top:30px;left:4px;z-index:3;padding:2px 6px;border-radius:999px;background:rgba(10,16,32,.88);border:1px solid #ff9f1c;font-size:8px;font-weight:1000;color:#ffd763;white-space:nowrap}
         `;
         document.head.appendChild(styleSheet);
     function getScaledStats(brawlerId, levelOverride) {
@@ -7019,6 +7058,74 @@ const bolznstienPendingStrikes = [];
             return modeSort(a, b);
         });
     }
+    // Fighters redesign (2026-11-23, Anthony's Mobile-1 design): the
+    // Fighters screen carries its own top bar — title, every currency
+    // (Coins, Souls, Core Pieces, Gems), tapper / present buttons, and a
+    // "Currently Playing" chip for the active fighter (the ACTIVE FIGHTER
+    // banner's fighter, no new mechanic). Rendered on every tab visit and
+    // after upgrades; the tapper overlays are async, so their counts
+    // refresh on the next visit.
+    function renderAppFightersHeader() {
+        const header = document.getElementById('appFightersHeader');
+        if (!header) return;
+        let coins = 0, souls = 0, gems = 0, corePieces = 0;
+        try { coins = playerData.coins || 0; } catch (_) {}
+        try { souls = (typeof getSoulBalance === 'function') ? getSoulBalance() : (playerData.souls || 0); } catch (_) { souls = (playerData && playerData.souls) || 0; }
+        try { gems = playerData.gems || 0; } catch (_) {}
+        try { corePieces = (typeof getCorePieces === 'function') ? getCorePieces() : (playerData.corePieces || 0); } catch (_) { corePieces = (playerData && playerData.corePieces) || 0; }
+        const reg = (playerData.starrDrops || 0), sup = (playerData.superTapperCount || 0), hyp = (playerData.hyperTapperCount || 0), presents = (playerData.presentCount || 0);
+        const totalTappers = reg + sup + hyp;
+        const active = (typeof brawlerData !== 'undefined' && brawlerData[selectedBrawler]) || null;
+        let activeIcon = '🙂';
+        try { activeIcon = getBrawlerPortraitMarkup(selectedBrawler) || activeIcon; } catch (_) {}
+        header.innerHTML = `
+              <h2>Fighters</h2>
+              <div class="app-fighters-wallet">
+                <span class="app-fighters-chip">🪙 ${(Number(coins) || 0).toLocaleString()}</span>
+                <span class="app-fighters-chip">🪄 ${(Number(souls) || 0).toLocaleString()}</span>
+                <span class="app-fighters-chip">💠 ${(Number(corePieces) || 0).toLocaleString()}</span>
+                <span class="app-fighters-chip">💎 ${(Number(gems) || 0).toLocaleString()}</span>
+              </div>${reg > 0 ? `
+              <button type="button" class="app-fighters-chip" data-app-tapper="reg">⭐ Tapper (${reg})</button>` : ''}${sup > 0 ? `
+              <button type="button" class="app-fighters-chip" data-app-tapper="super">✦ Super (${sup})</button>` : ''}${hyp > 0 ? `
+              <button type="button" class="app-fighters-chip" data-app-tapper="hyper">⚡ Surge (${hyp})</button>` : ''}${presents > 0 ? `
+              <button type="button" class="app-fighters-chip" data-app-tapper="present">🎁 Present (${presents})</button>` : ''}${totalTappers > 1 ? `
+              <button type="button" class="app-fighters-chip" data-app-tapper="all">🎁 Bulk Open (${totalTappers})</button>` : ''}
+              <button type="button" class="app-fighters-now-playing" data-app-now-playing="1"><small>CURRENTLY PLAYING</small><span class="app-fighters-now-icon">${activeIcon}</span><b>${active ? (active.name || selectedBrawler) : selectedBrawler}</b></button>`;
+    }
+    // Fighters redesign (2026-11-23): the Weekly Max-Out section renders
+    // dynamically from the existing Weekly Trials list (2 fighters per
+    // week, temporary Power 11, complete kits) with the days left until
+    // refresh. The trial count is NOT changed here.
+    function renderAppFightersWeekly() {
+        const section = document.getElementById('appFightersWeekly');
+        if (!section) return;
+        let state = null, info = null;
+        try { state = ensureWeeklyTrialState(); info = getWeeklyTrialWeekInfo(); } catch (_) { section.hidden = true; return; }
+        if (!state || !Array.isArray(state.fighterIds) || !state.fighterIds.length) { section.hidden = true; return; }
+        section.hidden = false;
+        const daysLeft = Math.max(1, Math.ceil((info.end - Date.now()) / 86400000));
+        const rows = state.fighterIds.map((id) => {
+            const data = (typeof brawlerData !== 'undefined' && brawlerData[id]) || {};
+            let portrait = `<span>${data.emoji || '🙂'}</span>`;
+            try { portrait = getBrawlerPortraitMarkup(id); } catch (_) {}
+            let hp = 0, dmg = 0;
+            try { const st = getScaledStats(id, 11); hp = st.hp || 0; dmg = st.dmg || 0; } catch (_) {}
+            let bricks = 0;
+            try { bricks = (typeof getLifetimeBricks === 'function') ? getLifetimeBricks(getEffectiveBrawlerProgress(id)) : 0; } catch (_) { bricks = 0; }
+            const rarity = (typeof brawlerRarities !== 'undefined' && brawlerRarities[id]) || 'Starter';
+            return `<div class="app-fighters-weekly-row" data-app-weekly-fighter="${id}">
+                <span class="app-fighters-weekly-portrait">${portrait}</span>
+                <span class="app-fighters-weekly-copy"><b>${data.name || id}</b><small>${String(rarity).toUpperCase()} · ${String(data.role || 'Fighter').toUpperCase()} · POWER 11 · COMPLETE KIT</small><span>❤ ${Number(hp).toLocaleString()} · ⚔ ${Number(dmg).toLocaleString()}${bricks > 0 ? ` · 🧱 ${Number(bricks).toLocaleString()}` : ''}</span></span>
+                <button type="button" class="app-fighters-weekly-edit" data-app-weekly-edit="${id}">✏ EDIT KIT</button>
+              </div>`;
+        }).join('');
+        section.innerHTML = `
+              <div class="app-fighters-weekly-head"><small>${state.fallbackSpecials ? 'SPECIAL LAB' : 'WEEKLY MAX-OUT'}</small><strong>${daysLeft} DAYS LEFT</strong></div>
+              <h3>${state.fallbackSpecials ? 'Try two special fighters' : 'Weekly Max-Out'}</h3>
+              <p>Temporary Power 11, both Tools, both Talents, Core Surge, Trinkets, and available Specials. Your permanent progression is untouched.</p>
+              ${rows}`;
+    }
     function buildAppFightersView() {
         const view = document.getElementById('appHomeFightersView');
         if (!view) return;
@@ -7026,6 +7133,8 @@ const bolznstienPendingStrikes = [];
             appFightersBuilt = true;
             if (!appFightersState.focused) appFightersState.focused = selectedBrawler;
             view.innerHTML = `
+              <div id="appFightersHeader" class="app-fighters-header"></div>
+              <div id="appFightersWeekly" class="app-fighters-weekly" hidden></div>
               <div class="app-fighters-toolbar">
                 <div class="app-fighters-topbar">
                   <button type="button" id="appFightersSearchToggle" class="app-fighters-icon-btn" aria-label="Search fighters" aria-expanded="false">🔍</button>
@@ -7109,6 +7218,11 @@ const bolznstienPendingStrikes = [];
                 // also focus the card, so it is checked first.
                 const favBtn = event.target.closest('[data-app-favorite]');
                 if (favBtn) { appBuzz(10); toggleAppFighterFavorite(favBtn.dataset.appFavorite); return; }
+                // Fighters redesign (2026-11-23): the ✏ EDIT KIT span on a
+                // card opens the fighter page (the kit editor) — it must
+                // not also trigger the card tap below it.
+                const editBtn = event.target.closest('[data-app-edit-kit]');
+                if (editBtn) { appBuzz(10); openAppFighterPage(editBtn.dataset.appEditKit); return; }
                 const card = event.target.closest('[data-app-fighter]');
                 if (!card) return;
                 appBuzz(10);
@@ -7119,7 +7233,36 @@ const bolznstienPendingStrikes = [];
                 renderAppFightersStrip();
                 openAppFighterPage(appFightersState.focused);
             });
+            // Fighters redesign (2026-11-23): the top-bar tapper / present
+            // buttons reuse the existing openers; the Currently Playing
+            // chip opens the active fighter's page. Delegated on the
+            // header element so re-renders keep working.
+            view.querySelector('#appFightersHeader')?.addEventListener('click', (event) => {
+                const tapperBtn = event.target.closest('[data-app-tapper]');
+                if (tapperBtn) {
+                    appBuzz(10);
+                    const kind = tapperBtn.dataset.appTapper;
+                    if (kind === 'reg') openStarrDrop();
+                    else if (kind === 'super') openSuperStarrDrop();
+                    else if (kind === 'hyper') openHyperStarrDrop();
+                    else if (kind === 'present') openPresent();
+                    else if (kind === 'all') openAllTappers();
+                    return;
+                }
+                if (event.target.closest('[data-app-now-playing]')) { appBuzz(10); openAppFighterPage(selectedBrawler); }
+            });
+            // Fighters redesign (2026-11-23): a weekly trial row opens the
+            // fighter page; its EDIT KIT button opens the same page (the
+            // kit editor) without double-firing the row tap.
+            view.querySelector('#appFightersWeekly')?.addEventListener('click', (event) => {
+                const editBtn = event.target.closest('[data-app-weekly-edit]');
+                if (editBtn) { appBuzz(10); openAppFighterPage(editBtn.dataset.appWeeklyEdit); return; }
+                const row = event.target.closest('[data-app-weekly-fighter]');
+                if (row) { appBuzz(10); openAppFighterPage(row.dataset.appWeeklyFighter); }
+            });
         }
+        renderAppFightersHeader();
+        renderAppFightersWeekly();
         renderAppFightersStrip();
         syncAppFightersFilterBtn();
         syncAppFightersFavBtn();
@@ -7188,14 +7331,24 @@ const bolznstienPendingStrikes = [];
             // badge counts the kit pieces still to unlock (0 hides it).
             const kitTool = !!pData.gadgetUnlocked, kitTalent = !!pData.starPowerUnlocked, kitSurge = !!pData.hyperchargeUnlocked;
             const kitUpg = (kitTool ? 0 : 1) + (kitTalent ? 0 : 1) + (kitSurge ? 0 : 1);
+            // Fighters redesign (2026-11-23): trial pill + HP/DMG stats
+            // on the card. getScaledStats is stubbed in the fighters vm
+            // harnesses; the try/catch keeps an un-stubbed shape safe.
+            const weeklyTrial = isWeeklyTrialBrawler(id);
+            let cardHp = 0, cardDmg = 0;
+            try { const cardStats = getScaledStats(id, pData.level || 1); cardHp = cardStats.hp || 0; cardDmg = cardStats.dmg || 0; } catch (_) { cardHp = 0; cardDmg = 0; }
             return `<button type="button" class="app-fighter-card${appFightersState.focused === id ? ' is-selected' : ''}${locked ? ' is-locked' : ''}" data-app-fighter="${id}" style="--card-color:${data.color || '#0b69bd'}">
               <span class="app-fighter-portrait">${portrait}</span>
               <span class="app-fighter-power">${pData.level || 1}</span>
               <span class="app-fighter-rarity" style="--rarity-color:${rarityColor}" aria-hidden="true"></span>
+              <span class="app-fighter-rarity-pin" style="--rarity-color:${rarityColor}" aria-hidden="true">◆</span>
               <span class="app-fighter-kit" aria-hidden="true"><span class="app-fighter-kit-icons"><i class="kit-tool${kitTool ? ' on' : ''}">🔧</i><i class="kit-talent${kitTalent ? ' on' : ''}">⭐</i><i class="kit-surge${kitSurge ? ' on' : ''}">⚡</i></span></span>${kitUpg > 0 ? `<span class="app-fighter-upg">${kitUpg}</span>` : ''}
               <span class="app-fighter-fav${isFavoriteBrawler(id) ? ' is-fav' : ''}" data-app-favorite="${id}" role="button" aria-label="Favorite ${data.name || id}">${isFavoriteBrawler(id) ? '★' : '☆'}</span>
+              <span class="app-fighter-edit" data-app-edit-kit="${id}" role="button" aria-label="Edit ${data.name || id} kit">✏ EDIT KIT</span>
               <b>${data.name || id}</b>
-              <small>${locked ? '🔒 LOCKED' : `POWER ${pData.level || 1}`}</small>${soulCost > 0 ? `
+              <small>${locked ? '🔒 LOCKED' : `POWER ${pData.level || 1}`}</small>${weeklyTrial ? `
+              <span class="app-fighter-trial">WEEKLY MAX-OUT</span>` : ''}${cardHp > 0 ? `
+              <span class="app-fighter-stats">❤ ${cardHp.toLocaleString()} · ⚔ ${cardDmg.toLocaleString()}</span>` : ''}${soulCost > 0 ? `
               <span class="app-fighter-cost">${soulCost} SOULS TO UNLOCK</span>` : ''}${bricks > 0 ? `
               <span class="app-fighter-trophies">🧱 ${bricks.toLocaleString()}</span>` : ''}
             </button>`;
@@ -7630,6 +7783,8 @@ const bolznstienPendingStrikes = [];
         renderAppFightersStrip();
         renderAppFightersDetail();
         renderAppFighterWallet();
+        renderAppFightersHeader();
+        renderAppFightersWeekly();
         syncAppHome();
     }
     // ---- App Events view (Brawl Stars events inspo) ----
@@ -52597,10 +52752,27 @@ isBrawlerLabMode = false;
   if(brawlerBtn){
     brawlerBtn.addEventListener('click', ()=>{
         if (playing) return; // Disable changing brawlers via modal during match
+        // Fighters redesign (2026-11-23): the three separate Sort / Role /
+        // Rarity dropdowns are ONE combined filter panel — sort radio chips
+        // + multi-checkbox role / rarity groups. Role + rarity are arrays
+        // now (empty = all); a stored single value migrates to one item.
+        const readStoredMulti = (key, validValues) => {
+            try {
+                const raw = localStorage.getItem(key);
+                if (!raw) return [];
+                if (raw.startsWith('[')) {
+                    const parsed = JSON.parse(raw);
+                    return Array.isArray(parsed) ? parsed.filter((v) => validValues.includes(v)) : [];
+                }
+                return validValues.includes(raw) ? [raw] : [];
+            } catch (_) { return []; }
+        };
+        const allFilterRoles = [...new Set(allBrawlers.map((id) => (brawlerData[id]?.role || '').toLowerCase()).filter(Boolean))].sort();
+        const allFilterRarities = ['Starter', 'Rare', 'Epic', 'Mythic', 'Exotic', 'Unique', 'Anomaly'];
         const modalSortState = {
             sort: localStorage.getItem('brawl_arena_brawler_sort') || 'rarity-desc',
-            role: localStorage.getItem('brawl_arena_brawler_role_filter') || 'all',
-            rarity: localStorage.getItem('brawl_arena_brawler_rarity_filter') || 'all',
+            role: readStoredMulti('brawl_arena_brawler_role_filter', allFilterRoles),
+            rarity: readStoredMulti('brawl_arena_brawler_rarity_filter', allFilterRarities),
             ownership: localStorage.getItem('brawl_arena_brawler_ownership_filter') || 'all',
             search: '',
         };
@@ -52641,6 +52813,28 @@ isBrawlerLabMode = false;
              soulDiv.innerHTML = `🪄 ${(playerData.souls || 0).toLocaleString()}`;
              statsDiv.appendChild(coinDiv);
              statsDiv.appendChild(soulDiv);
+             // Fighters redesign (2026-11-23, Anthony's Mobile-1 design):
+             // the Fighters top bar shows ALL currencies — Coins, Souls,
+             // Core Pieces, Gems — plus a Currently Playing chip for the
+             // active fighter (the ACTIVE FIGHTER banner's fighter, no new
+             // mechanic). Tapper / present buttons below are unchanged.
+             const gemDiv = document.createElement('div');
+             gemDiv.style.cssText = 'font-weight:900;color:#5df2c2;padding:6px 10px;border-radius:8px;background:rgba(93,242,194,0.12);border:1px solid rgba(93,242,194,0.3);';
+             gemDiv.innerHTML = `💎 ${(playerData.gems || 0).toLocaleString()}`;
+             statsDiv.appendChild(gemDiv);
+             let headerCorePieces = 0;
+             try { headerCorePieces = getCorePieces(); } catch (_) { headerCorePieces = (playerData.corePieces || 0); }
+             const coreDiv = document.createElement('div');
+             coreDiv.style.cssText = 'font-weight:900;color:#8fdfff;padding:6px 10px;border-radius:8px;background:rgba(143,223,255,0.12);border:1px solid rgba(143,223,255,0.3);';
+             coreDiv.innerHTML = `💠 ${headerCorePieces.toLocaleString()}`;
+             statsDiv.appendChild(coreDiv);
+             const nowPlayingBtn = document.createElement('button');
+             nowPlayingBtn.type = 'button';
+             nowPlayingBtn.title = `Currently Playing: ${(brawlerData[selectedBrawler]?.name || selectedBrawler)}`;
+             nowPlayingBtn.style.cssText = 'font-weight:900;color:#ffd166;padding:6px 10px;border-radius:8px;background:rgba(255,159,28,0.16);border:1px solid rgba(255,209,102,0.55);cursor:pointer;';
+             nowPlayingBtn.innerHTML = `▶ ${getBrawlerPortraitIcon(selectedBrawler)} ${(brawlerData[selectedBrawler]?.name || selectedBrawler)}`;
+             nowPlayingBtn.onclick = () => showDetails(selectedBrawler);
+             statsDiv.appendChild(nowPlayingBtn);
              const originBtn = document.createElement('button');
              originBtn.textContent = '🎬 Watch Origin';
              originBtn.style.background = '#c53333';
@@ -52714,7 +52908,7 @@ isBrawlerLabMode = false;
             weeklyPanel.className='weekly-trial-panel';
             const weeklyCopy=document.createElement('div');
             weeklyCopy.className='weekly-trial-panel__copy';
-            weeklyCopy.innerHTML=`<small>${weeklyState.fallbackSpecials?'SPECIAL LAB':'WEEKLY MAX-OUT'}</small><h2>${weeklyState.fallbackSpecials?'TRY TWO SPECIAL FIGHTERS':'THREE FIGHTERS. COMPLETE KITS.'}</h2><p>Temporary Power 11, both Tools, both Talents, Core Surge, Trinkets, and available Specials. Your permanent progression is untouched.</p><strong>${Math.max(1,Math.ceil((weeklyInfo.end-Date.now())/86400000))} DAYS LEFT</strong>`;
+            weeklyCopy.innerHTML=`<small>${weeklyState.fallbackSpecials?'SPECIAL LAB':'WEEKLY MAX-OUT'}</small><h2>${weeklyState.fallbackSpecials?'TRY TWO SPECIAL FIGHTERS':`${['ZERO','ONE','TWO','THREE','FOUR'][weeklyState.fighterIds.length]||weeklyState.fighterIds.length} FIGHTER${weeklyState.fighterIds.length===1?'':'S'}. COMPLETE KITS.`}</h2><p>Temporary Power 11, both Tools, both Talents, Core Surge, Trinkets, and available Specials. Your permanent progression is untouched.</p><strong>${Math.max(1,Math.ceil((weeklyInfo.end-Date.now())/86400000))} DAYS LEFT</strong>`;
             const weeklyFighters=document.createElement('div');
             weeklyFighters.className='weekly-trial-panel__fighters';
             for(const fighterId of weeklyState.fighterIds){
@@ -52792,45 +52986,6 @@ isBrawlerLabMode = false;
             controlsRow.style.padding = '10px';
             controlsRow.style.borderRadius = '12px';
             controlsRow.style.flexWrap = 'wrap';
-            const sortLabel = document.createElement('span');
-            sortLabel.textContent = 'Sort';
-            sortLabel.style.fontWeight = '700';
-            sortLabel.style.color = '#c0d4ff';
-            const modalSortSelect = document.createElement('select');
-            modalSortSelect.style.cssText = 'padding:8px 10px;border-radius:8px;background:#1a2a4f;color:#fff;border:1px solid #4462a3;';
-            modalSortSelect.innerHTML = `
-                <option value="rarity-desc">Rarity ↓</option>
-                <option value="rarity-asc">Rarity ↑</option>
-                <option value="power-level">Power Level</option>
-                <option value="bricks-desc">Bricks (High)</option>
-                <option value="bricks-asc">Bricks (Low)</option>
-                <option value="name">A-Z</option>
-                <option value="role">Role</option>
-            `;
-            modalSortSelect.value = modalSortState.sort;
-            const roleFilter = document.createElement('select');
-            roleFilter.style.cssText = 'padding:8px 10px;border-radius:8px;background:#1a2a4f;color:#fff;border:1px solid #4462a3;';
-            roleFilter.innerHTML = '<option value="all">All Roles</option>';
-            [...new Set(allBrawlers.map((id) => (brawlerData[id]?.role || '').toLowerCase()).filter(Boolean))]
-                .sort()
-                .forEach((roleName) => {
-                    const option = new Option(roleName.toUpperCase(), roleName);
-                    roleFilter.appendChild(option);
-                });
-            roleFilter.value = modalSortState.role;
-            const rarityFilter = document.createElement('select');
-            rarityFilter.style.cssText = 'padding:8px 10px;border-radius:8px;background:#1a2a4f;color:#fff;border:1px solid #4462a3;';
-            rarityFilter.innerHTML = `
-                <option value="all">All Rarities</option>
-                <option value="Starter">Starter</option>
-                <option value="Rare">Rare</option>
-                <option value="Epic">Epic</option>
-                <option value="Mythic">Mythic</option>
-                <option value="Exotic">Exotic</option>
-                <option value="Unique">Unique</option>
-                <option value="Anomaly">Anomaly</option>
-            `;
-            rarityFilter.value = modalSortState.rarity;
             const searchInput = document.createElement('input');
             searchInput.type = 'search';
             searchInput.className = 'brawler-browser__search';
@@ -52853,26 +53008,70 @@ isBrawlerLabMode = false;
                 const countEl = overlay.querySelector('#brawlerBrowserCount');
                 if (countEl) countEl.textContent = `${visibleCards} fighters`;
             };
-            modalSortSelect.onchange = () => {
-                modalSortState.sort = modalSortSelect.value;
-                localStorage.setItem('brawl_arena_brawler_sort', modalSortState.sort);
-                showList();
+            // Fighters redesign (2026-11-23): ONE combined filter panel —
+            // sort radio chips + multi-checkbox role / rarity groups —
+            // replacing the three separate Sort / Role / Rarity dropdowns.
+            // Search, ownership chips, result count and Clear filters stay
+            // in the controls row around it. Nothing checked = all.
+            const filterPanel = document.createElement('div');
+            filterPanel.className = 'brawler-browser__filter-panel';
+            filterPanel.style.cssText = 'flex:1 1 100%;display:flex;flex-wrap:wrap;gap:14px;padding:10px;border-radius:10px;background:#0b131f;border:1px solid #30445c;';
+            const filterChipStyle = (active) => `padding:7px 11px;border-radius:999px;border:1px solid ${active ? '#5df2c2' : '#4462a3'};background:${active ? 'rgba(93,242,194,0.18)' : '#1a2a4f'};color:#fff;font-weight:800;cursor:pointer;`;
+            const makeFilterGroup = (labelText) => {
+                const group = document.createElement('div');
+                group.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;align-items:center;';
+                const label = document.createElement('span');
+                label.textContent = labelText;
+                label.style.cssText = 'font-size:10px;font-weight:900;letter-spacing:0.08em;color:#9dc0e4;margin-right:2px;';
+                group.appendChild(label);
+                return group;
             };
-            roleFilter.onchange = () => {
-                modalSortState.role = roleFilter.value;
-                localStorage.setItem('brawl_arena_brawler_role_filter', modalSortState.role);
-                showList();
-            };
-            rarityFilter.onchange = () => {
-                modalSortState.rarity = rarityFilter.value;
-                localStorage.setItem('brawl_arena_brawler_rarity_filter', modalSortState.rarity);
-                showList();
-            };
-            controlsRow.appendChild(sortLabel);
+            const sortGroup = makeFilterGroup('SORT');
+            [['rarity-desc','Rarity ↓'],['rarity-asc','Rarity ↑'],['power-level','Power Level'],['bricks-desc','Bricks (High)'],['bricks-asc','Bricks (Low)'],['name','A-Z'],['role','Role']].forEach(([value, label]) => {
+                const chip = document.createElement('button');
+                chip.type = 'button';
+                chip.textContent = label;
+                chip.style.cssText = filterChipStyle(modalSortState.sort === value);
+                chip.onclick = () => { modalSortState.sort = value; localStorage.setItem('brawl_arena_brawler_sort', value); showList(); };
+                sortGroup.appendChild(chip);
+            });
+            filterPanel.appendChild(sortGroup);
+            const roleGroup = makeFilterGroup('ROLE');
+            allFilterRoles.forEach((roleName) => {
+                const label = document.createElement('label');
+                label.style.cssText = 'display:flex;align-items:center;gap:5px;padding:7px 11px;border-radius:999px;border:1px solid #4462a3;background:#1a2a4f;color:#fff;font-weight:800;cursor:pointer;';
+                const box = document.createElement('input');
+                box.type = 'checkbox';
+                box.checked = modalSortState.role.includes(roleName);
+                box.onchange = () => {
+                    modalSortState.role = box.checked ? [...modalSortState.role, roleName] : modalSortState.role.filter((r) => r !== roleName);
+                    localStorage.setItem('brawl_arena_brawler_role_filter', JSON.stringify(modalSortState.role));
+                    showList();
+                };
+                label.appendChild(box);
+                label.appendChild(document.createTextNode(roleName.toUpperCase()));
+                roleGroup.appendChild(label);
+            });
+            filterPanel.appendChild(roleGroup);
+            const rarityGroup = makeFilterGroup('RARITY');
+            allFilterRarities.forEach((rarityName) => {
+                const label = document.createElement('label');
+                label.style.cssText = 'display:flex;align-items:center;gap:5px;padding:7px 11px;border-radius:999px;border:1px solid #4462a3;background:#1a2a4f;color:#fff;font-weight:800;cursor:pointer;';
+                const box = document.createElement('input');
+                box.type = 'checkbox';
+                box.checked = modalSortState.rarity.includes(rarityName);
+                box.onchange = () => {
+                    modalSortState.rarity = box.checked ? [...modalSortState.rarity, rarityName] : modalSortState.rarity.filter((r) => r !== rarityName);
+                    localStorage.setItem('brawl_arena_brawler_rarity_filter', JSON.stringify(modalSortState.rarity));
+                    showList();
+                };
+                label.appendChild(box);
+                label.appendChild(document.createTextNode(rarityName.toUpperCase()));
+                rarityGroup.appendChild(label);
+            });
+            filterPanel.appendChild(rarityGroup);
             controlsRow.appendChild(searchInput);
-            controlsRow.appendChild(modalSortSelect);
-            controlsRow.appendChild(roleFilter);
-            controlsRow.appendChild(rarityFilter);
+            controlsRow.appendChild(filterPanel);
             const ownershipChips = document.createElement('div');
             ownershipChips.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;';
             [['all','All'],['owned','Owned'],['locked','Locked'],['favorites','⭐ Favorites']].forEach(([value,label]) => {
@@ -52892,7 +53091,7 @@ isBrawlerLabMode = false;
             clearFiltersBtn.textContent = '✖ Clear filters';
             clearFiltersBtn.style.cssText = 'padding:7px 11px;border-radius:999px;border:1px solid #4462a3;background:#1a2a4f;color:#fff;font-weight:800;cursor:pointer;';
             clearFiltersBtn.onclick = () => {
-                modalSortState.search = ''; modalSortState.role = 'all'; modalSortState.rarity = 'all'; modalSortState.ownership = 'all';
+                modalSortState.search = ''; modalSortState.role = []; modalSortState.rarity = []; modalSortState.ownership = 'all';
                 localStorage.setItem('brawl_arena_brawler_role_filter', 'all');
                 localStorage.setItem('brawl_arena_brawler_rarity_filter', 'all');
                 localStorage.setItem('brawl_arena_brawler_ownership_filter', 'all');
@@ -52926,8 +53125,8 @@ isBrawlerLabMode = false;
                     if (modalSortState.ownership === 'owned' && !isBrawlerUnlocked(id)) return false;
                     if (modalSortState.ownership === 'locked' && isBrawlerUnlocked(id)) return false;
                     if (modalSortState.ownership === 'favorites' && !isFavoriteBrawler(id)) return false;
-                    if (modalSortState.role !== 'all' && role !== modalSortState.role) return false;
-                    if (modalSortState.rarity !== 'all' && rarity !== modalSortState.rarity) return false;
+                    if (modalSortState.role.length > 0 && !modalSortState.role.includes(role)) return false;
+                    if (modalSortState.rarity.length > 0 && !modalSortState.rarity.includes(rarity)) return false;
                     if (query && !`${brawlerData[id]?.name || ''} ${role} ${rarity} ${getDisplayRarityName(rarity)}`.toLowerCase().includes(query)) return false;
                     return true;
                 })
@@ -53268,6 +53467,37 @@ isBrawlerLabMode = false;
                 try { cardBricks = (typeof getLifetimeBricks === 'function') ? getLifetimeBricks(playerData.brawlers?.[id]) : 0; } catch (_) { cardBricks = 0; }
                 trophyLine.textContent = `🧱 ${cardBricks.toLocaleString()} BRICKS`;
                 card.appendChild(trophyLine);
+                // Fighters redesign (2026-11-23, Anthony's Mobile-1 design):
+                // HP/DMG stats on the card, an EDIT KIT button, and a rarity
+                // pin at the top-right. All three are absolutely positioned
+                // so the Brawl Space v2 wide tile (every child absolute,
+                // min-height 216px) keeps its shape: stats bottom-center,
+                // edit kit bottom-left above the bricks chip, pin top-right
+                // above the kit strip. EDIT KIT opens the detail view (the
+                // kit editor), the same destination as tapping the card.
+                let cardHp = 0, cardDmg = 0;
+                try { const cardStats = getScaledStats(id, bLevel); cardHp = cardStats.hp || 0; cardDmg = cardStats.dmg || 0; } catch (_) { cardHp = 0; cardDmg = 0; }
+                if (cardHp > 0) {
+                    const statsLine = document.createElement('div');
+                    statsLine.className = 'brawler-card__stats';
+                    statsLine.textContent = `❤ ${cardHp.toLocaleString()} · ⚔ ${cardDmg.toLocaleString()}`;
+                    statsLine.style.cssText = 'position:absolute;left:50%;bottom:30px;transform:translateX(-50%);z-index:4;padding:3px 9px;border-radius:999px;background:rgba(8,16,32,.88);border:1px solid #4a5f7d;color:#fff;font-size:10px;font-weight:900;letter-spacing:.03em;white-space:nowrap;pointer-events:none;';
+                    card.appendChild(statsLine);
+                }
+                const editKitBtn = document.createElement('button');
+                editKitBtn.type = 'button';
+                editKitBtn.className = 'brawler-card__edit-kit';
+                editKitBtn.textContent = '✏ EDIT KIT';
+                editKitBtn.style.cssText = 'position:absolute;left:6px;bottom:54px;z-index:5;padding:5px 9px;border-radius:999px;border:1px solid #7de9ff;background:rgba(22,43,61,.92);color:#e9fbff;font-size:9px;font-weight:1000;letter-spacing:.04em;cursor:pointer;white-space:nowrap;';
+                editKitBtn.onclick = (event) => { event.stopPropagation(); if (!isDisabled) showDetails(id); };
+                if (isDisabled) editKitBtn.disabled = true;
+                card.appendChild(editKitBtn);
+                const rarityPin = document.createElement('span');
+                rarityPin.className = 'brawler-card__rarity-pin';
+                rarityPin.textContent = '◆';
+                rarityPin.title = `${rarity} fighter`;
+                rarityPin.style.cssText = `position:absolute;top:8px;right:8px;z-index:4;color:${rarityColor};font-size:16px;line-height:1;text-shadow:0 2px 0 #000;pointer-events:none;`;
+                card.appendChild(rarityPin);
                 rankBar.setAttribute('aria-hidden', 'true');
                 if (selectedBrawler === id) {
                     card.classList.add('is-selected-fighter');
