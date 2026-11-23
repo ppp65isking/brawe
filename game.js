@@ -3500,6 +3500,8 @@ const PROFILE_BACKGROUND_DEFS = {};
         player.homerMutationShotCounter = 0;
         player.homerMutationCharges = 0;
         player.homerMutationReadyAt = 0;
+        player.orboMutationSuperCount = 0;
+        player.orboMutationMiniReadyAt = 0;
         player.crystilaGlassInvulnUntil = 0;
         player.echoInstinctStartedAt = performance.now();
         player.echoInstinctReady = false;
@@ -16321,6 +16323,7 @@ let blinkEyeDodgeState = null;
         entity.crystilaGlassInvulnUntil = 0;
         entity.crystilaMutationShotCounter = 0;
         entity.crystilaMutationCharges = 0;
+        entity.orboMutationMiniReadyAt = 0;
         entity.screenerProjectorUntil = 0;
         entity.axeyWaxySuperUntil = 0;
         entity.beastyEmpoweredUntil = 0;
@@ -18361,6 +18364,14 @@ let heistFeverActive = false;
           color: '#ff4b55',
           pieceName: 'Crystila Mutation Piece',
           shortDesc: 'Every 6 main attacks, the next 3 Crystal Darts gain projectile-deflecting refraction: striking an enemy projectile reverses its direction and ownership back toward the enemy.'
+      },
+      orbo: {
+          type: 'mutation',
+          name: 'Candy Orbit',
+          icon: 'CO',
+          color: '#ff4b55',
+          pieceName: 'Orbo Mutation Piece',
+          shortDesc: 'Every other Super charges 60% faster. When an enemy gets close, Orbo automatically fires a mini Cosmic Candy Cannon at each nearby enemy for half damage.'
       }
   });
   const SPECIAL_ABILITY_TYPES = Object.freeze(['mutation', 'signature', 'instinct']);
@@ -31660,6 +31671,94 @@ let heistFeverActive = false;
       }
       return true;
   }
+  // Orbo Mutation — CANDY ORBIT (Anthony's spec 2026-11-23):
+  // 1) Every OTHER Super charges 60% faster: Super #1 charges normally,
+  //    Super #2 charges at 1.6x rate, Super #3 normal, Super #4 at 1.6x...
+  //    The 1.6x reading of "60% faster" is a builder interpretation.
+  // 2) When an enemy is near Orbo, mini Cosmic Candy Cannons fire
+  //    AUTOMATICALLY from Orbo — one mini per nearby enemy. Each mini is
+  //    the regular Super bolt (blisteringly fast, full-map, pierces every
+  //    enemy and wall) at 50% size and 50% damage. Minis are based on the
+  //    regular Super only: Hyper does NOT change them, and mini hits do NOT
+  //    grant the Super-hit 20% recharge the real Super gets.
+  //    Respawn clears the mini cooldown only; the Super-count alternation
+  //    survives death (match-level sequence, reset at match start).
+  const ORBO_MUTATION_FAST_CHARGE_MULT = 1.6;
+  const ORBO_MUTATION_MINI_RADIUS = 380; // builder pick: close-quarters trigger radius
+  const ORBO_MUTATION_MINI_COOLDOWN_MS = 3000; // builder pick: global cooldown per owner between mini volleys
+  const ORBO_MUTATION_MINI_DAMAGE = 1850; // 50% of the regular Super's 3700 (player)
+  const ORBO_MUTATION_MINI_BOT_DAMAGE = 1350; // 50% of the bot Super's 2700
+  function hasOrboMutation(entity) { return isSpecialAbilityAvailableForEntity(entity, 'orbo'); }
+  function ensureOrboMutationState(entity) {
+      if (!entity) return;
+      if (!Number.isFinite(entity.orboMutationSuperCount)) entity.orboMutationSuperCount = 0;
+      if (!Number.isFinite(entity.orboMutationMiniReadyAt)) entity.orboMutationMiniReadyAt = 0;
+  }
+  // Fast cycle is live while charging the 2nd, 4th, 6th... Super: one Super
+  // has been used since the last fast cycle started (odd used-count).
+  function isOrboMutationFastChargeCycle(entity) {
+      if (!entity || !hasOrboMutation(entity)) return false;
+      const fighterId = entity.id === player.id ? selectedBrawler : entity.brawler;
+      if (fighterId !== 'orbo') return false;
+      return ((entity.orboMutationSuperCount || 0) % 2 === 1);
+  }
+  function recordOrboMutationSuperUsed(entity) {
+      if (!entity || !hasOrboMutation(entity)) return;
+      const fighterId = entity.id === player.id ? selectedBrawler : entity.brawler;
+      if (fighterId !== 'orbo') return;
+      entity.orboMutationSuperCount = Math.max(0, Math.floor(entity.orboMutationSuperCount || 0)) + 1;
+  }
+  function spawnOrboMutationMini(owner, target) {
+      if (!owner || owner.hp <= 0 || !target || target.hp <= 0) return;
+      const angle = Math.atan2(target.y - owner.y, target.x - owner.x);
+      const speed = 1480; // same blistering speed as the regular Super bolt
+      const edgeDistance = getRayDistanceToMapEdge(owner.x, owner.y, angle, 28);
+      bullets.push({
+          ownerBrawler: 'orbo',
+          isOrboSuper: true, // same render path as the Super bolt (scaled 50% below)
+          orboMutationMini: true,
+          orboReturns: false,
+          orboReturning: false,
+          x: owner.x + Math.cos(angle) * (owner.radius + 45),
+          y: owner.y + Math.sin(angle) * (owner.radius + 45),
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          life: 0,
+          maxLife: (edgeDistance / speed),
+          damage: owner.id === player.id ? ORBO_MUTATION_MINI_DAMAGE : ORBO_MUTATION_MINI_BOT_DAMAGE,
+          pierce: true,
+          pierceWalls: true,
+          canBounce: false,
+          bounceDmgLoss: 0,
+          bounceLifeLoss: 0,
+          ownerId: owner.id,
+          hitIds: {},
+          hitboxMod: 6.3, // 50% of the regular Super's 12.6
+          orboCandyRay: true,
+          super: true,
+          hyperVisual: false
+      });
+  }
+  function updateOrboMutation(dt) {
+      const now = performance.now();
+      for (const entity of [player, ...bots]) {
+          if (!entity || entity.hp <= 0) continue;
+          const fighterId = entity.id === player.id ? selectedBrawler : entity.brawler;
+          if (fighterId !== 'orbo') continue;
+          if (!hasOrboMutation(entity)) continue;
+          ensureOrboMutationState(entity);
+          if (now < entity.orboMutationMiniReadyAt) continue;
+          const near = [];
+          for (const target of [player, ...bots]) {
+              if (!target || target.hp <= 0 || target.id === entity.id || areAlliedEntities(entity, target)) continue;
+              if (Math.hypot(target.x - entity.x, target.y - entity.y) <= ORBO_MUTATION_MINI_RADIUS) near.push(target);
+          }
+          if (!near.length) continue;
+          entity.orboMutationMiniReadyAt = now + ORBO_MUTATION_MINI_COOLDOWN_MS;
+          for (const target of near) spawnOrboMutationMini(entity, target);
+          if (entity.id === player.id) spawnFloatingText(entity.x, entity.y - 36, near.length > 1 ? `CANDY ORBIT x${near.length}!` : 'CANDY ORBIT!', '#c9b8ff');
+      }
+  }
   function updateCurrencies() {
       updateHomeCurrencyBar();
       document.querySelectorAll('#homeCurrencyBar .home-currency-pill').forEach((el,i)=>el.dataset.homeCurrency=['coins','gems','souls'][i]);
@@ -31837,6 +31936,10 @@ let heistFeverActive = false;
       const chargeNow = performance.now();
       if (chargeNow < (owner.runnerSuperRateUntil || 0)) gain *= RUNNER_SUPER_RATE_MULT;
       if (chargeNow < (owner.runnerHyperRateUntil || 0)) modeHyperGain *= RUNNER_HYPER_RATE_MULT;
+      // Orbo Mutation (Candy Orbit): on the fast cycle (charging the 2nd,
+      // 4th, 6th... Super) damage contributes 1.6x to Super charge. Hyper
+      // charge is untouched — the multiplier applies to Super gain only.
+      if (isOrboMutationFastChargeCycle(owner)) gain *= ORBO_MUTATION_FAST_CHARGE_MULT;
       if (hasMultiSuper(brawler) || (owner && hasMultiSuper(owner.brawler)) || (owner.id === player.id && hasMultiSuper(selectedBrawler))) {
           const activeBrawler = (owner.id === player.id) ? selectedBrawler : (owner.brawler || brawler);
           if (activeBrawler === 'steamer') {
@@ -41192,6 +41295,7 @@ let heistFeverActive = false;
     }
     function castOrboSuper(owner, hyper, targetX, targetY) {
         if (!owner || owner.hp <= 0) return;
+        recordOrboMutationSuperUsed(owner); // Candy Orbit: counts Supers so the next charge cycle alternates
         const now = performance.now();
         const windupMs = 520;
         owner.orboSuperWindup = {
@@ -55027,7 +55131,7 @@ function checkHit(target, b, i){
             target.orboVolleyAt = performance.now();
         }
     }
-    if (b.isOrboSuper && owner) {
+    if (b.isOrboSuper && !b.orboMutationMini && owner) {
         const ownerStar = owner.id === player.id ? selectedStar : (owner.selectedStar || 'none');
         if (ownerStar === 'long') target.slowUntil = Math.max(target.slowUntil || 0, performance.now() + 1200);
         // Each real enemy hit restores a flat 20% Super charge. Piercing rewards
@@ -56603,6 +56707,7 @@ function checkHit(target, b, i){
       updateWeeFeeSystems(dt);
     updatePredatorStates();
     updateOrboStates(dt);
+    updateOrboMutation(dt);
     updateSnapperWaves(dt);
     if (isDuels) {
         if (duelRoundState === 'playing') {
@@ -63497,6 +63602,10 @@ function checkHit(target, b, i){
       ctx.save();const pulse=.5+Math.sin(now/105)*.5;ctx.strokeStyle=`rgba(255,55,75,${.65+pulse*.28})`;ctx.lineWidth=4;
       ctx.beginPath();ctx.arc(entity.x,entity.y,entity.radius+19+pulse*4,0,Math.PI*2);ctx.stroke();ctx.restore();
     }
+    if(fighterId==='orbo'&&isSpecialAbilityAvailableForEntity(entity,'orbo')&&isOrboMutationFastChargeCycle(entity)){
+      ctx.save();const pulse=.5+Math.sin(now/105)*.5;ctx.strokeStyle=`rgba(139,125,255,${.65+pulse*.28})`;ctx.lineWidth=4;
+      ctx.beginPath();ctx.arc(entity.x,entity.y,entity.radius+19+pulse*4,0,Math.PI*2);ctx.stroke();ctx.restore();
+    }
     if(fighterId==='minigunnin'&&isSpecialAbilityAvailableForEntity(entity,'minigunnin')){
       ensureMinigunninMutationState(entity);const incendiary=(entity.minigunninMutationExplosiveRemaining||0)>0;
       if(incendiary){ctx.save();ctx.strokeStyle='rgba(255,75,85,.88)';ctx.lineWidth=3;ctx.setLineDash([5,4]);ctx.lineDashOffset=-now/28;ctx.beginPath();ctx.arc(entity.x,entity.y,entity.radius+16,0,Math.PI*2);ctx.stroke();ctx.restore();}
@@ -63570,6 +63679,11 @@ function checkHit(target, b, i){
               const charges = Math.max(0, Math.floor(player.crystilaMutationCharges || 0));
               const count = Math.max(0, Math.min(6, Math.floor(player.crystilaMutationShotCounter || 0)));
               return { label: charges > 0 ? `MUTATION - ${charges} DEFLECTOR DART${charges > 1 ? 'S' : ''}` : `MUTATION - ${count}/6`, value: charges > 0 ? 6 : count, max: 6, color: '#ff4b55' };
+          }
+          if (selectedBrawler === 'orbo') {
+              ensureOrboMutationState(player);
+              const fast = isOrboMutationFastChargeCycle(player);
+              return { label: fast ? 'MUTATION - 1.6X CHARGE' : 'MUTATION - 1X CHARGE', value: Math.floor(superCharge), max: 100, color: '#ff4b55' };
           }
           if (selectedBrawler === 'classy') {
               const state=getClassySignatureState(player,now);
@@ -74018,6 +74132,7 @@ function checkHit(target, b, i){
       if (b.isOrboMain || b.isOrboSuper) {
           const angle=Math.atan2(b.vy,b.vx),hyper=!!b.hyperVisual;
           ctx.save();ctx.translate(b.x,b.y);ctx.rotate(angle);
+          if(b.orboMutationMini)ctx.scale(0.5,0.5); // Candy Orbit minis render through the Super path at 50% size
           if(b.isOrboSuper){
               const lengthRadius = hyper ? 126 : 142;
               const widthRadius = hyper ? 34 : 38;
