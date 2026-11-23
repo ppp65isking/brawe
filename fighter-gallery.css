@@ -53,5 +53,5 @@
 .fighter-gallery .brawler-card__abilities>div{flex:none!important}
 .fighter-gallery .brawler-card__abilities>div:first-child{position:static!important;transform:none!important;width:34px!important;height:34px!important;border:2px solid #fff!important;font-size:15px!important;box-shadow:0 0 12px rgba(168,85,247,.9)!important}
 .fighter-gallery .brawler-card__abilities>div:not(:first-child){width:24px!important;height:24px!important;border-radius:7px!important}
-.fighter-gallery .brawler-card__status{top:50%!important;transform:translate(-50%,-50%)!important}
+.fighter-gallery .brawler-card__status{top:34px!important;left:8px!important;transform:none!important}
 .fighter-gallery .brawler-card:has(.brawler-card__status--locked) .brawler-card__portrait{filter:grayscale(.75) brightness(.55)!important}
