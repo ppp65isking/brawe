@@ -1,26 +1,36 @@
-// Pitch regression — new brawler, Anthony's spec 2026-11-20.
+// Pitch regression — new brawler, Anthony's spec 2026-11-20, REWORKED 2026-11-23.
 // Locked design (his words): Pitch, the pig hex-caster. Main attack: she
-// throws — a throw attack that explodes in a plus shape, but her throws
-// go FARTHER than the plus-throw reference. Gadget 1: the main attack
-// explodes in an X AND a plus, so eight directions. Gadget 2: at the end
-// of the main attack it fires another one in a plus shape. Super: she
-// spawns four pigs — the knockback pigs (the chick-pig ramming pigs),
-// but with LESSER health. Hypercharge: spawns MORE pigs, and her main
-// attack explodes in a plus AND an X. Specialty (innate): every kill she
-// gets spawns a pig. Star Power 1 (Anthony): her main-attack projectiles
-// curve clockwise as they travel. Star Power 2 (Anthony): when she uses
+// throws a hex pot in an arc over walls, FARTHER than the plus-throw
+// reference. REWORK: on landing the pot does NOT explode and deals NO
+// landing damage — it cracks open and releases a plus-shaped spray of
+// 4 shards at 650 damage each, +12% size, +30% range. Gadget 1: the
+// main attack releases in an X AND a plus, so eight directions.
+// Gadget 2: at the end of the main attack it releases another one in a
+// plus shape. Super: she spawns TWO pigs — the knockback pigs (the
+// chick-pig ramming pigs), but with LESSER health. Hypercharge: NO extra
+// pigs — the 2 pigs FLY with wings to the nearest enemy, land for 150
+// damage, then ram as normal; her main attack still releases in a plus
+// AND an X (UNCHANGED — flag for Anthony, he can veto). Specialty
+// (innate): every kill she gets spawns a pig. Pigs never count as
+// brawlers remaining in Showdown and power cubes never affect them.
+// Star Power 1 (Anthony): her main-attack projectiles curve clockwise
+// as they travel — and now cover MORE area while travelling SLOWER
+// (0.7x speed, 1.9x lifetime). Star Power 2 (Anthony): when she uses
 // her Super, the spawned pigs get +50% movement speed for the first 3s.
 // In-game text says 'hex-caster' so the deleted-brawler zero-proof stays
 // clean (delete-disabled §7 precedent: surviving uses get reworded).
 // Builder picks (flagged for his correction): Epic (170 souls); 5200 HP /
 // 270 speed, reload 1.6s, Super charge 7 hits; throw 1100 px/s, 800px
-// range, 700 center splash in 100px, 300-damage shards at 540 px/s for
-// 0.35s; pig health 2000 at Power 11 (chickpig pig: 3690), pig speed 330,
-// ram 600 + 70px knockback (reused chickpig-pig mechanic); Hyper Super
-// 6 pigs; pig cap 6 per owner (oldest evicted); G2 echo 300ms after
-// landing; SP1 curve 1.6 rad/s; bot Super gate 650px; kit names (Hex Toss
-// / Pig Parade / Hex Cross / Echo Hex / Curveball / Stampede); voice lines
-// are flavor-only (RULE ONE) and silent until Anthony picks a voice.
+// range, NO landing damage, 650-damage shards at 540 px/s for 0.455s
+// (~246px range), hitboxMod 1.40; pig health 2000 at Power 11 (chickpig
+// pig: 3690), pig speed 330, ram 600 + 70px knockback (reused
+// chickpig-pig mechanic); Hyper Super still 2 pigs, flying at 700 px/s,
+// 60px flight height, land within 48px + target radius, 150 landing
+// damage; pig cap 4 per owner (oldest evicted); G2 echo 300ms after
+// landing; SP1 curve 1.6 rad/s, SP1 shards 0.7x speed / 1.9x lifetime;
+// bot Super gate 650px; kit names (Hex Toss / Pig Parade / Hex Cross /
+// Echo Hex / Curveball / Stampede); voice lines are flavor-only
+// (RULE ONE) and silent until Anthony picks a voice.
 // Roster: Pitch makes 105 ids / 105 selectable. Spritz (2026-11-22) now makes 106 ids / 106 selectable. Pigs damage/knock back
 // brawlers only, never structures — and towers can NEVER gain HP.
 import assert from 'node:assert/strict';
@@ -53,13 +63,13 @@ check('rarity Epic (170 souls)', game.includes("pitch: 'Epic',") && game.include
 check('role Thrower (primary Artillery, like every Thrower)', game.includes("name: 'Pitch', role: 'Thrower'") && game.includes("pitch:'Artillery',"));
 check('portrait icon present (pig)', game.includes("pitch: '🐷',"));
 check('color purple hex-caster', game.includes("name: 'Pitch', role: 'Thrower', rarity: 'Epic', color: '#a855f7'"));
-check('stats branch 5200/700/270', game.includes("if (brawlerId === 'pitch') {") && game.includes('hp: Math.round(5200 * hpScale), dmg: Math.round(700 * scale), speed: 270'));
+check('stats branch 5200/650/270', game.includes("if (brawlerId === 'pitch') {") && game.includes('hp: Math.round(5200 * hpScale), dmg: Math.round(650 * scale), speed: 270'));
 check('reload 1600ms', game.includes('pitch: 1600,'));
 check('fire delay 300ms', game.includes('pitch: 300,'));
 check('super charge 7 hits', game.includes('pitch: 7') && game.includes('const PITCH_SUPER_CHARGE_HITS = 7;'));
 check('brawlerData entry present (no coming-soon placeholders)', game.includes("'pitch': {") && game.includes("name: 'Pitch'") && game.includes("attack: 'Hex Toss'") && game.includes("super: 'Pig Parade'") && game.includes("g1: 'Hex Cross") && game.includes("g2: 'Echo Hex") && game.includes("sp1: 'Curveball") && game.includes("sp2: 'Stampede") && !game.slice(game.indexOf("'pitch': {"), game.indexOf("'pitch': {") + 2600).includes('coming soon'));
-check('card text matches the kit (farther throw, plus shards, 4 pigs, hyper 6 pigs + 8 shards, kill-spawns-pig)', game.includes('Pitch lobs a hex pot in an arc over walls, farther than most throws. On landing it splashes for damage, then bursts into a plus-shaped spray of 4 shards.') && game.includes('Pitch calls in 4 pigs that charge the nearest enemies, ramming them for damage and knocking them back.') && game.includes('Hex Toss bursts in a plus AND an X — 8 shards — and Pig Parade calls in 6 pigs instead of 4.') && game.includes('every takedown she scores spawns a pig'));
-check('card text carries both star powers (curve clockwise; pigs +50% for 3s)', game.includes('Curveball (Her main-attack shards curve clockwise as they fly)') && game.includes('Stampede (Pigs from her Super run 50% faster for the first 3 seconds)'));
+check('card text matches the kit (farther throw, crack-open release, 4 shards, 2 pigs, hyper 2 flying pigs + 8 shards, kill-spawns-pig)', game.includes('Pitch lobs a hex pot in an arc over walls, farther than most throws. On landing the pot cracks open and releases a plus-shaped spray of 4 shards.') && game.includes('Pitch calls in 2 pigs that charge the nearest enemies, ramming them for damage and knocking them back.') && game.includes('Hex Toss releases in a plus AND an X — 8 shards — and Pig Parade pigs fly with wings to the nearest enemy, landing for damage before they ram.') && game.includes('every takedown she scores spawns a pig'));
+check('card text carries both star powers (curve clockwise, more ground but slower; pigs +50% for 3s)', game.includes('Curveball (Her main-attack shards curve clockwise as they fly, covering more ground but travelling slower)') && game.includes('Stampede (Pigs from her Super run 50% faster for the first 3 seconds)'));
 check('gadget cooldown map entry', game.includes('pitch: { g1: 14000, g2: 16000 },'));
 check('gadget icons (8-way asterisk + plus)', game.includes("'pitch:g1': '✳️',") && game.includes("'pitch:g2': '➕',"));
 check('fire branch exists', game.includes("} else if (brawler === 'pitch') {") && game.includes('firePitchMain(fromEntity, targetX, targetY, isBot);'));
@@ -79,9 +89,10 @@ check('voice watcher is called', game.includes('        updatePitchVoiceState();
 check('reset sites clear the Pitch arrays (.length = 0 site)', game.includes('pitchThrownHexes.length = 0; pitchPendingEchoes.length = 0;'));
 check('reset sites clear the Pitch arrays (all 3 = [] sites)', (game.match(/pitchThrownHexes = \[\]; pitchPendingEchoes = \[\];/g) || []).length === 3);
 check('portrait body-art branch (pointed hat + pig ears + hex pot)', game.includes("if (brawlerId === 'pitch') {") && game.includes("ctx.fillStyle = '#7e22ce';") && game.includes("ctx.fillStyle = '#f9a8d4';") && game.includes("ctx.fillStyle = '#a855f7';"));
-check('constants: throw 1100/800/80, splash 100/700, shard 300/540/0.35', game.includes('const PITCH_THROW_SPEED = 1100;') && game.includes('const PITCH_THROW_RANGE = 800;') && game.includes('const PITCH_THROW_ARC_HEIGHT = 80;') && game.includes('const PITCH_SPLASH_RADIUS = 100;') && game.includes('const PITCH_SPLASH_DMG = 700;') && game.includes('const PITCH_SHARD_DMG = 300;') && game.includes('const PITCH_SHARD_SPEED = 540;') && game.includes('const PITCH_SHARD_MAX_LIFE = 0.35;'));
-check('constants: super 4/6 pigs, pig 2000 HP / 330 speed, cap 6, bot gate 650', game.includes('const PITCH_SUPER_PIG_COUNT = 4;') && game.includes('const PITCH_SUPER_PIG_COUNT_HYPER = 6;') && game.includes('const PITCH_PIG_HP = 2000;') && game.includes('const PITCH_PIG_SPEED = 330;') && game.includes('const PITCH_MAX_PIGS_PER_OWNER = 6;') && game.includes('const PITCH_BOT_SUPER_RANGE = 650;'));
-check('constants: G2 echo 300ms, SP1 curve 1.6 rad/s, SP2 +50% / 3000ms', game.includes('const PITCH_G2_ECHO_DELAY_MS = 300;') && game.includes('const PITCH_SP1_CURVE_RAD_PER_S = 1.6;') && game.includes('const PITCH_SP2_PIG_SPEED_MULT = 1.5;') && game.includes('const PITCH_SP2_PIG_SPEED_DURATION_MS = 3000;'));
+check('constants: throw 1100/800/80, NO splash constants, shard 650/540/0.455, hitbox 1.40, range 246', game.includes('const PITCH_THROW_SPEED = 1100;') && game.includes('const PITCH_THROW_RANGE = 800;') && game.includes('const PITCH_THROW_ARC_HEIGHT = 80;') && !game.includes('PITCH_SPLASH_RADIUS') && !game.includes('PITCH_SPLASH_DMG') && game.includes('const PITCH_SHARD_DMG = 650;') && game.includes('const PITCH_SHARD_SPEED = 540;') && game.includes('const PITCH_SHARD_MAX_LIFE = 0.455;') && game.includes('const PITCH_SHARD_HITBOX_MOD = 1.40;') && game.includes('const PITCH_SHARD_RANGE_PX = 246;'));
+check('constants: super 2 pigs (no hyper count), pig 2000 HP / 330 speed, cap 4, bot gate 650', game.includes('const PITCH_SUPER_PIG_COUNT = 2;') && !game.includes('PITCH_SUPER_PIG_COUNT_HYPER') && game.includes('const PITCH_PIG_HP = 2000;') && game.includes('const PITCH_PIG_SPEED = 330;') && game.includes('const PITCH_MAX_PIGS_PER_OWNER = 4;') && game.includes('const PITCH_BOT_SUPER_RANGE = 650;'));
+check('constants: hyper flight 700 px/s / 60px height / 48px land radius / 150 land damage', game.includes('const PITCH_PIG_FLY_SPEED = 700;') && game.includes('const PITCH_PIG_FLY_HEIGHT = 60;') && game.includes('const PITCH_PIG_LAND_RADIUS = 48;') && game.includes('const PITCH_PIG_LAND_DMG = 150;'));
+check('constants: G2 echo 300ms, SP1 curve 1.6 rad/s + 0.7x speed / 1.9x life, SP2 +50% / 3000ms', game.includes('const PITCH_G2_ECHO_DELAY_MS = 300;') && game.includes('const PITCH_SP1_CURVE_RAD_PER_S = 1.6;') && game.includes('const PITCH_SP1_SHARD_SPEED_MULT = 0.7;') && game.includes('const PITCH_SP1_SHARD_LIFE_MULT = 1.9;') && game.includes('const PITCH_SP2_PIG_SPEED_MULT = 1.5;') && game.includes('const PITCH_SP2_PIG_SPEED_DURATION_MS = 3000;'));
 check('SP gates use stored keys slow/long (never sp1/sp2 alone)', game.includes("function pitchHasSP1(entity) { return pitchStarChoice(entity) === 'slow'; }") && game.includes("function pitchHasSP2(entity) { return pitchStarChoice(entity) === 'long'; }"));
 check('no Brawl Stars wording or Grom in the Pitch block', !pitchBlock.includes('Brawl Stars') && !pitchBlock.includes('Grom') && !pitchBlock.includes('Supercell'));
 check('zero bare word-boundary deleted-name in game.js', !new RegExp(`\\b${'clus' + 'ter'}\\b`).test(game));
@@ -350,7 +361,7 @@ try {
   check('main (bot Hyper): bot pot carries Hyper', pitchThrownHexes.length === 1 && pitchThrownHexes[0].hyper === true);
 } catch (e) { failures.push('main attack threw: ' + e.message); }
 
-// --- executed: hex landing (splash 700 + plus burst of 4 shards, brawlers only) ---
+// --- executed: hex landing (REWORK: no splash, no landing damage — pot cracks open, plus release of 4 shards) ---
 try {
   resetWorld();
   const enemy = mkBot('e1', { x: 200, y: 100 });
@@ -359,14 +370,16 @@ try {
   const ally = mkAlly('a1', { x: 200, y: 100 });
   sandbox.pitchLandHex({ targetX: 200, targetY: 100, ownerId: 'p1', hyper: false, crossArmed: false, echoArmed: false, curve: false });
   syncPitchArrays();
-  check('landing: enemy in the 100px splash takes 700', enemy.hp === 5000 - 700 && checkHitCalls.some((c) => c.targetId === 'e1' && c.damage === 700 && c.isPitchHexSplash));
-  check('landing: enemy 200px past the splash is untouched', far.hp === 5000);
-  check('landing: structures are never splashed', structure.hp === 5000);
-  check('landing: allies are never splashed', ally.hp === 5000);
-  check('landing: plus burst fires 4 shards (N/E/S/W) at 540 px/s', bullets.length === 4 && bullets.every((b) => b.isPitchShard && Math.round(Math.hypot(b.vx, b.vy)) === 540 && b.maxLife === 0.35 && b.damage === 300));
+  check('landing: NO landing damage — enemy standing on the landing spot is untouched', enemy.hp === 5000 && checkHitCalls.length === 0);
+  check('landing: no splash hit is ever recorded (isPitchHexSplash is gone)', !checkHitCalls.some((c) => c.isPitchHexSplash));
+  check('landing: enemy 200px away is untouched', far.hp === 5000);
+  check('landing: structures are never hit by the release', structure.hp === 5000);
+  check('landing: allies are never hit by the release', ally.hp === 5000);
+  check('landing: plus release fires 4 shards (N/E/S/W) at 540 px/s, 650 dmg, 0.455s life, hitbox 1.40', bullets.length === 4 && bullets.every((b) => b.isPitchShard && Math.round(Math.hypot(b.vx, b.vy)) === 540 && b.maxLife === 0.455 && b.damage === 650 && b.hitboxMod === 1.40));
+  check('landing: shard range is +30% (540 x 0.455 = ~246px, was ~189px)', bullets.every((b) => Math.round(Math.hypot(b.vx, b.vy) * b.maxLife) === 246));
   check('landing: plus shard angles are 0/90/180/270', JSON.stringify(shardAngles().sort((a, b) => a - b)) === JSON.stringify([0, 90, 180, 270]));
   check('landing: shards are not curved without SP1', bullets.every((b) => b.pitchCurve === false));
-  check('landing: burst explosion carries the real Hyper state (not Hyper)', (() => { const ex = explosions.find((e) => e.fxKind === 'pitchHexBurst'); return ex && ex.hyper === false && ex.radius === 100; })());
+  check('landing: release explosion carries the real Hyper state (not Hyper) and the shard range', (() => { const ex = explosions.find((e) => e.fxKind === 'pitchHexBurst'); return ex && ex.hyper === false && ex.radius === 246; })());
   check('landing: HEX BURST! floating text', floatingTexts.some((t) => t.text === '🐷 HEX BURST!'));
   // Hyper landing: plus AND X = 8 shards.
   resetWorld();
@@ -385,11 +398,15 @@ try {
   sandbox.pitchLandHex({ targetX: 200, targetY: 0, ownerId: 'p1', hyper: true, crossArmed: true, echoArmed: false, curve: false });
   syncPitchArrays();
   check('landing (Hyper+G1): still 8 shards, never 16', bullets.length === 8);
-  // SP1: shards carry the curve flag.
+  // SP1: shards carry the curve flag — and travel SLOWER (0.7x = 378
+  // px/s) but live LONGER (1.9x = 0.8645s), covering MORE area.
   resetWorld();
   sandbox.pitchLandHex({ targetX: 200, targetY: 0, ownerId: 'p1', hyper: false, crossArmed: false, echoArmed: false, curve: true });
   syncPitchArrays();
   check('landing (SP1): all shards carry the curve flag', bullets.length === 4 && bullets.every((b) => b.pitchCurve === true));
+  check('landing (SP1): shards are SLOWER — 378 px/s, not 540', bullets.every((b) => Math.round(Math.hypot(b.vx, b.vy)) === 378));
+  check('landing (SP1): shards live LONGER — 0.8645s, not 0.455s', bullets.every((b) => Math.abs(b.maxLife - 0.8645) < 0.001));
+  check('landing (SP1): curved sweep covers MORE area — ~327px range vs 246px', bullets.every((b) => Math.round(Math.hypot(b.vx, b.vy) * b.maxLife) === 327));
   // Dead owner mid-flight: no damage, no shards — but the burst still shows.
   resetWorld();
   playerEnt.hp = 0;
@@ -405,17 +422,17 @@ try {
   const enemy = mkBot('e1', { x: 200, y: 0 });
   sandbox.pitchLandHex({ targetX: 200, targetY: 0, ownerId: 'p1', hyper: false, crossArmed: false, echoArmed: true, curve: false });
   syncPitchArrays();
-  check('echo: first burst fires on landing (4 shards)', bullets.length === 4 && enemy.hp === 5000 - 700);
+  check('echo: first release fires on landing (4 shards, no landing damage)', bullets.length === 4 && enemy.hp === 5000);
   check('echo: a second burst is scheduled 300ms later', pitchPendingEchoes.length === 1 && pitchPendingEchoes[0].fireAt === nowMs + 300 && pitchPendingEchoes[0].x === 200 && pitchPendingEchoes[0].y === 0);
   nowMs += 100; // not yet
   sandbox.updatePitchSystems(0.016);
   syncPitchArrays();
-  check('echo: nothing fires before the 300ms delay', pitchPendingEchoes.length === 1 && bullets.length === 4 && enemy.hp === 5000 - 700);
+  check('echo: nothing fires before the 300ms delay', pitchPendingEchoes.length === 1 && bullets.length === 4 && enemy.hp === 5000);
   nowMs += 200; // due
   sandbox.updatePitchSystems(0.016);
   syncPitchArrays();
   check('echo: second plus burst fires (4 more shards)', pitchPendingEchoes.length === 0 && bullets.length === 8);
-  check('echo: second burst splashes again (700 more)', enemy.hp === 5000 - 1400);
+  check('echo: second release deals no landing damage either', enemy.hp === 5000 && checkHitCalls.length === 0);
   check('echo: second burst is plus-only, never X', JSON.stringify(shardAngles().sort((a, b) => a - b)) === JSON.stringify([0, 0, 90, 90, 180, 180, 270, 270]));
   // No echo without G2.
   resetWorld();
@@ -447,17 +464,17 @@ try {
   check('curve: one full turn (2PI / 1.6s) returns to the start heading', near(full.vx, 540, 0.01) && near(full.vy, 0, 0.01));
 } catch (e) { failures.push('SP1 curve threw: ' + e.message); }
 
-// --- executed: Super Pig Parade (4 knockback pigs, lesser health) ---
+// --- executed: Super Pig Parade (2 knockback pigs, lesser health) ---
 try {
   resetWorld();
   check('super: no pigs before cast', bots.length === 0);
-  check('super: cast returns true and spawns 4 pigs', sandbox.castPitchSuper(playerEnt, false, 500, 0) === true && bots.length === 4);
+  check('super: cast returns true and spawns 2 pigs', sandbox.castPitchSuper(playerEnt, false, 500, 0) === true && bots.length === 2);
   syncPitchArrays();
   check('super: pigs are knockback pigs (chickpig-pig entity + pitch mark)', bots.every((p) => p.isChickpigPig === true && p.isPitchPig === true && p.brawler === 'chickpig_pig'));
   check('super: pigs have LESSER health — 2000 HP at Power 11 (chickpig pig: 3690)', bots.every((p) => p.hp === 2000 && p.maxHp === 2000));
   check('super: pigs chase at 330 and belong to the owner', bots.every((p) => p.speed === 330 && p.ownerId === 'p1' && p.team === 'player'));
-  check('super: pigs are pets, not Hyper', bots.every((p) => p.isPet === true && p.chickpigPigHyper === false));
-  check('super: pigs have unique ids', new Set(bots.map((p) => p.id)).size === 4);
+  check('super: pigs are pets, not Hyper, and carry ZERO power cubes', bots.every((p) => p.isPet === true && p.chickpigPigHyper === false && p.powerCubes === 0));
+  check('super: pigs have unique ids', new Set(bots.map((p) => p.id)).size === 2);
   check('super: PIG PARADE! floating text', floatingTexts.some((t) => t.text === '🐷 PIG PARADE!'));
   // No SP2: no speed boost on the pigs.
   check('super (no SP2): pigs have no Stampede boost', bots.every((p) => p.pitchPigBoostUntil === 0));
@@ -466,17 +483,23 @@ try {
   playerEnt.selectedStar = 'long';
   sandbox.castPitchSuper(playerEnt, false, 500, 0);
   syncPitchArrays();
-  check('super (SP2 Stampede): pigs get a speed boost until now + 3000ms', bots.length === 4 && bots.every((p) => p.pitchPigBoostUntil === nowMs + 3000));
-  // Hyper: MORE pigs — 6.
+  check('super (SP2 Stampede): pigs get a speed boost until now + 3000ms', bots.length === 2 && bots.every((p) => p.pitchPigBoostUntil === nowMs + 3000));
+  // Hyper: NO extra pigs — still 2, but they FLY.
   resetWorld();
   sandbox.castPitchSuper(playerEnt, true, 500, 0);
   syncPitchArrays();
-  check('super (Hyper): 6 pigs instead of 4', bots.length === 6 && bots.every((p) => p.hp === 2000));
+  check('super (Hyper): still 2 pigs, never more', bots.length === 2 && bots.every((p) => p.hp === 2000));
+  check('super (Hyper): both pigs spawn FLYING at flight height', bots.every((p) => p.pitchPigFlying === true && p.z === 60));
+  // Non-Hyper pigs never fly.
+  resetWorld();
+  sandbox.castPitchSuper(playerEnt, false, 500, 0);
+  syncPitchArrays();
+  check('super (no Hyper): pigs spawn grounded, never flying', bots.every((p) => p.pitchPigFlying === false && p.z === 0));
   // Dead entity cannot cast.
   resetWorld();
   playerEnt.hp = 0;
   check('super: dead entity cannot cast', sandbox.castPitchSuper(playerEnt, false, 500, 0) === false && bots.length === 0);
-  // Pig cap: 6 per owner, oldest evicted.
+  // Pig cap: 4 per owner, oldest evicted.
   resetWorld();
   sandbox.castPitchSuper(playerEnt, false, 500, 0);
   syncPitchArrays();
@@ -484,13 +507,13 @@ try {
   sandbox.pitchSpawnPig(playerEnt, 100, 100, false);
   sandbox.pitchSpawnPig(playerEnt, 200, 100, false);
   syncPitchArrays();
-  check('pigs: 6 pigs fit under the cap (no eviction yet)', bots.length === 6 && bots.some((p) => p.id === firstPigId));
+  check('pigs: 4 pigs fit under the cap (no eviction yet)', bots.length === 4 && bots.some((p) => p.id === firstPigId));
   sandbox.pitchSpawnPig(playerEnt, 300, 100, false);
   syncPitchArrays();
-  check('pigs: cap is 6 per owner (oldest evicted on the 7th)', bots.length === 6 && !bots.some((p) => p.id === firstPigId));
+  check('pigs: cap is 4 per owner (oldest evicted on the 5th)', bots.length === 4 && !bots.some((p) => p.id === firstPigId));
   sandbox.pitchSpawnPig(playerEnt, 400, 100, false);
   syncPitchArrays();
-  check('pigs: cap holds at 6 on further spawns', bots.length === 6);
+  check('pigs: cap holds at 4 on further spawns', bots.length === 4);
 } catch (e) { failures.push('super threw: ' + e.message); }
 
 // --- executed: kill specialty (every takedown spawns a pig) ---
@@ -571,7 +594,7 @@ try {
   nowMs = hex.impactAt; // land
   sandbox.updatePitchSystems(0.016);
   syncPitchArrays();
-  check('flight: pot lands on impact (splash + plus burst)', pitchThrownHexes.length === 0 && enemy.hp === 5000 - 700 && bullets.length === 4);
+  check('flight: pot lands on impact (crack-open release, no landing damage, plus burst)', pitchThrownHexes.length === 0 && enemy.hp === 5000 && bullets.length === 4);
 } catch (e) { failures.push('hex flight threw: ' + e.message); }
 
 // --- executed: render with REAL state (never a faked flag) ---

@@ -1311,7 +1311,7 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
         if (brawlerId === 'pitch') {
             const scale = 0.55 + (level - 1) * 0.045;
             const hpScale = getLevelHpScale(level);
-            return { hp: Math.round(5200 * hpScale), dmg: Math.round(700 * scale), speed: 270 };
+            return { hp: Math.round(5200 * hpScale), dmg: Math.round(650 * scale), speed: 270 };
         }
         if (brawlerId === 'spritz') {
             const scale = 0.55 + (level - 1) * 0.045;
@@ -10975,6 +10975,19 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
       function seededQuestNumber(key) {
           return key.split('').reduce((n, ch) => ((n * 31) + ch.charCodeAt(0)) >>> 0, 2166136261);
       }
+      // Daily/weekly Pass XP (rework 2026-11-23, Anthony: "fix the pass
+      // XP so the pass is actually completable"). Season: Nov 20–Dec 31
+      // = 42 days = 6 weeks. Daily quests: 2–3/day (avg 2.5) at 300 XP
+      // = 600–900/day (avg 750) = 25,200–37,800 over the season
+      // (avg 31,500). Weekly quests: 4/week at 600 XP = 2,400/week =
+      // 14,400 over the season. Daily+weekly total: 39,600 min /
+      // 45,900 avg / 52,200 max vs the 38,950 pass total — even the
+      // worst case (2 dailies every day) finishes the pass on
+      // daily/weekly quests alone. Season quests (38,950) and match XP
+      // (15 loss / 25 win) sit on top as acceleration + overflow.
+      // Old values (25/100) paid only ~5,025 XP over a season — ~13%
+      // of the pass — so the pass hinged entirely on finishing all 20
+      // season quests. Contract XP (questXP) is untouched.
       function buildRandomContractBucket(pool, count, key, prefix, weekly=false) {
           const copy = pool.slice();
           let seed = seededQuestNumber(key + prefix);
@@ -10983,7 +10996,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
               seed=(seed*1664525+1013904223)>>>0;
               const target=base.targets[seed%base.targets.length];
               return { id:`${prefix}_${index}_${base.kind}`, kind:base.kind, title:base.title, desc:`${base.desc} Goal: ${target.toLocaleString()}.`, target,
-                  rewards: weekly ? { coins:500+index*150, souls:35+index*10, questXP:35, passXP:100 } : { coins:150+index*40, questXP:20, passXP:25 } };
+                  rewards: weekly ? { coins:500+index*150, souls:35+index*10, questXP:35, passXP:600 } : { coins:150+index*40, questXP:20, passXP:300 } };
           });
           return buildQuestBucket(defs);
       }
@@ -11115,7 +11128,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           // Fixes round 2 (2026-11-20): contracts built before pass XP
           // existed carry no passXP — backfill today's / this week's
           // buckets in place (progress + claims untouched).
-          for (const [bucketName, amount] of [['daily', 25], ['weekly', 100]]) {
+          for (const [bucketName, amount] of [['daily', 300], ['weekly', 600]]) {
               const bucket = playerData.questBoard[bucketName];
               if (!bucket) continue;
               for (const q of Object.values(bucket)) {
@@ -11134,42 +11147,18 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           const previousStageQuest = Object.values(bucket || {}).find(q => q.stage === quest.stage - 1);
           return !previousStageQuest || !!previousStageQuest.completed;
       }
-      // Season quest time unlocks (2026-11-20 tuning): stages also unlock
-      // on a TIME schedule across the season — one stage every 2 days from
-      // the season start (BUILDER PICK, flagged for Anthony's call).
-      // Stage 1 opens with the season; stage 20 opens Dec 28, 2026, so
-      // the last stage still has the final days of the season to finish.
-      const SEASON_QUEST_UNLOCK_STEP_MS = 2 * 24 * 60 * 60 * 1000;
-      function seasonQuestStageUnlockMs(stage, seasonStartUtc) {
-          const s = Math.max(1, Math.floor(stage || 1));
-          const start = Number.isFinite(seasonStartUtc) ? seasonStartUtc : XPLODEMIS_START_UTC;
-          return start + (s - 1) * SEASON_QUEST_UNLOCK_STEP_MS;
-      }
-      function seasonQuestStageStartUtc(quest, nowMs) {
-          try { return getActiveSeasonProfile(nowMs).startUtc; } catch (_) { return XPLODEMIS_START_UTC; }
-      }
-      // Pure (given quest + nowMs): has this stage's unlock time arrived?
-      function isSeasonQuestStageTimeUnlocked(quest, nowMs = Date.now(), seasonStartUtc) {
-          if (!quest || typeof quest.stage !== 'number' || quest.stage <= 1) return true;
-          const start = Number.isFinite(seasonStartUtc) ? seasonStartUtc : seasonQuestStageStartUtc(quest, nowMs);
-          return nowMs >= seasonQuestStageUnlockMs(quest.stage, start);
-      }
-      // Pure: "2d 4h" / "5h 12m" / "45m" until the stage unlocks.
-      function formatSeasonQuestUnlockCountdown(msRemaining) {
-          const ms = Math.max(0, Math.floor(msRemaining || 0));
-          if (ms <= 0) return 'Unlocked';
-          const totalMinutes = Math.floor(ms / 60000);
-          const days = Math.floor(totalMinutes / 1440);
-          const hours = Math.floor((totalMinutes % 1440) / 60);
-          const minutes = totalMinutes % 60;
-          if (days > 0) return `${days}d ${hours}h`;
-          if (hours > 0) return `${hours}h ${minutes}m`;
-          return `${Math.max(1, minutes)}m`;
-      }
-      // Season quests tuning (2026-11-20): a locked stage can NEVER hold
-      // progress — not even from a stale save. On every season-state
-      // load, walk the stages in order and zero any stage that is
-      // time-locked or whose previous stage is not complete (progress,
+      // Season quests (rework 2026-11-23, Anthony's spec): NO TIMER.
+      // The old 2026-11-20 time schedule (one stage every 2 days from
+      // the season start) is DELETED — stages unlock SEQUENTIALLY only:
+      // the next quest unlocks the moment you finish the last one, with
+      // no time gating and no countdown anywhere. The functions that
+      // implemented the schedule (seasonQuestStageUnlockMs,
+      // seasonQuestStageStartUtc, isSeasonQuestStageTimeUnlocked,
+      // formatSeasonQuestUnlockCountdown, SEASON_QUEST_UNLOCK_STEP_MS)
+      // are gone, not stubbed.
+      // A locked stage can NEVER hold progress — not even from a stale
+      // save. On every season-state load, walk the stages in order and
+      // zero any stage whose previous stage is not complete (progress,
       // completion AND claim all reset, so nothing smuggles through).
       function sanitizeSeasonQuestProgress(pass) {
           if (!pass || !pass.quests || typeof pass.quests !== 'object') return pass;
@@ -11178,8 +11167,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           for (const def of defs) {
               const state = pass.quests[def.id];
               if (!state) { prevCompleted = false; continue; }
-              const timeLocked = !isSeasonQuestStageTimeUnlocked(def);
-              const locked = timeLocked || !prevCompleted;
+              const locked = !prevCompleted;
               if (locked) {
                   state.progress = 0;
                   state.completed = false;
@@ -11189,14 +11177,13 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           }
           return pass;
       }
-      // Season quests (2026-11-20 fix + tuning): a stage is available only
-      // once the previous stage is complete AND its unlock time has arrived.
+      // Season quests (2026-11-20 fix; timer removed 2026-11-23): a stage
+      // is available once the previous stage is complete — nothing else.
       // Stage 1 is always available. Later stages stay VISIBLE but grayed
       // out as "Coming Soon", never hidden and never claimable/active until
       // they unlock — and ZERO progress accrues while locked.
       function isSeasonQuestStageUnlocked(quest, nowMs = Date.now()) {
           if (!quest || typeof quest.stage !== 'number' || quest.stage <= 1) return true;
-          if (!isSeasonQuestStageTimeUnlocked(quest, nowMs)) return false;
           const bucket = (playerData.seasonPass && playerData.seasonPass.quests) || {};
           const previousStageQuest = Object.values(bucket).find(q => q.stage === quest.stage - 1);
           return !previousStageQuest || !!previousStageQuest.completed;
@@ -11489,11 +11476,6 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
               }
               return column;
           }
-          // Season quests tuning (2026-11-20): the unlock countdowns tick
-          // live while the season tab is open. The id lives in this
-          // openQuestBoard call's scope; the tick clears itself once no
-          // countdown spans remain (board closed), so intervals never pile up.
-          let seasonQuestUnlockTimerId = null;
           function createSeasonView() {
               const pass = playerData.seasonPass || {};
               const wrapper = document.createElement('div');
@@ -11549,18 +11531,14 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
                   const rewardClaimed = !!questState.rewardClaimed;
                   // Season quests fix (2026-11-20): later stages are
                   // VISIBLE but grayed out as "Coming Soon" until the
-                  // previous stage is complete — never hidden.
+                  // previous stage is complete — never hidden. Rework
+                  // (2026-11-23): NO timer — a locked card just says it
+                  // unlocks after the previous stage, with no countdown.
                   const unlocked = isSeasonQuestStageUnlocked(quest);
-                  // Season quests tuning (2026-11-20): every Coming Soon
-                  // card shows a live countdown to its time unlock.
-                  const timeUnlocked = isSeasonQuestStageTimeUnlocked(quest);
-                  const unlockAtMs = seasonQuestStageUnlockMs(quest.stage, seasonProfileForQuests.startUtc);
                   const prevState = quest.stage > 1 ? Object.values(pass.quests || {}).find(s => s.stage === quest.stage - 1) : null;
                   const completionLocked = !!prevState && !prevState.completed;
                   const unlockNote = !unlocked
-                      ? (!timeUnlocked
-                          ? `Coming soon — unlocks in <span data-season-quest-unlock-utc="${unlockAtMs}">${formatSeasonQuestUnlockCountdown(Math.max(0, unlockAtMs - Date.now()))}</span>${completionLocked ? ' — after the previous stage is complete' : ''}.`
-                          : 'Coming soon — unlocks after the previous stage is complete.')
+                      ? 'Coming soon — unlocks after the previous stage is complete.'
                       : '';
                   const percent = Math.max(0, Math.min(100, Math.round((questState.progress || 0) / Math.max(1, quest.target) * 100)));
                   const questCard = document.createElement('div');
@@ -11605,34 +11583,9 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
                   questCard.appendChild(claimBtn);
                   questBox.appendChild(questCard);
               }
-              // Season quests tuning (2026-11-20): tick every Coming Soon
-              // countdown live (30s) while the season tab is open. When a
-              // timer hits zero the tab re-renders so the quest unlocks.
-              // Guarded: vm/jsdom harnesses have no setInterval or
-              // querySelectorAll on their document, so this is a no-op there.
-              try {
-                  if (typeof setInterval === 'function' && document && typeof document.querySelectorAll === 'function') {
-                      if (seasonQuestUnlockTimerId != null) { try { clearInterval(seasonQuestUnlockTimerId); } catch (_) {} seasonQuestUnlockTimerId = null; }
-                      seasonQuestUnlockTimerId = setInterval(() => {
-                          try {
-                              const now = Date.now();
-                              const spans = document.querySelectorAll('[data-season-quest-unlock-utc]');
-                              if (!spans || !spans.length) { try { clearInterval(seasonQuestUnlockTimerId); } catch (_) {} seasonQuestUnlockTimerId = null; return; }
-                              let anyExpired = false;
-                              spans.forEach(el => {
-                                  const unlockAt = Number(el.getAttribute && el.getAttribute('data-season-quest-unlock-utc'));
-                                  if (!Number.isFinite(unlockAt)) return;
-                                  if (unlockAt - now <= 0) { anyExpired = true; return; }
-                                  el.textContent = formatSeasonQuestUnlockCountdown(unlockAt - now);
-                              });
-                              if (anyExpired) {
-                                  if (typeof setActiveTab === 'function') { try { setActiveTab('season'); } catch (_) {} }
-                                  try { refreshHomeUI(); } catch (_) {}
-                              }
-                          } catch (_) {}
-                      }, 30000);
-                  }
-              } catch (_) {}
+              // Season quests rework (2026-11-23): the Coming Soon
+              // countdown timer is GONE with the time gate — there is
+              // nothing to tick, so no interval is set here anymore.
               // Season quests fix (2026-11-20): the quest box was built
               // but NEVER attached to the wrapper, so the season tab
               // rendered empty even though all 20 quests were seeded.
@@ -12491,12 +12444,12 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
       'pitch': {
           name: 'Pitch', role: 'Thrower', rarity: 'Epic', color: '#a855f7',
           desc: 'A pig hex-caster who hurls bubbling hex pots that burst into sharp shards. Her pigs charge in after her, and every takedown she scores spawns a pig to fight beside her.',
-          attack: 'Hex Toss', attackDesc: 'Pitch lobs a hex pot in an arc over walls, farther than most throws. On landing it splashes for damage, then bursts into a plus-shaped spray of 4 shards.',
-          super: 'Pig Parade', superDesc: 'Pitch calls in 4 pigs that charge the nearest enemies, ramming them for damage and knocking them back. The pigs have modest health and fight until defeated.',
-          hyper: 'Hex Storm: Hex Toss bursts in a plus AND an X — 8 shards — and Pig Parade calls in 6 pigs instead of 4.',
-          g1: 'Hex Cross (Next Hex Toss explodes in a plus AND an X — eight shards in eight directions)',
-          g2: 'Echo Hex (Next Hex Toss fires a second plus-shaped burst when it lands)',
-          sp1: 'Curveball (Her main-attack shards curve clockwise as they fly)',
+          attack: 'Hex Toss', attackDesc: 'Pitch lobs a hex pot in an arc over walls, farther than most throws. On landing the pot cracks open and releases a plus-shaped spray of 4 shards.',
+          super: 'Pig Parade', superDesc: 'Pitch calls in 2 pigs that charge the nearest enemies, ramming them for damage and knocking them back. The pigs have modest health and fight until defeated.',
+          hyper: 'Hex Storm: Hex Toss releases in a plus AND an X — 8 shards — and Pig Parade pigs fly with wings to the nearest enemy, landing for damage before they ram.',
+          g1: 'Hex Cross (Next Hex Toss releases in a plus AND an X — eight shards in eight directions)',
+          g2: 'Echo Hex (Next Hex Toss releases a second plus-shaped burst 300ms after the first)',
+          sp1: 'Curveball (Her main-attack shards curve clockwise as they fly, covering more ground but travelling slower)',
           sp2: 'Stampede (Pigs from her Super run 50% faster for the first 3 seconds)'
       },
       'spritz': {
@@ -25993,42 +25946,58 @@ let heistFeverActive = false;
             gravyVoicePrevGameOver = gameOver;
         } catch (e) {}
     }
-    // ===== Pitch systems (2026-11-20, Anthony's spec) =====
+    // ===== Pitch systems (2026-11-20, Anthony's spec; reworked 2026-11-23) =====
     // Main: Hex Toss — a hex pot lobbed in an arc (Gravy glob pattern: a
     // thrown object, not a bullet, so it arcs OVER walls) that travels
-    // FARTHER than a gravy glob (800px range). On landing it splashes
-    // for damage, then bursts into a plus-shaped spray of 4 shards
-    // (Kage shard pattern: short-lived piercing-free bullets flying
-    // outward). Hyper (and G1) burst in a plus AND an X: 8 shards.
-    // Super: Pig Parade — spawns 4 knockback pigs (the chickpig-pig
+    // FARTHER than a gravy glob (800px range). REWORK: on landing the pot
+    // does NOT explode and deals NO landing damage — it cracks open and
+    // releases a plus-shaped spray of 4 shards (Kage shard pattern:
+    // short-lived piercing-free bullets flying outward). Shards are 650
+    // damage each, +12% size, +30% range. Hyper (and G1) release in a
+    // plus AND an X: 8 shards.
+    // Release animation: the pot splits into two halves that spin apart
+    // with a sparkle burst as the shards fly out (pitchHexBurst render
+    // branch — the whitelisted custom FX path, never the generic dot).
+    // Super: Pig Parade — spawns 2 knockback pigs (the chickpig-pig
     // mechanic: same ramming AI, same 600-damage ram + knockback, but
-    // LESSER health, 2000 HP at Power 11 instead of 3690). Hyper
-    // spawns 6 pigs. Pigs fight until defeated; at most 6 per owner,
-    // oldest evicted.
-    // G1 Hex Cross: next Hex Toss explodes in a plus AND an X (8 shards).
-    // G2 Echo Hex: next Hex Toss fires a second plus-shaped burst when
-    // it lands (300ms later, same spot).
+    // LESSER health, 2000 HP at Power 11 instead of 3690). At most 4 per
+    // owner, oldest evicted. Pigs NEVER count as brawlers remaining in
+    // Showdown and power cubes NEVER affect them (no damage/HP scaling,
+    // and pigs cannot pick cubes up). Hyper: NO extra pigs — the 2 pigs
+    // fly with WINGS to the nearest enemy, land for 150 damage, then ram
+    // as normal. Hyper main still bursts plus AND X (unchanged — flag for
+    // Anthony: he can veto this).
+    // G1 Hex Cross: next Hex Toss releases in a plus AND an X (8 shards).
+    // G2 Echo Hex: next Hex Toss fires a second plus-shaped release 300ms
+    // later, at the same spot.
     // SP1 Curveball (Anthony): main-attack shards curve clockwise as
-    // they fly (1.6 rad/s, builder pick). SP2 Stampede (Anthony): pigs
-    // from her Super run 50% faster for the first 3 seconds.
+    // they fly (1.6 rad/s, builder pick) — and now cover MORE area while
+    // travelling SLOWER (0.7x speed, 1.9x lifetime: longer curved sweep).
+    // SP2 Stampede (Anthony): pigs from her Super run 50% faster for
+    // the first 3 seconds.
     // Specialty (innate): every takedown Pitch scores spawns a pig.
     // Pigs damage/knock back brawlers only — never structures.
     const PITCH_THROW_SPEED = 1100; // px/s lobbed flight speed (Gravy glob pattern)
     const PITCH_THROW_RANGE = 800; // px — farther than a gravy glob (620)
     const PITCH_THROW_ARC_HEIGHT = 80; // arc peak px
-    const PITCH_SPLASH_RADIUS = 100; // px center splash radius on landing
-    const PITCH_SPLASH_DMG = 700; // P11 center splash damage (see getScaledStats 'pitch'.dmg)
-    const PITCH_SHARD_DMG = 300; // P11 damage per plus/X shard
+    const PITCH_SHARD_DMG = 650; // P11 damage per plus/X shard (rework 2026-11-23: was 300)
     const PITCH_SHARD_SPEED = 540; // px/s shard flight speed (Kage shard pattern)
-    const PITCH_SHARD_MAX_LIFE = 0.35; // s shard lifetime (~189px travel)
-    const PITCH_SUPER_PIG_COUNT = 4; // pigs per Pig Parade
-    const PITCH_SUPER_PIG_COUNT_HYPER = 6; // Hyper Pig Parade spawns more pigs
+    const PITCH_SHARD_MAX_LIFE = 0.455; // s shard lifetime — 0.35s +30% range (rework: 540 * 0.455 = ~246px travel, was ~189px)
+    const PITCH_SHARD_RANGE_PX = 246; // px shard travel (PITCH_SHARD_SPEED * PITCH_SHARD_MAX_LIFE) — release-zone marker + burst visual radius
+    const PITCH_SHARD_HITBOX_MOD = 1.40; // shard hitbox — 1.25 +12% size (rework 2026-11-23)
+    const PITCH_SUPER_PIG_COUNT = 2; // pigs per Pig Parade (rework 2026-11-23: was 4)
     const PITCH_PIG_HP = 2000; // P11 pig health — lesser than the chickpig pig (3690)
     const PITCH_PIG_SPEED = 330; // px/s pig chase speed (same as the chickpig pig)
-    const PITCH_MAX_PIGS_PER_OWNER = 6; // oldest pig evicted past the cap
+    const PITCH_PIG_FLY_SPEED = 700; // px/s Hyper winged-pig flight speed (BUILDER PICK, rework 2026-11-23)
+    const PITCH_PIG_FLY_HEIGHT = 60; // px airborne height while a Hyper pig flies (BUILDER PICK)
+    const PITCH_PIG_LAND_RADIUS = 48; // px — a flying Hyper pig lands once this close to its target (BUILDER PICK)
+    const PITCH_PIG_LAND_DMG = 150; // Hyper pig landing damage (Anthony's number, rework 2026-11-23)
+    const PITCH_MAX_PIGS_PER_OWNER = 4; // oldest pig evicted past the cap (rework 2026-11-23: was 6)
     const PITCH_BOT_SUPER_RANGE = 650; // px — bots cast Pig Parade when an enemy is this close
     const PITCH_G2_ECHO_DELAY_MS = 300; // Echo Hex fires its second burst this long after landing
     const PITCH_SP1_CURVE_RAD_PER_S = 1.6; // Curveball: shards rotate this fast, clockwise
+    const PITCH_SP1_SHARD_SPEED_MULT = 0.7; // Curveball: shards travel SLOWER (BUILDER PICK, rework 2026-11-23)
+    const PITCH_SP1_SHARD_LIFE_MULT = 1.9; // Curveball: shards live LONGER, so the curved sweep covers MORE area (BUILDER PICK; 0.7 x 1.9 = +33% range)
     const PITCH_SP2_PIG_SPEED_MULT = 1.5; // Stampede: +50% pig speed (Anthony's number)
     const PITCH_SP2_PIG_SPEED_DURATION_MS = 3000; // Stampede: first 3 seconds (Anthony's number)
     const PITCH_SUPER_CHARGE_HITS = 7; // 7 main-attack hits to charge
@@ -26053,20 +26022,35 @@ let heistFeverActive = false;
     // it reuses the ramming AI and pig rendering; isPitchPig marks it as
     // hers for ram attribution, the Stampede boost, and the pig cap).
     // Unlike the chickpig pig, this never evicts the owner's other pigs
-    // outright — only the 6-pig cap evicts the oldest.
-    function pitchSpawnPig(owner, x, y, boost) {
+    // outright — only the 4-pig cap evicts the oldest.
+    // Rework (2026-11-23): a pig carries ZERO power cubes — cubes never
+    // affect pigs — and a Hyper Super pig spawns FLYING (pitchPigFlying),
+    // winging its way to the nearest enemy before it lands and rams.
+    function pitchSpawnPig(owner, x, y, boost, flying) {
         if (!owner) return null;
         const now = performance.now();
         const mine = bots.filter((b) => b && b.isPitchPig && b.ownerId === owner.id);
         if (mine.length >= PITCH_MAX_PIGS_PER_OWNER) { const idx = bots.indexOf(mine[0]); if (idx !== -1) bots.splice(idx, 1); }
         const level = owner.id === player.id ? getSelectedBrawlerLevel() : (owner.level || 11);
         const hp = Math.round(PITCH_PIG_HP * getLevelDamageScale(level));
-        const pig = { id: nextId++, x: clamp(x, 28, WORLD_W - 28), y: clamp(y, 28, WORLD_H - 28), z: 0, vx: 0, vy: 0, hp: hp, maxHp: hp, powerCubes: owner.powerCubes || 0, isDead: false, shield: 0, shieldMax: 0, radius: 22, speed: PITCH_PIG_SPEED, slowUntil: 0, brawler: 'chickpig_pig', lastTargetId: null, targetLockUntil: 0, lastShot: 0, superCharge: 0, hyperChargeCharge: 0, isHypercharged: false, gadgetArmed: false, gadgetCooldownUntil: 0, selectedStar: 'none', isPet: true, isChickpigPig: true, chickpigPigHyper: false, isPitchPig: true, pitchPigBoostUntil: boost ? now + PITCH_SP2_PIG_SPEED_DURATION_MS : 0, ownerId: owner.id, team: owner.team || 'player', ramCooldownUntil: 0, charging: false };
+        const pig = { id: nextId++, x: clamp(x, 28, WORLD_W - 28), y: clamp(y, 28, WORLD_H - 28), z: flying ? PITCH_PIG_FLY_HEIGHT : 0, vx: 0, vy: 0, hp: hp, maxHp: hp, powerCubes: 0, isDead: false, shield: 0, shieldMax: 0, radius: 22, speed: PITCH_PIG_SPEED, slowUntil: 0, brawler: 'chickpig_pig', lastTargetId: null, targetLockUntil: 0, lastShot: 0, superCharge: 0, hyperChargeCharge: 0, isHypercharged: false, gadgetArmed: false, gadgetCooldownUntil: 0, selectedStar: 'none', isPet: true, isChickpigPig: true, chickpigPigHyper: false, isPitchPig: true, pitchPigFlying: !!flying, pitchPigBoostUntil: boost ? now + PITCH_SP2_PIG_SPEED_DURATION_MS : 0, ownerId: owner.id, team: owner.team || 'player', ramCooldownUntil: 0, charging: false };
         bots.push(pig);
         // Spawn poof: a small purple dust ring where the pig pops in
         // (Super parade or a takedown pig). Visual only — no state change.
         explosions.push({ x: pig.x, y: pig.y, radius: 40, life: 0, maxLife: .3, color: 'rgba(168,85,247,.5)', fxKind: 'pitchPigSpawn' });
         return pig;
+    }
+    // A flying Hyper pig lands: it stops flying, drops to the ground
+    // with a poof, and deals 150 landing damage to the enemy it flew to
+    // (brawlers only — pigs never hit structures). After landing it rams
+    // as a normal pig. No enemy in range: it just lands, no damage.
+    function pitchPigLand(pig, target) {
+        if (!pig) return;
+        pig.pitchPigFlying = false;
+        pig.z = 0;
+        explosions.push({ x: pig.x, y: pig.y, radius: 56, life: 0, maxLife: .3, color: 'rgba(255,255,255,.6)', fxKind: 'pitchPigSpawn' });
+        if (!target || target.hp <= 0 || target.isStructure || target.isPet) return;
+        checkHit(target, { ownerBrawler: 'pitch', ownerId: pig.ownerId, damage: PITCH_PIG_LAND_DMG, pierce: true, isPitchPigLanding: true }, -1);
     }
     // Specialty: every takedown Pitch scores spawns a pig at the victim.
     // Called once per death from the death-drops loop (isDead guard), so
@@ -26080,10 +26064,18 @@ let heistFeverActive = false;
         if (areAlliedEntities(killer, victim)) return false;
         return !!pitchSpawnPig(killer, victim.x, victim.y, false);
     }
+    // Showdown remaining count (rework 2026-11-23): Pitch's pigs NEVER
+    // count as brawlers remaining — a Showdown ends when the last real
+    // fighter falls, even if pigs are still standing. The match-end
+    // block counts through this helper; pigs stay targetable and keep
+    // fighting everywhere else.
+    function showdownCountedBots(list) {
+        return (list || []).filter((b) => b && !b.isPitchPig);
+    }
     // Main: lob a hex pot in an arc to the aimed point (Gravy glob
-    // pattern — a thrown object, so it arcs over walls). Hyper bursts
-    // plus AND X on landing; G1 Hex Cross arms the same 8-way burst;
-    // G2 Echo Hex arms a second plus burst after landing. SP1 Curveball
+    // pattern — a thrown object, so it arcs over walls). Hyper releases
+    // plus AND X on landing; G1 Hex Cross arms the same 8-way release;
+    // G2 Echo Hex arms a second plus release after landing. SP1 Curveball
     // rides the pot and its shards. Armed flags are consumed on fire.
     function firePitchMain(fromEntity, targetX, targetY, isBot) {
         const hyper = isBot ? !!fromEntity.isHypercharged : !!isHypercharged;
@@ -26100,30 +26092,28 @@ let heistFeverActive = false;
         pitchThrownHexes.push({ startX: fromEntity.x, startY: fromEntity.y, targetX: x, targetY: y, createdAt: now, impactAt: now + flightMs, ownerId: fromEntity.id, hyper: hyper, crossArmed: cross, echoArmed: echo, curve: pitchHasSP1(fromEntity) });
         return true;
     }
-    // A hex pot landed: center splash (brawlers only), then the plus/X
-    // shard burst. The burst visual carries the pot's REAL Hyper state
-    // (Snipa lesson: never a faked flag). G2's echo is scheduled, not
-    // fired here — it goes off when the main attack ends.
+    // A hex pot landed: NO explosion, NO landing damage (rework
+    // 2026-11-23) — the pot cracks open and releases the plus/X shards.
+    // The release visual carries the pot's REAL Hyper state (Snipa
+    // lesson: never a faked flag). G2's echo is scheduled, not fired
+    // here — it goes off when the main attack ends. SP1 Curveball:
+    // shards travel SLOWER but live LONGER, so the curved sweep covers
+    // MORE area than a straight release.
     function pitchFireBurst(x, y, owner, hyper, cross, curve) {
         const now = performance.now();
         const eightWay = !!(hyper || cross);
-        const dmg = owner ? Math.round(PITCH_SPLASH_DMG * pitchLevelScale(owner)) : PITCH_SPLASH_DMG;
         const shardDmg = owner ? Math.round(PITCH_SHARD_DMG * pitchLevelScale(owner)) : PITCH_SHARD_DMG;
+        const shardSpeed = curve ? PITCH_SHARD_SPEED * PITCH_SP1_SHARD_SPEED_MULT : PITCH_SHARD_SPEED;
+        const shardLife = curve ? PITCH_SHARD_MAX_LIFE * PITCH_SP1_SHARD_LIFE_MULT : PITCH_SHARD_MAX_LIFE;
+        const shardRange = Math.round(shardSpeed * shardLife);
         if (owner) {
-            for (const target of [player, ...bots]) {
-                if (!target || target.hp <= 0 || target.id === owner.id || areAlliedEntities(owner, target)) continue;
-                if (target.isStructure || target.isPet) continue;
-                if (Math.hypot(target.x - x, target.y - y) <= PITCH_SPLASH_RADIUS + (target.radius || 14)) {
-                    checkHit(target, { ownerBrawler: 'pitch', ownerId: owner.id, damage: dmg, pierce: true, hitIds: {}, isPitchHexSplash: true }, -1);
-                }
-            }
             const dirs = eightWay ? 8 : 4;
             for (let a = 0; a < dirs; a++) {
                 const ang = a * (Math.PI / 2) + (eightWay && a >= 4 ? Math.PI / 4 : 0);
-                bullets.push({ ownerBrawler: 'pitch', isPitchShard: true, pitchCurve: !!curve, x: x, y: y, vx: Math.cos(ang) * PITCH_SHARD_SPEED, vy: Math.sin(ang) * PITCH_SHARD_SPEED, life: 0, maxLife: PITCH_SHARD_MAX_LIFE, damage: shardDmg, pierce: false, ownerId: owner.id, hitIds: {}, hitboxMod: 1.25, hyperVisual: !!hyper });
+                bullets.push({ ownerBrawler: 'pitch', isPitchShard: true, pitchCurve: !!curve, x: x, y: y, vx: Math.cos(ang) * shardSpeed, vy: Math.sin(ang) * shardSpeed, life: 0, maxLife: shardLife, damage: shardDmg, pierce: false, ownerId: owner.id, hitIds: {}, hitboxMod: PITCH_SHARD_HITBOX_MOD, hyperVisual: !!hyper });
             }
         }
-        explosions.push({ x: x, y: y, radius: PITCH_SPLASH_RADIUS, life: 0, maxLife: .4, color: hyper ? 'rgba(192,132,252,.55)' : 'rgba(168,85,247,.55)', legendary: true, fxKind: 'pitchHexBurst', hyper: !!hyper, eightWay: eightWay });
+        explosions.push({ x: x, y: y, radius: shardRange, life: 0, maxLife: .4, color: hyper ? 'rgba(192,132,252,.55)' : 'rgba(168,85,247,.55)', legendary: true, fxKind: 'pitchHexBurst', hyper: !!hyper, eightWay: eightWay });
         spawnFloatingText(x, y - 40, hyper ? '🐷 HEX STORM!' : '🐷 HEX BURST!', hyper ? '#e9d5ff' : '#ddd6fe');
         return true;
     }
@@ -26146,23 +26136,26 @@ let heistFeverActive = false;
         const cos = Math.cos(a), sin = Math.sin(a);
         return { vx: vx * cos - vy * sin, vy: vx * sin + vy * cos };
     }
-    // Super: call in a parade of knockback pigs around the owner. Hyper
-    // calls in more pigs. With SP2 Stampede the pigs run 50% faster
-    // for their first 3 seconds (Anthony's numbers).
+    // Super: call in a parade of knockback pigs around the owner.
+    // Rework (2026-11-23): ALWAYS 2 pigs — Hyper adds NO extra pigs.
+    // Instead, Hyper pigs spawn FLYING: they wing their way to the
+    // nearest enemy, land for 150 damage, then ram as normal. With SP2
+    // Stampede the pigs run 50% faster for their first 3 seconds
+    // (Anthony's numbers) once they are on the ground.
     function castPitchSuper(entity, hyper, targetX, targetY) {
         if (!entity || entity.hp <= 0) return false;
-        const count = hyper ? PITCH_SUPER_PIG_COUNT_HYPER : PITCH_SUPER_PIG_COUNT;
+        const count = PITCH_SUPER_PIG_COUNT;
         const boost = pitchHasSP2(entity);
         for (let i = 0; i < count; i++) {
             const ang = (i / count) * Math.PI * 2 + 0.6;
-            pitchSpawnPig(entity, entity.x + Math.cos(ang) * 48, entity.y + Math.sin(ang) * 48, boost);
+            pitchSpawnPig(entity, entity.x + Math.cos(ang) * 48, entity.y + Math.sin(ang) * 48, boost, !!hyper);
         }
         if (entity.id === player.id) { try { window.BrawePitchVoice?.play('super'); } catch (e) {} }
         spawnFloatingText(entity.x, entity.y - 46, hyper ? '🐷 PIG PARADE!' : '🐷 PIG PARADE!', hyper ? '#e9d5ff' : '#ddd6fe');
         return true;
     }
-    // Gadgets: G1 Hex Cross (next Hex Toss explodes in a plus AND an X),
-    // G2 Echo Hex (next Hex Toss fires a second plus burst on landing).
+    // Gadgets: G1 Hex Cross (next Hex Toss releases in a plus AND an X),
+    // G2 Echo Hex (next Hex Toss releases a second plus burst on landing).
     function executePitchGadget(entity, gadget, isBot) {
         if (!entity) return false;
         if (gadget === 'g1') {
@@ -26185,7 +26178,8 @@ let heistFeverActive = false;
             if (!e) continue;
             if (e.hp <= 0) { e.pitchCrossArmed = false; e.pitchEchoArmed = false; continue; }
         }
-        // Lobbed hex pots fly in an arc, then splash + burst.
+        // Lobbed hex pots fly in an arc, then crack open and release
+        // their shards.
         for (let i = pitchThrownHexes.length - 1; i >= 0; i--) {
             const h = pitchThrownHexes[i];
             if (now < h.impactAt) continue;
@@ -26219,12 +26213,13 @@ let heistFeverActive = false;
             const wx = gx + -Math.sin(flightAng) * wobble;
             const wy = gy + Math.cos(flightAng) * wobble;
             ctx.save();
-            // Landing marker (the real splash radius).
+            // Landing marker (the shard release zone — the pot cracks
+            // open here and the shards fly out to this range).
             ctx.globalAlpha = 0.5;
             ctx.strokeStyle = g.hyper ? '#c084fc' : '#a855f7';
             ctx.lineWidth = 3;
             ctx.setLineDash([10, 8]);
-            ctx.beginPath(); ctx.arc(g.targetX, g.targetY, PITCH_SPLASH_RADIUS, 0, Math.PI * 2); ctx.stroke();
+            ctx.beginPath(); ctx.arc(g.targetX, g.targetY, PITCH_SHARD_RANGE_PX, 0, Math.PI * 2); ctx.stroke();
             ctx.setLineDash([]);
             // Ground shadow under the pot.
             ctx.globalAlpha = 0.3;
@@ -26272,6 +26267,35 @@ let heistFeverActive = false;
             ctx.moveTo(e.x - 18, e.y); ctx.lineTo(e.x + 18, e.y);
             ctx.moveTo(e.x, e.y - 18); ctx.lineTo(e.x, e.y + 18);
             ctx.stroke();
+            ctx.restore();
+        }
+        // Hyper winged pigs: white flapping wings on the pig's lifted
+        // body (the bot renderer already lifts it by z) plus a soft
+        // ground shadow so the flight height reads at a glance.
+        for (const p of bots) {
+            if (!p || p.hp <= 0 || !p.isPitchPig || !p.pitchPigFlying) continue;
+            const flap = Math.sin(now / 90) * 0.5;
+            const py = p.y - (p.z || 0);
+            ctx.save();
+            // Ground shadow under the flying pig.
+            ctx.globalAlpha = 0.25;
+            ctx.fillStyle = '#3b0764';
+            ctx.beginPath(); ctx.ellipse(p.x, p.y + 14, 16, 6, 0, 0, Math.PI * 2); ctx.fill();
+            // Wings: two white feathered wings flapping on either side.
+            ctx.globalAlpha = 0.95;
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = '#e9d5ff';
+            ctx.lineWidth = 2;
+            for (const side of [-1, 1]) {
+                ctx.save();
+                ctx.translate(p.x + side * 14, py - 6);
+                ctx.rotate(side * (0.5 + flap * 0.6));
+                ctx.beginPath();
+                ctx.ellipse(0, -10, 7, 16, side * 0.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                ctx.restore();
+            }
             ctx.restore();
         }
         // Hyper aura ring around Pitch (Pandy/Snipa pattern).
@@ -54528,6 +54552,10 @@ function checkHit(target, b, i){
     if (b.isAngelLight) applyStatusEffect(target, 'slow', 500);
     if ((b.isIceCreamScoop || b.isIceCreamCone) && owner) applyIceCreamFreeze(owner,target,b.iceCreamFreezeAmount ?? (b.hyperVisual?34:25));
     let mult = 1.0 + ((owner ? owner.powerCubes : 0) || 0) * 0.1;
+    // Pitch rework (2026-11-23): power cubes NEVER affect her pigs —
+    // a pig's ram (600) and a Hyper pig's landing hit (150) deal flat
+    // damage no matter how many cubes the owner holds.
+    if (b && (b.isPitchPigRam || b.isPitchPigLanding)) mult = 1.0;
     let dealtDamage = b.damage * mult;
     // Draflygon SP2: Afterburn Guard (-30% damage taken for 5s after landing)
     if (target && (target.draflygonLandingShieldUntil || 0) > performance.now()) {
@@ -57414,6 +57442,11 @@ function checkHit(target, b, i){
         let collectedBy = null;
         for(const e of [player, ...bots.filter(b=>b.hp>0 && !b.isDummy)]){
             if(e.isBoss) continue; // Boss cannot collect cubes or crystals
+            // Pitch rework (2026-11-23): her pigs NEVER collect power
+            // cubes — cubes do not affect pigs, so a pig walking over a
+            // cube (plain, charged, vitality, or nova) leaves it for a
+            // real fighter. Other pickups (buffs, crystals) are untouched.
+            if (e.isPitchPig && (p.kind === undefined || p.kind === 'charged_core' || p.kind === 'vitality_core' || p.kind === 'nova_core')) continue;
             if(e.hp > 0 && Math.hypot(e.x - p.x, e.y - p.y) < e.radius + 20){ collectedBy = e; break; }
         }
         if(collectedBy){
@@ -62435,6 +62468,35 @@ function checkHit(target, b, i){
           t.gadgetArmed = false;
       }
       if (t.isChickpigPig) {
+          // Hyper winged flight (Pitch rework 2026-11-23): a flying pig
+          // steers straight at the nearest living enemy at flight speed,
+          // OVER walls (no canMoveToPosition check, no wall slide), then
+          // lands for 150 damage and rams as a normal pig. No enemy left:
+          // it lands where it is, with no landing damage. Only Pitch's
+          // Hyper Super pigs ever fly — chickpig pigs and takedown pigs
+          // skip this and chase on the ground as before.
+          if (t.isPitchPig && t.pitchPigFlying) {
+              const flyOwner = getEntityById(t.ownerId);
+              let flyTarget = null, flyBest = Infinity;
+              for (const candidate of [player, ...aliveBots]) {
+                  if (!candidate || candidate.hp <= 0 || candidate.id === t.id || candidate.id === t.ownerId || (flyOwner && areAlliedEntities(flyOwner, candidate))) continue;
+                  const d = Math.hypot(candidate.x - t.x, candidate.y - t.y);
+                  if (d < flyBest) { flyBest = d; flyTarget = candidate; }
+              }
+              if (!flyTarget) {
+                  pitchPigLand(t, null);
+              } else {
+                  const flyAngle = Math.atan2(flyTarget.y - t.y, flyTarget.x - t.x);
+                  const flyStep = Math.min(flyBest, PITCH_PIG_FLY_SPEED * dt);
+                  t.x = clamp(t.x + Math.cos(flyAngle) * flyStep, t.radius, WORLD_W - t.radius);
+                  t.y = clamp(t.y + Math.sin(flyAngle) * flyStep, t.radius, WORLD_H - t.radius);
+                  t.z = PITCH_PIG_FLY_HEIGHT;
+                  t.charging = true;
+                  const flyRemaining = Math.hypot(flyTarget.x - t.x, flyTarget.y - t.y);
+                  if (flyRemaining <= PITCH_PIG_LAND_RADIUS + (flyTarget.radius || 14)) pitchPigLand(t, flyTarget);
+              }
+              continue;
+          }
           const owner=getEntityById(t.ownerId);
           let target=null,best=Infinity;
           for(const candidate of [player,...aliveBots]){
@@ -63278,14 +63340,14 @@ function checkHit(target, b, i){
     } else if (isDuoShowdown) {
         const teammate = bots.find(b => b.isTeammate);
         const teamAlive = (player.hp > 0) || !!(teammate && teammate.hp > 0);
-        const hostileTeams = new Set(aliveBots.filter(b => !b.isTeammate && !areAlliedEntities(player, b)).map((b) => b.team || `enemy_${b.id}`));
+        const hostileTeams = new Set(showdownCountedBots(aliveBots).filter(b => !b.isTeammate && !areAlliedEntities(player, b)).map((b) => b.team || `enemy_${b.id}`));
         aliveCount = hostileTeams.size + (teamAlive ? 1 : 0);
         if (!isBossFight && !isSoloTrial && !teamAlive) gameOver = true;
         if (!isBossFight && !isSoloTrial && hostileTeams.size === 0) gameOver = true;
     } else if (isTrioShowdownMode) {
         const teamAlive = getTeamLivingEntities('player').length > 0;
         const hostileTeams = new Set();
-        for (const b of aliveBots) {
+        for (const b of showdownCountedBots(aliveBots)) {
             if (!b || b.hp <= 0 || (b.team || 'enemy') === 'player') continue;
             hostileTeams.add(b.team || 'enemy');
         }
@@ -63300,8 +63362,11 @@ function checkHit(target, b, i){
         const hostileAlive = getTeamLivingEntities('enemy').length;
         aliveCount = hostileAlive + (teamAlive ? 1 : 0);
     } else {
-        aliveCount = aliveBots.length + (player.hp > 0 ? 1 : 0);
-        if (!isObjectiveMode && !isDamageFillerMode && !isMirrorMode && !isBrickVaultMode && !isArenaForgeMode && !isPropHuntMode && !isKnockDonateMode && !isTrioShowdownMode && !isTraining && !isDuels && !isSoloTrial && (player.hp <= 0 || aliveBots.length === 0)) {
+        // Solo Showdown (and other FFA modes): Pitch pigs never count —
+        // the match ends when the last real fighter falls.
+        const countedBots = showdownCountedBots(aliveBots);
+        aliveCount = countedBots.length + (player.hp > 0 ? 1 : 0);
+        if (!isObjectiveMode && !isDamageFillerMode && !isMirrorMode && !isBrickVaultMode && !isArenaForgeMode && !isPropHuntMode && !isKnockDonateMode && !isTrioShowdownMode && !isTraining && !isDuels && !isSoloTrial && (player.hp <= 0 || countedBots.length === 0)) {
             gameOver = true;
         }
     }
@@ -77764,7 +77829,9 @@ function checkHit(target, b, i){
           ctx.translate(b.x, b.y);
           if (b.isPitchShard) {
               // Pitch hex shard: a small purple diamond with a green core.
-              const size = 8;
+              // Size follows the real hitbox (+12% in the 2026-11-23
+              // rework: hitboxMod 1.40 vs the old 1.25).
+              const size = 8 * ((b.hitboxMod || 1.25) / 1.25);
               ctx.fillStyle = b.hyperVisual ? '#e9d5ff' : '#c084fc';
               ctx.shadowColor = '#a855f7';
               ctx.shadowBlur = 6;
@@ -79824,24 +79891,31 @@ function checkHit(target, b, i){
             continue;
         }
         if (ex.fxKind === 'pitchHexBurst') {
-            // Pitch hex burst: a purple pool flash with the burst's real
-            // shape — 4 rays for a plus, 8 rays for a plus AND an X
-            // (Hyper or Hex Cross). Green hex sparks ride the rays.
+            // Pitch hex RELEASE (rework 2026-11-23 — no explosion, no
+            // landing damage): the pot CRACKS OPEN. Two pot halves spin
+            // apart and fade while a sparkle burst fires along the
+            // shard directions — 4 rays for a plus, 8 rays for a plus
+            // AND an X (Hyper or Hex Cross). Green hex sparks ride the
+            // ray tips. Same whitelisted custom FX path as before, never
+            // the generic white-dot fallback.
             const pAlpha = Math.max(0, 1 - ex.life / ex.maxLife);
             const progress = clamp(ex.life / ex.maxLife, 0, 1);
-            const pR = (ex.radius || 100) * (0.45 + 0.55 * progress);
             const rays = (ex.hyper || ex.eightWay) ? 8 : 4;
+            const pR = ex.radius || PITCH_SHARD_RANGE_PX;
+            const poolR = Math.min(110, pR * (0.35 + 0.25 * progress));
             ctx.save();
             ctx.globalAlpha = pAlpha;
+            // Soft purple pool flash where the pot cracked open.
             ctx.fillStyle = ex.hyper ? 'rgba(192,132,252,0.5)' : 'rgba(168,85,247,0.5)';
-            ctx.beginPath(); ctx.arc(ex.x, ex.y, pR, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(ex.x, ex.y, poolR, 0, Math.PI * 2); ctx.fill();
+            // Shard-direction rays, reaching the full shard range.
             ctx.strokeStyle = ex.hyper ? '#c084fc' : '#a855f7';
             ctx.lineWidth = 4;
             ctx.lineCap = 'round';
             for (let r = 0; r < rays; r++) {
                 const a = (r / rays) * Math.PI * 2;
                 ctx.beginPath();
-                ctx.moveTo(ex.x + Math.cos(a) * pR * 0.3, ex.y + Math.sin(a) * pR * 0.3);
+                ctx.moveTo(ex.x + Math.cos(a) * poolR * 0.3, ex.y + Math.sin(a) * poolR * 0.3);
                 ctx.lineTo(ex.x + Math.cos(a) * pR, ex.y + Math.sin(a) * pR);
                 ctx.stroke();
             }
@@ -79849,6 +79923,29 @@ function checkHit(target, b, i){
             for (let r = 0; r < rays; r++) {
                 const a = (r / rays) * Math.PI * 2;
                 ctx.beginPath(); ctx.arc(ex.x + Math.cos(a) * pR * 0.85, ex.y + Math.sin(a) * pR * 0.85, 3.5, 0, Math.PI * 2); ctx.fill();
+            }
+            // The pot itself, splitting: two halves rotate apart and
+            // drift outward as the release plays out.
+            const split = progress * 26;
+            const spin = progress * 1.1;
+            for (const side of [-1, 1]) {
+                ctx.save();
+                ctx.translate(ex.x + side * split, ex.y - progress * 10);
+                ctx.rotate(side * spin);
+                ctx.globalAlpha = pAlpha * (1 - progress * 0.6);
+                ctx.fillStyle = ex.hyper ? '#c084fc' : '#a855f7';
+                ctx.beginPath(); ctx.ellipse(0, 0, 13, 9, 0, side > 0 ? -Math.PI / 2 : Math.PI / 2, side > 0 ? Math.PI / 2 : -Math.PI / 2); ctx.fill();
+                ctx.strokeStyle = ex.hyper ? '#e9d5ff' : '#7e22ce';
+                ctx.lineWidth = 3;
+                ctx.beginPath(); ctx.ellipse(0, 0, 11, 7.5, 0, side > 0 ? -Math.PI / 2 : Math.PI / 2, side > 0 ? Math.PI / 2 : -Math.PI / 2); ctx.stroke();
+                ctx.restore();
+            }
+            // Sparkle burst at the crack point.
+            ctx.fillStyle = '#ffffff';
+            for (let s = 0; s < 6; s++) {
+                const a = (s / 6) * Math.PI * 2 + progress * 1.5;
+                const d = 14 + progress * 46;
+                ctx.beginPath(); ctx.arc(ex.x + Math.cos(a) * d, ex.y + Math.sin(a) * d, 2.5, 0, Math.PI * 2); ctx.fill();
             }
             ctx.restore();
             continue;

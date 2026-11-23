@@ -336,7 +336,7 @@ try {
   sandbox.pitchFireBurst(700, 500, playerEnt, false, false, false);
   syncArrays();
   const plain = explosions.find((e) => e.fxKind === 'pitchHexBurst');
-  check('burst: plain Hex Toss records plus-only (not 8-way)', plain && plain.eightWay === false && plain.hyper === false && plain.radius === 100);
+  check('burst: plain Hex Toss records plus-only (not 8-way)', plain && plain.eightWay === false && plain.hyper === false && plain.radius === 246);
   // G1 Hex Cross: plus AND X, without Hyper.
   resetWorld('pitch');
   playerEnt.x = 500; playerEnt.y = 500;
@@ -356,8 +356,8 @@ try {
   playerEnt.x = 500; playerEnt.y = 500;
   sandbox.castPitchSuper(playerEnt, false, 500, 0);
   syncArrays();
-  check('poof: Pig Parade still spawns 4 pigs at 48px (kit unchanged)', bots.length === 4 && bots.every((p) => near(Math.hypot(p.x - 500, p.y - 500), 48, 0.5) && p.hp === 2000 && p.isPitchPig));
-  check('poof: one spawn poof per pig, at the pig', explosions.filter((e) => e.fxKind === 'pitchPigSpawn').length === 4 && explosions.filter((e) => e.fxKind === 'pitchPigSpawn').every((e) => e.radius === 40));
+  check('poof: Pig Parade still spawns 2 pigs at 48px (kit unchanged)', bots.length === 2 && bots.every((p) => near(Math.hypot(p.x - 500, p.y - 500), 48, 0.5) && p.hp === 2000 && p.isPitchPig));
+  check('poof: one spawn poof per pig, at the pig', explosions.filter((e) => e.fxKind === 'pitchPigSpawn').length === 2 && explosions.filter((e) => e.fxKind === 'pitchPigSpawn').every((e) => e.radius === 40));
   // Kill-spawn pig gets the same poof.
   resetWorld('pitch');
   playerEnt.x = 500; playerEnt.y = 500;

@@ -105,12 +105,12 @@ check('weekly contracts stay: pool + 4/week build',
     game.includes('const WEEKLY_CONTRACT_POOL = [') &&
     game.includes('buildRandomContractBucket(WEEKLY_CONTRACT_POOL, 4,') &&
     game.includes("createColumn('Weekly Contracts'"));
-check('daily contracts carry +25 Pass XP, weekly +100',
-    game.includes('questXP:35, passXP:100') && game.includes('questXP:20, passXP:25'));
+check('daily contracts carry +300 Pass XP, weekly +600 (rework 2026-11-23 — was +25/+100)',
+    game.includes('questXP:35, passXP:600') && game.includes('questXP:20, passXP:300'));
 check('claiming a contract actually grants the Pass XP (central grantReward type xp)',
     game.includes("if (rewards.passXP) grantReward({ type: 'xp', amount: rewards.passXP });"));
 check('existing buckets are backfilled with passXP on refresh (progress untouched)',
-    game.includes("for (const [bucketName, amount] of [['daily', 25], ['weekly', 100]])") &&
+    game.includes("for (const [bucketName, amount] of [['daily', 300], ['weekly', 600]])") &&
     game.includes('if (q && q.rewards && !Number.isFinite(q.rewards.passXP)) q.rewards.passXP = amount;'));
 check('daily/weekly quest cards print the Pass XP',
     // Plain concatenation, not a template literal: the ranked-rework
@@ -136,8 +136,8 @@ if (bucketSrc && seedSrc && questBucketSrc && questStateSrc) {
     const daily = run(false);
     const weekly = run(true);
     const d = Object.values(daily)[0], w = Object.values(weekly)[0];
-    check('daily contract grants 25 Pass XP', d && d.rewards && d.rewards.passXP === 25);
-    check('weekly contract grants 100 Pass XP', w && w.rewards && w.rewards.passXP === 100);
+    check('daily contract grants 300 Pass XP', d && d.rewards && d.rewards.passXP === 300);
+    check('weekly contract grants 600 Pass XP', w && w.rewards && w.rewards.passXP === 600);
     check('contract XP (questXP) is untouched by the pass-XP change', d && d.rewards.questXP === 20 && w && w.rewards.questXP === 35);
 }
 // Behavior mirror: questRewardText prints Pass XP.

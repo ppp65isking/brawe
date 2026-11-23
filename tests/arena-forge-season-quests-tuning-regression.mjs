@@ -122,12 +122,17 @@ check('(b) season state is sanitised on load so no stale save smuggles progress 
     extractFunction(game, 'ensureSeasonPassState').includes('sanitizeSeasonQuestProgress(pass)'));
 check('(c) claim refuses locked stages',
     extractFunction(game, 'claimSeasonPassQuestReward').includes('isSeasonQuestStageUnlocked'));
-check('(d) the stage gate includes the time unlock',
-    extractFunction(game, 'isSeasonQuestStageUnlocked').includes('isSeasonQuestStageTimeUnlocked'));
-check('(d) time unlock is a 2-day-per-stage schedule from the season start (BUILDER PICK)',
-    game.includes('const SEASON_QUEST_UNLOCK_STEP_MS = 2 * 24 * 60 * 60 * 1000;'));
-check('(d) locked cards carry a countdown span + the ticking interval',
-    game.includes('data-season-quest-unlock-utc=') && game.includes('formatSeasonQuestUnlockCountdown(') && game.includes('setInterval('));
+check('(d) REWORK 2026-11-23: the stage gate is sequential ONLY — no time unlock in the gate',
+    extractFunction(game, 'isSeasonQuestStageUnlocked').includes('previousStageQuest')
+    && !extractFunction(game, 'isSeasonQuestStageUnlocked').includes('TimeUnlocked'));
+check('(d) REWORK 2026-11-23: the time schedule is DELETED (no step const, no unlock-ms / start / countdown / time-unlock functions)',
+    !game.includes('const SEASON_QUEST_UNLOCK_STEP_MS =') && !game.includes('function seasonQuestStageUnlockMs(')
+    && !game.includes('function seasonQuestStageStartUtc(') && !game.includes('function isSeasonQuestStageTimeUnlocked(')
+    && !game.includes('function formatSeasonQuestUnlockCountdown('));
+check('(d) REWORK 2026-11-23: locked cards carry NO countdown span and no ticking interval',
+    !game.includes('data-season-quest-unlock-utc=') && !game.includes('formatSeasonQuestUnlockCountdown('));
+check('(d) REWORK 2026-11-23: locked cards still say they unlock after the previous stage',
+    game.includes('Coming soon — unlocks after the previous stage is complete.'));
 
 // --- static: harder than daily/weekly -----------------------------------------
 // Daily maxima (from DAILY_CONTRACT_POOL): play_match 4, deal_damage 35,000,
@@ -156,8 +161,8 @@ for (const d of xplodemisDefs) {
     if (!ok) harderFailures.push(`stage ${d.stage} ${d.kind} target ${d.target} not > ${against}`);
 }
 check(`(e) every season requirement beats its daily/weekly equivalent${harderFailures.length ? ` — ${harderFailures.join('; ')}` : ''}`, harderFailures.length === 0);
-check('untouched: daily contracts still pay +25 Pass XP, weekly +100',
-    game.includes('rewards: weekly ? { coins:500+index*150, souls:35+index*10, questXP:35, passXP:100 } : { coins:150+index*40, questXP:20, passXP:25 }'));
+check('REWORK 2026-11-23: daily contracts pay +300 Pass XP, weekly +600 (pass actually completable — see the pitch-rework suite for the math)',
+    game.includes('rewards: weekly ? { coins:500+index*150, souls:35+index*10, questXP:35, passXP:600 } : { coins:150+index*40, questXP:20, passXP:300 }'));
 check('no bare word-boundary forbidden brawler token in game.js or this suite',
     (() => { const word = 'clus' + 'ter'; const re = new RegExp(`\\b${word}\\b`); return !re.test(game) && !re.test(self); })());
 
@@ -315,7 +320,6 @@ for (const name of ['TURKEY_TROUBLE_SEASON_ID', 'TURKEY_TROUBLE_START_UTC', 'TUR
     'XPLODEMIS_SEASON_ID', 'XPLODEMIS_START_UTC', 'XPLODEMIS_END_UTC',
     'EMBER_FORGE_SEASON_ID', 'EMBER_FORGE_START_UTC', 'EMBER_FORGE_END_UTC',
     'SEASON_PASS_SCHEMA_VERSION', 'SEASON_PASS_MAX_LEVEL', 'SEASON_PASS_XP_PER_TIER', 'SEASON_PASS_TOTAL_XP', 'SEASON_QUEST_STAGE_COUNT',
-    'SEASON_QUEST_UNLOCK_STEP_MS',
     'RANKED_DIVISIONS', 'RANKED_POINTS_PER_DIVISION', 'RANKED_GOLD_MIN_DIVISION_INDEX',
     'RANKED_PRESTIGE_STEP_RP', 'RANKED_PRESTIGE_MAX', 'PRESTIGE_LEAGUE_MAX',
     'PRESTIGE_LEAGUE_CYCLE_MS', 'PRESTIGE_LEAGUE_TOP3_REWARDS', 'PRESTIGE_LEAGUE_OPPONENT_COUNT',
@@ -337,8 +341,7 @@ for (const fn of ['ensureBrawePassTokens', 'getActiveSeasonProfile', 'getActiveS
     'isSeason3PassActive', 'getClaimableSeasonQuestCount', 'questRewardText',
     'normalizeQuestKey', 'progressSeasonPassQuest', 'claimSeasonPassQuestReward',
     'isQuestStageUnlocked', 'getQuestProgressCount', 'openQuestBoard',
-    'seasonQuestStageUnlockMs', 'seasonQuestStageStartUtc', 'isSeasonQuestStageTimeUnlocked',
-    'formatSeasonQuestUnlockCountdown', 'sanitizeSeasonQuestProgress', 'isSeasonQuestStageUnlocked',
+    'sanitizeSeasonQuestProgress', 'isSeasonQuestStageUnlocked',
     'getRankedPrestige', 'getRankedDisplayLabel', 'getRankedTierInfo', 'getRankedDivisionFloor',
     'getRankedWeekKey', 'getPrestigeLeagueLevel', 'getPrestigeLeagueCycleKey',
     'hasCompletedRanked', 'hasCompletedRankedSolo', 'buildPrestigeLeagueOpponents',
@@ -357,24 +360,20 @@ for (const fn of ['ensureBrawePassTokens', 'getActiveSeasonProfile', 'getActiveS
 const run = (code) => vm.runInContext(code, smoke);
 smoke.__queueOverlay = new El('div');
 // Freeze "now" INSIDE the vm (host Date.now overrides do not reach the
-// context): Dec 5, 2026 — stages 1-8 time-unlocked, 9-20 time-locked.
+// context): Dec 5, 2026 — inside the Xplodemis window. Unlocks are
+// sequential only (rework 2026-11-23), so the date gates nothing.
 vm.runInContext('Date.now = () => Date.UTC(2026, 11, 5, 12, 0, 0);', smoke);
 const quests = () => smoke.playerData.seasonPass.quests;
 
-// --- (d) pure time functions ----------------------------------------------------
-check('(d) stage 1 is always time-unlocked', run('isSeasonQuestStageTimeUnlocked({stage:1}, Date.UTC(2026,10,20))') === true);
-check('(d) stage 9 unlocks Dec 6 (Nov 20 + 8x2 days), not Dec 5',
-    run('seasonQuestStageUnlockMs(9, Date.UTC(2026,10,20,0,0,0))') === Date.UTC(2026, 11, 6, 0, 0, 0));
-check('(d) stage 20 unlocks Dec 28 (Nov 20 + 19x2 days)',
-    run('seasonQuestStageUnlockMs(20, Date.UTC(2026,10,20,0,0,0))') === Date.UTC(2026, 11, 28, 0, 0, 0));
-check('(d) stage 9 is time-locked on Dec 5 but time-unlocked on Dec 7',
-    run('isSeasonQuestStageTimeUnlocked({stage:9}, Date.UTC(2026,11,5,12,0,0))') === false
-    && run('isSeasonQuestStageTimeUnlocked({stage:9}, Date.UTC(2026,11,7,12,0,0))') === true);
-check('(d) countdown formats days/hours/minutes',
-    run('formatSeasonQuestUnlockCountdown(2*24*60*60*1000 + 4*60*60*1000)') === '2d 4h'
-    && run('formatSeasonQuestUnlockCountdown(5*60*60*1000 + 12*60*1000)') === '5h 12m'
-    && run('formatSeasonQuestUnlockCountdown(45*60*1000)') === '45m'
-    && run('formatSeasonQuestUnlockCountdown(0)') === 'Unlocked');
+// --- (d) NO timer: sequential unlock only (rework 2026-11-23) ----------------
+// Seed the season state first (fresh: stage 1 open, 2-20 locked).
+run("openQuestBoard('season')");
+check('(d) stage 1 is always unlocked', run('isSeasonQuestStageUnlocked({stage:1})') === true);
+check('(d) stage 2 is locked until stage 1 completes (sequential only, no date involved)',
+    run('isSeasonQuestStageUnlocked({stage:2})') === false);
+check('(d) the gate reads the previous stage, never the clock — same answer on Nov 20 and on Dec 31',
+    run('isSeasonQuestStageUnlocked({stage:2}, Date.UTC(2026,10,20))') === false
+    && run('isSeasonQuestStageUnlocked({stage:2}, Date.UTC(2026,11,31))') === false);
 
 // --- (b) zero progress while locked ----------------------------------------------
 run("openQuestBoard('season')");
@@ -398,25 +397,19 @@ for (const [kind, amount] of [['deal_damage', 50000], ['win_match', 13], ['defea
     run(`progressSeasonPassQuest('${kind}', ${amount})`);
 }
 check('(b) stages 2-8 complete in order once unlocked', [2, 3, 4, 5, 6, 7, 8].every(n => quests()[`xplodemis_0${n}`].completed === true));
-check('(b)+(f) stage 9 accrues ZERO progress on Dec 5 even with stage 8 complete (time-locked until Dec 6)',
-    (() => { run("progressSeasonPassQuest('different_fighters', 10)"); return quests().xplodemis_09.progress === 0 && !quests().xplodemis_09.completed; })());
-check('(f) stage 9 still needs stage 8 complete AND its time: after Dec 7 arrives it progresses',
-    (() => {
-        vm.runInContext('Date.now = () => Date.UTC(2026, 11, 7, 12, 0, 0);', smoke);
-        run("progressSeasonPassQuest('different_fighters', 10)");
-        return quests().xplodemis_09.progress === 10 && quests().xplodemis_09.completed === true;
-    })());
-check('(f) stage 10 stays locked on Dec 7 (stage 9 just completed, but stage 10 unlocks Dec 8)',
-    run('isSeasonQuestStageUnlocked({stage:10})') === false);
+check('(b)+(f) REWORK: stage 9 accrues progress the moment stage 8 is complete — no waiting for Dec 6',
+    (() => { run("progressSeasonPassQuest('different_fighters', 10)"); return quests().xplodemis_09.progress === 10 && quests().xplodemis_09.completed === true; })());
+check('(f) REWORK: stage 10 unlocks the moment stage 9 completes (same day, no Dec 8 wait)',
+    run('isSeasonQuestStageUnlocked({stage:10})') === true);
 
 // --- (c) locked claim refuses + stale-save sanitize ------------------------------
-check('(c) claiming a time-locked quest is refused even when a stale save marks it completed',
+check('(c) claiming a completion-locked quest is refused even when a stale save marks it completed',
     (() => {
-        const q = quests().xplodemis_10;
-        q.completed = true; q.progress = q.target; // stale/forced: time-locked until Dec 8
+        const q = quests().xplodemis_11;
+        q.completed = true; q.progress = q.target; // stale/forced: stage 10 not done
         const before = grantCalls.length;
-        const ok = run("claimSeasonPassQuestReward('xplodemis_10')");
-        return ok === false && grantCalls.length === before && quests().xplodemis_10.completed === false && quests().xplodemis_10.progress === 0;
+        const ok = run("claimSeasonPassQuestReward('xplodemis_11')");
+        return ok === false && grantCalls.length === before && quests().xplodemis_11.completed === false && quests().xplodemis_11.progress === 0;
     })());
 check('(b) stale save cannot smuggle progress into a locked stage (load re-check zeroes it)',
     (() => {
@@ -433,13 +426,12 @@ check('(b) stale save cannot smuggle progress into a locked stage (load re-check
         const q3 = quests().xplodemis_03, q4 = quests().xplodemis_04, q9 = quests().xplodemis_09;
         // Stage 3's prev (stage 2) is incomplete in this stale save, so 3+4
         // zero out; stage 9's prev (stage 8) is incomplete too, so it
-        // zeroes on the completion gate (its time arrived Dec 6, but the
-        // previous stage is not done).
+        // zeroes on the completion gate (no time gate anymore).
         return q3.progress === 0 && !q3.completed && q4.progress === 0 && !q4.completed && !q4.rewardClaimed
             && q9.progress === 0 && !q9.completed;
     })());
 
-// --- (d) countdown text on the locked cards ---------------------------------------
+// --- (d) NO countdown text on the locked cards (rework 2026-11-23) --------------
 {
     vm.runInContext('Date.now = () => Date.UTC(2026, 11, 5, 12, 0, 0);', smoke);
     smoke.playerData.seasonPass = null;
@@ -448,15 +440,14 @@ check('(b) stale save cannot smuggle progress into a locked stage (load re-check
     const cards = board ? collectSeasonCards(board) : [];
     const s9 = cards.find(x => /Stage 9 •/.test(x._innerHTML || ''));
     const s20 = cards.find(x => /Stage 20 •/.test(x._innerHTML || ''));
-    check('(d) locked cards render a countdown span with the unlock timestamp (stage 9)',
-        !!s9 && /data-season-quest-unlock-utc="\d+"/.test(s9._innerHTML || '') && /unlocks in/.test(s9._innerHTML || ''));
-    check('(d) stage 9 countdown reads ~12h on Dec 5 noon (unlocks Dec 6 00:00 UTC)',
-        !!s9 && /12h 0m/.test(s9._innerHTML || ''));
-    check('(d) stage 20 countdown reads ~22 days 12h on Dec 5 noon (unlocks Dec 28 00:00 UTC)',
-        !!s20 && /22d 12h/.test(s20._innerHTML || ''));
-    check('(d) stage 1 card has no countdown (already open)', (() => {
+    check('(d) locked cards render NO countdown span (stage 9)',
+        !!s9 && !/data-season-quest-unlock-utc/.test(s9._innerHTML || '') && !/unlocks in/.test(s9._innerHTML || ''));
+    check('(d) locked cards say they unlock after the previous stage (stage 9 + stage 20)',
+        !!s9 && /unlocks after the previous stage is complete/.test(s9._innerHTML || '')
+        && !!s20 && /unlocks after the previous stage is complete/.test(s20._innerHTML || ''));
+    check('(d) stage 1 card has no unlock note (already open)', (() => {
         const s1 = cards.find(x => /Stage 1 •/.test(x._innerHTML || ''));
-        return !!s1 && !/data-season-quest-unlock-utc/.test(s1._innerHTML || '');
+        return !!s1 && !/unlocks after the previous stage/.test(s1._innerHTML || '');
     })());
 }
 
