@@ -72,7 +72,7 @@ check('kill specialty hook in the death-drops loop (once per death)', game.inclu
 check('pig AI: SP2 Stampede speed boost in the ram loop', game.includes('PITCH_SP2_PIG_SPEED_MULT:1'));
 check('pig AI: ram credits pitch (not chickpig) for her pigs', game.includes("ownerBrawler:t.isPitchPig?'pitch':'chickpig'"));
 check('bullet loop: SP1 curve hook on pitch shards', game.includes('if (b.isPitchShard && b.pitchCurve)'));
-check('shard render branch exists', game.includes('} else if (b.isPitchShard) {'));
+check('shard render branch exists (top-level pitch owner branch, not nested in kage)', game.includes("if (b.ownerBrawler === 'pitch') {") && game.includes('if (b.isPitchShard) {'));
 check('update loop calls updatePitchSystems', game.includes('if (playing && !gameOver) updatePitchSystems(dt);'));
 check('render calls renderPitchEffects', game.includes('    renderPitchEffects();'));
 check('voice watcher is called', game.includes('        updatePitchVoiceState();'));

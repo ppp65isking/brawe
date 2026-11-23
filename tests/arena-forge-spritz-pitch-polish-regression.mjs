@@ -56,7 +56,7 @@ check('stream/shell shots render as teardrops along their flight (not plain ball
 check('shells render as spiral shells (not plain orbs)', game.includes('a spiral shell, not a plain orb') && game.includes('ctx.arc(0, 0, 6.5, 0.5, Math.PI * 2 + 0.5);'));
 check('shells show a landing marker while arcing in', game.includes('Landing marker while the shell is still arcing in.'));
 check('G1 Water Circle has ripples (reads as a pool)', game.includes('Ripples on the water so it reads as a pool'));
-check('hex pot is a pot (rim + handle), spins, leaves a sparkle trail', game.includes('Pot rim + handle so it reads as a pot') && game.includes('ctx.rotate(progress * Math.PI * 4);') && game.includes('Hex sparkle trail along the arc behind the pot.'));
+check('hex pot is a pot (rim + handle), gentle tilt not 2 spins, leaves a sparkle trail', game.includes('Pot rim + handle so it reads as a pot') && game.includes('ctx.rotate(Math.sin(progress * Math.PI) * 0.35);') && !game.includes('ctx.rotate(progress * Math.PI * 4);') && game.includes('Hex sparkle trail along the arc behind the pot.'));
 check('Pitch: NO kit change — pigs still spawn 48px around her (summons, not pickups)', game.includes('entity.x + Math.cos(ang) * 48, entity.y + Math.sin(ang) * 48'));
 check('Pitch: kill-spawn pig still spawns at the victim (unchanged)', game.includes('pitchSpawnPig(killer, victim.x, victim.y, false)'));
 check('no Brawl Stars wording in the Spritz/Pitch blocks', !spritzBlock.includes('Brawl Stars') && !pitchBlock.includes('Brawl Stars') && !spritzBlock.includes('Grom') && !pitchBlock.includes('Grom'));
@@ -377,7 +377,7 @@ try {
   sandbox.renderSpritzEffects();
   check('render (Spritz): draws without throwing (flying shell + mist + circle)', s1.calls.length > 0);
   check('render (Spritz): shell landing marker uses the real water-blue', s1.sets.some((s) => s.p === 'strokeStyle' && s.v === '#38bdf8'));
-  check('render (Spritz): shell spiral uses the deep water-blue stroke', s1.sets.some((s) => s.p === 'strokeStyle' && s.v === '#075985'));
+  check('render (Spritz): shell has a white rim + high-contrast white spiral (not the old deep-blue-on-blue)', s1.sets.some((s) => s.p === 'strokeStyle' && s.v === '#ffffff') && !s1.sets.some((s) => s.p === 'strokeStyle' && s.v === '#075985'));
   check('render (Spritz): circle ripple uses the pale water-blue', s1.sets.some((s) => s.p === 'strokeStyle' && s.v === '#bae6fd'));
   // Pitch: hex pot mid-flight draws without throwing, rim + handle present.
   resetWorld('pitch');

@@ -26239,19 +26239,21 @@ let heistFeverActive = false;
                 const ty = g.startY + (g.targetY - g.startY) * tp - Math.sin(tp * Math.PI) * PITCH_THROW_ARC_HEIGHT;
                 ctx.beginPath(); ctx.arc(tx, ty, 3.5 - t * 0.8, 0, Math.PI * 2); ctx.fill();
             }
-            // The hex pot itself, riding the arc and spinning as it flies.
+            // The hex pot itself, riding the arc with a gentle tilt as it
+            // flies. It used to spin twice per flight (progress * 4 PI),
+            // which blurred the rim + handle into a plain purple ball.
             ctx.translate(wx, wy - arc);
-            ctx.rotate(progress * Math.PI * 4);
+            ctx.rotate(Math.sin(progress * Math.PI) * 0.35);
             ctx.globalAlpha = 0.95;
             ctx.shadowColor = g.hyper ? '#c084fc' : '#a855f7';
             ctx.shadowBlur = 16;
             ctx.fillStyle = g.hyper ? '#c084fc' : '#a855f7';
-            ctx.beginPath(); ctx.arc(0, 0, 13, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.ellipse(0, 0, 15, 11, 0, 0, Math.PI * 2); ctx.fill();
             ctx.shadowBlur = 0;
             // Pot rim + handle so it reads as a pot, not a ball.
             ctx.strokeStyle = g.hyper ? '#e9d5ff' : '#7e22ce';
             ctx.lineWidth = 3;
-            ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 2); ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(0, 0, 12, 8.5, 0, 0, Math.PI * 2); ctx.stroke();
             ctx.beginPath(); ctx.arc(0, -13, 5, Math.PI, 0); ctx.stroke();
             ctx.fillStyle = '#86efac';
             ctx.beginPath(); ctx.arc(-3, -4, 4, 0, Math.PI * 2); ctx.fill();
@@ -26765,8 +26767,14 @@ let heistFeverActive = false;
             ctx.fillStyle = s.hyper ? '#bae6fd' : '#38bdf8';
             ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 2); ctx.fill();
             ctx.shadowBlur = 0;
-            ctx.strokeStyle = s.hyper ? '#e0f2fe' : '#075985';
+            // White rim so the shell reads as a shell at a glance, not a dot.
+            ctx.strokeStyle = '#ffffff';
             ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 2); ctx.stroke();
+            // Spiral in a high-contrast stroke (visual fix 2026-11-23): the
+            // old deep-blue spiral on a sky-blue shell read as a plain dot.
+            ctx.strokeStyle = s.hyper ? '#0284c7' : '#ffffff';
+            ctx.lineWidth = 3;
             ctx.beginPath(); ctx.arc(0, 0, 6.5, 0.5, Math.PI * 2 + 0.5); ctx.stroke();
             ctx.beginPath(); ctx.arc(0, 0, 3.5, Math.PI, Math.PI * 2); ctx.stroke();
             ctx.fillStyle = '#e0f2fe';
@@ -26776,7 +26784,7 @@ let heistFeverActive = false;
         for (const c of spritzWaterCircles) {
             ctx.save();
             ctx.translate(c.x, c.y);
-            ctx.fillStyle = 'rgba(56,189,248,0.18)';
+            ctx.fillStyle = 'rgba(56,189,248,0.28)';
             ctx.beginPath(); ctx.arc(0, 0, c.r, 0, Math.PI * 2); ctx.fill();
             ctx.strokeStyle = '#38bdf8';
             ctx.lineWidth = 3;
@@ -26784,11 +26792,11 @@ let heistFeverActive = false;
             ctx.beginPath(); ctx.arc(0, 0, c.r, now / 500, now / 500 + Math.PI * 2); ctx.stroke();
             ctx.setLineDash([]);
             // Ripples on the water so it reads as a pool, not a flat disc.
-            ctx.globalAlpha = 0.5;
+            ctx.globalAlpha = 0.75;
             ctx.strokeStyle = '#bae6fd';
-            ctx.lineWidth = 2;
-            for (let r = 1; r <= 2; r++) {
-                const rippleR = c.r * (0.4 * r) * (0.85 + 0.15 * Math.sin(now / 500 + r * 2));
+            ctx.lineWidth = 3;
+            for (let r = 1; r <= 3; r++) {
+                const rippleR = c.r * (0.3 * r) * (0.85 + 0.15 * Math.sin(now / 500 + r * 2));
                 ctx.beginPath(); ctx.arc(0, 0, rippleR, 0, Math.PI * 2); ctx.stroke();
             }
             ctx.restore();
@@ -66920,6 +66928,11 @@ function checkHit(target, b, i){
     const visualPressure = LOW_POWER_DEVICE || bullets.length > 520 || explosions.length > 105 || bots.length > 32;
     const decorativeFxStride = visualPressure ? 4 : 1;
     const simplifyExplosionFx = explosions.length > (LOW_POWER_DEVICE ? 28 : 80);
+    // Spritz/Pitch custom explosion art (visual fix 2026-11-23): these four
+    // fxKinds have bespoke branches below and must never be flattened to
+    // the generic simplify dot, even on touch devices where the simplify
+    // threshold is only 28 live explosions.
+    const SPRITZ_PITCH_CUSTOM_FX = new Set(['spritzWaterBlast', 'spritzModeSwap', 'pitchHexBurst', 'pitchPigSpawn']);
     const isWorldVisualVisible = (x, y, margin = 120) => Number.isFinite(x) && Number.isFinite(y)
         && x >= camX - margin && x <= camX + innerWidth / CAMERA_ZOOM + margin
         && y >= camY - margin && y <= camY + innerHeight / CAMERA_ZOOM + margin;
@@ -77382,79 +77395,6 @@ function checkHit(target, b, i){
               }
               ctx.closePath();
               ctx.fill();
-          } else if (b.isPitchShard) {
-              // Pitch hex shard: a small purple diamond with a green core.
-              const size = 8;
-              ctx.fillStyle = b.hyperVisual ? '#e9d5ff' : '#c084fc';
-              ctx.shadowColor = '#a855f7';
-              ctx.shadowBlur = 6;
-              ctx.beginPath();
-              ctx.moveTo(0, -size);
-              ctx.lineTo(size * 0.7, 0);
-              ctx.lineTo(0, size);
-              ctx.lineTo(-size * 0.7, 0);
-              ctx.closePath();
-              ctx.fill();
-              ctx.fillStyle = '#86efac';
-              ctx.beginPath();
-              ctx.arc(0, 0, 2.5, 0, Math.PI * 2);
-              ctx.fill();
-          } else if (b.isSpritzStream || b.isSpritzShellShot) {
-              // Spritz stream / shell shot: a teardrop stretched along its
-              // flight, with a trailing wake — a spray, not a plain ball.
-              const spritzSize = b.isSpritzShellShot ? 9 : 11;
-              const spritzAng = Math.atan2(b.vy || 0, b.vx || 1);
-              ctx.rotate(spritzAng);
-              ctx.fillStyle = b.hyperVisual ? 'rgba(186,230,253,0.5)' : 'rgba(56,189,248,0.45)';
-              ctx.beginPath();
-              ctx.moveTo(-spritzSize * 2.2, 0);
-              ctx.lineTo(-spritzSize * 0.4, -spritzSize * 0.45);
-              ctx.lineTo(-spritzSize * 0.4, spritzSize * 0.45);
-              ctx.closePath();
-              ctx.fill();
-              ctx.fillStyle = b.hyperVisual ? '#bae6fd' : '#38bdf8';
-              ctx.shadowColor = '#0284c7';
-              ctx.shadowBlur = 8;
-              ctx.beginPath();
-              ctx.moveTo(spritzSize * 1.4, 0);
-              ctx.quadraticCurveTo(spritzSize * 0.9, -spritzSize, 0, -spritzSize * 0.8);
-              ctx.quadraticCurveTo(-spritzSize * 0.9, -spritzSize * 0.5, -spritzSize * 0.8, 0);
-              ctx.quadraticCurveTo(-spritzSize * 0.9, spritzSize * 0.5, 0, spritzSize * 0.8);
-              ctx.quadraticCurveTo(spritzSize * 0.9, spritzSize, spritzSize * 1.4, 0);
-              ctx.fill();
-              ctx.shadowBlur = 0;
-              ctx.fillStyle = '#e0f2fe';
-              ctx.beginPath();
-              ctx.arc(spritzSize * 0.4, -spritzSize * 0.25, spritzSize * 0.28, 0, Math.PI * 2);
-              ctx.fill();
-          } else if (b.isSpritzHoseBlast) {
-              // Spritz hose blast: a spinning three-drop spray.
-              const spritzSize = 9;
-              ctx.fillStyle = b.hyperVisual ? '#bae6fd' : '#7dd3fc';
-              ctx.shadowColor = '#38bdf8';
-              ctx.shadowBlur = 8;
-              for (let d = 0; d < 3; d++) {
-                  const da = (performance.now() / 90) + d * (Math.PI * 2 / 3);
-                  ctx.beginPath();
-                  ctx.arc(Math.cos(da) * 5, Math.sin(da) * 5, spritzSize * 0.45, 0, Math.PI * 2);
-                  ctx.fill();
-              }
-          } else if (b.isSpritzHyperMain) {
-              // Spritz Hyper main: one big glowing droplet with a misty halo.
-              ctx.fillStyle = '#bae6fd';
-              ctx.shadowColor = '#38bdf8';
-              ctx.shadowBlur = 16;
-              ctx.beginPath();
-              ctx.arc(0, 0, 14, 0, Math.PI * 2);
-              ctx.fill();
-              ctx.fillStyle = 'rgba(56,189,248,0.35)';
-              ctx.beginPath();
-              ctx.arc(0, 0, 20, 0, Math.PI * 2);
-              ctx.fill();
-              ctx.fillStyle = '#ffffff';
-              ctx.beginPath();
-              ctx.arc(-4, -4, 4, 0, Math.PI * 2);
-              ctx.fill();
           } else {
               // Regular Ninja Star: Charcoal Obsidian Body with Razor Silver Edge & White Core
               const size = 10;
@@ -77736,6 +77676,117 @@ function checkHit(target, b, i){
           ctx.lineWidth = 1.5;
           ctx.beginPath(); ctx.arc(0, -20, 9, 0, Math.PI*2); ctx.stroke();
           ctx.beginPath(); ctx.arc(0,  20, 9, 0, Math.PI*2); ctx.stroke();
+          ctx.restore();
+          continue;
+      }
+      // Spritz bullets — visual fix 2026-11-23: these branches used to sit
+      // nested inside the kage branch above, so they NEVER ran (Spritz
+      // bullets carry ownerBrawler 'spritz', not 'kage') and every stream /
+      // shell / hose / Hyper shot fell through to the white-dot fallback.
+      // Hoisted here as a top-level owner branch, WITHOUT kage's time-based
+      // spin pre-rotation: the teardrop rotates only by its own flight
+      // angle, so it stretches along its path instead of tumbling.
+      if (b.ownerBrawler === 'spritz') {
+          ctx.save();
+          ctx.translate(b.x, b.y);
+          if (b.isSpritzStream || b.isSpritzShellShot) {
+              // Spritz stream / shell shot: a teardrop stretched along its
+              // flight, with a trailing wake — a spray, not a plain ball.
+              const spritzSize = b.isSpritzShellShot ? 9 : 11;
+              const spritzAng = Math.atan2(b.vy || 0, b.vx || 1);
+              ctx.rotate(spritzAng);
+              ctx.fillStyle = b.hyperVisual ? 'rgba(186,230,253,0.5)' : 'rgba(56,189,248,0.45)';
+              ctx.beginPath();
+              ctx.moveTo(-spritzSize * 2.2, 0);
+              ctx.lineTo(-spritzSize * 0.4, -spritzSize * 0.45);
+              ctx.lineTo(-spritzSize * 0.4, spritzSize * 0.45);
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = b.hyperVisual ? '#bae6fd' : '#38bdf8';
+              ctx.shadowColor = '#0284c7';
+              ctx.shadowBlur = 8;
+              ctx.beginPath();
+              ctx.moveTo(spritzSize * 1.4, 0);
+              ctx.quadraticCurveTo(spritzSize * 0.9, -spritzSize, 0, -spritzSize * 0.8);
+              ctx.quadraticCurveTo(-spritzSize * 0.9, -spritzSize * 0.5, -spritzSize * 0.8, 0);
+              ctx.quadraticCurveTo(-spritzSize * 0.9, spritzSize * 0.5, 0, spritzSize * 0.8);
+              ctx.quadraticCurveTo(spritzSize * 0.9, spritzSize, spritzSize * 1.4, 0);
+              ctx.fill();
+              ctx.shadowBlur = 0;
+              ctx.fillStyle = '#e0f2fe';
+              ctx.beginPath();
+              ctx.arc(spritzSize * 0.4, -spritzSize * 0.25, spritzSize * 0.28, 0, Math.PI * 2);
+              ctx.fill();
+          } else if (b.isSpritzHoseBlast) {
+              // Spritz hose blast: a spinning three-drop spray.
+              const spritzSize = 9;
+              ctx.fillStyle = b.hyperVisual ? '#bae6fd' : '#7dd3fc';
+              ctx.shadowColor = '#38bdf8';
+              ctx.shadowBlur = 8;
+              for (let d = 0; d < 3; d++) {
+                  const da = (performance.now() / 90) + d * (Math.PI * 2 / 3);
+                  ctx.beginPath();
+                  ctx.arc(Math.cos(da) * 5, Math.sin(da) * 5, spritzSize * 0.45, 0, Math.PI * 2);
+                  ctx.fill();
+              }
+          } else if (b.isSpritzHyperMain) {
+              // Spritz Hyper main: one big glowing droplet with a misty halo.
+              ctx.fillStyle = '#bae6fd';
+              ctx.shadowColor = '#38bdf8';
+              ctx.shadowBlur = 16;
+              ctx.beginPath();
+              ctx.arc(0, 0, 14, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = 'rgba(56,189,248,0.35)';
+              ctx.beginPath();
+              ctx.arc(0, 0, 20, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = '#ffffff';
+              ctx.beginPath();
+              ctx.arc(-4, -4, 4, 0, Math.PI * 2);
+              ctx.fill();
+          } else {
+              // Any other Spritz projectile: a plain water orb, never a
+              // white dot, so a future Spritz shot cannot silently regress.
+              ctx.fillStyle = '#38bdf8';
+              ctx.shadowColor = '#0284c7';
+              ctx.shadowBlur = 8;
+              ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI * 2); ctx.fill();
+          }
+          ctx.restore();
+          continue;
+      }
+      // Pitch shards — visual fix 2026-11-23: same hoist as Spritz above.
+      // The shard branch used to sit inside kage and never ran; Pitch
+      // shards (ownerBrawler 'pitch') fell through to the white-dot fallback.
+      if (b.ownerBrawler === 'pitch') {
+          ctx.save();
+          ctx.translate(b.x, b.y);
+          if (b.isPitchShard) {
+              // Pitch hex shard: a small purple diamond with a green core.
+              const size = 8;
+              ctx.fillStyle = b.hyperVisual ? '#e9d5ff' : '#c084fc';
+              ctx.shadowColor = '#a855f7';
+              ctx.shadowBlur = 6;
+              ctx.beginPath();
+              ctx.moveTo(0, -size);
+              ctx.lineTo(size * 0.7, 0);
+              ctx.lineTo(0, size);
+              ctx.lineTo(-size * 0.7, 0);
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = '#86efac';
+              ctx.beginPath();
+              ctx.arc(0, 0, 2.5, 0, Math.PI * 2);
+              ctx.fill();
+          } else {
+              // Any other Pitch projectile: a plain purple orb, never a
+              // white dot.
+              ctx.fillStyle = '#a855f7';
+              ctx.shadowColor = '#7e22ce';
+              ctx.shadowBlur = 8;
+              ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI * 2); ctx.fill();
+          }
           ctx.restore();
           continue;
       }
@@ -79066,7 +79117,7 @@ function checkHit(target, b, i){
         if (!Number.isFinite(Number(ex.life))) ex.life = ex.maxLife;
         if ((ex.isParticle || ex.isSteamPuff) && decorativeFxStride > 1 && (decorativeFxSeen++ % decorativeFxStride) !== 0) continue;
         const preserveWarningDetail = /warning|telegraph/i.test(String(ex.fxKind || '')) || !!ex.isBolznstienStrike;
-        if (simplifyExplosionFx && !preserveWarningDetail && !ex.isParticle && !ex.isSteamPuff) {
+        if (simplifyExplosionFx && !preserveWarningDetail && !ex.isParticle && !ex.isSteamPuff && !SPRITZ_PITCH_CUSTOM_FX.has(ex.fxKind)) {
             const simpleAlpha = Math.max(0, 1 - ex.life / Math.max(0.01, ex.maxLife || 0.2));
             const simpleRadius = Math.max(4, Number(ex.radius) || 18);
             ctx.save();
