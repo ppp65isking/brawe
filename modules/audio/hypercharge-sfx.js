@@ -1,4 +1,4 @@
-// Hypercharge activation SFX — one unique sting per playable brawler (106).
+// Hypercharge activation SFX — one unique sting per playable brawler (107).
 // Brawl-Stars-style template, researched 2026-11-05: a sharp high-pitched
 // chime + low hum + booming electronic burst, one punchy ~1s sting on
 // activation. No looping pulse while hypercharged: Brawl Stars has no
@@ -21,7 +21,7 @@
   'use strict';
 
   var BASE = 'assets/sfx/hc/';
-  // brawler id -> sting file. Exactly the 106 playable brawlers
+  // brawler id -> sting file. Exactly the 107 playable brawlers
   // (allBrawlers; the 8 disabled were deleted in PR #120, so the disabled
   // set is empty). Generated from the roster; the 7 brawlers added after
   // the branch was cut (voodoyou, pandy, snipa, bookworm, freezeon,
@@ -73,6 +73,7 @@
     'freezeon': 'freezeon.mp3',
     'fuel': 'fuel.mp3',
     'fuser': 'fuser.mp3',
+    'gameboard': 'gameboard.mp3',
     'ghoul': 'ghoul.mp3',
     'goonbob': 'goonbob.mp3',
     'gravy': 'gravy.mp3',

@@ -100,7 +100,7 @@ check('rework: hyper flight consts (700 px/s, 60px height, 48px land radius, 150
   && game.includes('const PITCH_PIG_LAND_RADIUS = 48;') && game.includes('const PITCH_PIG_LAND_DMG = 150;'));
 check('rework: SP1 slower + more area (0.7x speed, 1.9x lifetime)', game.includes('const PITCH_SP1_SHARD_SPEED_MULT = 0.7;') && game.includes('const PITCH_SP1_SHARD_LIFE_MULT = 1.9;'));
 check('rework: release animation uses the whitelisted pitchHexBurst branch (never the generic dot)',
-  game.includes("if (ex.fxKind === 'pitchHexBurst') {") && game.includes("const SPRITZ_PITCH_CUSTOM_FX = new Set(['spritzWaterBlast', 'spritzModeSwap', 'pitchHexBurst', 'pitchPigSpawn']);"));
+  game.includes("if (ex.fxKind === 'pitchHexBurst') {") && game.includes("const SPRITZ_PITCH_CUSTOM_FX = new Set(['spritzWaterBlast', 'spritzModeSwap', 'pitchHexBurst', 'pitchPigSpawn', 'gameboardZoneLand', 'gameboardQueenBurst', 'gameboardBounceRelease', 'gameboardBishopLaunch']);"));
 check('rework: release branch draws the pot splitting (two halves spinning apart)',
   extractFn(game, 'pitchFireBurst').includes("fxKind: 'pitchHexBurst'")
   && game.includes('The pot itself, splitting: two halves rotate apart'));

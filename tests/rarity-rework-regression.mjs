@@ -41,8 +41,8 @@ for (const b of ['decayer', 'hyperorigin', 'overlord', 'beast', 'hope', 'screene
     assert.match(game, new RegExp(`${b}:\\s*'Unique'`), `${b} is Unique`);
 }
 
-// Anomaly (4)
-for (const b of ['crystila', 'darkener', 'awakenator', 'carmela_fudge']) {
+// Anomaly (5)
+for (const b of ['crystila', 'darkener', 'awakenator', 'carmela_fudge', 'gameboard']) {
     assert.match(game, new RegExp(`${b}:\\s*'Anomaly'`), `${b} is Anomaly`);
 }
 

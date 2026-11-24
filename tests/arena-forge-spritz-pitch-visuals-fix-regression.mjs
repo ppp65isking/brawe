@@ -120,7 +120,7 @@ check('spritz/pitch fallback orbs are water/purple, never white dots',
 
 // ---------------------------------------------------------- 2. source pins: simplify whitelist
 check('cause B fixed: the four custom fxKinds are whitelisted out of the simplify dot',
-  game.includes("const SPRITZ_PITCH_CUSTOM_FX = new Set(['spritzWaterBlast', 'spritzModeSwap', 'pitchHexBurst', 'pitchPigSpawn']);")
+  game.includes("const SPRITZ_PITCH_CUSTOM_FX = new Set(['spritzWaterBlast', 'spritzModeSwap', 'pitchHexBurst', 'pitchPigSpawn', 'gameboardZoneLand', 'gameboardQueenBurst', 'gameboardBounceRelease', 'gameboardBishopLaunch']);")
   && game.includes('!SPRITZ_PITCH_CUSTOM_FX.has(ex.fxKind)'));
 check('cause B fixed: simplify threshold itself unchanged (28 touch / 80 desktop)',
   game.includes('const simplifyExplosionFx = explosions.length > (LOW_POWER_DEVICE ? 28 : 80);'));

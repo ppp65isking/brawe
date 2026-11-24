@@ -35,7 +35,7 @@ function check(name, cond) {
 // ---------------------------------------------------------- 1. source pins
 check('kill switch VOODOOYOU_ENABLED defaults on', game.includes('let VOODOOYOU_ENABLED = true;'));
 check('visuals switch VOODOOYOU_VISUALS_ENABLED defaults on', game.includes('let VOODOOYOU_VISUALS_ENABLED = true;'));
-check('roster includes voodoyou (106 ids)', game.includes("'healnstein', 'voodoyou'"));
+check('roster includes voodoyou (107 ids)', game.includes("'healnstein', 'voodoyou'"));
 check('rarity Mythic (270 souls)', game.includes("voodoyou: 'Mythic',") && game.includes('Mythic: 270'));
 check('role Controller', game.includes("voodoyou:'Controller',"));
 check('portrait icon present', game.includes("voodoyou: '🧶',"));
