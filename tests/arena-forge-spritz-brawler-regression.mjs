@@ -35,7 +35,7 @@
 // Double Splash); bonus ammo is a reserve spent only when the normal bar
 // is empty; shells belong to their owner only; kill/cube super bonuses
 // still apply (only the damage-charge path is blocked).
-// Roster: Spritz makes 106 ids / 106 selectable.
+// Roster: Spritz makes 106 ids / 106 selectable. Gameboard (2026-11-24) now makes 107 ids / 107 selectable.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
@@ -56,11 +56,11 @@ const near = (a, b, eps = 0.01) => Math.abs(a - b) < eps;
 const spritzBlock = game.slice(game.indexOf('// ===== Spritz systems'), game.indexOf('// ===== Christmas Showdown buffs'));
 
 // ---------------------------------------------------------- 1. source pins
-check('roster includes spritz (106 ids)', game.includes("'pandy', 'snipa', 'bookworm', 'freezeon', 'driller', 'gravy', 'pitch', 'spritz'"));
-check('selectable is 106 (106 ids, none disabled, spritz not disabled)', (() => {
+check('roster includes spritz (107 ids)', game.includes("'pandy', 'snipa', 'bookworm', 'freezeon', 'driller', 'gravy', 'pitch', 'spritz'"));
+check('selectable is 107 (107 ids, none disabled, spritz not disabled)', (() => {
   const all = [...game.match(/const allBrawlers\s*=\s*\[([\s\S]*?)\];/)[1].matchAll(/'([^']+)'/g)].map(m => m[1]);
   const disabled = [...game.match(/const disabledBrawlers = new Set\(\[([\s\S]*?)\]\)/)[1].matchAll(/'([^']+)'/g)].map(m => m[1]);
-  return all.length === 106 && all.filter(id => !disabled.includes(id)).length === 106 && !disabled.includes('spritz');
+  return all.length === 107 && all.filter(id => !disabled.includes(id)).length === 107 && !disabled.includes('spritz');
 })());
 check('rarity Mythic (270 souls)', game.includes("spritz: 'Mythic',") && game.includes('Mythic: 270'));
 check('role Controller (primary Controller)', game.includes("name: 'Spritz', role: 'Controller'") && game.includes("spritz:'Controller',"));

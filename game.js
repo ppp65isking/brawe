@@ -1357,6 +1357,11 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             const hpScale = getLevelHpScale(level);
             return { hp: Math.round(5200 * hpScale), dmg: Math.round(650 * scale), speed: 270 };
         }
+        if (brawlerId === 'gameboard') {
+            const scale = 0.55 + (level - 1) * 0.045;
+            const hpScale = getLevelHpScale(level);
+            return { hp: Math.round(5600 * hpScale), dmg: Math.round(700 * scale), speed: 270 };
+        }
         if (brawlerId === 'looma') {
             const scale = 0.55 + (level - 1) * 0.045;
             const hpScale = getLevelHpScale(level);
@@ -1968,6 +1973,8 @@ function drawHexagonShield(ctx, x, y, radius, isBarrierActive) {
             if (selectedBrawler === 'gravy') { try { window.BraweGravyVoice?.play('kill'); } catch (e) {} }
             // Spritz voice: player kill line.
             if (selectedBrawler === 'spritz') { try { window.BraweSpritzVoice?.play('kill'); } catch (e) {} }
+            // Gameboard voice: player kill line.
+            if (selectedBrawler === 'gameboard') { try { window.BraweGameboardVoice?.play('kill'); } catch (e) {} }
             // Pitch voice: player kill line.
             if (selectedBrawler === 'pitch') { try { window.BrawePitchVoice?.play('kill'); } catch (e) {} }
         }
@@ -4470,6 +4477,8 @@ function updateGadgetInfo() {
         'pitch:g2': '➕',
         'spritz:g1': '💧',
         'spritz:g2': '🌊',
+        'gameboard:g1': '♞',
+        'gameboard:g2': '♜',
   };
   function getMobileToolButtonIcon(brawlerId, gadgetSlot) {
       // selectedBrawler / selectedGadget are let bindings declared later
@@ -5977,6 +5986,7 @@ const bolznstienPendingStrikes = [];
             gravy: 1600,
             pitch: 1600,
             spritz: 1600,
+            gameboard: 1600,
             carmela_fudge: 1400,
             oil_maker: 90,
             magnatar: 1450,
@@ -6052,6 +6062,7 @@ const bolznstienPendingStrikes = [];
             gravy: 300,
             pitch: 300,
             spritz: 300,
+            gameboard: 300,
             carmela_fudge: 180,
             oil_maker: 112,
             magnatar: 200,
@@ -7996,7 +8007,7 @@ const bolznstienPendingStrikes = [];
     // end (modules expose no stop); every later play() is silenced
     // immediately, no reload needed.
     const APP_MUTED_KEY = 'arenaForgeMutedV1';
-    const APP_AUDIO_MODULE_NAMES = ['BraweOutlitVoice', 'BraweFuserVoice', 'BraweVoodoyouVoice', 'BrawePandyVoice', 'BraweSnipaVoice', 'BraweBookwormVoice', 'BraweFreezeonVoice', 'BraweDrillerVoice', 'BraweGravyVoice', 'BrawePitchVoice', 'BraweSpritzVoice', 'BraweHyperchargeSfx'];
+    const APP_AUDIO_MODULE_NAMES = ['BraweOutlitVoice', 'BraweFuserVoice', 'BraweVoodoyouVoice', 'BrawePandyVoice', 'BraweSnipaVoice', 'BraweBookwormVoice', 'BraweFreezeonVoice', 'BraweDrillerVoice', 'BraweGravyVoice', 'BrawePitchVoice', 'BraweSpritzVoice', 'BraweGameboardVoice', 'BraweHyperchargeSfx'];
     function appSoundMuted() {
         try { return localStorage.getItem(APP_MUTED_KEY) === '1'; } catch (_) { return false; }
     }
@@ -8579,7 +8590,7 @@ const bolznstienPendingStrikes = [];
         'boom_arang', 'teether', 'fuel', 'xray', 'angel', 'demon', 'warrior', 'relay',
         'upiedown', 'chickpig', 'jetpack', 'snapper', 'rocketeer',
         'carmela_fudge', 'peter_pickle', 'unstable', 'homer', 'orbo', 'predator', 'fastpass', 'freestyle', 'portalo', 'ghoul', 'jacktrade', 'darkener', 'awakenator', 'ice_cream', 'kage', 'drainbow', 'draflygon', 'axeywaxy', 'trampaheal', 'mageny', 'ramage', 'upgradart', 'cinderion', 'cursed', 'king', 'anti_royal', 'sir_cheeseburger', 'weefee', 'blinkeye', 'bolznstien', 'magnatar', 'oil_maker', 'rager', 'badbat', 'looma',
-        'feathers', 'spikey', 'electrostien', 'mallow', 'nightshade', 'aegis', 'runner', 'aura_charmer', 'voltastein', 'staticstein', 'healnstein', 'voodoyou', 'pandy', 'snipa', 'bookworm', 'freezeon', 'driller', 'gravy', 'pitch', 'spritz'
+        'feathers', 'spikey', 'electrostien', 'mallow', 'nightshade', 'aegis', 'runner', 'aura_charmer', 'voltastein', 'staticstein', 'healnstein', 'voodoyou', 'pandy', 'snipa', 'bookworm', 'freezeon', 'driller', 'gravy', 'pitch', 'spritz', 'gameboard'
     ];
     const registeredBrawlerModules = window.ArenaForgeModules?.brawlers || Object.create(null);
     for (const moduleId of Object.keys(registeredBrawlerModules)) {
@@ -8728,8 +8739,9 @@ const bolznstienPendingStrikes = [];
             unstable: 'Unique',
             orbo: 'Unique',
             king: 'Unique',
-            // Anomaly (4)
+            // Anomaly (5)
             voltastein: 'Anomaly',
+            gameboard: 'Anomaly',
             carmela_fudge: 'Anomaly',
             crystila: 'Anomaly',
             darkener: 'Anomaly',
@@ -12619,6 +12631,17 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
           g2: 'All-Out Spray (Your next shot fires every projectile at once, like your Hypercharged main attack)',
           sp1: 'Rooted Spray (Shell-pickup shots root enemies for 1 second)',
           sp2: 'Double Splash (Your water blast explodes one extra time, and mist and stream projectiles fly 25% faster)'
+      },
+      'gameboard': {
+          name: 'Gameboard', role: 'Controller', rarity: 'Anomaly', color: '#f5c542',
+          desc: 'A chessboard tactician who fires a queen head that bursts into rooks. His Super throws a piece to place a board zone and upgrades his queen burst, tier by tier.',
+          attack: "Queen's March", attackDesc: 'Fire a queen head that bursts into rook shots to the sides on impact. Each Super upgrades the burst — more rooks, then wall bounces.',
+          super: "Grandmaster's Board", superDesc: 'Throw a piece to place a board zone that drains enemies and rings them with circling rooks. Each Super also upgrades your queen burst by one tier.',
+          hyper: 'Royal Command: your queen burst fires at max tier and adds shots fore and aft. Your board zone is 30% larger, and any enemy struck by a rook is ringed by rooks that spread to others they hit.',
+          g1: 'Checkmate (Your next attack stuns the enemy it hits for 1 second, but deals 50% less damage)',
+          g2: 'Rook Swap (Your next attack fires 3 rooks that push enemies back, dealing 800 damage in total)',
+          sp1: 'Castling (When Gameboard is defeated, he keeps his main-attack upgrade tier instead of losing one)',
+          sp2: 'Diagonal Death (Enemies damaged by your Super launch 4 bishop shots diagonally that damage other enemies)'
       }
   };
     // Player-facing BRAWE vocabulary. Legacy save keys and combat identifiers
@@ -12642,7 +12665,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
     }
     // V4 standardized primary-role organization: exactly one gameplay role per brawler.
     const PRIMARY_ROLE_BY_BRAWLER = {
-        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank', rager:'Controller', looma:'Controller', feathers:'Controller', spikey:'Damage Dealer', electrostien:'Assassin', mallow:'Controller', nightshade:'Assassin', runner:'Controller', aura_charmer:'Support', voltastein:'Artillery', staticstein:'Damage Dealer', healnstein:'Support', voodoyou:'Controller', pandy:'Damage Dealer', bookworm:'Controller', freezeon:'Controller', driller:'Damage Dealer', gravy:'Artillery', pitch:'Artillery', spritz:'Controller',
+        beast:'Tank', chaird:'Tank', overlord:'Tank', unopcoloco:'Tank', warrior:'Tank', ramage:'Tank', rager:'Controller', looma:'Controller', feathers:'Controller', spikey:'Damage Dealer', electrostien:'Assassin', mallow:'Controller', nightshade:'Assassin', runner:'Controller', aura_charmer:'Support', voltastein:'Artillery', staticstein:'Damage Dealer', healnstein:'Support', voodoyou:'Controller', pandy:'Damage Dealer', bookworm:'Controller', freezeon:'Controller', driller:'Damage Dealer', gravy:'Artillery', pitch:'Artillery', spritz:'Controller', gameboard:'Controller',
     carmela_fudge:'Damage Dealer', bolznstien:'Damage Dealer', badbat:'Damage Dealer', magnatar:'Controller', oil_maker:'Controller', sir_cheeseburger:'Tank',
         kage:'Assassin', drainbow:'Controller', bowlin_rida:'Assassin', dashaholic:'Assassin', demon:'Assassin', jetpack:'Assassin', malakor:'Assassin', predator:'Assassin', teether:'Assassin',
         boom_arang:'Marksman', cheseypuff:'Marksman', crystila:'Marksman', homer:'Marksman', hunter:'Marksman', orbo:'Marksman', snapper:'Marksman', xray:'Marksman', snipa:'Marksman',
@@ -12680,6 +12703,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
             gravy: '🫕',
             pitch: '🐷',
             spritz: '💦',
+            gameboard: '♟️',
     looma: '🪡🧵',
         sir_cheeseburger: '🛡️',
         anti_royal: '🏴‍☠️',
@@ -13454,6 +13478,7 @@ function drawDetailedMoneyTaxAura(ctx, t, drawY, skinKey) {
       gravy: { g1: 14000, g2: 16000 },
       pitch: { g1: 14000, g2: 16000 },
       spritz: { g1: 14000, g2: 16000 },
+      gameboard: { g1: 14000, g2: 16000 },
       carmela_fudge: { g1: 8000, g2: 8000 },
       bolznstien: { g1: 14000, g2: 15000 },
       sir_cheeseburger: { g1: 13000, g2: 14000 },
@@ -16428,6 +16453,9 @@ let blinkEyeDodgeState = null;
         if (!entity) return;
         // Aegis max-HP shred resets on death (user-confirmed 2026-10-28).
         if (entity.aegisBaseMaxHp) { entity.maxHp = entity.aegisBaseMaxHp; entity.aegisBaseMaxHp = null; }
+        // Gameboard (2026-11-24): dying drops the main-attack tier by 1
+        // (floor 0) — unless SP1 Castling is equipped, which keeps it.
+        if (entity.brawler === 'gameboard' || (entity === player && selectedBrawler === 'gameboard')) gameboardApplyDeathTierDrop(entity);
         entity.aegisShredded = false;
         entity.aegisShredSp2 = false;
         entity.runnerOverchargeUntil = 0; entity.runnerSuperRateUntil = 0; entity.runnerHyperRateUntil = 0; entity.runnerReloadBuffUntil = 0; entity.runnerShieldWindowUntil = 0; entity.runnerShieldGranted = {}; entity.runnerWallBreakNext = false; entity.runnerFearUntil = 0; entity.runnerFearArmed = false; entity.runnerFearNextAt = 0; entity.runnerSlowUntil = 0; entity.runnerFearFromX = undefined; entity.runnerFearFromY = undefined;
@@ -27056,6 +27084,569 @@ let heistFeverActive = false;
             spritzVoicePrevGameOver = gameOver;
         } catch (e) {}
     }
+    // ===== Gameboard systems (2026-11-24, Anthony's spec) =====
+    // Identity: Gameboard, Anomaly Controller, 850 souls, gold #f5c542,
+    // portrait ♟️. Class Controller is Cosmo's pick at Anthony's direction
+    // ("idk what class this is") — he can veto.
+    // MAIN "Queen's March": a queen-head projectile. On impact it bursts
+    // into rook projectiles to the sides — 1 left, 1 right at tier 0.
+    // SUPER "Grandmaster's Board" (THROWN to place, aimed like Pitch's
+    // hex toss): (1) upgrades the main attack by one tier per Super —
+    // T1: 2 rooks per side in a symmetrical spread (one up-diagonal, one
+    // down-diagonal, NOT a line); T2: 3 per side; T3 (max): shots bounce
+    // off walls, and each queen bounce releases small pawn projectiles
+    // outward while the queen keeps going. (2) Drops a board zone where
+    // the thrown piece lands: 4s, 16% of an enemy's MAX HP per second to
+    // enemies standing in it, with rooks circling the edge that deal
+    // contact damage and shoot at nearby enemies.
+    // DEATH: the upgrade tier drops by 1 (floor 0), NOT a full reset —
+    // unless SP1 Castling is equipped, which keeps the tier.
+    // MAXED SUPER (4th+, already tier 3): still throws the zone, AND the
+    // main attack gets +15% reload speed for 3s (getReloadTime hook).
+    // HYPERCHARGE "Royal Command": the main attack fires at max tier
+    // while hypercharged, and the impact burst ALSO fires 2 projectiles
+    // fore + 2 aft (along the queen's travel axis — the sides already
+    // cover the perpendicular; flagged reading of his "top and bottom").
+    // The Super zone is 30% larger. While hypercharged, any enemy hit
+    // by a rook gets rooks circling THEM for 6s, and those rooks shoot
+    // other enemies, who then get the same effect (spread).
+    // SP1 Castling (Anthony 2026-11-24): dying keeps the upgrade tier.
+    // SP2 Diagonal Death (Anthony's idea 2026-11-24): enemies damaged by
+    // the Super zone launch 4 bishop projectiles diagonally (one per
+    // diagonal) that damage other enemies. Cadence is a builder pick:
+    // once per enemy per zone, so the zone cannot machine-gun bishops.
+    // G1 Checkmate (Anthony 2026-11-24): the next attack stuns the enemy
+    // it hits for 1s but deals 50% less damage (queen + burst rooks).
+    // G2 Rook Swap (Anthony 2026-11-24): the next attack fires 3 rooks
+    // that push enemies back, dealing 800 damage in total (his number).
+    // Builder pick: 800 is split across the 3 rooks (267 each), so a
+    // triple hit on one enemy totals ~800 rather than 2400.
+    // Builder picks (NOT his numbers — flagged for his correction): HP
+    // 5600 / dmg 700 / speed 270 / reload 1600ms / fire delay 300ms;
+    // queen 900 px/s / 750 range; rook 800 px/s / 500 range / 450 dmg;
+    // T1 spread ±35 deg, T2 spread -40/0/+40 deg; bounce-release 6 pawns
+    // (600 px/s / 300 range / 250 dmg); Super throw range 800; zone
+    // radius 200 (hyper 260) / 4s (SP2 6s) / 250ms ticks of 4% max HP;
+    // 4 circling rooks (1.8 rad/s, contact 300 dmg, 500ms per-enemy
+    // cooldown, shots 350 dmg / 340 range / 800ms per rook); curse 6s /
+    // 2 rooks / 900ms shots / 380 range / 300 dmg; bishops 700 px/s /
+    // 450 range / 350 dmg; G2 rooks 800 px/s / 550 range / 130 pushback /
+    // ±20 deg spread; bot Super gate 800px; max 2 zones per owner;
+    // Super charge hits 12 (multi-projectile kits charge slower).
+    // Visuals + telegraphs (his explicit ask): the zone is a gold
+    // checkerboard disc with a dashed rim, a remaining-time arc, and
+    // visible circling rooks; the thrown piece arcs with a dashed
+    // landing circle; queen/rook/pawn/bishop all have bespoke top-level
+    // bullet branches + a gold-orb safety net, never a white dot; the
+    // zone/burst fxKinds are in the simplify whitelist below.
+    const GAMEBOARD_QUEEN_DMG = 700; // P11 queen damage (see getScaledStats 'gameboard'.dmg)
+    const GAMEBOARD_QUEEN_SPEED = 900; // px/s queen projectile speed
+    const GAMEBOARD_QUEEN_RANGE = 750; // px queen range
+    const GAMEBOARD_ROOK_DMG = 450; // P11 rook damage
+    const GAMEBOARD_ROOK_SPEED = 800; // px/s rook projectile speed
+    const GAMEBOARD_ROOK_RANGE = 500; // px rook range
+    const GAMEBOARD_T1_SPREAD_DEG = 35; // deg off the perpendicular, tier 1 (2/side)
+    const GAMEBOARD_T2_SPREAD_DEG = 40; // deg off the perpendicular, tier 2 (3/side)
+    const GAMEBOARD_BOUNCE_RELEASE_COUNT = 6; // pawns released per queen bounce at tier 3
+    const GAMEBOARD_PAWN_SPEED = 600; // px/s bounce-release pawn speed
+    const GAMEBOARD_PAWN_RANGE = 300; // px bounce-release pawn range
+    const GAMEBOARD_PAWN_DMG = 250; // P11 bounce-release pawn damage
+    const GAMEBOARD_SUPER_THROW_RANGE = 800; // px max throw distance for the Super
+    const GAMEBOARD_SUPER_FLIGHT_SPEED = 900; // px/s thrown-piece flight (flightMs = dist / speed)
+    const GAMEBOARD_SUPER_ARC_HEIGHT = 46; // px arc height of the thrown piece
+    const GAMEBOARD_ZONE_RADIUS = 200; // px Super zone radius
+    const GAMEBOARD_ZONE_RADIUS_HYPER_MULT = 1.3; // hyper zone is 30% larger (his number)
+    const GAMEBOARD_ZONE_DURATION_MS = 4000; // ms zone lifetime (his number: 4s)
+    const GAMEBOARD_ZONE_DURATION_SP2_MS = 6000; // ms zone lifetime with SP2 (his Super zones only)
+    const GAMEBOARD_ZONE_TICK_MS = 250; // ms between zone damage ticks
+    const GAMEBOARD_ZONE_DOT_PCT_PER_S = 0.16; // 16% of max HP per second (his number)
+    const GAMEBOARD_ZONE_ROOK_COUNT = 4; // circling rooks per zone
+    const GAMEBOARD_ZONE_ROOK_ORBIT_RAD_S = 1.8; // rad/s circling speed
+    const GAMEBOARD_ZONE_ROOK_CONTACT_DMG = 300; // P11 contact damage from a circling rook
+    const GAMEBOARD_ZONE_ROOK_CONTACT_COOLDOWN_MS = 500; // ms per enemy between contact hits
+    const GAMEBOARD_ZONE_ROOK_SHOT_RANGE = 340; // px range at which a circling rook shoots
+    const GAMEBOARD_ZONE_ROOK_SHOT_DMG = 350; // P11 circling-rook shot damage
+    const GAMEBOARD_ZONE_ROOK_SHOT_SPEED = 750; // px/s circling-rook shot speed
+    const GAMEBOARD_ZONE_ROOK_SHOT_COOLDOWN_MS = 800; // ms per rook between shots
+    const GAMEBOARD_ZONE_MAX_PER_OWNER = 2; // oldest zone is replaced past this
+    const GAMEBOARD_RELOAD_BUFF_MULT = 1.15; // +15% reload speed on a maxed Super (his number)
+    const GAMEBOARD_RELOAD_BUFF_DURATION_MS = 3000; // ms the maxed-Super reload buff lasts (his number: 3s)
+    const GAMEBOARD_CURSE_DURATION_MS = 6000; // ms rooks circle a rook-hit enemy while hypercharged (his number: 6s)
+    const GAMEBOARD_CURSE_ROOK_COUNT = 2; // rooks circling a cursed enemy
+    const GAMEBOARD_CURSE_ORBIT_RADIUS = 46; // px orbit radius around a cursed enemy
+    const GAMEBOARD_CURSE_ORBIT_RAD_S = 2.2; // rad/s curse-rook circling speed
+    const GAMEBOARD_CURSE_SHOT_RANGE = 380; // px range at which a curse rook shoots
+    const GAMEBOARD_CURSE_SHOT_DMG = 300; // P11 curse-rook shot damage
+    const GAMEBOARD_CURSE_SHOT_SPEED = 750; // px/s curse-rook shot speed
+    const GAMEBOARD_CURSE_SHOT_COOLDOWN_MS = 900; // ms per curse rook between shots
+    const GAMEBOARD_CURSE_SHOT_TRAVEL = 420; // px curse-rook shot travel distance
+    const GAMEBOARD_BISHOP_SPEED = 700; // px/s SP2 bishop speed
+    const GAMEBOARD_BISHOP_RANGE = 450; // px SP2 bishop range
+    const GAMEBOARD_BISHOP_DMG = 350; // P11 SP2 bishop damage
+    const GAMEBOARD_G1_STUN_MS = 1000; // ms stun from G1 Checkmate (his number: 1s)
+    const GAMEBOARD_G1_DMG_MULT = 0.5; // G1 Checkmate: attack deals 50% less damage (his number)
+    const GAMEBOARD_G2_ROOK_COUNT = 3; // rooks fired by G2 Rook Swap (his number: 3)
+    const GAMEBOARD_G2_ROOK_SPREAD_DEG = 20; // deg spread of the G2 rooks
+    const GAMEBOARD_G2_ROOK_DMG_EACH = 267; // P11 damage per G2 rook (800 total / 3 — his 800 number)
+    const GAMEBOARD_G2_ROOK_SPEED = 800; // px/s G2 rook speed
+    const GAMEBOARD_G2_ROOK_RANGE = 550; // px G2 rook range
+    const GAMEBOARD_G2_ROOK_KNOCKBACK = 130; // px pushback on a G2 rook hit
+    const GAMEBOARD_BOT_SUPER_RANGE = 800; // px — bots throw the Super when an enemy is this close
+    let gameboardThrownSupers = []; // {startX, startY, targetX, targetY, createdAt, impactAt, ownerId, hyper} — thrown pieces in flight
+    let gameboardZones = []; // {x, y, r, until, nextTickAt, ownerId, hyper, rooks:[{ang, shotAt}], contactAt:{}, bishopFiredIds:{}} — board zones
+    let gameboardVoicePrevPlaying = false;
+    let gameboardVoicePrevGameOver = false;
+    let gameboardVoiceMatchEndPlayed = false;
+    let gameboardVoiceLastHp = null;
+    let gameboardVoiceLastActionAt = 0;
+    let gameboardVoiceLastIdleAt = 0;
+    function gameboardLevelScale(entity) {
+        const lvl = entity === player ? getSelectedBrawlerLevel() : (entity.level || 11);
+        return 0.55 + (lvl - 1) * 0.045;
+    }
+    function gameboardStarChoice(entity) { return getEntityStarChoice(entity); }
+    function gameboardHasSP1(entity) { return gameboardStarChoice(entity) === 'slow'; }
+    function gameboardHasSP2(entity) { return gameboardStarChoice(entity) === 'long'; }
+    function isGameboard(entity) { return !!entity && (entity.brawler === 'gameboard' || (player && entity.id === player.id && selectedBrawler === 'gameboard')); }
+    function gameboardFindOwner(ownerId) { if (player && player.id === ownerId) return player; return bots.find((b) => b && b.id === ownerId) || null; }
+    // Effective tier: stored tier, except Hypercharge (and a G1-armed
+    // next attack, which is also max tier) fire at tier 3 without
+    // changing the stored tier.
+    function gameboardTierOf(entity) {
+        if (!entity) return 0;
+        if (isEntityHyperchargedNow(entity)) return 3;
+        if (entity.gameboardG1Armed) return 3;
+        return Math.max(0, Math.min(3, Math.floor(entity.gameboardTier || 0)));
+    }
+    function gameboardScaledDmg(entity, base) { return Math.round(base * gameboardLevelScale(entity)); }
+    // Death: tier drops by 1 (floor 0) — unless SP1 Castling (Anthony)
+    // is equipped, which keeps the tier. Called from
+    // restoreRespawningEntity, the same respawn-reset site as Aegis.
+    function gameboardApplyDeathTierDrop(entity) {
+        if (!entity) return;
+        if (gameboardHasSP1(entity)) return;
+        entity.gameboardTier = Math.max(0, Math.floor(entity.gameboardTier || 0) - 1);
+    }
+    // Main: fire the queen (or the G2 swap rooks instead). G1 Checkmate
+    // halves the whole attack's damage and stuns on hit; both gadget
+    // flags are consumed on fire. The queen bursts on impact via the
+    // checkHit / expiry / wall hooks — never here.
+    function fireGameboardMain(fromEntity, targetX, targetY, isBot) {
+        const hyper = isEntityHyperchargedNow(fromEntity);
+        const g1 = !!fromEntity.gameboardG1Armed;
+        const g2 = !!fromEntity.gameboardG2Armed;
+        fromEntity.gameboardG1Armed = false;
+        fromEntity.gameboardG2Armed = false;
+        const ang = Math.atan2(targetY - fromEntity.y, targetX - fromEntity.x);
+        if (g2) {
+            const dmg = gameboardScaledDmg(fromEntity, GAMEBOARD_G2_ROOK_DMG_EACH);
+            for (let k = 0; k < GAMEBOARD_G2_ROOK_COUNT; k++) {
+                const off = (k - 1) * GAMEBOARD_G2_ROOK_SPREAD_DEG * Math.PI / 180;
+                bullets.push({ ownerBrawler: 'gameboard', isGameboardRook: true, gameboardSwapRook: true, gameboardHyper: hyper, gameboardStunMs: g1 ? GAMEBOARD_G1_STUN_MS : 0, gameboardSwapKnockback: GAMEBOARD_G2_ROOK_KNOCKBACK, x: fromEntity.x, y: fromEntity.y, vx: Math.cos(ang + off) * GAMEBOARD_G2_ROOK_SPEED, vy: Math.sin(ang + off) * GAMEBOARD_G2_ROOK_SPEED, life: 0, maxLife: GAMEBOARD_G2_ROOK_RANGE / GAMEBOARD_G2_ROOK_SPEED, damage: g1 ? Math.max(1, Math.round(dmg * GAMEBOARD_G1_DMG_MULT)) : dmg, pierce: false, ownerId: fromEntity.id, hitIds: {}, hitboxMod: 1.2, hyperVisual: hyper });
+            }
+            return true;
+        }
+        const tier = gameboardTierOf(fromEntity);
+        const queenDmg = gameboardScaledDmg(fromEntity, GAMEBOARD_QUEEN_DMG);
+        bullets.push({ ownerBrawler: 'gameboard', isGameboardQueen: true, gameboardTier: tier, gameboardHyper: hyper, gameboardStunMs: g1 ? GAMEBOARD_G1_STUN_MS : 0, x: fromEntity.x, y: fromEntity.y, vx: Math.cos(ang) * GAMEBOARD_QUEEN_SPEED, vy: Math.sin(ang) * GAMEBOARD_QUEEN_SPEED, life: 0, maxLife: GAMEBOARD_QUEEN_RANGE / GAMEBOARD_QUEEN_SPEED, damage: g1 ? Math.max(1, Math.round(queenDmg * GAMEBOARD_G1_DMG_MULT)) : queenDmg, pierce: false, ownerId: fromEntity.id, canBounce: tier >= 3, bounceDmgLoss: 0, bounceLifeLoss: 0.05, hitIds: {}, hitboxMod: 1.5, hyperVisual: hyper });
+        return true;
+    }
+    // The queen's impact burst: rook projectiles to the sides of the
+    // queen's travel direction. Tier 0: 1/side straight out. Tier 1:
+    // 2/side in a symmetrical spread (±35 deg off the perpendicular).
+    // Tier 2/3: 3/side (-40/0/+40 deg). Hyper adds 2 fore + 2 aft
+    // (along the travel axis — see the header note). Burst rooks carry
+    // the queen's G1 stun (halved damage) and hyper flags.
+    function gameboardQueenBurst(b, owner) {
+        if (!b || !owner) return false;
+        const tier = Math.max(0, Math.min(3, Math.floor(b.gameboardTier || 0)));
+        const hyper = !!b.gameboardHyper;
+        const travelAng = Math.atan2(b.vy || 0, b.vx || 1);
+        const rookDmg = gameboardScaledDmg(owner, GAMEBOARD_ROOK_DMG);
+        const dmg = b.gameboardStunMs ? Math.max(1, Math.round(rookDmg * GAMEBOARD_G1_DMG_MULT)) : rookDmg;
+        const angles = [];
+        const perp = (side) => travelAng + side * Math.PI / 2;
+        if (tier <= 0) {
+            angles.push(perp(-1), perp(1));
+        } else if (tier === 1) {
+            const s = GAMEBOARD_T1_SPREAD_DEG * Math.PI / 180;
+            angles.push(perp(-1) - s, perp(-1) + s, perp(1) - s, perp(1) + s);
+        } else {
+            const s = GAMEBOARD_T2_SPREAD_DEG * Math.PI / 180;
+            angles.push(perp(-1) - s, perp(-1), perp(-1) + s, perp(1) - s, perp(1), perp(1) + s);
+        }
+        if (hyper) {
+            const f = 25 * Math.PI / 180;
+            angles.push(travelAng - f, travelAng + f, travelAng + Math.PI - f, travelAng + Math.PI + f);
+        }
+        for (const a of angles) {
+            bullets.push({ ownerBrawler: 'gameboard', isGameboardRook: true, gameboardHyper: hyper, gameboardStunMs: b.gameboardStunMs || 0, x: b.x, y: b.y, vx: Math.cos(a) * GAMEBOARD_ROOK_SPEED, vy: Math.sin(a) * GAMEBOARD_ROOK_SPEED, life: 0, maxLife: GAMEBOARD_ROOK_RANGE / GAMEBOARD_ROOK_SPEED, damage: dmg, pierce: false, ownerId: owner.id, canBounce: tier >= 3, bounceDmgLoss: 0, bounceLifeLoss: 0.05, hitIds: {}, hitboxMod: 1.2, hyperVisual: hyper });
+        }
+        explosions.push({ x: b.x, y: b.y, radius: 64, life: 0, maxLife: .3, color: hyper ? 'rgba(245,197,66,.7)' : 'rgba(245,197,66,.5)', legendary: true, fxKind: 'gameboardQueenBurst', hyper: hyper });
+        return true;
+    }
+    // Tier 3 queen bounce: release small pawn projectiles outward in a
+    // ring while the queen keeps going. Called from processBounce, so it
+    // covers wall bounces AND world-bounds bounces in one place.
+    function gameboardQueenBounceRelease(b) {
+        if (!b) return false;
+        const owner = gameboardFindOwner(b.ownerId);
+        if (!owner) return false;
+        const dmg = gameboardScaledDmg(owner, GAMEBOARD_PAWN_DMG);
+        for (let n = 0; n < GAMEBOARD_BOUNCE_RELEASE_COUNT; n++) {
+            const a = n * Math.PI * 2 / GAMEBOARD_BOUNCE_RELEASE_COUNT;
+            bullets.push({ ownerBrawler: 'gameboard', isGameboardPawn: true, gameboardHyper: !!b.gameboardHyper, x: b.x, y: b.y, vx: Math.cos(a) * GAMEBOARD_PAWN_SPEED, vy: Math.sin(a) * GAMEBOARD_PAWN_SPEED, life: 0, maxLife: GAMEBOARD_PAWN_RANGE / GAMEBOARD_PAWN_SPEED, damage: dmg, pierce: false, ownerId: owner.id, hitIds: {}, hitboxMod: 1.0, hyperVisual: !!b.gameboardHyper });
+        }
+        explosions.push({ x: b.x, y: b.y, radius: 46, life: 0, maxLife: .25, color: 'rgba(245,197,66,.55)', legendary: true, fxKind: 'gameboardBounceRelease', hyper: !!b.gameboardHyper });
+        return true;
+    }
+    // SP2 Diagonal Death (Anthony): an enemy damaged by the zone launches
+    // 4 bishop projectiles diagonally. The bishops never hit the enemy
+    // they launched from (its id is pre-marked in hitIds) and never
+    // trigger more bishops themselves — only zone damage triggers them.
+    function gameboardFireBishops(source, owner) {
+        if (!source || !owner) return false;
+        const dmg = gameboardScaledDmg(owner, GAMEBOARD_BISHOP_DMG);
+        const hitIds = {};
+        hitIds[source.id] = true;
+        for (const a of [Math.PI * 0.25, Math.PI * 0.75, Math.PI * 1.25, Math.PI * 1.75]) {
+            bullets.push({ ownerBrawler: 'gameboard', isGameboardBishop: true, gameboardHyper: false, x: source.x, y: source.y, vx: Math.cos(a) * GAMEBOARD_BISHOP_SPEED, vy: Math.sin(a) * GAMEBOARD_BISHOP_SPEED, life: 0, maxLife: GAMEBOARD_BISHOP_RANGE / GAMEBOARD_BISHOP_SPEED, damage: dmg, pierce: false, ownerId: owner.id, hitIds: Object.assign({}, hitIds), hitboxMod: 1.2, hyperVisual: false });
+        }
+        explosions.push({ x: source.x, y: source.y, radius: 40, life: 0, maxLife: .25, color: 'rgba(168,85,247,.55)', legendary: true, fxKind: 'gameboardBishopLaunch', hyper: false });
+        return true;
+    }
+    // Hyper contagion: a rook hit while the owner is hypercharged rings
+    // the victim with circling rooks for 6s. Re-applying refreshes the
+    // timer and resets the orbit.
+    function gameboardApplyCurse(target, owner) {
+        if (!target || !owner || target.hp <= 0) return false;
+        target.gameboardCurseUntil = performance.now() + GAMEBOARD_CURSE_DURATION_MS;
+        target.gameboardCurseOwnerId = owner.id;
+        target.gameboardCurseRooks = [0, Math.PI];
+        target.gameboardCurseShotAt = [0, 0];
+        return true;
+    }
+    // Super: throw a piece to place the board zone (Pitch hex-toss
+    // pattern — an arc flight, then the landing resolves). The tier
+    // upgrade and the zone both resolve on landing.
+    function castGameboardSuper(entity, hyper, targetX, targetY) {
+        if (!entity || entity.hp <= 0) return false;
+        const ang = Math.atan2(targetY - entity.y, targetX - entity.x);
+        const dist = clamp(Math.hypot(targetX - entity.x, targetY - entity.y) || 0, 0, GAMEBOARD_SUPER_THROW_RANGE);
+        const x = clamp(entity.x + Math.cos(ang) * dist, 40, WORLD_W - 40);
+        const y = clamp(entity.y + Math.sin(ang) * dist, 40, WORLD_H - 40);
+        const now = performance.now();
+        const flightMs = clamp(Math.hypot(x - entity.x, y - entity.y) / GAMEBOARD_SUPER_FLIGHT_SPEED * 1000, 150, 800);
+        gameboardThrownSupers.push({ startX: entity.x, startY: entity.y, targetX: x, targetY: y, createdAt: now, impactAt: now + flightMs, ownerId: entity.id, hyper: !!hyper });
+        if (entity.id === player.id) { try { window.BraweGameboardVoice?.play('super'); } catch (e) {} }
+        return true;
+    }
+    function gameboardSpawnZone(owner, x, y, hyper) {
+        const now = performance.now();
+        const radius = GAMEBOARD_ZONE_RADIUS * (hyper ? GAMEBOARD_ZONE_RADIUS_HYPER_MULT : 1);
+        const duration = (owner && gameboardHasSP2(owner)) ? GAMEBOARD_ZONE_DURATION_SP2_MS : GAMEBOARD_ZONE_DURATION_MS;
+        const rooks = [];
+        for (let k = 0; k < GAMEBOARD_ZONE_ROOK_COUNT; k++) rooks.push({ ang: k * Math.PI * 2 / GAMEBOARD_ZONE_ROOK_COUNT, shotAt: 0 });
+        gameboardZones.push({ x: x, y: y, r: radius, until: now + duration, nextTickAt: now + GAMEBOARD_ZONE_TICK_MS, ownerId: owner ? owner.id : null, hyper: !!hyper, rooks: rooks, contactAt: {}, bishopFiredIds: {} });
+        // Oldest zone goes past the per-owner cap (Gravy pool precedent).
+        if (owner) {
+            const mine = gameboardZones.filter((z) => z.ownerId === owner.id);
+            if (mine.length > GAMEBOARD_ZONE_MAX_PER_OWNER) gameboardZones.splice(gameboardZones.indexOf(mine[0]), 1);
+        }
+        explosions.push({ x: x, y: y, radius: radius, life: 0, maxLife: .4, color: hyper ? 'rgba(245,197,66,.6)' : 'rgba(245,197,66,.45)', legendary: true, fxKind: 'gameboardZoneLand', hyper: !!hyper });
+        return true;
+    }
+    function gameboardLandSuper(thrown) {
+        let owner = gameboardFindOwner(thrown.ownerId);
+        // If the owner died mid-flight the zone still lands (the piece
+        // was already thrown) but no tier upgrade is granted — Pitch
+        // precedent is to skip the owner benefit, not the landing.
+        if (owner && owner.hp > 0) {
+            const tier = Math.max(0, Math.min(3, Math.floor(owner.gameboardTier || 0)));
+            if (tier < 3) {
+                owner.gameboardTier = tier + 1;
+                spawnFloatingText(owner.x, owner.y - 46, '♟️ TIER ' + (tier + 1) + '!', '#f5c542');
+            } else {
+                owner.gameboardReloadBuffUntil = performance.now() + GAMEBOARD_RELOAD_BUFF_DURATION_MS;
+                spawnFloatingText(owner.x, owner.y - 46, '♟️ +15% RELOAD SPEED!', '#f5c542');
+            }
+        } else {
+            owner = owner || null;
+        }
+        gameboardSpawnZone(owner, thrown.targetX, thrown.targetY, !!thrown.hyper);
+        return true;
+    }
+    // Gadgets (Anthony 2026-11-24): G1 Checkmate arms the next attack
+    // (stun 1s, half damage); G2 Rook Swap arms the next attack to fire
+    // 3 pushing rooks instead of a queen. Both flags clear on fire, and
+    // on death (Pitch armed-flag precedent).
+    function executeGameboardGadget(entity, gadget, isBot) {
+        if (!entity) return false;
+        if (gadget === 'g1') {
+            entity.gameboardG1Armed = true;
+            spawnFloatingText(entity.x, entity.y - 40, '♟️ CHECKMATE ARMED!', '#f5c542');
+            return true;
+        }
+        if (gadget === 'g2') {
+            entity.gameboardG2Armed = true;
+            spawnFloatingText(entity.x, entity.y - 40, '♜ ROOK SWAP ARMED!', '#f5c542');
+            return true;
+        }
+        return false;
+    }
+    // Per-frame Gameboard maintenance: thrown-piece landings, zone ticks
+    // (DoT + SP2 bishops), circling-rook contact + shots, curse orbits
+    // + shots. Dead owners' zones keep ticking (Gravy pool precedent).
+    function updateGameboardSystems(dt) {
+        const now = performance.now();
+        for (const e of [player, ...bots]) {
+            if (!e) continue;
+            if (e.hp <= 0) { e.gameboardG1Armed = false; e.gameboardG2Armed = false; continue; }
+        }
+        for (let i = gameboardThrownSupers.length - 1; i >= 0; i--) {
+            const t = gameboardThrownSupers[i];
+            if (now < t.impactAt) continue;
+            gameboardThrownSupers.splice(i, 1);
+            gameboardLandSuper(t);
+        }
+        gameboardZones = gameboardZones.filter((z) => now < z.until);
+        const entities = [player, ...bots].filter((e) => e && e.hp > 0);
+        for (const z of gameboardZones) {
+            const owner = gameboardFindOwner(z.ownerId);
+            if (!owner) continue;
+            // Edge rooks circle the zone.
+            for (const rook of z.rooks) rook.ang += GAMEBOARD_ZONE_ROOK_ORBIT_RAD_S * dt;
+            // Zone tick (250ms): 4% max HP to enemies standing in it.
+            if (now >= (z.nextTickAt || 0)) {
+                z.nextTickAt = now + GAMEBOARD_ZONE_TICK_MS;
+                const sp2 = gameboardHasSP2(owner);
+                for (const target of entities) {
+                    if (Math.hypot(target.x - z.x, target.y - z.y) > z.r + (target.radius || 14)) continue;
+                    if (target.isStructure || target.isPet) continue;
+                    if (target.id === owner.id) continue;
+                    if (areAlliedEntities(owner, target)) continue;
+                    const tickDmg = Math.max(1, Math.round((target.maxHp || 1) * GAMEBOARD_ZONE_DOT_PCT_PER_S * GAMEBOARD_ZONE_TICK_MS / 1000));
+                    const hpBefore = target.hp;
+                    checkHit(target, { ownerBrawler: 'gameboard', ownerId: owner.id, damage: tickDmg, pierce: true, hitIds: {}, isGameboardZoneDot: true }, -1);
+                    // SP2 Diagonal Death: once per enemy per zone.
+                    if (sp2 && !z.bishopFiredIds[target.id] && target.hp < hpBefore) {
+                        z.bishopFiredIds[target.id] = true;
+                        gameboardFireBishops(target, owner);
+                    }
+                }
+            }
+            // Circling-rook contact damage + shots.
+            for (const rook of z.rooks) {
+                const rx = z.x + Math.cos(rook.ang) * z.r;
+                const ry = z.y + Math.sin(rook.ang) * z.r;
+                for (const target of entities) {
+                    if (target.id === owner.id || areAlliedEntities(owner, target)) continue;
+                    if (target.isStructure || target.isPet) continue;
+                    const d = Math.hypot(target.x - rx, target.y - ry);
+                    if (d <= 26 + (target.radius || 14)) {
+                        if (now >= (z.contactAt[target.id] || 0)) {
+                            z.contactAt[target.id] = now + GAMEBOARD_ZONE_ROOK_CONTACT_COOLDOWN_MS;
+                            checkHit(target, { ownerBrawler: 'gameboard', ownerId: owner.id, damage: gameboardScaledDmg(owner, GAMEBOARD_ZONE_ROOK_CONTACT_DMG), pierce: true, hitIds: {}, isGameboardRook: true, gameboardHyper: !!z.hyper, gameboardZoneRook: true }, -1);
+                        }
+                    }
+                    if (now >= (rook.shotAt || 0) && d <= GAMEBOARD_ZONE_ROOK_SHOT_RANGE) {
+                        rook.shotAt = now + GAMEBOARD_ZONE_ROOK_SHOT_COOLDOWN_MS;
+                        const sa = Math.atan2(target.y - ry, target.x - rx);
+                        bullets.push({ ownerBrawler: 'gameboard', isGameboardRook: true, gameboardHyper: !!z.hyper, x: rx, y: ry, vx: Math.cos(sa) * GAMEBOARD_ZONE_ROOK_SHOT_SPEED, vy: Math.sin(sa) * GAMEBOARD_ZONE_ROOK_SHOT_SPEED, life: 0, maxLife: GAMEBOARD_ZONE_ROOK_SHOT_RANGE / GAMEBOARD_ZONE_ROOK_SHOT_SPEED, damage: gameboardScaledDmg(owner, GAMEBOARD_ZONE_ROOK_SHOT_DMG), pierce: false, ownerId: owner.id, hitIds: {}, hitboxMod: 1.2, hyperVisual: !!z.hyper });
+                        break;
+                    }
+                }
+            }
+        }
+        // Hyper contagion: rooks circling a cursed enemy shoot at other
+        // enemies of the curse owner; their hits spread the curse while
+        // the owner is hypercharged (checkHit hook) or the shot itself
+        // was fired hypercharged (bullet-carried flag).
+        for (const e of entities) {
+            if (!e.gameboardCurseUntil || now >= e.gameboardCurseUntil) continue;
+            const curseOwner = gameboardFindOwner(e.gameboardCurseOwnerId);
+            if (!curseOwner) continue;
+            if (!Array.isArray(e.gameboardCurseRooks)) e.gameboardCurseRooks = [0, Math.PI];
+            if (!Array.isArray(e.gameboardCurseShotAt)) e.gameboardCurseShotAt = [0, 0];
+            const hyperNow = isEntityHyperchargedNow(curseOwner);
+            for (let k = 0; k < e.gameboardCurseRooks.length; k++) {
+                e.gameboardCurseRooks[k] += GAMEBOARD_CURSE_ORBIT_RAD_S * dt;
+                const rx = e.x + Math.cos(e.gameboardCurseRooks[k]) * GAMEBOARD_CURSE_ORBIT_RADIUS;
+                const ry = e.y + Math.sin(e.gameboardCurseRooks[k]) * GAMEBOARD_CURSE_ORBIT_RADIUS;
+                if (now < (e.gameboardCurseShotAt[k] || 0)) continue;
+                let best = null;
+                let bestD = GAMEBOARD_CURSE_SHOT_RANGE;
+                for (const target of entities) {
+                    if (!target || target.id === e.id || target.id === curseOwner.id) continue;
+                    if (areAlliedEntities(curseOwner, target)) continue;
+                    if (target.isStructure || target.isPet) continue;
+                    const d = Math.hypot(target.x - rx, target.y - ry);
+                    if (d < bestD) { bestD = d; best = target; }
+                }
+                if (!best) continue;
+                e.gameboardCurseShotAt[k] = now + GAMEBOARD_CURSE_SHOT_COOLDOWN_MS;
+                const sa = Math.atan2(best.y - ry, best.x - rx);
+                bullets.push({ ownerBrawler: 'gameboard', isGameboardRook: true, gameboardHyper: hyperNow, x: rx, y: ry, vx: Math.cos(sa) * GAMEBOARD_CURSE_SHOT_SPEED, vy: Math.sin(sa) * GAMEBOARD_CURSE_SHOT_SPEED, life: 0, maxLife: GAMEBOARD_CURSE_SHOT_TRAVEL / GAMEBOARD_CURSE_SHOT_SPEED, damage: gameboardScaledDmg(curseOwner, GAMEBOARD_CURSE_SHOT_DMG), pierce: false, ownerId: curseOwner.id, hitIds: {}, hitboxMod: 1.2, hyperVisual: hyperNow });
+            }
+        }
+    }
+    // Render Gameboard effects: thrown pieces in flight (arc + dashed
+    // landing circle telegraph), board zones (checkerboard disc, dashed
+    // rim, remaining-time arc, circling rooks), cursed enemies (orbiting
+    // rooks + ring). All keyed off real state — never a faked flag.
+    function renderGameboardEffects() {
+        const now = performance.now();
+        for (const t of gameboardThrownSupers) {
+            const progress = clamp((now - t.createdAt) / Math.max(1, t.impactAt - t.createdAt), 0, 1);
+            const arc = Math.sin(progress * Math.PI) * GAMEBOARD_SUPER_ARC_HEIGHT;
+            const gx = t.startX + (t.targetX - t.startX) * progress;
+            const gy = t.startY + (t.targetY - t.startY) * progress;
+            const zoneR = GAMEBOARD_ZONE_RADIUS * (t.hyper ? GAMEBOARD_ZONE_RADIUS_HYPER_MULT : 1);
+            ctx.save();
+            // Landing telegraph: the zone the piece will place.
+            ctx.globalAlpha = 0.55;
+            ctx.strokeStyle = t.hyper ? '#fde68a' : '#f5c542';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([12, 9]);
+            ctx.beginPath(); ctx.arc(t.targetX, t.targetY, zoneR, 0, Math.PI * 2); ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.globalAlpha = 0.08;
+            ctx.fillStyle = '#f5c542';
+            ctx.beginPath(); ctx.arc(t.targetX, t.targetY, zoneR, 0, Math.PI * 2); ctx.fill();
+            // Ground shadow under the piece.
+            ctx.globalAlpha = 0.3;
+            ctx.fillStyle = '#3b2f0b';
+            ctx.beginPath(); ctx.ellipse(gx, gy, 16 * (1 - progress * 0.3), 7, 0, 0, Math.PI * 2); ctx.fill();
+            // The thrown piece: a gold queen head riding the arc.
+            ctx.translate(gx, gy - arc);
+            ctx.rotate(Math.sin(progress * Math.PI) * 0.3);
+            ctx.globalAlpha = 0.95;
+            ctx.shadowColor = '#f5c542';
+            ctx.shadowBlur = 14;
+            ctx.fillStyle = '#f5c542';
+            ctx.beginPath();
+            ctx.moveTo(-11, 8); ctx.lineTo(-11, -4); ctx.lineTo(-6, 2); ctx.lineTo(-3, -9); ctx.lineTo(0, 1); ctx.lineTo(3, -9); ctx.lineTo(6, 2); ctx.lineTo(11, -4); ctx.lineTo(11, 8);
+            ctx.closePath(); ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#78350f';
+            ctx.fillRect(-11, 8, 22, 4);
+            ctx.restore();
+        }
+        for (const z of gameboardZones) {
+            const remain = clamp((z.until - now) / Math.max(1, (z.hyper ? GAMEBOARD_ZONE_DURATION_SP2_MS : GAMEBOARD_ZONE_DURATION_MS)), 0, 1);
+            ctx.save();
+            // Checkerboard disc, clipped to the zone circle.
+            ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, Math.PI * 2); ctx.clip();
+            const cell = z.r * 2 / 6;
+            for (let cx = 0; cx < 6; cx++) {
+                for (let cy = 0; cy < 6; cy++) {
+                    ctx.fillStyle = (cx + cy) % 2 === 0 ? 'rgba(245,197,66,0.10)' : 'rgba(30,27,75,0.16)';
+                    ctx.fillRect(z.x - z.r + cx * cell, z.y - z.r + cy * cell, cell, cell);
+                }
+            }
+            ctx.restore();
+            ctx.save();
+            // Rim + remaining-time arc (the telegraph for how long it lasts).
+            ctx.strokeStyle = z.hyper ? '#fde68a' : '#f5c542';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([12, 9]);
+            ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, Math.PI * 2); ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.strokeStyle = 'rgba(255,255,255,0.75)';
+            ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.arc(z.x, z.y, z.r - 6, -Math.PI / 2, -Math.PI / 2 + remain * Math.PI * 2); ctx.stroke();
+            // Circling rooks on the edge.
+            for (const rook of z.rooks) {
+                const rx = z.x + Math.cos(rook.ang) * z.r;
+                const ry = z.y + Math.sin(rook.ang) * z.r;
+                ctx.shadowColor = '#f5c542';
+                ctx.shadowBlur = 10;
+                ctx.fillStyle = '#1e293b';
+                ctx.strokeStyle = '#f5c542';
+                ctx.lineWidth = 2;
+                ctx.fillRect(rx - 8, ry - 8, 16, 16);
+                ctx.strokeRect(rx - 8, ry - 8, 16, 16);
+                ctx.fillStyle = '#f5c542';
+                ctx.fillRect(rx - 8, ry - 12, 4, 5);
+                ctx.fillRect(rx - 2, ry - 12, 4, 5);
+                ctx.fillRect(rx + 4, ry - 12, 4, 5);
+                ctx.shadowBlur = 0;
+            }
+            ctx.restore();
+        }
+        for (const e of [player, ...bots]) {
+            if (!e || e.hp <= 0 || !e.gameboardCurseUntil || now >= e.gameboardCurseUntil) continue;
+            if (!Array.isArray(e.gameboardCurseRooks)) continue;
+            ctx.save();
+            ctx.strokeStyle = 'rgba(245,197,66,0.8)';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(e.x, e.y, GAMEBOARD_CURSE_ORBIT_RADIUS + 12, 0, Math.PI * 2); ctx.stroke();
+            for (const a of e.gameboardCurseRooks) {
+                const rx = e.x + Math.cos(a) * GAMEBOARD_CURSE_ORBIT_RADIUS;
+                const ry = e.y + Math.sin(a) * GAMEBOARD_CURSE_ORBIT_RADIUS;
+                ctx.shadowColor = '#f5c542';
+                ctx.shadowBlur = 8;
+                ctx.fillStyle = '#1e293b';
+                ctx.strokeStyle = '#f5c542';
+                ctx.lineWidth = 2;
+                ctx.fillRect(rx - 6, ry - 6, 12, 12);
+                ctx.strokeRect(rx - 6, ry - 6, 12, 12);
+                ctx.fillStyle = '#f5c542';
+                ctx.fillRect(rx - 6, ry - 9, 3, 4);
+                ctx.fillRect(rx - 1, ry - 9, 3, 4);
+                ctx.fillRect(rx + 3, ry - 9, 3, 4);
+                ctx.shadowBlur = 0;
+            }
+            ctx.restore();
+        }
+    }
+    function updateGameboardVoiceState() {
+        try {
+            if (typeof selectedBrawler === 'undefined' || !player) return;
+            const now = performance.now();
+            const isGameboardBrawler = selectedBrawler === 'gameboard';
+            if (playing && !gameboardVoicePrevPlaying) {
+                gameboardVoiceMatchEndPlayed = false;
+                gameboardVoiceLastHp = player.hp;
+                gameboardVoiceLastActionAt = now;
+                gameboardVoiceLastIdleAt = 0;
+                player.gameboardWinAt = 0;
+                player.gameboardDeathAt = 0;
+                if (isGameboardBrawler) window.BraweGameboardVoice?.play('spawn');
+            }
+            if (gameOver && !gameboardVoicePrevGameOver && !gameboardVoiceMatchEndPlayed) {
+                gameboardVoiceMatchEndPlayed = true;
+                if (isGameboardBrawler) {
+                    if (player.hp > 0) {
+                        player.gameboardWinAt = now;
+                        window.BraweGameboardVoice?.play('win');
+                    } else {
+                        player.gameboardDeathAt = now;
+                        window.BraweGameboardVoice?.play('death');
+                        explosions.push({ x: player.x, y: player.y, radius: 60, life: 0, maxLife: .8, color: 'rgba(245,197,66,.55)' });
+                        spawnFloatingText(player.x, player.y - 46, '♟️ CHECKMATED!', '#f5c542');
+                    }
+                }
+            }
+            if (playing && !gameOver && isGameboardBrawler && player.hp > 0 && gameboardVoiceLastHp !== null && player.hp < gameboardVoiceLastHp) {
+                gameboardVoiceLastActionAt = now;
+                window.BraweGameboardVoice?.play('hurt');
+            }
+            if (player) gameboardVoiceLastHp = player.hp;
+            if (playing && !gameOver && isGameboardBrawler && player.hp > 0) {
+                const moved = Math.hypot((player.x || 0) - (player.gameboardVoicePrevX ?? player.x ?? 0), (player.y || 0) - (player.gameboardVoicePrevY ?? player.y ?? 0)) > 4;
+                if (moved || (player.lastAttackAt || 0) > gameboardVoiceLastActionAt) gameboardVoiceLastActionAt = now;
+                player.gameboardVoicePrevX = player.x;
+                player.gameboardVoicePrevY = player.y;
+                if (now - gameboardVoiceLastActionAt > 20000 && now - gameboardVoiceLastIdleAt > 25000) {
+                    gameboardVoiceLastIdleAt = now;
+                    window.BraweGameboardVoice?.play('idle');
+                }
+            }
+            gameboardVoicePrevPlaying = playing;
+            gameboardVoicePrevGameOver = gameOver;
+        } catch (e) {}
+    }
     // ===== Christmas Showdown buffs (Season 6: Xplodemis) =====
     let christmasBuffTimer = 0;
     function isChristmasShowdownMatch() { return showdownMode === 'christmas_showdown' && !isTraining; }
@@ -29854,6 +30445,7 @@ let heistFeverActive = false;
         if (bot.brawler === 'gravy') return distance < GRAVY_SUPER_RANGE; // Gravy Boat wave reach
         if (bot.brawler === 'pitch') return distance < PITCH_BOT_SUPER_RANGE; // Pig Parade: pigs need to reach the enemy
         if (bot.brawler === 'spritz') return distance < SPRITZ_BOT_SUPER_RANGE; // Mode Swap + shells: worth casting when an enemy is close
+        if (bot.brawler === 'gameboard') return distance < GAMEBOARD_BOT_SUPER_RANGE; // Grandmaster's Board: the thrown zone needs an enemy in range
         const targetHpPct = target.hp ? target.hp / Math.max(1, target.maxHp || target.hp) : 1;
         const clustered = getBotLivingEnemies(bot).filter((enemy) => Math.hypot(enemy.x - target.x, enemy.y - target.y) < 190).length;
         const objectiveFight = isObjectiveMode && Math.hypot(target.x - (objectiveZone?.x || WORLD_W*0.5), target.y - (objectiveZone?.y || WORLD_H*0.5)) < (objectiveZone?.r || 240) + 80;
@@ -31655,6 +32247,7 @@ let heistFeverActive = false;
         if (brawler === 'runner' && performance.now() < (player.runnerReloadBuffUntil || 0)) base /= RUNNER_HYPER_RELOAD_MULT;
         if (brawler === 'unopcoloco' && performance.now() < (player.unopRageUntil || 0)) base /= 1.7;
         if (brawler === 'sir_cheeseburger' && performance.now() < (player.sirCheddarReloadBuffUntil || 0)) base /= 1.15;
+        if (brawler === 'gameboard' && performance.now() < (player.gameboardReloadBuffUntil || 0)) base /= GAMEBOARD_RELOAD_BUFF_MULT; // Gameboard: +15% reload speed for 3s after a maxed Super (his number)
         if (brawler === 'upiedown' && performance.now() < (player.upiedownReloadBuffUntil || 0)) base *= 0.85;
         if (brawler === 'jacktrade' && performance.now() < (player.jackTradeRushUntil || 0)) base /= (1 + 2 * (player.jackTradeRushStrength ?? 1));
         if (brawler === 'fastpass' && selectedStar === 'long' && (player.fastpassMomentum || 0) >= .64) base /= 1.15;
@@ -31678,7 +32271,7 @@ let heistFeverActive = false;
       beam:8, fuser:24, heater_miser:20, minigunnin:72, money_and_tax:24, outlit:30, steamer:8,
       bouncin_balls:6, chickpig:12, classy:6, copyphase:6, goonbob:6, hoop:5, hyperorigin:5,
       portalo:7, ghoul:6, jacktrade:18, darkener:6, awakenator:8, trampaheal:6, axeywaxy:6, mageny:6, draflygon:6, ramage:6, upgradart:10, cinderion:10, cursed:7, king:6, anti_royal:6, weefee:6, rager:4,
-    carmela_fudge:5, bolznstien:5, sir_cheeseburger:4, blinkeye:4, magnatar:6, oil_maker:16, badbat:5, looma:7, feathers:5, spikey:6, electrostien:14, mallow:12, nightshade: 6, runner: 6, aura_charmer: 6, voltastein: 6, staticstein: 6, healnstein: 6, voodoyou: 6, pandy: 6, snipa: 6, bookworm: 7, freezeon: 7, driller: 7, gravy: 7, pitch: 7
+    carmela_fudge:5, bolznstien:5, sir_cheeseburger:4, blinkeye:4, magnatar:6, oil_maker:16, badbat:5, looma:7, feathers:5, spikey:6, electrostien:14, mallow:12, nightshade: 6, runner: 6, aura_charmer: 6, voltastein: 6, staticstein: 6, healnstein: 6, voodoyou: 6, pandy: 6, snipa: 6, bookworm: 7, freezeon: 7, driller: 7, gravy: 7, pitch: 7, gameboard: 12
   });
   let nextMainAttackActivationId = 1;
   function getSuperChargeHitsForBrawler(brawler) {
@@ -32193,7 +32786,7 @@ let heistFeverActive = false;
     resetPlayerHyperchargeState();
     outlitWallChains.length = 0;
     bullets.length = 0; ragerWarTotems.length = 0;
-    bolznstienPendingStrikes.length = 0; bolznstienShockTrails.length = 0; bolznstienChainArcs.length = 0; chocolatePuddles.length = 0; magnatarVortices.length = 0; oilMakerPuddles.length = 0; oilMakerBarrels.length = 0; oilMakerPendingPuddles.length = 0; steamerPoles.length = 0; weefeePoles.length = 0; chickpigEggZones.length = 0; rings.length = 0; cheeseFields.length = 0; healingPods.length = 0; explosions.length = 0; pendingClones.length = 0; destructibleWalls.length = 0; floatingTexts.length = 0; stickyNotes.length = 0; amplifierToolboxes.length = 0; amplifierScrewZones.length = 0; skeleParachutes.length = 0; skelePortals.length = 0; malakorHellZones.length = 0; malakorHands.length = 0; relativityZones.length = 0; packetTimeFields.length = 0; packetTelegraphs.length = 0; fastpassCheckpoints.length = 0; freestyleMicrophones.length = 0; portaloPortalPairs.length = 0; portaloPrisons.length = 0; portaloShockTimers.length = 0; ghoulHaunts.length = 0; darkenerClouds.length = 0; darkagons.length = 0; cursedStorms.length = 0; cursedHyperClouds.length = 0; antiRoyalMortarShells.length = 0; antiRoyalMortarZones.length = 0; jackTradeVolleys.length = 0; jackTradeThrownEffects.length = 0; jackTradeZones.length = 0; jackTradeEndpointShots.length = 0; badbatSwarm.length = 0; badbatShieldOrbs.length = 0; loomaThreads.length = 0; loomaWeaves.length = 0; feathersWindZones.length = 0; feathersStorms.length = 0; spikeyParkedBalls.length = 0; spikeyMegaBalls.length = 0; spikeyPendingSlams.length = 0; electricRealms.length = 0; electrostienPendingStrikes.length = 0; freezeonPatches.length = 0; freezeonSlipZones.length = 0; freezeonShatters.length = 0; freezeonThrownRinks.length = 0; freezeonPendingCones.length = 0; gravyPools.length = 0; gravyWaves.length = 0; gravyThrownGlobs.length = 0; pitchThrownHexes.length = 0; pitchPendingEchoes.length = 0; spritzMists.length = 0; spritzShells.length = 0; spritzPendingVolleys.length = 0; spritzPendingBlasts.length = 0; spritzWaterCircles.length = 0;
+    bolznstienPendingStrikes.length = 0; bolznstienShockTrails.length = 0; bolznstienChainArcs.length = 0; chocolatePuddles.length = 0; magnatarVortices.length = 0; oilMakerPuddles.length = 0; oilMakerBarrels.length = 0; oilMakerPendingPuddles.length = 0; steamerPoles.length = 0; weefeePoles.length = 0; chickpigEggZones.length = 0; rings.length = 0; cheeseFields.length = 0; healingPods.length = 0; explosions.length = 0; pendingClones.length = 0; destructibleWalls.length = 0; floatingTexts.length = 0; stickyNotes.length = 0; amplifierToolboxes.length = 0; amplifierScrewZones.length = 0; skeleParachutes.length = 0; skelePortals.length = 0; malakorHellZones.length = 0; malakorHands.length = 0; relativityZones.length = 0; packetTimeFields.length = 0; packetTelegraphs.length = 0; fastpassCheckpoints.length = 0; freestyleMicrophones.length = 0; portaloPortalPairs.length = 0; portaloPrisons.length = 0; portaloShockTimers.length = 0; ghoulHaunts.length = 0; darkenerClouds.length = 0; darkagons.length = 0; cursedStorms.length = 0; cursedHyperClouds.length = 0; antiRoyalMortarShells.length = 0; antiRoyalMortarZones.length = 0; jackTradeVolleys.length = 0; jackTradeThrownEffects.length = 0; jackTradeZones.length = 0; jackTradeEndpointShots.length = 0; badbatSwarm.length = 0; badbatShieldOrbs.length = 0; loomaThreads.length = 0; loomaWeaves.length = 0; feathersWindZones.length = 0; feathersStorms.length = 0; spikeyParkedBalls.length = 0; spikeyMegaBalls.length = 0; spikeyPendingSlams.length = 0; electricRealms.length = 0; electrostienPendingStrikes.length = 0; freezeonPatches.length = 0; freezeonSlipZones.length = 0; freezeonShatters.length = 0; freezeonThrownRinks.length = 0; freezeonPendingCones.length = 0; gravyPools.length = 0; gravyWaves.length = 0; gravyThrownGlobs.length = 0; pitchThrownHexes.length = 0; pitchPendingEchoes.length = 0; spritzMists.length = 0; spritzShells.length = 0; spritzPendingVolleys.length = 0; spritzPendingBlasts.length = 0; spritzWaterCircles.length = 0; gameboardThrownSupers.length = 0; gameboardZones.length = 0;
     snapperWaves.length = 0;
     rocketeerFireZones.length = 0;
     jetpackFireZones.length = 0;
@@ -36988,6 +37581,8 @@ let heistFeverActive = false;
     if (!isBot && fromEntity === player && (fromEntity.fusedPartCall || selectedBrawler) === 'gravy') { try { window.BraweGravyVoice?.play('attack'); } catch (e) {} }
     // Spritz voice: player attack line (throttled inside the voice module).
     if (!isBot && fromEntity === player && (fromEntity.fusedPartCall || selectedBrawler) === 'spritz') { try { window.BraweSpritzVoice?.play('attack'); } catch (e) {} }
+    // Gameboard voice: player attack line (throttled inside the voice module).
+    if (!isBot && fromEntity === player && (fromEntity.fusedPartCall || selectedBrawler) === 'gameboard') { try { window.BraweGameboardVoice?.play('attack'); } catch (e) {} }
     // Pitch voice: player attack line (throttled inside the voice module).
     if (!isBot && fromEntity === player && (fromEntity.fusedPartCall || selectedBrawler) === 'pitch') { try { window.BrawePitchVoice?.play('attack'); } catch (e) {} }
     fireArenaForgeCapturedHyperAttacks(fromEntity, ang, now);
@@ -39577,6 +40172,9 @@ let heistFeverActive = false;
     } else if (brawler === 'spritz') {
         fireSpritzMain(fromEntity, targetX, targetY, isBot);
         return;
+    } else if (brawler === 'gameboard') {
+        fireGameboardMain(fromEntity, targetX, targetY, isBot);
+        return;
     } else if (brawler === 'pitch') {
         firePitchMain(fromEntity, targetX, targetY, isBot);
         return;
@@ -41712,6 +42310,7 @@ let heistFeverActive = false;
     if (combatBrawler === 'driller') { castDrillerSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'gravy') { castGravySuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'spritz') { castSpritzSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
+    if (combatBrawler === 'gameboard') { castGameboardSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'pitch') { castPitchSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'nightshade') { castNightshadeSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
     if (combatBrawler === 'aegis') { castAegisSuper(player, !!isHypercharged, wm.x, wm.y); updateSuperButton(); return; }
@@ -42905,6 +43504,10 @@ let heistFeverActive = false;
       executeSpritzGadget(bot, 'g1', true);
     } else if (bot.brawler === 'spritz' && g === 'g2') {
       executeSpritzGadget(bot, 'g2', true);
+    } else if (bot.brawler === 'gameboard' && g === 'g1') {
+      executeGameboardGadget(bot, 'g1', true);
+    } else if (bot.brawler === 'gameboard' && g === 'g2') {
+      executeGameboardGadget(bot, 'g2', true);
     } else if (bot.brawler === 'nightshade' && g === 'g1') {
       executeNightshadeG1(bot, target?.x ?? (bot.x + Math.cos(ang) * 200), target?.y ?? (bot.y + Math.sin(ang) * 200));
     } else if (bot.brawler === 'nightshade' && g === 'g2') {
@@ -43440,6 +44043,7 @@ let heistFeverActive = false;
     if (botCombatBrawler === 'driller') { castDrillerSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'gravy') { castGravySuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'spritz') { castSpritzSuper(bot, isHyper, targetX, targetY); return; }
+    if (botCombatBrawler === 'gameboard') { castGameboardSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'pitch') { castPitchSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'nightshade') { castNightshadeSuper(bot, isHyper, targetX, targetY); return; }
     if (botCombatBrawler === 'aegis') { castAegisSuper(bot, isHyper, targetX, targetY); return; }
@@ -45063,6 +45667,18 @@ let heistFeverActive = false;
         return;
     } else if (curBrawler === 'spritz' && curGadget === 'g2') {
         executeSpritzGadget(player, 'g2', false);
+        gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
+        setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
+        updateGadgetButton();
+        return;
+    } else if (curBrawler === 'gameboard' && curGadget === 'g1') {
+        executeGameboardGadget(player, 'g1', false);
+        gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
+        setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
+        updateGadgetButton();
+        return;
+    } else if (curBrawler === 'gameboard' && curGadget === 'g2') {
+        executeGameboardGadget(player, 'g2', false);
         gadgetCooldownUntil = now + getGadgetCooldownMsForBrawler(curBrawler, curGadget);
         setPlayerGadgetCooldownUntil(gadgetCooldownUntil, curGadget);
         updateGadgetButton();
@@ -50619,7 +51235,7 @@ let heistFeverActive = false;
       isBossFight = false;
       isBossFight = false;
       activeSkinTrial = null; // real matches never use trial skins
-      feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; freezeonPendingCones = []; gravyPools = []; gravyWaves = []; gravyThrownGlobs = []; pitchThrownHexes = []; pitchPendingEchoes = []; spritzMists = []; spritzShells = []; spritzPendingVolleys = []; spritzPendingBlasts = []; spritzWaterCircles = []; player.spritzMode = 'mist';
+      feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; freezeonPendingCones = []; gravyPools = []; gravyWaves = []; gravyThrownGlobs = []; pitchThrownHexes = []; pitchPendingEchoes = []; spritzMists = []; spritzShells = []; spritzPendingVolleys = []; spritzPendingBlasts = []; spritzWaterCircles = []; player.spritzMode = 'mist'; gameboardThrownSupers = []; gameboardZones = []; player.gameboardTier = 0;
       resetShowdownStorm(); // Showdown storm Play Again fix (2026-11-22): a finished match's storm must never carry into the next match.
       isHyperEvent = false;
       isSoloTrial = false;
@@ -51847,7 +52463,7 @@ isBrawlerLabMode = false;
       isDuelsMaxedMode = false;
       isWarperEvent = false;
       isObjectiveMode = false;
-      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; freezeonPendingCones = []; gravyPools = []; gravyWaves = []; gravyThrownGlobs = []; pitchThrownHexes = []; pitchPendingEchoes = []; spritzMists = []; spritzShells = []; spritzPendingVolleys = []; spritzPendingBlasts = []; spritzWaterCircles = []; player.spritzMode = 'mist'; isPropHuntMode = false; propHuntState = null;
+      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; freezeonPendingCones = []; gravyPools = []; gravyWaves = []; gravyThrownGlobs = []; pitchThrownHexes = []; pitchPendingEchoes = []; spritzMists = []; spritzShells = []; spritzPendingVolleys = []; spritzPendingBlasts = []; spritzWaterCircles = []; player.spritzMode = 'mist'; gameboardThrownSupers = []; gameboardZones = []; player.gameboardTier = 0; isPropHuntMode = false; propHuntState = null;
       soloTrialWave = 0;
       soloTrialPending = false;
       playing = true;
@@ -51971,7 +52587,7 @@ isBrawlerLabMode = false;
       isDuelsMaxedMode = false;
       isWarperEvent = false;
       isObjectiveMode = false;
-      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; freezeonPendingCones = []; gravyPools = []; gravyWaves = []; gravyThrownGlobs = []; pitchThrownHexes = []; pitchPendingEchoes = []; spritzMists = []; spritzShells = []; spritzPendingVolleys = []; spritzPendingBlasts = []; spritzWaterCircles = []; player.spritzMode = 'mist'; isPropHuntMode = false; propHuntState = null;
+      isTurkeyCaptureMode = false; turkeyCaptureState = null; feathersWindZones = []; feathersStorms = []; spikeyParkedBalls = []; spikeyMegaBalls = []; spikeyPendingSlams = []; electricRealms = []; electrostienPendingStrikes = []; freezeonPatches = []; freezeonSlipZones = []; freezeonShatters = []; freezeonThrownRinks = []; freezeonPendingCones = []; gravyPools = []; gravyWaves = []; gravyThrownGlobs = []; pitchThrownHexes = []; pitchPendingEchoes = []; spritzMists = []; spritzShells = []; spritzPendingVolleys = []; spritzPendingBlasts = []; spritzWaterCircles = []; player.spritzMode = 'mist'; gameboardThrownSupers = []; gameboardZones = []; player.gameboardTier = 0; isPropHuntMode = false; propHuntState = null;
       if (document.getElementById('topbar')) document.getElementById('topbar').textContent = 'Arena Forge - Rookie Course';
       playing = true;
       gameOver = false;
@@ -55952,6 +56568,25 @@ function checkHit(target, b, i){
         b._spritzExploded = true;
         spritzExplodeAt(b.x, b.y, b, owner);
     }
+    // Gameboard (2026-11-24): the queen bursts into rooks on impact
+    // (enemy hit — the wall / max-range cases are the bullet-loop and
+    // wall-branch hooks below); rook hits ring the victim with circling
+    // rooks while the owner is hypercharged (or the rook itself was
+    // fired hypercharged); G1 Checkmate stuns on any hit from the armed
+    // attack; G2 swap rooks shove enemies back.
+    if (b.isGameboardQueen && !b._gameboardBurstDone) {
+        b._gameboardBurstDone = true;
+        gameboardQueenBurst(b, owner);
+    }
+    if (b.isGameboardRook && owner && (b.gameboardHyper || isEntityHyperchargedNow(owner))) {
+        gameboardApplyCurse(target, owner);
+    }
+    if (b.gameboardStunMs && target) {
+        applyStatusEffect(target, 'stun', b.gameboardStunMs);
+    }
+    if (b.isGameboardRook && b.gameboardSwapKnockback && owner) {
+        applyKnockback(target, owner.x, owner.y, b.gameboardSwapKnockback, performance.now());
+    }
     if (b.isCheeseyPuff && b.cheeseyHyperBurst && b.stage >= b.stageCount - 1) {
         triggerCheeseyHyperBurst(b);
     }
@@ -56039,6 +56674,10 @@ function checkHit(target, b, i){
       return true;
   }
   function processBounce(b, reflectX, reflectY) {
+      // Gameboard (2026-11-24): a tier-3 queen releases small pawn
+      // projectiles outward on every bounce — wall and world-bounds
+      // bounces both funnel through here, so one hook covers both.
+      if (b.isGameboardQueen) gameboardQueenBounceRelease(b);
       if (b.ownerBrawler === 'blinkeye' && b.isBlinkEyeMain) {
           b.blinkeyeBounceCount = (b.blinkeyeBounceCount || 0) + 1;
           if (b.blinkeyeBounceCount > 2) {
@@ -57104,6 +57743,7 @@ function checkHit(target, b, i){
     if (playing && !gameOver) updateGravySystems(dt);
     if (playing && !gameOver) updatePitchSystems(dt);
     if (playing && !gameOver) updateSpritzSystems(dt);
+    if (playing && !gameOver) updateGameboardSystems(dt);
     if (playing && !gameOver) updateDrillerSystems(dt);
     if (playing && !gameOver) updatePropPads();
     if (playing && !gameOver) updateChristmasShowdown(dt);
@@ -60231,6 +60871,13 @@ function checkHit(target, b, i){
           const spritzOwner = b.ownerId === player.id ? player : bots.find(bt => bt && bt.id === b.ownerId);
           spritzExplodeAt(b.x, b.y, b, spritzOwner);
       }
+      // Gameboard: the queen bursts into rooks at the end of its flight
+      // (same pattern — resolve before generic expiry cleanup).
+      if (b.isGameboardQueen && b.life >= b.maxLife && !b._gameboardBurstDone) {
+          b._gameboardBurstDone = true;
+          const gameboardOwner = b.ownerId === player.id ? player : bots.find(bt => bt && bt.id === b.ownerId);
+          gameboardQueenBurst(b, gameboardOwner);
+      }
       if (b.isOilMakerCrude) {
           // Crude bullet does not drop mid-flight trails anymore: forms one puddle at the end
       }
@@ -61228,6 +61875,15 @@ function checkHit(target, b, i){
           b.lastCleanBounceAt = now;
           hitCube = false; // Resolved bounce, don't destroy
       } else if(hitCube && !canPierceWall){
+           // Gameboard (2026-11-24): the queen bursts into rooks where
+           // it dies on a wall. Tier 3 queens bounce instead (canBounce),
+           // so they never reach this branch — their release is the
+           // processBounce hook.
+           if (b.isGameboardQueen && !b._gameboardBurstDone) {
+               b._gameboardBurstDone = true;
+               const gameboardWallOwner = b.ownerId === player.id ? player : bots.find(bt => bt && bt.id === b.ownerId);
+               gameboardQueenBurst(b, gameboardWallOwner);
+           }
            // Bookworm: the book's flight ends on a wall (piercing is vs
            // enemies, not walls) — the worm comes out, then the book dies.
            if (b.isBookwormBook) {
@@ -66536,6 +67192,47 @@ function checkHit(target, b, i){
                 ctx.beginPath(); ctx.arc(entity.x + size * 0.36, drawY - size * 0.2, size * 0.04, 0, Math.PI * 2); ctx.fill();
                 ctx.restore();
             }
+            if (brawlerId === 'gameboard') {
+                ctx.save();
+                ctx.shadowColor = '#f5c542';
+                ctx.shadowBlur = 8;
+                // Dark suit body with gold trim.
+                ctx.fillStyle = '#1e293b';
+                ctx.strokeStyle = '#f5c542';
+                ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(entity.x, drawY + size * 0.16, size * 0.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                // Head.
+                ctx.fillStyle = '#f5f0e1';
+                ctx.beginPath(); ctx.arc(entity.x, drawY - size * 0.08, size * 0.15, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                // Gold queen crown (three points with balls).
+                ctx.fillStyle = '#f5c542';
+                ctx.beginPath();
+                ctx.moveTo(entity.x - size * 0.15, drawY - size * 0.14);
+                ctx.lineTo(entity.x - size * 0.15, drawY - size * 0.26);
+                ctx.lineTo(entity.x - size * 0.07, drawY - size * 0.17);
+                ctx.lineTo(entity.x, drawY - size * 0.3);
+                ctx.lineTo(entity.x + size * 0.07, drawY - size * 0.17);
+                ctx.lineTo(entity.x + size * 0.15, drawY - size * 0.26);
+                ctx.lineTo(entity.x + size * 0.15, drawY - size * 0.14);
+                ctx.closePath(); ctx.fill();
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = '#0f172a';
+                ctx.beginPath();
+                ctx.arc(entity.x - size * 0.05, drawY - size * 0.08, size * 0.02, 0, Math.PI * 2);
+                ctx.arc(entity.x + size * 0.05, drawY - size * 0.08, size * 0.02, 0, Math.PI * 2);
+                ctx.fill();
+                // A rook held up (dark square, gold crenellations).
+                ctx.fillStyle = '#1e293b';
+                ctx.strokeStyle = '#f5c542';
+                ctx.lineWidth = 2;
+                ctx.fillRect(entity.x + size * 0.2, drawY - size * 0.1, size * 0.12, size * 0.12);
+                ctx.strokeRect(entity.x + size * 0.2, drawY - size * 0.1, size * 0.12, size * 0.12);
+                ctx.fillStyle = '#f5c542';
+                ctx.fillRect(entity.x + size * 0.2, drawY - size * 0.14, size * 0.03, size * 0.04);
+                ctx.fillRect(entity.x + size * 0.245, drawY - size * 0.14, size * 0.03, size * 0.04);
+                ctx.fillRect(entity.x + size * 0.29, drawY - size * 0.14, size * 0.03, size * 0.04);
+                ctx.restore();
+            }
             ctx.textAlign = 'left';
             ctx.textBaseline = 'alphabetic';
     }
@@ -67340,8 +68037,11 @@ function checkHit(target, b, i){
     // Spritz/Pitch custom explosion art (visual fix 2026-11-23): these four
     // fxKinds have bespoke branches below and must never be flattened to
     // the generic simplify dot, even on touch devices where the simplify
-    // threshold is only 28 live explosions.
-    const SPRITZ_PITCH_CUSTOM_FX = new Set(['spritzWaterBlast', 'spritzModeSwap', 'pitchHexBurst', 'pitchPigSpawn']);
+    // threshold is only 28 live explosions. Gameboard (2026-11-24): its
+    // four fxKinds join the same whitelist — the zone landing, queen
+    // burst, bounce release, and bishop launch are telegraphs, not
+    // decoration, and must never flatten to a dot either.
+    const SPRITZ_PITCH_CUSTOM_FX = new Set(['spritzWaterBlast', 'spritzModeSwap', 'pitchHexBurst', 'pitchPigSpawn', 'gameboardZoneLand', 'gameboardQueenBurst', 'gameboardBounceRelease', 'gameboardBishopLaunch']);
     const isWorldVisualVisible = (x, y, margin = 120) => Number.isFinite(x) && Number.isFinite(y)
         && x >= camX - margin && x <= camX + innerWidth / CAMERA_ZOOM + margin
         && y >= camY - margin && y <= camY + innerHeight / CAMERA_ZOOM + margin;
@@ -67366,6 +68066,7 @@ function checkHit(target, b, i){
     renderGravyEffects();
     renderPitchEffects();
     renderSpritzEffects();
+    renderGameboardEffects();
     renderDrillerEffects();
     renderNightshadeEffects();
     renderRunnerEffects(ctx);
@@ -78166,6 +78867,76 @@ function checkHit(target, b, i){
           ctx.restore();
           continue;
       }
+      // Gameboard bullets — same hoist as Spritz/Pitch (visual fix
+      // 2026-11-23): a top-level owner branch so queen / rook / pawn /
+      // bishop art can never fall through to the white-dot fallback.
+      if (b.ownerBrawler === 'gameboard') {
+          ctx.save();
+          ctx.translate(b.x, b.y);
+          if (b.isGameboardQueen) {
+              // Queen head: gold crown over an ivory face, glowing.
+              const gbSize = 13;
+              ctx.fillStyle = b.hyperVisual ? '#fde68a' : '#f5c542';
+              ctx.shadowColor = '#f5c542';
+              ctx.shadowBlur = 12;
+              ctx.beginPath();
+              ctx.moveTo(-gbSize, gbSize * 0.5); ctx.lineTo(-gbSize, -gbSize * 0.3); ctx.lineTo(-gbSize * 0.5, gbSize * 0.1); ctx.lineTo(-gbSize * 0.2, -gbSize * 0.7); ctx.lineTo(0, gbSize * 0.05); ctx.lineTo(gbSize * 0.2, -gbSize * 0.7); ctx.lineTo(gbSize * 0.5, gbSize * 0.1); ctx.lineTo(gbSize, -gbSize * 0.3); ctx.lineTo(gbSize, gbSize * 0.5);
+              ctx.closePath(); ctx.fill();
+              ctx.shadowBlur = 0;
+              ctx.fillStyle = '#f5f0e1';
+              ctx.beginPath(); ctx.arc(0, gbSize * 0.55, gbSize * 0.55, 0, Math.PI * 2); ctx.fill();
+              ctx.fillStyle = '#0f172a';
+              ctx.beginPath();
+              ctx.arc(-gbSize * 0.2, gbSize * 0.5, gbSize * 0.09, 0, Math.PI * 2);
+              ctx.arc(gbSize * 0.2, gbSize * 0.5, gbSize * 0.09, 0, Math.PI * 2);
+              ctx.fill();
+          } else if (b.isGameboardRook) {
+              // Rook: dark square with gold crenellations on top.
+              ctx.fillStyle = '#1e293b';
+              ctx.strokeStyle = b.hyperVisual ? '#fde68a' : '#f5c542';
+              ctx.lineWidth = 2;
+              ctx.shadowColor = '#f5c542';
+              ctx.shadowBlur = 8;
+              ctx.fillRect(-8, -6, 16, 14);
+              ctx.strokeRect(-8, -6, 16, 14);
+              ctx.fillStyle = b.hyperVisual ? '#fde68a' : '#f5c542';
+              ctx.fillRect(-8, -11, 4, 5);
+              ctx.fillRect(-2, -11, 4, 5);
+              ctx.fillRect(4, -11, 4, 5);
+          } else if (b.isGameboardPawn) {
+              // Pawn: small gold head over a trapezoid base.
+              ctx.fillStyle = b.hyperVisual ? '#fde68a' : '#f5c542';
+              ctx.shadowColor = '#f5c542';
+              ctx.shadowBlur = 8;
+              ctx.beginPath(); ctx.arc(0, -4, 4, 0, Math.PI * 2); ctx.fill();
+              ctx.beginPath();
+              ctx.moveTo(-6, 7); ctx.lineTo(-3, 0); ctx.lineTo(3, 0); ctx.lineTo(6, 7);
+              ctx.closePath(); ctx.fill();
+          } else if (b.isGameboardBishop) {
+              // Bishop: purple mitre with a slit and a top ball.
+              ctx.fillStyle = b.hyperVisual ? '#c084fc' : '#a855f7';
+              ctx.shadowColor = '#a855f7';
+              ctx.shadowBlur = 8;
+              ctx.beginPath();
+              ctx.moveTo(0, -12); ctx.quadraticCurveTo(8, -4, 6, 4); ctx.lineTo(-6, 4); ctx.quadraticCurveTo(-8, -4, 0, -12);
+              ctx.fill();
+              ctx.shadowBlur = 0;
+              ctx.strokeStyle = '#f5c542';
+              ctx.lineWidth = 2;
+              ctx.beginPath(); ctx.moveTo(0, -8); ctx.lineTo(0, 2); ctx.stroke();
+              ctx.fillStyle = '#f5c542';
+              ctx.beginPath(); ctx.arc(0, -13, 2.5, 0, Math.PI * 2); ctx.fill();
+          } else {
+              // Any other Gameboard projectile: a plain gold orb, never a
+              // white dot, so a future Gameboard shot cannot silently regress.
+              ctx.fillStyle = '#f5c542';
+              ctx.shadowColor = '#b45309';
+              ctx.shadowBlur = 8;
+              ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI * 2); ctx.fill();
+          }
+          ctx.restore();
+          continue;
+      }
       // Pitch shards — visual fix 2026-11-23: same hoist as Spritz above.
       // The shard branch used to sit inside kage and never ran; Pitch
       // shards (ownerBrawler 'pitch') fell through to the white-dot fallback.
@@ -82979,6 +83750,7 @@ function checkHit(target, b, i){
         updateGravyVoiceState();
         updatePitchVoiceState();
         updateSpritzVoiceState();
+        updateGameboardVoiceState();
         updateDrillerVoiceState();
         const homeVisible = homeScreen && homeScreen.style.display !== 'none';
         if (playing || !homeVisible) render();

@@ -1,4 +1,4 @@
-// Hypercharge SFX — one unique activation sting per playable brawler (106).
+// Hypercharge SFX — one unique activation sting per playable brawler (107).
 // Anthony's order 2026-11-05: Brawl-Stars-style (sharp chime + low hum +
 // booming electronic burst), unique per brawler, NOT an ambient pulse.
 // Source-presence + live behavior mirrors. No DOM/match runtime needed.
@@ -23,7 +23,7 @@ const allIds = [...allM[1].matchAll(/'([a-z0-9_]+)'/g)].map(x => x[1]);
 const disM = game.match(/const disabledBrawlers = new Set\(\[([\s\S]*?)\]\);/);
 const disabled = new Set([...disM[1].matchAll(/'([a-z0-9_]+)'/g)].map(x => x[1]));
 const playable = allIds.filter(id => !disabled.has(id));
-check('roster parses: 106 ids, 0 disabled, 106 playable', allIds.length === 106 && disabled.size === 0 && playable.length === 106);
+check('roster parses: 107 ids, 0 disabled, 107 playable', allIds.length === 107 && disabled.size === 0 && playable.length === 107);
 check('disabled set is empty (PR #120 deleted the 8 disabled brawlers)',
   disabled.size === 0);
 
@@ -34,7 +34,7 @@ vm.runInContext(hcCode, ctx);
 const HC = ctx.globalThis.BraweHyperchargeSfx;
 check('module exposes BraweHyperchargeSfx with playActivation + fileFor', !!HC && typeof HC.playActivation === 'function' && typeof HC.fileFor === 'function');
 check('module base path is assets/sfx/hc/', HC.basePath === 'assets/sfx/hc/');
-check('module maps exactly 106 files', HC.fileCount() === 106);
+check('module maps exactly 107 files', HC.fileCount() === 107);
 check('module playableIds() matches the parsed playable roster exactly',
   JSON.stringify([...HC.playableIds()].sort()) === JSON.stringify([...playable].sort()));
 check('every playable id maps to its own <id>.mp3 file', playable.every(id => HC.fileFor(id) === id + '.mp3'));
@@ -57,9 +57,9 @@ for (const id of playable) {
   // 1.0s at 64kbps mono = ~8 KB; allow a sane band around it.
   if (!isMp3(buf) || buf.length < 5000 || buf.length > 15000) { ok = false; break; }
 }
-check('all 106 HC sting files exist and are real MP3s (~1s, 64kbps mono)', ok);
-check('all 106 HC stings are distinct renders (unique md5s)', hashes.size === 106);
-console.log(`  (hc audio total: ${(bytes / 1024).toFixed(0)} KB across 106 stings)`);
+check('all 107 HC sting files exist and are real MP3s (~1s, 64kbps mono)', ok);
+check('all 107 HC stings are distinct renders (unique md5s)', hashes.size === 107);
+console.log(`  (hc audio total: ${(bytes / 1024).toFixed(0)} KB across 107 stings)`);
 check('no Outlit-only sting files remain (assets/sfx/outlit/ is gone)',
   !fs.existsSync(path.join(repo, 'assets/sfx/outlit')) && !fs.existsSync(path.join(repo, 'modules/audio/outlit-sfx.js')));
 
